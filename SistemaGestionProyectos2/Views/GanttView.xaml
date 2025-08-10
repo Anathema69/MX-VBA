@@ -1,0 +1,9 @@
+﻿<UserControl x:Class="SistemaGestionProyectos2.Views.GanttView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <TextBlock Text="Vista Gantt - En construcción" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center"/>
+    </Grid>
+</UserControl>

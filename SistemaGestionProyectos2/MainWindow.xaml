@@ -1,0 +1,176 @@
+﻿<Window x:Class="SistemaGestionProyectos2.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sistema de Gestión de Proyectos" 
+        Height="700" 
+        Width="1200"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="25"/>
+        </Grid.RowDefinitions>
+
+        <!-- Menú Principal -->
+        <Menu Grid.Row="0" Height="25">
+            <MenuItem Header="_Archivo">
+                <MenuItem Header="_Nuevo Proyecto" Click="NuevoProyecto_Click"/>
+                <Separator/>
+                <MenuItem Header="_Cerrar Sesión" Click="CerrarSesion_Click"/>
+                <MenuItem Header="_Salir" Click="Salir_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Proyectos">
+                <MenuItem Header="_Ver Todos" Click="VerProyectos_Click"/>
+                <MenuItem Header="_Diagrama Gantt" Click="VerGantt_Click"/>
+            </MenuItem>
+            <MenuItem Header="_Reportes">
+                <MenuItem Header="_Reporte General"/>
+                <MenuItem Header="_Reporte por Proyecto"/>
+            </MenuItem>
+            <MenuItem Header="_Ayuda">
+                <MenuItem Header="_Acerca de"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Área de Contenido Principal con Tabs -->
+        <TabControl Grid.Row="1" Name="MainTabControl">
+            <!-- Tab de Inicio/Dashboard -->
+            <TabItem Header="Inicio">
+                <Grid Margin="20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Bienvenido al Sistema de Gestión de Proyectos" 
+                              FontSize="24" 
+                              FontWeight="Light"
+                              Margin="0,0,0,20"/>
+
+                    <!-- Tarjetas de Resumen -->
+                    <Grid Grid.Row="1" Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Tarjeta Proyectos Activos -->
+                        <Border Grid.Column="0" 
+                                Background="#2196F3" 
+                                CornerRadius="5" 
+                                Margin="5"
+                                Height="100">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="0" 
+                                          FontSize="32" 
+                                          FontWeight="Bold"
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                                <TextBlock Text="Proyectos Activos" 
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tarjeta Tareas Pendientes -->
+                        <Border Grid.Column="1" 
+                                Background="#4CAF50" 
+                                CornerRadius="5" 
+                                Margin="5"
+                                Height="100">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="0" 
+                                          FontSize="32" 
+                                          FontWeight="Bold"
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                                <TextBlock Text="Tareas Pendientes" 
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tarjeta En Progreso -->
+                        <Border Grid.Column="2" 
+                                Background="#FF9800" 
+                                CornerRadius="5" 
+                                Margin="5"
+                                Height="100">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="0" 
+                                          FontSize="32" 
+                                          FontWeight="Bold"
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                                <TextBlock Text="En Progreso" 
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tarjeta Completadas -->
+                        <Border Grid.Column="3" 
+                                Background="#9C27B0" 
+                                CornerRadius="5" 
+                                Margin="5"
+                                Height="100">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="0" 
+                                          FontSize="32" 
+                                          FontWeight="Bold"
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                                <TextBlock Text="Completadas" 
+                                          Foreground="White"
+                                          HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Lista de Proyectos Recientes -->
+                    <GroupBox Grid.Row="2" Header="Proyectos Recientes">
+                        <DataGrid Name="ProjectsDataGrid" 
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                                <DataGridTextColumn Header="Nombre del Proyecto" Binding="{Binding Nombre}" Width="*"/>
+                                <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="150"/>
+                                <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="100"/>
+                                <DataGridTextColumn Header="Fecha Inicio" Binding="{Binding FechaInicio}" Width="100"/>
+                                <DataGridTextColumn Header="Fecha Fin" Binding="{Binding FechaFin}" Width="100"/>
+                                <DataGridTextColumn Header="Progreso" Binding="{Binding Progreso}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab de Proyectos -->
+            <TabItem Header="Proyectos" Name="ProyectosTab">
+                <!-- Aquí irá el ProyectosView -->
+            </TabItem>
+
+            <!-- Tab de Gantt -->
+            <TabItem Header="Diagrama Gantt" Name="GanttTab">
+                <!-- Aquí irá el GanttView -->
+            </TabItem>
+        </TabControl>
+
+        <!-- Barra de Estado -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Name="StatusText" Text="Listo"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Name="UserText" Text="Usuario: "/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
