@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -14,6 +16,7 @@ namespace SistemaGestionProyectos2.Views
         private UserSession _currentUser;
         private ObservableCollection<OrderViewModel> _orders;
         private CollectionViewSource _ordersViewSource;
+        private readonly SupabaseService _supabaseService;
 
         // Constructor que recibe el usuario actual
         public OrdersManagementWindow(UserSession user)
@@ -21,9 +24,14 @@ namespace SistemaGestionProyectos2.Views
             InitializeComponent();
             _currentUser = user;
             _orders = new ObservableCollection<OrderViewModel>();
+            //_supabaseService = SupabaseService.Instance;
 
             InitializeUI();
             ConfigurePermissions();
+
+            // Test de conexión
+            //TestSupabaseConnection();
+
             LoadOrders();
         }
 
@@ -88,9 +96,77 @@ namespace SistemaGestionProyectos2.Views
             // Se aplicará cuando se carguen los datos
         }
 
-        private void LoadOrders()
+        private async void LoadOrders()
         {
-            // Cargar órdenes de prueba (después se conectará con Supabase)
+            try
+            {
+                StatusText.Text = "Cargando órdenes...";
+
+                // Limpiar la colección actual
+                _orders.Clear();
+
+                // Por ahora, cargar directamente datos de ejemplo
+                LoadSampleOrders();
+
+                /* CÓDIGO PARA SUPABASE (comentado por ahora)
+                try 
+                {
+                    // Verificar si tenemos servicio de Supabase
+                    if (_supabaseService != null)
+                    {
+                        var ordersFromDb = await _supabaseService.GetOrders();
+
+                        if (ordersFromDb != null && ordersFromDb.Count > 0)
+                        {
+                            foreach (var order in ordersFromDb)
+                            {
+                                _orders.Add(new OrderViewModel
+                                {
+                                    Id = order.Id,
+                                    OrderNumber = order.OrderNumber,
+                                    OrderDate = order.OrderDate,
+                                    ClientName = order.ClientName,
+                                    Description = order.Description,
+                                    VendorName = order.VendorName,
+                                    PromiseDate = order.PromiseDate,
+                                    ProgressPercentage = order.ProgressPercentage,
+                                    OrderPercentage = order.OrderPercentage,
+                                    Subtotal = order.Subtotal,
+                                    Total = order.Total,
+                                    Status = order.Status,
+                                    Invoiced = order.Invoiced,
+                                    LastInvoiceDate = order.LastInvoiceDate
+                                });
+                            }
+
+                            UpdateStatusBar();
+                            StatusText.Text = $"{_orders.Count} órdenes cargadas desde el servidor";
+                            return; // Si cargó de BD, salir
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error cargando de Supabase: {ex.Message}");
+                }
+
+                // Si llegamos aquí, cargar datos de ejemplo
+                LoadSampleOrders();
+                */
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Error al cargar órdenes";
+                MessageBox.Show(
+                    $"Error al cargar órdenes:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private void LoadSampleOrders()
+        {
             _orders.Clear();
 
             // Datos de ejemplo
@@ -149,6 +225,7 @@ namespace SistemaGestionProyectos2.Views
             }
 
             UpdateStatusBar();
+            StatusText.Text = $"{_orders.Count} órdenes de ejemplo cargadas (modo offline)";
         }
 
         private void UpdateStatusBar()
@@ -185,18 +262,59 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Aquí abriremos el formulario de nueva orden (Fase 3)
-            MessageBox.Show(
-                "Formulario de Nueva Orden - En desarrollo\n\nAquí se abrirá el formulario para crear una nueva orden.",
-                "Nueva Orden",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            try
+            {
+                // Abrir formulario de nueva orden
+                var newOrderWindow = new NewOrderWindow();
+                newOrderWindow.Owner = this;
+
+                if (newOrderWindow.ShowDialog() == true)
+                {
+                    // Si se guardó exitosamente, actualizar la lista
+                    MessageBox.Show(
+                        "La orden se agregó a la lista (modo offline).",
+                        "Información",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    // Opcional: agregar la orden a la lista local
+                    // _orders.Add(new OrderViewModel { ... });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el formulario:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
-        private void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             StatusText.Text = "Actualizando...";
-            LoadOrders();
+
+            // Deshabilitar controles durante la actualización
+            RefreshButton.IsEnabled = false;
+            NewOrderButton.IsEnabled = false;
+
+            try
+            {
+                // Simular actualización
+                await Task.Delay(500);
+                LoadOrders(); // Esto ahora carga datos de ejemplo
+            }
+            finally
+            {
+                RefreshButton.IsEnabled = true;
+
+                // Restaurar permisos del botón Nueva Orden según el rol
+                if (_currentUser.Role == "admin")
+                {
+                    NewOrderButton.IsEnabled = true;
+                }
+            }
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -247,31 +365,36 @@ namespace SistemaGestionProyectos2.Views
 
             if (order == null) return;
 
-            // Verificar permisos para editar
-            string message = "";
-            if (_currentUser.Role == "coordinator")
+            try
             {
-                message = $"Editando Orden: {order.OrderNumber}\n\n" +
-                         "Como Coordinador, puede editar:\n" +
-                         "• Fecha Promesa\n" +
-                         "• % Avance\n" +
-                         "• Estatus";
-            }
-            else if (_currentUser.Role == "admin")
-            {
-                message = $"Editando Orden: {order.OrderNumber}\n\n" +
-                         "Como Administrador, puede editar todos los campos.";
-            }
+                // Abrir ventana de edición con los permisos del usuario actual
+                var editWindow = new EditOrderWindow(order, _currentUser);
+                editWindow.Owner = this;
 
-            // Por ahora mostrar mensaje (en Fase 3 se abrirá formulario de edición)
-            MessageBox.Show(
-                message + "\n\n(Formulario de edición en desarrollo)",
-                "Editar Orden",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                if (editWindow.ShowDialog() == true)
+                {
+                    // La orden ya fue actualizada en el objeto
+                    // Refrescar el DataGrid para mostrar los cambios
+                    OrdersDataGrid.Items.Refresh();
+
+                    // Actualizar status bar
+                    StatusText.Text = $"Orden {order.OrderNumber} actualizada exitosamente";
+
+                    // Opcional: Si estuviéramos conectados a Supabase, aquí se guardaría
+                    // await _supabaseService.UpdateOrder(order);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el editor:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        private async void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
             if (_currentUser.Role != "admin")
             {
@@ -289,22 +412,89 @@ namespace SistemaGestionProyectos2.Views
             if (order == null) return;
 
             var result = MessageBox.Show(
-                $"¿Está seguro que desea eliminar la orden {order.OrderNumber}?",
+                $"¿Está seguro que desea eliminar la orden {order.OrderNumber}?\n\n" +
+                "Esta acción no se puede deshacer.",
                 "Confirmar Eliminación",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes)
             {
-                _orders.Remove(order);
-                UpdateStatusBar();
+                try
+                {
+                    // TODO: Implementar eliminación en Supabase
+                    // await _supabaseService.DeleteOrder(order.Id);
 
-                // Aquí se eliminaría de la base de datos
-                MessageBox.Show(
-                    "Orden eliminada correctamente.",
-                    "Éxito",
+                    _orders.Remove(order);
+                    UpdateStatusBar();
+
+                    MessageBox.Show(
+                        "Orden eliminada correctamente.",
+                        "Éxito",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Error al eliminar la orden:\n{ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void TestSupabaseConnection()
+        {
+            try
+            {
+                var supabase = SupabaseService.Instance;
+
+                // Intento simple de query
+                var client = supabase.GetClient();
+                if (client != null)
+                {
+                    // Query directa usando el modelo OrderDb
+                    var result = await client
+                        .From<OrderDb>()  // Usar el modelo definido
+                        .Select("*")
+                        .Limit(10)
+                        .Get();
+
+                    MessageBox.Show($"Conexión exitosa. Registros encontrados: {result?.Models?.Count ?? 0}",
+                        "Test Supabase",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    // Mostrar algunos detalles de la primera orden si existe
+                    if (result?.Models?.Count > 0)
+                    {
+                        var firstOrder = result.Models.First();
+                        MessageBox.Show(
+                            $"Primera orden:\n" +
+                            $"ID: {firstOrder.Id}\n" +
+                            $"Número: {firstOrder.OrderNumber}\n" +
+                            $"Fecha: {firstOrder.OrderDate}",
+                            "Datos de Prueba",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Cliente de Supabase no inicializado",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error de conexión:\n{ex.Message}\n\nDetalles:\n{ex.StackTrace}",
+                    "Error",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                    MessageBoxImage.Error);
             }
         }
     }

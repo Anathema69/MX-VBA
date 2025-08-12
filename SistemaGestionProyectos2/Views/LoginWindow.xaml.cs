@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.Models;
 
@@ -12,15 +13,39 @@ namespace SistemaGestionProyectos2.Views
     {
         private readonly SupabaseService _supabaseService;
 
+        // Diccionario temporal de usuarios con sus roles (después se obtendrá de la BD)
+        private readonly Dictionary<string, (string password, string fullName, string role)> _users = new()
+        {
+            // Administradores
+            { "admin", ("admin123", "Administrador General", "admin") },
+            
+            // Coordinadores
+            { "coordinador", ("ima2025", "Coordinador General", "coordinator") },
+            { "coord1", ("ima2025", "Coordinador de Producción", "coordinator") },
+            
+            // Vendedores
+            { "mgarza", ("ima2025", "MARIO GARZA", "salesperson") }
+        };
+
         public LoginWindow()
         {
-            InitializeComponent();
-            _supabaseService = SupabaseService.Instance;
+            try
+            {
+                InitializeComponent();
 
-            // Valores por defecto para pruebas
-            UsernameTextBox.Text = "admin";
-            PasswordBox.Password = "admin123";
-            RoleComboBox.SelectedIndex = 0; // Admin por defecto
+
+                // _supabaseService = SupabaseService.Instance;
+                // Valores por defecto para pruebas
+                
+
+                // Enfocar el campo de usuario
+                UsernameTextBox.Focus();
+                UsernameTextBox.SelectAll();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error en LoginWindow:\n{ex.Message}", "Error");
+            }
         }
 
         // Mover ventana
@@ -62,96 +87,51 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Mostrar loading
             ShowLoading("Verificando credenciales...");
             DisableControls();
 
             try
             {
-                // Simular delay de autenticación
-                await Task.Delay(1500);
+                await Task.Delay(1500); // Simular carga
 
-                // Obtener el rol seleccionado
-                string selectedRole = GetSelectedRole();
+                // USAR SOLO MODO OFFLINE POR AHORA
+                string username = UsernameTextBox.Text.ToLower().Trim();
+                string password = PasswordBox.Password;
 
-                // Por ahora validación simple (después conectar con Supabase)
-                bool loginSuccess = false;
-                string userFullName = "";
-
-                // Validación temporal según rol
-                switch (selectedRole)
+                if (_users.ContainsKey(username) && _users[username].password == password)
                 {
-                    case "admin":
-                        if (UsernameTextBox.Text == "admin" && PasswordBox.Password == "admin123")
-                        {
-                            loginSuccess = true;
-                            userFullName = "Administrador General";
-                        }
-                        break;
-                    case "coordinator":
-                        if (UsernameTextBox.Text == "coordinador" && PasswordBox.Password == "ima2025")
-                        {
-                            loginSuccess = true;
-                            userFullName = "Coordinador General";
-                        }
-                        break;
-                    case "salesperson":
-                        // Cualquier vendedor de la lista
-                        if (PasswordBox.Password == "ima2025")
-                        {
-                            loginSuccess = true;
-                            userFullName = UsernameTextBox.Text.ToUpper();
-                        }
-                        break;
-                }
+                    var userData = _users[username];
+                    ShowStatus("✅", "Acceso autorizado (Modo Offline)", "#4CAF50", true);
+                    await Task.Delay(500);
 
-                if (loginSuccess)
-                {
-                    ShowStatus("✅", "Acceso autorizado", "#4CAF50", true);
-                    await Task.Delay(800);
-
-                    // Crear objeto de usuario para pasar al menú principal
                     var currentUser = new UserSession
                     {
-                        Username = UsernameTextBox.Text,
-                        FullName = userFullName,
-                        Role = selectedRole,
+                        Id = 1,
+                        Username = username,
+                        FullName = userData.fullName,
+                        Role = userData.role,
                         LoginTime = DateTime.Now
                     };
 
-                    // Abrir menú principal
+                    // Crear ventana de carga
+                    var loadingWindow = new LoadingWindow();
+                    loadingWindow.Show();
+
+                    this.Hide();
+
+                    loadingWindow.UpdateStatus("Preparando Sistema", "Modo Offline...");
+                    await Task.Delay(800);
+
                     MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
                     mainMenu.Show();
+
+                    await loadingWindow.CloseWithFade();
                     this.Close();
                 }
                 else
                 {
                     ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
                 }
-
-                /* CÓDIGO PARA SUPABASE (cuando esté listo):
-                var user = await _supabaseService.AuthenticateUser(
-                    UsernameTextBox.Text, 
-                    PasswordBox.Password
-                );
-
-                if (user != null && user.Role == selectedRole)
-                {
-                    // Login exitoso
-                    var currentUser = new UserSession
-                    {
-                        Id = user.Id,
-                        Username = user.Username,
-                        FullName = user.FullName,
-                        Role = user.Role,
-                        LoginTime = DateTime.Now
-                    };
-
-                    MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
-                    mainMenu.Show();
-                    this.Close();
-                }
-                */
             }
             catch (Exception ex)
             {
@@ -163,14 +143,33 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private string GetSelectedRole()
+        // Modo offline como fallback
+        private async Task LoginOfflineMode()
         {
-            switch (RoleComboBox.SelectedIndex)
+            string username = UsernameTextBox.Text.ToLower().Trim();
+            string password = PasswordBox.Password;
+
+            if (_users.ContainsKey(username) && _users[username].password == password)
             {
-                case 0: return "admin";
-                case 1: return "coordinator";
-                case 2: return "salesperson";
-                default: return "salesperson";
+                var userData = _users[username];
+                ShowStatus("🔌", "Modo Offline", "#FF9800", true);
+                await Task.Delay(500);
+
+                var currentUser = new UserSession
+                {
+                    Username = username,
+                    FullName = userData.fullName + " (Offline)",
+                    Role = userData.role,
+                    LoginTime = DateTime.Now
+                };
+
+                MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
+                mainMenu.Show();
+                this.Close();
+            }
+            else
+            {
+                ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
             }
         }
 
@@ -202,7 +201,6 @@ namespace SistemaGestionProyectos2.Views
         {
             UsernameTextBox.IsEnabled = false;
             PasswordBox.IsEnabled = false;
-            RoleComboBox.IsEnabled = false;
             LoginButton.IsEnabled = false;
         }
 
@@ -210,7 +208,6 @@ namespace SistemaGestionProyectos2.Views
         {
             UsernameTextBox.IsEnabled = true;
             PasswordBox.IsEnabled = true;
-            RoleComboBox.IsEnabled = true;
             LoginButton.IsEnabled = true;
         }
 

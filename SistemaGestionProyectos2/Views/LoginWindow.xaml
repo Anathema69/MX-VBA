@@ -226,31 +226,13 @@
                     </Border>
                 </Grid>
 
-                <!-- ComboBox de Rol -->
-                <Grid Grid.Row="5" Margin="0,0,0,25">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Text="ROL DE USUARIO" 
-                             FontSize="11"
-                             FontWeight="Bold"
-                             Foreground="Black"
-                             Margin="0,0,0,8"/>
-
-                    <ComboBox Grid.Row="1" 
-                            x:Name="RoleComboBox"
-                            Height="40"
-                            FontSize="14"
-                            BorderBrush="Black"
-                            BorderThickness="2"
-                            SelectedIndex="0">
-                        <ComboBoxItem Content="Administrador"/>
-                        <ComboBoxItem Content="Coordinador"/>
-                        <ComboBoxItem Content="Vendedor"/>
-                    </ComboBox>
-                </Grid>
+                <!-- Checkbox Recordar credenciales (opcional) -->
+                <CheckBox Grid.Row="5" 
+                         x:Name="RememberCheckBox"
+                         Content="Recordar mis credenciales"
+                         Margin="0,0,0,25"
+                         FontSize="12"
+                         Foreground="#666"/>
 
                 <!-- Botón de Login -->
                 <Button Grid.Row="6" 

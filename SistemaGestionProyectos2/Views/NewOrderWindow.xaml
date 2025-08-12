@@ -1,0 +1,378 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.NewOrderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nueva Orden de Compra - IMA Mecatrónica" 
+        Height="700" 
+        Width="600"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="Black" Height="50">
+            <Grid>
+                <StackPanel Orientation="Horizontal" 
+                           VerticalAlignment="Center"
+                           Margin="20,0">
+                    <TextBlock Text="➕" 
+                             Foreground="#FFC107"
+                             FontSize="20"
+                             Margin="0,0,15,0"/>
+                    <TextBlock Text="NUEVA ORDEN" 
+                             Foreground="White"
+                             FontSize="18"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         Margin="0,0,20,0"
+                         Foreground="White"
+                         FontSize="12">
+                    <TextBlock.Text>
+                        <Binding Source="{x:Static sys:DateTime.Now}" 
+                                StringFormat="{}{0:dd/MM/yyyy}"
+                                xmlns:sys="clr-namespace:System;assembly=mscorlib"/>
+                    </TextBlock.Text>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+        <!-- Formulario -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="30,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Sección: Información Básica -->
+                <Border Grid.Row="0" 
+                       Background="#f5f5f5" 
+                       Padding="10"
+                       Margin="0,0,0,15">
+                    <TextBlock Text="INFORMACIÓN BÁSICA" 
+                             FontWeight="Bold"
+                             FontSize="12"/>
+                </Border>
+
+                <!-- Orden de Compra y Cotización -->
+                <Grid Grid.Row="1" Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="ORDEN DE COMPRA *" 
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,5"/>
+                        <TextBox x:Name="OrderNumberTextBox"
+                                Height="35"
+                                FontSize="14"
+                                CharacterCasing="Upper"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="COTIZACIÓN" 
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,5"/>
+                        <TextBox x:Name="QuotationTextBox"
+                                Height="35"
+                                FontSize="14"
+                                CharacterCasing="Upper"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Fecha O.C. -->
+                <StackPanel Grid.Row="2" Margin="0,0,0,15">
+                    <TextBlock Text="FECHA O.C. *" 
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             Margin="0,0,0,5"/>
+                    <DatePicker x:Name="OrderDatePicker"
+                               Height="35"
+                               FontSize="14"
+                               SelectedDate="{x:Static sys:DateTime.Now}"
+                               xmlns:sys="clr-namespace:System;assembly=mscorlib"/>
+                </StackPanel>
+
+                <!-- Sección: Cliente y Contacto -->
+                <Border Grid.Row="3" 
+                       Background="#f5f5f5" 
+                       Padding="10"
+                       Margin="0,0,0,15">
+                    <TextBlock Text="CLIENTE Y CONTACTO" 
+                             FontWeight="Bold"
+                             FontSize="12"/>
+                </Border>
+
+                <!-- Cliente -->
+                <StackPanel Grid.Row="4" Margin="0,0,0,15">
+                    <TextBlock Text="CLIENTE *" 
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             Margin="0,0,0,5"/>
+                    <ComboBox x:Name="ClientComboBox"
+                             Height="35"
+                             FontSize="14"
+                             DisplayMemberPath="Name"
+                             SelectedValuePath="Id"
+                             SelectionChanged="ClientComboBox_SelectionChanged">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Padding" Value="5"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <Button x:Name="NewClientButton"
+                           Content="+ Nuevo Cliente"
+                           HorizontalAlignment="Right"
+                           Margin="0,5,0,0"
+                           Padding="10,3"
+                           Background="Transparent"
+                           BorderBrush="#999"
+                           FontSize="11"
+                           Cursor="Hand"
+                           Click="NewClientButton_Click"/>
+                </StackPanel>
+
+                <!-- Contacto -->
+                <StackPanel Grid.Row="5" Margin="0,0,0,15">
+                    <TextBlock Text="CONTACTO *" 
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             Margin="0,0,0,5"/>
+                    <ComboBox x:Name="ContactComboBox"
+                             Height="35"
+                             FontSize="14"
+                             DisplayMemberPath="Name"
+                             SelectedValuePath="Id"
+                             IsEnabled="False">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Padding" Value="5"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Descripción -->
+                <StackPanel Grid.Row="6" Margin="0,0,0,15">
+                    <TextBlock Text="DESCRIPCIÓN *" 
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             Margin="0,0,0,5"/>
+                    <TextBox x:Name="DescriptionTextBox"
+                            Height="60"
+                            FontSize="14"
+                            TextWrapping="Wrap"
+                            AcceptsReturn="True"
+                            VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+
+                <!-- Vendedor -->
+                <StackPanel Grid.Row="7" Margin="0,0,0,15">
+                    <TextBlock Text="VENDEDOR *" 
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             Margin="0,0,0,5"/>
+                    <ComboBox x:Name="VendorComboBox"
+                             Height="35"
+                             FontSize="14"
+                             DisplayMemberPath="FullName"
+                             SelectedValuePath="Id">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Padding" Value="5"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Sección: Información Financiera -->
+                <Border Grid.Row="8" 
+                       Background="#f5f5f5" 
+                       Padding="10"
+                       Margin="0,0,0,15">
+                    <TextBlock Text="INFORMACIÓN FINANCIERA" 
+                             FontWeight="Bold"
+                             FontSize="12"/>
+                </Border>
+
+                <!-- Subtotal, Gasto y Fecha Entrega -->
+                <Grid Grid.Row="9">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Primera fila: Subtotal y Gasto -->
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="SUBTOTAL VENTA (MXN) *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <Grid>
+                                <TextBlock Text="$" 
+                                         VerticalAlignment="Center"
+                                         Margin="10,0,0,0"
+                                         FontSize="14"/>
+                                <TextBox x:Name="SubtotalTextBox"
+                                        Height="35"
+                                        FontSize="14"
+                                        Padding="25,0,5,0"
+                                        TextChanged="SubtotalTextBox_TextChanged"
+                                        PreviewTextInput="NumericTextBox_PreviewTextInput"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="GASTO (MXN)" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <Grid>
+                                <TextBlock Text="$" 
+                                         VerticalAlignment="Center"
+                                         Margin="10,0,0,0"
+                                         FontSize="14"/>
+                                <TextBox x:Name="ExpenseTextBox"
+                                        Height="35"
+                                        FontSize="14"
+                                        Padding="25,0,5,0"
+                                        Text="0"
+                                        PreviewTextInput="NumericTextBox_PreviewTextInput"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Segunda fila: Total calculado y Fecha Entrega -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="TOTAL CON IVA (16%)" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <Border Background="#E8F5E9"
+                                   BorderBrush="#4CAF50"
+                                   BorderThickness="1"
+                                   Height="35"
+                                   CornerRadius="3">
+                                <TextBlock x:Name="TotalTextBlock"
+                                         Text="$ 0.00"
+                                         VerticalAlignment="Center"
+                                         Margin="10,0"
+                                         FontSize="14"
+                                         FontWeight="Bold"
+                                         Foreground="#2E7D32"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="FECHA ENTREGA EST. *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <DatePicker x:Name="DeliveryDatePicker"
+                                       Height="35"
+                                       FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Botones de Acción -->
+        <Border Grid.Row="2" 
+               Background="#f5f5f5"
+               BorderBrush="#DDD"
+               BorderThickness="0,1,0,0">
+            <Grid Margin="30,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                         Text="* Campos obligatorios"
+                         FontStyle="Italic"
+                         FontSize="11"
+                         Foreground="#666"
+                         VerticalAlignment="Center"/>
+
+                <Button Grid.Column="1"
+                       x:Name="SaveButton"
+                       Content="GUARDAR"
+                       Width="120"
+                       Height="40"
+                       Margin="0,0,10,0"
+                       FontWeight="Bold"
+                       Click="SaveButton_Click"
+                       Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border"
+                                   Background="#FFC107"
+                                   CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#FFB300"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#FFA000"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button Grid.Column="2"
+                       x:Name="CancelButton"
+                       Content="CANCELAR"
+                       Width="120"
+                       Height="40"
+                       Background="White"
+                       BorderBrush="#999"
+                       BorderThickness="1"
+                       Click="CancelButton_Click"
+                       Cursor="Hand"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
