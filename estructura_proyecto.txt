@@ -1,0 +1,27 @@
+Directory structure:
+└── anathema69-mx-vba/
+    ├── SistemaGestionProyectos2.sln
+    └── SistemaGestionProyectos2/
+        ├── App.xaml
+        ├── App.xaml.cs
+        ├── AssemblyInfo.cs
+        ├── MainWindow.xaml
+        ├── MainWindow.xaml.cs
+        ├── SistemaGestionProyectos2.csproj
+        ├── Services/
+        │   ├── AuthenticationService.cs
+        │   ├── IDataService.cs
+        │   ├── ProyectoService.cs
+        │   └── SupabaseService.cs
+        ├── ViewModels/
+        │   ├── BaseViewModel.cs
+        │   ├── LoginViewModel.cs
+        │   ├── MainViewModel.cs
+        │   └── ProyectoViewModel.cs
+        └── Views/
+            ├── GanttView.xaml
+            ├── GanttView.xaml.cs
+            ├── LoginWindow.xaml
+            ├── LoginWindow.xaml.cs
+            ├── ProyectosView.xaml
+            └── ProyectosView.xaml.cs

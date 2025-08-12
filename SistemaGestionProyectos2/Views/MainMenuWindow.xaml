@@ -1,0 +1,424 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.MainMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IMA Mecatrónica - Módulo de Control" 
+        Height="700" 
+        Width="1200"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
+
+    <Grid>
+        <!-- Fondo con gradiente -->
+        <Grid.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#1a1a1a" Offset="0"/>
+                <GradientStop Color="#2d2d2d" Offset="1"/>
+            </LinearGradientBrush>
+        </Grid.Background>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="30"/>
+        </Grid.RowDefinitions>
+
+        <!-- Barra Superior -->
+        <Border Grid.Row="0" 
+                Background="Black" 
+                Height="50">
+            <Grid>
+                <StackPanel Orientation="Horizontal" 
+                           VerticalAlignment="Center"
+                           Margin="20,0">
+                    <!-- Logo IMA -->
+                    <Border Width="120" Height="35" Margin="0,0,30,0">
+                        <Grid>
+                            <Rectangle Stroke="White" StrokeThickness="1.5"/>
+                            <StackPanel Orientation="Horizontal" 
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center">
+                                <TextBlock Text="IMA" 
+                                         FontSize="20" 
+                                         FontWeight="Bold"
+                                         Foreground="White"
+                                         FontFamily="Arial Black"
+                                         Margin="5,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <TextBlock Text="MÓDULO DE CONTROL" 
+                             Foreground="White"
+                             FontSize="24"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Info de Usuario -->
+                <StackPanel Orientation="Horizontal" 
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="0,0,20,0">
+                    <TextBlock Text="👤" 
+                             Foreground="White"
+                             FontSize="16"
+                             Margin="0,0,10,0"/>
+                    <TextBlock x:Name="UserInfoText" 
+                             Text="Usuario: Admin"
+                             Foreground="White"
+                             VerticalAlignment="Center"
+                             Margin="0,0,20,0"/>
+                    <Button Content="⚙" 
+                           Width="30" 
+                           Height="30"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Foreground="White"
+                           FontSize="18"
+                           Cursor="Hand"
+                           ToolTip="Configuración"/>
+                    <Button Content="🚪" 
+                           Click="LogoutButton_Click"
+                           Width="30" 
+                           Height="30"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Foreground="White"
+                           FontSize="16"
+                           Cursor="Hand"
+                           ToolTip="Cerrar Sesión"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Subtítulo -->
+        <TextBlock Grid.Row="1" 
+                   Text="MECATRÓNICA - Desarrollo de Ingeniería"
+                   Foreground="#888"
+                   FontStyle="Italic"
+                   FontSize="12"
+                   Margin="20,10"
+                   HorizontalAlignment="Center"/>
+
+        <!-- Área Principal con Módulos -->
+        <Grid Grid.Row="2" Margin="40,20">
+            <!-- Panel de Módulos estilo Access -->
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" 
+                         VerticalScrollBarVisibility="Auto">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Fila Superior de Módulos -->
+                    <WrapPanel Grid.Row="0" 
+                              HorizontalAlignment="Center"
+                              Margin="0,20">
+
+                        <!-- MANEJO DE ÓRDENES -->
+                        <Button x:Name="OrdersModuleButton"
+                               Click="OrdersModule_Click"
+                               Width="200"
+                               Height="120"
+                               Margin="15"
+                               Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border"
+                                           Background="#E3F2FD"
+                                           BorderBrush="#1976D2"
+                                           BorderThickness="2"
+                                           CornerRadius="5">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="📋" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#1976D2"/>
+
+                                            <TextBlock Grid.Row="1"
+                                                     Text="MANEJO DE ÓRDENES"
+                                                     FontWeight="Bold"
+                                                     FontSize="12"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="#1976D2"
+                                                     Margin="0,5,0,10"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#BBDEFB"/>
+                                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#90CAF9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- BALANCE -->
+                        <Button IsEnabled="False"
+                               Width="200"
+                               Height="120"
+                               Margin="15">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F5F5F5"
+                                           BorderBrush="#999"
+                                           BorderThickness="2"
+                                           CornerRadius="5"
+                                           Opacity="0.6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="💰" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#999"/>
+
+                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                                <TextBlock Text="BALANCE"
+                                                         FontWeight="Bold"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"/>
+                                                <TextBlock Text="(Próximamente)"
+                                                         FontSize="9"
+                                                         FontStyle="Italic"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"
+                                                         Margin="0,0,0,10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- PORTAL DE CLIENTE -->
+                        <Button IsEnabled="False"
+                               Width="200"
+                               Height="120"
+                               Margin="15">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F5F5F5"
+                                           BorderBrush="#999"
+                                           BorderThickness="2"
+                                           CornerRadius="5"
+                                           Opacity="0.6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="👥" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#999"/>
+
+                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                                <TextBlock Text="PORTAL DE CLIENTE"
+                                                         FontWeight="Bold"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"/>
+                                                <TextBlock Text="(Próximamente)"
+                                                         FontSize="9"
+                                                         FontStyle="Italic"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"
+                                                         Margin="0,0,0,10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- Fila Inferior de Módulos -->
+                    <WrapPanel Grid.Row="1" 
+                              HorizontalAlignment="Center"
+                              Margin="0,0,0,20">
+
+                        <!-- INGRESOS PENDIENTES -->
+                        <Button IsEnabled="False"
+                               Width="200"
+                               Height="120"
+                               Margin="15">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F5F5F5"
+                                           BorderBrush="#999"
+                                           BorderThickness="2"
+                                           CornerRadius="5"
+                                           Opacity="0.6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="📊" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#999"/>
+
+                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                                <TextBlock Text="INGRESOS PENDIENTES"
+                                                         FontWeight="Bold"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"/>
+                                                <TextBlock Text="(Próximamente)"
+                                                         FontSize="9"
+                                                         FontStyle="Italic"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"
+                                                         Margin="0,0,0,10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- PORTAL DE PROVEEDORES -->
+                        <Button IsEnabled="False"
+                               Width="200"
+                               Height="120"
+                               Margin="15">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F5F5F5"
+                                           BorderBrush="#999"
+                                           BorderThickness="2"
+                                           CornerRadius="5"
+                                           Opacity="0.6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="🚚" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#999"/>
+
+                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                                <TextBlock Text="PORTAL DE PROVEEDORES"
+                                                         FontWeight="Bold"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"/>
+                                                <TextBlock Text="(Próximamente)"
+                                                         FontSize="9"
+                                                         FontStyle="Italic"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"
+                                                         Margin="0,0,0,10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- NÓMINA Y GASTOS FIJOS -->
+                        <Button IsEnabled="False"
+                               Width="200"
+                               Height="120"
+                               Margin="15">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F5F5F5"
+                                           BorderBrush="#999"
+                                           BorderThickness="2"
+                                           CornerRadius="5"
+                                           Opacity="0.6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="💳" 
+                                                     FontSize="36"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="#999"/>
+
+                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                                <TextBlock Text="NÓMINA Y GASTOS FIJOS"
+                                                         FontWeight="Bold"
+                                                         FontSize="12"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"/>
+                                                <TextBlock Text="(Próximamente)"
+                                                         FontSize="9"
+                                                         FontStyle="Italic"
+                                                         HorizontalAlignment="Center"
+                                                         Foreground="#999"
+                                                         Margin="0,0,0,10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </WrapPanel>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- Fondo decorativo opcional (comentado por ahora) -->
+            <!-- Si deseas agregar una imagen de fondo más adelante:
+            <Image Source="pack://application:,,,/Resources/circuit_board.png"
+                   Opacity="0.05"
+                   Stretch="UniformToFill"
+                   IsHitTestVisible="False"/>
+            -->
+        </Grid>
+
+        <!-- Barra de Estado -->
+        <StatusBar Grid.Row="3" Background="Black">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" 
+                         Text="Sistema listo" 
+                         Foreground="White"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🕐" 
+                             Foreground="White"
+                             Margin="0,0,5,0"/>
+                    <TextBlock x:Name="TimeText" 
+                             Text="00:00:00" 
+                             Foreground="White"
+                             Margin="0,0,20,0"/>
+                    <TextBlock x:Name="RoleText" 
+                             Text="Rol: Administrador" 
+                             Foreground="White"/>
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

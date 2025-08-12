@@ -1,9 +1,9 @@
 ﻿<Window x:Class="SistemaGestionProyectos2.Views.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sistema de Gestión - Iniciar Sesión" 
-        Height="550" 
-        Width="420"
+        Title="IMA Mecatrónica - Sistema de Gestión" 
+        Height="600" 
+        Width="450"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         WindowStyle="None"
@@ -11,32 +11,40 @@
         Background="Transparent">
 
     <Border Background="White" 
-            CornerRadius="15">
+            CornerRadius="20">
         <Border.Effect>
             <DropShadowEffect BlurRadius="30" 
                             Direction="270" 
                             Color="#000000" 
-                            Opacity="0.15" 
+                            Opacity="0.2" 
                             ShadowDepth="10"/>
         </Border.Effect>
 
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="35"/>
+                <RowDefinition Height="40"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <!-- Barra de título personalizada -->
             <Border Grid.Row="0" 
-                    Background="#2196F3"
-                    CornerRadius="15,15,0,0"
+                    Background="Black"
+                    CornerRadius="20,20,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="Sistema de Gestión de Proyectos" 
-                             Foreground="White"
-                             VerticalAlignment="Center"
-                             Margin="15,0,0,0"
-                             FontWeight="Medium"/>
+                    <StackPanel Orientation="Horizontal" 
+                               VerticalAlignment="Center"
+                               Margin="15,0,0,0">
+                        <TextBlock Text="⚙" 
+                                 Foreground="White"
+                                 FontSize="16"
+                                 Margin="0,0,10,0"/>
+                        <TextBlock Text="SISTEMA DE GESTIÓN" 
+                                 Foreground="White"
+                                 VerticalAlignment="Center"
+                                 FontWeight="Medium"
+                                 FontSize="12"/>
+                    </StackPanel>
 
                     <!-- Botones de ventana -->
                     <StackPanel Orientation="Horizontal" 
@@ -65,7 +73,7 @@
             </Border>
 
             <!-- Contenido del Login -->
-            <Grid Grid.Row="1" Margin="40,30,40,30">
+            <Grid Grid.Row="1" Margin="50,40,50,40">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -78,78 +86,103 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Logo/Icono -->
+                <!-- Logo IMA -->
                 <Border Grid.Row="0" 
-                       Width="80" 
+                       Width="280" 
                        Height="80"
-                       Background="#E3F2FD"
-                       CornerRadius="40"
-                       Margin="0,0,0,20">
-                    <TextBlock Text="👤" 
-                             FontSize="40" 
-                             HorizontalAlignment="Center" 
-                             VerticalAlignment="Center"/>
+                       Margin="0,0,0,30">
+                    <Grid>
+                        <Rectangle Fill="Black" Width="280" Height="2" VerticalAlignment="Top"/>
+                        <Rectangle Fill="Black" Width="2" Height="80" HorizontalAlignment="Left"/>
+                        <Rectangle Fill="Black" Width="2" Height="80" HorizontalAlignment="Right"/>
+
+                        <StackPanel Orientation="Horizontal" 
+                                   HorizontalAlignment="Center" 
+                                   VerticalAlignment="Center">
+                            <TextBlock Text="I M A" 
+                                     FontSize="42" 
+                                     FontWeight="Bold"
+                                     Foreground="Black"
+                                     FontFamily="Arial Black"
+                                     Margin="10,0,30,0"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="MECATRÓNICA" 
+                                         FontSize="18" 
+                                         FontWeight="Medium"
+                                         Foreground="Black"/>
+                                <TextBlock Text="Desarrollo de Ingeniería" 
+                                         FontSize="10" 
+                                         FontStyle="Italic"
+                                         Foreground="#666"
+                                         Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
                 </Border>
 
                 <!-- Título -->
                 <TextBlock Grid.Row="1" 
-                         Text="Bienvenido" 
-                         FontSize="28" 
-                         FontWeight="Light"
+                         Text="MÓDULO DE CONTROL" 
+                         FontSize="24" 
+                         FontWeight="Bold"
                          HorizontalAlignment="Center"
-                         Foreground="#333"
-                         Margin="0,0,0,5"/>
+                         Foreground="Black"
+                         Margin="0,0,0,10"/>
 
                 <TextBlock Grid.Row="2" 
-                         Text="Ingrese sus credenciales para continuar" 
+                         Text="Ingrese sus credenciales de acceso" 
                          FontSize="12"
                          HorizontalAlignment="Center"
-                         Foreground="#888"
-                         Margin="0,0,0,25"/>
+                         Foreground="#666"
+                         Margin="0,0,0,30"/>
 
-                <!-- Campo de Email -->
-                <Grid Grid.Row="3" Margin="0,0,0,15">
+                <!-- Campo de Usuario -->
+                <Grid Grid.Row="3" Margin="0,0,0,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="CORREO ELECTRÓNICO" 
+                    <TextBlock Text="USUARIO" 
                              FontSize="11"
-                             FontWeight="SemiBold"
-                             Foreground="#666"
-                             Margin="0,0,0,5"/>
+                             FontWeight="Bold"
+                             Foreground="Black"
+                             Margin="0,0,0,8"/>
 
                     <Border Grid.Row="1" 
-                          BorderBrush="#DDD" 
-                          BorderThickness="1" 
-                          CornerRadius="5"
-                          Height="40">
+                          BorderBrush="Black" 
+                          BorderThickness="2" 
+                          CornerRadius="0"
+                          Height="45"
+                          Background="#F5F5F5">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition Width="45"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Text="📧" 
-                                     FontSize="16"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Foreground="#888"/>
+                            <Border Background="Black" Width="45">
+                                <TextBlock Text="👤" 
+                                         FontSize="18"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Foreground="White"/>
+                            </Border>
 
                             <TextBox Grid.Column="1" 
-                                   x:Name="EmailTextBox"
+                                   x:Name="UsernameTextBox"
                                    VerticalAlignment="Center"
                                    BorderThickness="0"
                                    Background="Transparent"
                                    FontSize="14"
-                                   Text="test@example.com"/>
+                                   Margin="10,0"
+                                   Text="admin"/>
                         </Grid>
                     </Border>
                 </Grid>
 
                 <!-- Campo de Contraseña -->
-                <Grid Grid.Row="4" Margin="0,0,0,20">
+                <Grid Grid.Row="4" Margin="0,0,0,25">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -157,26 +190,29 @@
 
                     <TextBlock Text="CONTRASEÑA" 
                              FontSize="11"
-                             FontWeight="SemiBold"
-                             Foreground="#666"
-                             Margin="0,0,0,5"/>
+                             FontWeight="Bold"
+                             Foreground="Black"
+                             Margin="0,0,0,8"/>
 
                     <Border Grid.Row="1" 
-                          BorderBrush="#DDD" 
-                          BorderThickness="1" 
-                          CornerRadius="5"
-                          Height="40">
+                          BorderBrush="Black" 
+                          BorderThickness="2" 
+                          CornerRadius="0"
+                          Height="45"
+                          Background="#F5F5F5">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition Width="45"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Text="🔒" 
-                                     FontSize="16"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Foreground="#888"/>
+                            <Border Background="Black" Width="45">
+                                <TextBlock Text="🔒" 
+                                         FontSize="18"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Foreground="White"/>
+                            </Border>
 
                             <PasswordBox Grid.Column="1" 
                                        x:Name="PasswordBox"
@@ -184,30 +220,50 @@
                                        BorderThickness="0"
                                        Background="Transparent"
                                        FontSize="14"
-                                       Password="password"/>
+                                       Margin="10,0"
+                                       Password="admin123"/>
                         </Grid>
                     </Border>
                 </Grid>
 
-                <!-- Checkbox Recordar -->
-                <CheckBox Grid.Row="5" 
-                        x:Name="RememberCheckBox"
-                        Content="Recordar mis credenciales"
-                        Margin="0,0,0,20"
-                        Foreground="#666"/>
+                <!-- ComboBox de Rol -->
+                <Grid Grid.Row="5" Margin="0,0,0,25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <!-- Botón de Login Principal -->
+                    <TextBlock Text="ROL DE USUARIO" 
+                             FontSize="11"
+                             FontWeight="Bold"
+                             Foreground="Black"
+                             Margin="0,0,0,8"/>
+
+                    <ComboBox Grid.Row="1" 
+                            x:Name="RoleComboBox"
+                            Height="40"
+                            FontSize="14"
+                            BorderBrush="Black"
+                            BorderThickness="2"
+                            SelectedIndex="0">
+                        <ComboBoxItem Content="Administrador"/>
+                        <ComboBoxItem Content="Coordinador"/>
+                        <ComboBoxItem Content="Vendedor"/>
+                    </ComboBox>
+                </Grid>
+
+                <!-- Botón de Login -->
                 <Button Grid.Row="6" 
                        x:Name="LoginButton"
-                       Height="45"
+                       Height="50"
                        Click="LoginButton_Click"
                        Cursor="Hand"
-                       Margin="0,0,0,10">
+                       Margin="0,0,0,15">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="border"
-                                  Background="#2196F3"
-                                  CornerRadius="5">
+                                  Background="Black"
+                                  CornerRadius="0">
                                 <ContentPresenter HorizontalAlignment="Center"
                                                 VerticalAlignment="Center"/>
                             </Border>
@@ -215,78 +271,35 @@
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="border" 
                                           Property="Background" 
-                                          Value="#1976D2"/>
+                                          Value="#333"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="border" 
                                           Property="Background" 
-                                          Value="#1565C0"/>
+                                          Value="#555"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Button.Template>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🚀" 
+                        <TextBlock Text="▶" 
                                  FontSize="16" 
-                                 Margin="0,0,10,0"
+                                 Margin="0,0,15,0"
                                  Foreground="White"/>
                         <TextBlock Text="INICIAR SESIÓN" 
                                  Foreground="White"
-                                 FontWeight="SemiBold"
+                                 FontWeight="Bold"
                                  FontSize="14"
                                  VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
 
-                <!-- Botón de Test de Conexión -->
-                <Button Grid.Row="7" 
-                       x:Name="TestConnectionButton"
-                       Height="35"
-                       Click="TestConnectionButton_Click"
-                       Cursor="Hand">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="border"
-                                  Background="Transparent"
-                                  BorderBrush="#2196F3"
-                                  BorderThickness="1"
-                                  CornerRadius="5">
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="border" 
-                                          Property="Background" 
-                                          Value="#E3F2FD"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="border" 
-                                          Property="Background" 
-                                          Value="#BBDEFB"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔌" 
-                                 FontSize="14" 
-                                 Margin="0,0,8,0"
-                                 Foreground="#2196F3"/>
-                        <TextBlock Text="Probar Conexión a Supabase" 
-                                 Foreground="#2196F3"
-                                 FontSize="12"
-                                 VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-
-                <!-- Indicadores de Estado -->
+                <!-- Estado de Conexión -->
                 <Grid Grid.Row="8" 
-                     VerticalAlignment="Bottom"
-                     Margin="0,20,0,0">
+                     VerticalAlignment="Bottom">
                     <!-- Loading -->
                     <Border x:Name="LoadingPanel"
-                          Background="#F5F5F5"
+                          Background="#F0F0F0"
                           CornerRadius="5"
                           Padding="10"
                           Visibility="Collapsed">
@@ -299,30 +312,16 @@
                                 <TextBlock.RenderTransform>
                                     <RotateTransform x:Name="LoadingRotation" Angle="0" CenterX="8" CenterY="8"/>
                                 </TextBlock.RenderTransform>
-                                <TextBlock.Triggers>
-                                    <EventTrigger RoutedEvent="Loaded">
-                                        <BeginStoryboard>
-                                            <Storyboard>
-                                                <DoubleAnimation
-                                                    Storyboard.TargetName="LoadingRotation"
-                                                    Storyboard.TargetProperty="Angle"
-                                                    From="0" To="360"
-                                                    Duration="0:0:2"
-                                                    RepeatBehavior="Forever"/>
-                                            </Storyboard>
-                                        </BeginStoryboard>
-                                    </EventTrigger>
-                                </TextBlock.Triggers>
                             </TextBlock>
                             <TextBlock x:Name="LoadingText"
-                                     Text="Conectando..."
+                                     Text="Verificando credenciales..."
                                      Foreground="#666"
                                      FontSize="12"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Estado de Conexión -->
-                    <Border x:Name="ConnectionStatusPanel"
+                    <!-- Mensaje de Estado -->
+                    <Border x:Name="StatusPanel"
                           CornerRadius="5"
                           Padding="10"
                           Visibility="Collapsed">

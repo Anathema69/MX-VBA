@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Threading.Tasks;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Models;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -16,9 +17,10 @@ namespace SistemaGestionProyectos2.Views
             InitializeComponent();
             _supabaseService = SupabaseService.Instance;
 
-            // Valores por defecto para pruebas (quitar en producción)
-            EmailTextBox.Text = "test@example.com";
-            PasswordBox.Password = "password";
+            // Valores por defecto para pruebas
+            UsernameTextBox.Text = "admin";
+            PasswordBox.Password = "admin123";
+            RoleComboBox.SelectedIndex = 0; // Admin por defecto
         }
 
         // Mover ventana
@@ -37,14 +39,23 @@ namespace SistemaGestionProyectos2.Views
         // Cerrar aplicación
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            Application.Current.Shutdown();
+            var result = MessageBox.Show(
+                "¿Está seguro que desea salir del sistema?",
+                "IMA Mecatrónica",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                Application.Current.Shutdown();
+            }
         }
 
         // Botón de Login
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
             // Validación
-            if (string.IsNullOrWhiteSpace(EmailTextBox.Text) ||
+            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text) ||
                 string.IsNullOrWhiteSpace(PasswordBox.Password))
             {
                 ShowStatus("⚠️", "Por favor complete todos los campos", "#FFA726", false);
@@ -52,49 +63,93 @@ namespace SistemaGestionProyectos2.Views
             }
 
             // Mostrar loading
-            ShowLoading("Iniciando sesión...");
+            ShowLoading("Verificando credenciales...");
             DisableControls();
 
             try
             {
-                // Por ahora usamos login de prueba
-                await Task.Delay(1500); // Simular delay
+                // Simular delay de autenticación
+                await Task.Delay(1500);
 
-                if (EmailTextBox.Text == "test@example.com" && PasswordBox.Password == "password")
+                // Obtener el rol seleccionado
+                string selectedRole = GetSelectedRole();
+
+                // Por ahora validación simple (después conectar con Supabase)
+                bool loginSuccess = false;
+                string userFullName = "";
+
+                // Validación temporal según rol
+                switch (selectedRole)
                 {
-                    ShowStatus("✅", "Login exitoso", "#4CAF50", true);
-                    await Task.Delay(500);
-
-                    // Abrir ventana principal
-                    MainWindow mainWindow = new MainWindow();
-                    mainWindow.Show();
-                    this.Close();
+                    case "admin":
+                        if (UsernameTextBox.Text == "admin" && PasswordBox.Password == "admin123")
+                        {
+                            loginSuccess = true;
+                            userFullName = "Administrador General";
+                        }
+                        break;
+                    case "coordinator":
+                        if (UsernameTextBox.Text == "coordinador" && PasswordBox.Password == "ima2025")
+                        {
+                            loginSuccess = true;
+                            userFullName = "Coordinador General";
+                        }
+                        break;
+                    case "salesperson":
+                        // Cualquier vendedor de la lista
+                        if (PasswordBox.Password == "ima2025")
+                        {
+                            loginSuccess = true;
+                            userFullName = UsernameTextBox.Text.ToUpper();
+                        }
+                        break;
                 }
-                else
-                {
-                    ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
-                }
-
-                /* PARA USAR CON SUPABASE REAL (descomentar cuando esté listo):
-                bool loginSuccess = await _supabaseService.SignIn(
-                    EmailTextBox.Text.Trim(), 
-                    PasswordBox.Password
-                );
 
                 if (loginSuccess)
                 {
-                    ShowStatus("✅", "Login exitoso", "#4CAF50", true);
-                    await Task.Delay(500);
-                    
-                    var user = _supabaseService.GetCurrentUser();
-                    MainWindow mainWindow = new MainWindow();
-                    mainWindow.Title = $"Sistema de Gestión - {user?.Email}";
-                    mainWindow.Show();
+                    ShowStatus("✅", "Acceso autorizado", "#4CAF50", true);
+                    await Task.Delay(800);
+
+                    // Crear objeto de usuario para pasar al menú principal
+                    var currentUser = new UserSession
+                    {
+                        Username = UsernameTextBox.Text,
+                        FullName = userFullName,
+                        Role = selectedRole,
+                        LoginTime = DateTime.Now
+                    };
+
+                    // Abrir menú principal
+                    MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
+                    mainMenu.Show();
                     this.Close();
                 }
                 else
                 {
                     ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
+                }
+
+                /* CÓDIGO PARA SUPABASE (cuando esté listo):
+                var user = await _supabaseService.AuthenticateUser(
+                    UsernameTextBox.Text, 
+                    PasswordBox.Password
+                );
+
+                if (user != null && user.Role == selectedRole)
+                {
+                    // Login exitoso
+                    var currentUser = new UserSession
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        FullName = user.FullName,
+                        Role = user.Role,
+                        LoginTime = DateTime.Now
+                    };
+
+                    MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
+                    mainMenu.Show();
+                    this.Close();
                 }
                 */
             }
@@ -108,62 +163,14 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Botón Test de Conexión
-        private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
+        private string GetSelectedRole()
         {
-            ShowLoading("Probando conexión con Supabase...");
-            DisableControls();
-
-            try
+            switch (RoleComboBox.SelectedIndex)
             {
-                // Intentar obtener el cliente de Supabase
-                var client = _supabaseService.GetClient();
-
-                if (client != null)
-                {
-                    // Hacer una llamada simple para verificar la conexión
-                    await Task.Delay(1000); // Simular test
-
-                    ShowStatus("✅", "Conexión exitosa con Supabase", "#4CAF50", true);
-
-                    // Mostrar información adicional
-                    var config = _supabaseService.GetConfiguration();
-                    var url = config?["Supabase:Url"] ?? "No configurado";
-
-                    MessageBox.Show(
-                        $"✅ Conexión establecida correctamente\n\n" +
-                        $"🔗 URL: {url}\n" +
-                        $"🔑 API Key: Configurada\n" +
-                        $"📊 Estado: Activo",
-                        "Test de Conexión Exitoso",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information
-                    );
-                }
-                else
-                {
-                    throw new Exception("No se pudo crear el cliente de Supabase");
-                }
-            }
-            catch (Exception ex)
-            {
-                ShowStatus("❌", "Error de conexión", "#F44336", false);
-
-                MessageBox.Show(
-                    $"❌ No se pudo conectar a Supabase\n\n" +
-                    $"Error: {ex.Message}\n\n" +
-                    $"Verifique:\n" +
-                    $"• Las credenciales en appsettings.json\n" +
-                    $"• La conexión a internet\n" +
-                    $"• Que el proyecto en Supabase esté activo",
-                    "Error de Conexión",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error
-                );
-            }
-            finally
-            {
-                EnableControls();
+                case 0: return "admin";
+                case 1: return "coordinator";
+                case 2: return "salesperson";
+                default: return "salesperson";
             }
         }
 
@@ -172,13 +179,13 @@ namespace SistemaGestionProyectos2.Views
         {
             LoadingText.Text = message;
             LoadingPanel.Visibility = Visibility.Visible;
-            ConnectionStatusPanel.Visibility = Visibility.Collapsed;
+            StatusPanel.Visibility = Visibility.Collapsed;
         }
 
         private void ShowStatus(string icon, string message, string colorHex, bool isSuccess)
         {
             LoadingPanel.Visibility = Visibility.Collapsed;
-            ConnectionStatusPanel.Visibility = Visibility.Visible;
+            StatusPanel.Visibility = Visibility.Visible;
 
             StatusIcon.Text = icon;
             StatusText.Text = message;
@@ -188,25 +195,23 @@ namespace SistemaGestionProyectos2.Views
 
             StatusIcon.Foreground = brush;
             StatusText.Foreground = brush;
-            ConnectionStatusPanel.Background = new SolidColorBrush(Color.FromArgb(20, color.R, color.G, color.B));
+            StatusPanel.Background = new SolidColorBrush(Color.FromArgb(20, color.R, color.G, color.B));
         }
 
         private void DisableControls()
         {
-            EmailTextBox.IsEnabled = false;
+            UsernameTextBox.IsEnabled = false;
             PasswordBox.IsEnabled = false;
+            RoleComboBox.IsEnabled = false;
             LoginButton.IsEnabled = false;
-            TestConnectionButton.IsEnabled = false;
-            RememberCheckBox.IsEnabled = false;
         }
 
         private void EnableControls()
         {
-            EmailTextBox.IsEnabled = true;
+            UsernameTextBox.IsEnabled = true;
             PasswordBox.IsEnabled = true;
+            RoleComboBox.IsEnabled = true;
             LoginButton.IsEnabled = true;
-            TestConnectionButton.IsEnabled = true;
-            RememberCheckBox.IsEnabled = true;
         }
 
         // Permitir login con Enter
@@ -220,3 +225,5 @@ namespace SistemaGestionProyectos2.Views
         }
     }
 }
+
+// UserSession ya está definido en Models/UserSession.cs
