@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -10,16 +14,68 @@ namespace SistemaGestionProyectos2.Views
     {
         private OrderViewModel _order;
         private UserSession _currentUser;
+        private readonly SupabaseService _supabaseService;
+        private List<OrderStatusDb> _orderStatuses;
         private bool _hasChanges = false;
+        private OrderDb _originalOrderDb;
 
         public EditOrderWindow(OrderViewModel order, UserSession currentUser)
         {
             InitializeComponent();
             _order = order;
             _currentUser = currentUser;
+            _supabaseService = SupabaseService.Instance;
 
             ConfigurePermissions();
-            LoadOrderData();
+            _ = LoadDataAsync();
+        }
+
+        private async Task LoadDataAsync()
+        {
+            try
+            {
+                SaveButton.IsEnabled = false;
+                SaveButton.Content = "Cargando...";
+
+                // Cargar estados desde Supabase
+                _orderStatuses = await _supabaseService.GetOrderStatuses();
+
+                // Cargar la orden original desde la BD para tener todos los campos
+                _originalOrderDb = await _supabaseService.GetOrderById(_order.Id);
+
+                if (_originalOrderDb == null)
+                {
+                    MessageBox.Show(
+                        "No se pudo cargar la información de la orden.",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    this.Close();
+                    return;
+                }
+
+                // Llenar el ComboBox de estados
+                StatusComboBox.Items.Clear();
+                foreach (var status in _orderStatuses.OrderBy(s => s.DisplayOrder))
+                {
+                    StatusComboBox.Items.Add(new ComboBoxItem { Content = status.Name, Tag = status.Id });
+                }
+
+                LoadOrderData();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al cargar datos:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                SaveButton.IsEnabled = true;
+                SaveButton.Content = "GUARDAR CAMBIOS";
+            }
         }
 
         private void ConfigurePermissions()
@@ -70,30 +126,30 @@ namespace SistemaGestionProyectos2.Views
 
             // Campos editables para todos
             PromiseDatePicker.SelectedDate = _order.PromiseDate;
-            ProgressSlider.Value = _order.ProgressPercentage;
-            ProgressValueText.Text = $"{_order.ProgressPercentage}%";
+            ProgressSlider.Value = _originalOrderDb?.ProgressPercentage ?? _order.ProgressPercentage;
+            ProgressValueText.Text = $"{(int)ProgressSlider.Value}%";
 
             // Seleccionar el estado actual
-            SelectComboBoxItem(StatusComboBox, _order.Status);
+            SelectComboBoxItemByTag(StatusComboBox, _originalOrderDb?.OrderStatus ?? 1);
 
             // Campos financieros (solo Admin)
             if (_currentUser.Role == "admin")
             {
                 SubtotalTextBox.Text = _order.Subtotal.ToString("F2");
                 TotalTextBlock.Text = _order.Total.ToString("C", new CultureInfo("es-MX"));
-                OrderPercentageSlider.Value = _order.OrderPercentage;
-                OrderPercentageText.Text = $"{_order.OrderPercentage}%";
+                OrderPercentageSlider.Value = _originalOrderDb?.OrderPercentage ?? _order.OrderPercentage;
+                OrderPercentageText.Text = $"{(int)OrderPercentageSlider.Value}%";
             }
 
             // Información de auditoría
-            LastModifiedText.Text = $"Última modificación: {DateTime.Now:dd/MM/yyyy HH:mm} por {_currentUser.FullName}";
+            LastModifiedText.Text = $"Última modificación: {DateTime.Now:dd/MM/yyyy HH:mm} - Editando como: {_currentUser.FullName}";
         }
 
-        private void SelectComboBoxItem(ComboBox comboBox, string value)
+        private void SelectComboBoxItemByTag(ComboBox comboBox, int statusId)
         {
             foreach (ComboBoxItem item in comboBox.Items)
             {
-                if (item.Content.ToString() == value)
+                if (item.Tag is int tagId && tagId == statusId)
                 {
                     comboBox.SelectedItem = item;
                     break;
@@ -152,7 +208,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -172,49 +228,60 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "GUARDANDO...";
 
-                // Actualizar el objeto orden con los nuevos valores
-                _order.PromiseDate = PromiseDatePicker.SelectedDate.Value;
-                _order.ProgressPercentage = (int)ProgressSlider.Value;
-                _order.Status = (StatusComboBox.SelectedItem as ComboBoxItem)?.Content.ToString();
+                // Preparar la orden actualizada
+                _originalOrderDb.EstDelivery = PromiseDatePicker.SelectedDate.Value;
+                _originalOrderDb.ProgressPercentage = (int)ProgressSlider.Value;
+
+                var selectedStatus = StatusComboBox.SelectedItem as ComboBoxItem;
+                if (selectedStatus?.Tag is int statusId)
+                {
+                    _originalOrderDb.OrderStatus = statusId;
+                }
 
                 // Si es admin, actualizar campos financieros
                 if (_currentUser.Role == "admin")
                 {
                     if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
                     {
-                        _order.Subtotal = subtotal;
-                        _order.Total = subtotal * 1.16m;
+                        _originalOrderDb.SaleSubtotal = subtotal;
+                        _originalOrderDb.SaleTotal = subtotal * 1.16m;
                     }
-                    _order.OrderPercentage = (int)OrderPercentageSlider.Value;
+                    _originalOrderDb.OrderPercentage = (int)OrderPercentageSlider.Value;
                 }
 
-                // Simular guardado
-                System.Threading.Thread.Sleep(500);
+                // Guardar en Supabase con el ID del usuario
+                bool success = await _supabaseService.UpdateOrder(_originalOrderDb, _currentUser.Id);
 
-                // Crear mensaje de confirmación
-                string changedFields = "Campos actualizados:\n";
-                changedFields += $"• Fecha Promesa: {_order.PromiseDate:dd/MM/yyyy}\n";
-                changedFields += $"• % Avance: {_order.ProgressPercentage}%\n";
-                changedFields += $"• Estatus: {_order.Status}";
-
-                if (_currentUser.Role == "admin")
+                if (success)
                 {
-                    changedFields += $"\n• Subtotal: {_order.Subtotal:C}";
-                    changedFields += $"\n• Total: {_order.Total:C}";
-                    changedFields += $"\n• % Orden: {_order.OrderPercentage}%";
+                    // Actualizar el objeto local para reflejar los cambios
+                    _order.PromiseDate = _originalOrderDb.EstDelivery.Value;
+                    _order.ProgressPercentage = _originalOrderDb.ProgressPercentage;
+
+                    var statusName = _orderStatuses.FirstOrDefault(s => s.Id == _originalOrderDb.OrderStatus)?.Name;
+                    _order.Status = statusName ?? "PENDIENTE";
+
+                    if (_currentUser.Role == "admin")
+                    {
+                        _order.Subtotal = _originalOrderDb.SaleSubtotal ?? 0;
+                        _order.Total = _originalOrderDb.SaleTotal ?? 0;
+                        _order.OrderPercentage = _originalOrderDb.OrderPercentage;
+                    }
+
+                    // Mensaje más limpio y rápido
+                    MessageBox.Show(
+                        $"✅ Orden {_order.OrderNumber} actualizada correctamente",
+                        "Éxito",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    this.DialogResult = true;
+                    this.Close();
                 }
-
-                MessageBox.Show(
-                    $"Orden {_order.OrderNumber} actualizada exitosamente.\n\n{changedFields}\n\n" +
-                    $"Modificado por: {_currentUser.FullName}\n" +
-                    $"Fecha: {DateTime.Now:dd/MM/yyyy HH:mm}\n\n" +
-                    "(Modo offline - Los cambios se guardan temporalmente)",
-                    "Actualización Exitosa",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-
-                this.DialogResult = true;
-                this.Close();
+                else
+                {
+                    throw new Exception("No se pudo actualizar la orden en la base de datos");
+                }
             }
             catch (Exception ex)
             {
@@ -223,6 +290,8 @@ namespace SistemaGestionProyectos2.Views
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
             }
             finally
             {
@@ -268,6 +337,22 @@ namespace SistemaGestionProyectos2.Views
             }
 
             base.OnClosing(e);
+        }
+
+        // Detectar cambios en los campos
+        private void PromiseDatePicker_SelectedDateChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (PromiseDatePicker.SelectedDate != _order.PromiseDate)
+            {
+                _hasChanges = true;
+                UpdateSaveStatus();
+            }
+        }
+
+        private void StatusComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _hasChanges = true;
+            UpdateSaveStatus();
         }
     }
 }

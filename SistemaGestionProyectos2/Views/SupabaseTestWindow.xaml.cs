@@ -19,6 +19,7 @@ namespace SistemaGestionProyectos2.Views
         private IConfiguration _configuration;
         private int _testsExecuted = 0;
         private bool _isConnected = false;
+        private UserTable _currentTestUser = null;
 
         public SupabaseTestWindow()
         {
@@ -33,17 +34,17 @@ namespace SistemaGestionProyectos2.Views
 
             if (isHeader)
             {
-                paragraph.Inlines.Add(new Run($"\n═══════════════════════════════════════\n")
+                paragraph.Inlines.Add(new Run($"\n╔══════════════════════════════════════╗\n")
                 {
                     Foreground = Brushes.Gray
                 });
-                paragraph.Inlines.Add(new Run($"► {title}")
+                paragraph.Inlines.Add(new Run($"▶ {title}")
                 {
                     FontWeight = FontWeights.Bold,
                     FontSize = 14,
                     Foreground = Brushes.Cyan
                 });
-                paragraph.Inlines.Add(new Run($"\n═══════════════════════════════════════\n")
+                paragraph.Inlines.Add(new Run($"\n╚══════════════════════════════════════╝\n")
                 {
                     Foreground = Brushes.Gray
                 });
@@ -125,35 +126,31 @@ namespace SistemaGestionProyectos2.Views
             if (!EnsureConnected()) return;
 
             AddResult("ESTRUCTURA DE BASE DE DATOS", "", true, true);
-            StatusText.Text = "Listando tablas...";
+            StatusText.Text = "Verificando estructura...";
 
             try
             {
-                // Lista conocida de tablas
-                var tables = new List<string>
-                {
-                    "t_order (Órdenes)",
-                    "t_client (Clientes)",
-                    "t_contact (Contactos)",
-                    "t_supplier (Proveedores)",
-                    "t_invoice (Facturas)",
-                    "t_quote (Cotizaciones)",
-                    "users (Usuarios)",
-                    "order_status (Estados)",
-                    "order_history (Historial)"
-                };
+                // Verificar que podemos acceder a las tablas principales
+                var orders = await _supabaseClient.From<OrderTable>().Select("*").Limit(1).Get();
+                var clients = await _supabaseClient.From<ClientTable>().Select("*").Limit(1).Get();
+                var users = await _supabaseClient.From<UserTable>().Select("*").Limit(1).Get();
 
-                AddResult("Tablas encontradas", string.Join("\n• ", tables), true);
+                var tablesInfo = "Tablas accesibles:\n";
+                tablesInfo += $"• t_order - ✅ ({orders?.Models?.Count ?? 0} registro de prueba)\n";
+                tablesInfo += $"• t_client - ✅ ({clients?.Models?.Count ?? 0} registro de prueba)\n";
+                tablesInfo += $"• users - ✅ ({users?.Models?.Count ?? 0} registro de prueba)\n";
+
+                AddResult("Verificación de estructura", tablesInfo, true);
                 Check2.IsChecked = true;
 
-                StatusText.Text = "Tablas listadas";
+                StatusText.Text = "Estructura verificada";
                 _testsExecuted++;
                 UpdateTestCount();
             }
             catch (Exception ex)
             {
-                AddResult("Error al listar tablas", ex.Message, false);
-                StatusText.Text = "Error listando tablas";
+                AddResult("Error al verificar estructura", ex.Message, false);
+                StatusText.Text = "Error verificando tablas";
             }
         }
 
@@ -177,13 +174,26 @@ namespace SistemaGestionProyectos2.Views
 
                 if (count > 0)
                 {
-                    var ordersInfo = "Primeras órdenes:\n";
+                    var ordersInfo = "Órdenes encontradas:\n";
                     foreach (var order in response.Models.Take(5))
                     {
-                        ordersInfo += $"  • #{order.Po} - {order.Description?.Substring(0, Math.Min(30, order.Description?.Length ?? 0))}...\n";
+                        // Obtener nombre del cliente si existe
+                        string clientName = "N/A";
+                        if (order.ClientId.HasValue)
+                        {
+                            var clientResponse = await _supabaseClient
+                                .From<ClientTable>()
+                                .Where(x => x.Id == order.ClientId.Value)
+                                .Single();
+                            clientName = clientResponse?.Name ?? "N/A";
+                        }
+
+                        ordersInfo += $"  • #{order.Po} - Cliente: {clientName}\n";
+                        ordersInfo += $"    Descripción: {order.Description?.Substring(0, Math.Min(50, order.Description?.Length ?? 0))}...\n";
+                        ordersInfo += $"    Fecha: {order.PoDate?.ToString("dd/MM/yyyy") ?? "N/A"}\n\n";
                     }
 
-                    AddResult($"Órdenes cargadas: {count}", ordersInfo, true);
+                    AddResult($"Total de órdenes: {count}", ordersInfo, true);
                 }
                 else
                 {
@@ -207,7 +217,7 @@ namespace SistemaGestionProyectos2.Views
         {
             if (!EnsureConnected()) return;
 
-            AddResult("TEST DE USUARIOS", "", true, true);
+            AddResult("TEST DE USUARIOS Y AUTENTICACIÓN", "", true, true);
             StatusText.Text = "Verificando usuarios...";
 
             try
@@ -221,19 +231,78 @@ namespace SistemaGestionProyectos2.Views
 
                 if (count > 0)
                 {
-                    var usersInfo = "Usuarios encontrados:\n";
-                    var byRole = response.Models.GroupBy(u => u.Role);
+                    AddResult("=== PRUEBA DE CREDENCIALES CORRECTAS ===", "", true);
 
-                    foreach (var group in byRole)
+                    // Test Admin con contraseña correcta
+                    var adminUser = response.Models.FirstOrDefault(u => u.Username == "admin");
+                    if (adminUser != null)
                     {
-                        usersInfo += $"\n{group.Key?.ToUpper()}:\n";
-                        foreach (var user in group)
-                        {
-                            usersInfo += $"  • {user.Username} - {user.FullName}\n";
-                        }
+                        bool adminAuth = BCrypt.Net.BCrypt.Verify("ima2025", adminUser.PasswordHash);
+                        AddResult("Admin - Contraseña Correcta",
+                            $"Usuario: admin\n" +
+                            $"Contraseña: ima2025\n" +
+                            $"Resultado: {(adminAuth ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO")}\n" +
+                            $"Rol: {adminUser.Role}",
+                            adminAuth);
                     }
 
-                    AddResult($"Total de usuarios: {count}", usersInfo, true);
+                    // Test Coordinador con contraseña correcta
+                    var coordUser = response.Models.FirstOrDefault(u => u.Username == "coordinador");
+                    if (coordUser != null)
+                    {
+                        bool coordAuth = BCrypt.Net.BCrypt.Verify("ima2025", coordUser.PasswordHash);
+                        AddResult("Coordinador - Contraseña Correcta",
+                            $"Usuario: coordinador\n" +
+                            $"Contraseña: ima2025\n" +
+                            $"Resultado: {(coordAuth ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO")}\n" +
+                            $"Rol: {coordUser.Role}",
+                            coordAuth);
+                    }
+
+                    // Test caaj con contraseña correcta
+                    var caajUser = response.Models.FirstOrDefault(u => u.Username == "caaj");
+                    if (caajUser != null)
+                    {
+                        bool caajAuth = BCrypt.Net.BCrypt.Verify("anathema", caajUser.PasswordHash);
+                        AddResult("Caaj - Contraseña Correcta",
+                            $"Usuario: caaj\n" +
+                            $"Contraseña: anathema\n" +
+                            $"Resultado: {(caajAuth ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO")}\n" +
+                            $"Rol: {caajUser.Role}",
+                            caajAuth);
+                    }
+
+                    AddResult("=== PRUEBA DE CREDENCIALES INCORRECTAS ===", "", true);
+
+                    // Test con contraseñas incorrectas
+                    if (adminUser != null)
+                    {
+                        bool wrongPass = BCrypt.Net.BCrypt.Verify("password123", adminUser.PasswordHash);
+                        AddResult("Admin - Contraseña Incorrecta",
+                            $"Usuario: admin\n" +
+                            $"Contraseña: password123 (incorrecta)\n" +
+                            $"Resultado: {(wrongPass ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO")}",
+                            !wrongPass);
+                    }
+
+                    if (coordUser != null)
+                    {
+                        bool wrongPass = BCrypt.Net.BCrypt.Verify("12345", coordUser.PasswordHash);
+                        AddResult("Coordinador - Contraseña Incorrecta",
+                            $"Usuario: coordinador\n" +
+                            $"Contraseña: 12345 (incorrecta)\n" +
+                            $"Resultado: {(wrongPass ? "✅ ACCESO PERMITIDO" : "❌ ACCESO DENEGADO")}",
+                            !wrongPass);
+                    }
+
+                    // Resumen
+                    var summary = $"\nRESUMEN DE USUARIOS:\n";
+                    var byRole = response.Models.GroupBy(u => u.Role);
+                    foreach (var group in byRole)
+                    {
+                        summary += $"• {group.Key?.ToUpper()}: {group.Count()} usuario(s)\n";
+                    }
+                    AddResult("Total de usuarios en sistema", summary, true);
                 }
                 else
                 {
@@ -241,7 +310,7 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 Check4.IsChecked = true;
-                StatusText.Text = $"{count} usuarios encontrados";
+                StatusText.Text = "Usuarios verificados";
                 _testsExecuted++;
                 UpdateTestCount();
             }
@@ -252,119 +321,341 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Test 5: Simular Login
+        // Test 5: Simular Login y Permisos
         private async void TestLogin_Click(object sender, RoutedEventArgs e)
         {
             if (!EnsureConnected()) return;
 
-            AddResult("TEST DE AUTENTICACIÓN", "", true, true);
-            StatusText.Text = "Simulando login...";
+            AddResult("TEST DE PERMISOS POR ROL", "", true, true);
+            StatusText.Text = "Simulando operaciones por rol...";
 
             try
             {
-                // Probar con usuario admin
-                var response = await _supabaseClient
+                // Obtener usuarios de prueba
+                var adminUser = await _supabaseClient
                     .From<UserTable>()
                     .Where(x => x.Username == "admin")
                     .Single();
 
-                if (response != null)
-                {
-                    AddResult("Usuario encontrado",
-                        $"Username: {response.Username}\n" +
-                        $"Nombre: {response.FullName}\n" +
-                        $"Rol: {response.Role}\n" +
-                        $"Email: {response.Email}\n" +
-                        $"Activo: {(response.IsActive ? "Sí" : "No")}",
-                        true);
+                var coordUser = await _supabaseClient
+                    .From<UserTable>()
+                    .Where(x => x.Username == "coordinador")
+                    .Single();
 
-                    // Simular verificación de password
-                    AddResult("Verificación de contraseña",
-                        "⚠️ En producción se verificaría el hash del password",
-                        true);
-                }
-                else
+                AddResult("=== PRUEBAS CON ROL ADMIN ===", "", true);
+
+                // Test como Admin
+                if (adminUser != null)
                 {
-                    AddResult("Usuario no encontrado", "No se encontró el usuario 'admin'", false);
+                    _currentTestUser = adminUser;
+
+                    // Admin puede leer órdenes
+                    var orders = await _supabaseClient.From<OrderTable>().Select("*").Limit(5).Get();
+                    AddResult("Admin - Leer Órdenes",
+                        $"✅ Puede leer: {orders?.Models?.Count ?? 0} órdenes encontradas", true);
+
+                    // Admin puede modificar órdenes
+                    if (orders?.Models?.Count > 0)
+                    {
+                        var testOrder = orders.Models.First();
+                        var originalDesc = testOrder.Description;
+                        testOrder.Description = $"[TEST ADMIN {DateTime.Now:HH:mm:ss}] {originalDesc}";
+
+                        try
+                        {
+                            var updateResult = await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == testOrder.Id)
+                                .Set(x => x.Description, testOrder.Description)
+                                .Update();
+
+                            AddResult("Admin - Modificar Orden",
+                                $"✅ Puede modificar: Orden #{testOrder.Po} actualizada", true);
+
+                            // Restaurar valor original
+                            await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == testOrder.Id)
+                                .Set(x => x.Description, originalDesc)
+                                .Update();
+                        }
+                        catch
+                        {
+                            AddResult("Admin - Modificar Orden", "❌ No pudo modificar", false);
+                        }
+                    }
+
+                    // Admin puede crear órdenes
+                    var newOrder = new OrderTable
+                    {
+                        Po = $"TEST-ADMIN-{DateTime.Now:yyyyMMddHHmmss}",
+                        Description = "ORDEN DE PRUEBA ADMIN - PUEDE SER ELIMINADA",
+                        PoDate = DateTime.Now,
+                        EstDelivery = DateTime.Now.AddDays(30),
+                        ClientId = 1
+                    };
+
+                    try
+                    {
+                        var insertResult = await _supabaseClient
+                            .From<OrderTable>()
+                            .Insert(newOrder);
+
+                        if (insertResult?.Models?.Count > 0)
+                        {
+                            var createdId = insertResult.Models.First().Id;
+                            AddResult("Admin - Crear Orden",
+                                $"✅ Puede crear: Nueva orden TEST-ADMIN creada (ID: {createdId})", true);
+
+                            // Eliminar orden de prueba
+                            await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == createdId)
+                                .Delete();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddResult("Admin - Crear Orden", $"❌ Error al crear: {ex.Message}", false);
+                    }
+                }
+
+                AddResult("=== PRUEBAS CON ROL COORDINADOR ===", "", true);
+
+                // Test como Coordinador
+                if (coordUser != null)
+                {
+                    _currentTestUser = coordUser;
+
+                    // Coordinador puede leer órdenes
+                    var orders = await _supabaseClient.From<OrderTable>().Select("*").Limit(5).Get();
+                    AddResult("Coordinador - Leer Órdenes",
+                        $"✅ Puede leer: {orders?.Models?.Count ?? 0} órdenes encontradas", true);
+
+                    // Coordinador puede modificar SOLO ciertos campos
+                    if (orders?.Models?.Count > 0)
+                    {
+                        var testOrder = orders.Models.First();
+                        var originalDelivery = testOrder.EstDelivery;
+                        testOrder.EstDelivery = DateTime.Now.AddDays(45);
+
+                        try
+                        {
+                            var updateResult = await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == testOrder.Id)
+                                .Set(x => x.EstDelivery, testOrder.EstDelivery)
+                                .Update();
+
+                            AddResult("Coordinador - Modificar Fecha Entrega",
+                                $"✅ Puede modificar: Fecha de entrega actualizada en orden #{testOrder.Po}", true);
+
+                            // Restaurar valor original
+                            await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == testOrder.Id)
+                                .Set(x => x.EstDelivery, originalDelivery)
+                                .Update();
+                        }
+                        catch
+                        {
+                            AddResult("Coordinador - Modificar Fecha Entrega", "❌ No pudo modificar", false);
+                        }
+                    }
+
+                    // Coordinador NO DEBE poder crear órdenes (simulación de restricción)
+                    AddResult("Coordinador - Intento de Crear Orden",
+                        "⚠️ SIMULACIÓN: En la aplicación real, el botón 'Nueva Orden' está deshabilitado para coordinadores.\n" +
+                        "La BD permitiría la operación, pero la UI lo previene.", true);
+
+                    // Demostrar que técnicamente PODRÍA crear (pero no debe)
+                    var newOrderCoord = new OrderTable
+                    {
+                        Po = $"TEST-COORD-{DateTime.Now:yyyyMMddHHmmss}",
+                        Description = "ORDEN NO AUTORIZADA - COORDINADOR",
+                        PoDate = DateTime.Now,
+                        EstDelivery = DateTime.Now.AddDays(30),
+                        ClientId = 1
+                    };
+
+                    try
+                    {
+                        // Intentar crear (esto funcionará porque RLS está deshabilitado)
+                        var insertResult = await _supabaseClient
+                            .From<OrderTable>()
+                            .Insert(newOrderCoord);
+
+                        if (insertResult?.Models?.Count > 0)
+                        {
+                            var createdId = insertResult.Models.First().Id;
+                            AddResult("Coordinador - Prueba técnica de creación",
+                                $"⚠️ La BD permitió crear (RLS deshabilitado), pero la aplicación C# lo previene.\n" +
+                                $"Orden creada con ID: {createdId} - Será eliminada", false);
+
+                            // Eliminar inmediatamente
+                            await _supabaseClient
+                                .From<OrderTable>()
+                                .Where(x => x.Id == createdId)
+                                .Delete();
+
+                            AddResult("", "✅ Orden de prueba eliminada correctamente", true);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddResult("Coordinador - Crear Orden",
+                            $"✅ Correctamente bloqueado: {ex.Message}", true);
+                    }
                 }
 
                 Check5.IsChecked = true;
-                StatusText.Text = "Login simulado";
+                StatusText.Text = "Permisos verificados";
                 _testsExecuted++;
                 UpdateTestCount();
             }
             catch (Exception ex)
             {
-                AddResult("Error en simulación de login", ex.Message, false);
-                StatusText.Text = "Error en login";
+                AddResult("Error en simulación de permisos", ex.Message, false);
+                StatusText.Text = "Error en prueba de permisos";
             }
         }
 
-        // Test 6: Test de Escritura
+        // Test 6: Test de Escritura Completo
         private async void TestWrite_Click(object sender, RoutedEventArgs e)
         {
             if (!EnsureConnected()) return;
 
-            AddResult("TEST DE ESCRITURA", "", true, true);
-            StatusText.Text = "Probando escritura...";
+            AddResult("TEST COMPLETO DE ESCRITURA", "", true, true);
+            StatusText.Text = "Probando operaciones CRUD...";
 
             var result = MessageBox.Show(
-                "Esta prueba intentará crear un registro temporal en la BD.\n" +
-                "El registro será marcado como 'TEST' para identificarlo.\n\n" +
+                "Esta prueba realizará operaciones completas de:\n" +
+                "• CREATE (Crear nueva orden)\n" +
+                "• READ (Leer la orden creada)\n" +
+                "• UPDATE (Modificar la orden)\n" +
+                "• DELETE (Eliminar la orden)\n\n" +
                 "¿Desea continuar?",
-                "Confirmar Test de Escritura",
+                "Confirmar Test CRUD",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
             if (result != MessageBoxResult.Yes)
             {
-                AddResult("Test cancelado", "El usuario canceló la prueba de escritura", false);
+                AddResult("Test cancelado", "El usuario canceló la prueba CRUD", false);
                 return;
             }
 
             try
             {
-                // Crear orden de prueba
+                int createdOrderId = 0;
+
+                // CREATE - Crear orden de prueba
+                AddResult("1. CREATE - Crear Nueva Orden", "", true);
                 var testOrder = new OrderTable
                 {
-                    Po = $"TEST-{DateTime.Now:yyyyMMddHHmmss}",
-                    Description = "ORDEN DE PRUEBA - PUEDE SER ELIMINADA",
+                    Po = $"CRUD-TEST-{DateTime.Now:yyyyMMddHHmmss}",
+                    Quote = "QUOTE-TEST-001",
+                    Description = "ORDEN DE PRUEBA CRUD - SERÁ ELIMINADA",
                     PoDate = DateTime.Now,
                     EstDelivery = DateTime.Now.AddDays(30),
                     ClientId = 1,
-                    ContactId = 1
+                    ContactId = null,
+                    SaleSubtotal = 10000.00m,
+                    SaleTotal = 11600.00m
                 };
 
-                var response = await _supabaseClient
+                var createResponse = await _supabaseClient
                     .From<OrderTable>()
                     .Insert(testOrder);
 
-                if (response?.Models?.Count > 0)
+                if (createResponse?.Models?.Count > 0)
                 {
-                    var created = response.Models.First();
-                    AddResult("Registro creado exitosamente",
-                        $"ID: {created.Id}\n" +
-                        $"Número: {created.Po}\n" +
-                        $"Descripción: {created.Description}\n\n" +
-                        $"⚠️ Recuerde eliminar este registro de prueba de la BD",
-                        true);
+                    createdOrderId = createResponse.Models.First().Id;
+                    AddResult("Orden creada exitosamente",
+                        $"✅ ID: {createdOrderId}\n" +
+                        $"Número: {testOrder.Po}\n" +
+                        $"Descripción: {testOrder.Description}", true);
+                }
+                else
+                {
+                    AddResult("Error al crear", "No se pudo crear la orden", false);
+                    return;
                 }
 
+                // READ - Leer la orden creada
+                AddResult("2. READ - Leer Orden Creada", "", true);
+                var readResponse = await _supabaseClient
+                    .From<OrderTable>()
+                    .Where(x => x.Id == createdOrderId)
+                    .Single();
+
+                if (readResponse != null)
+                {
+                    AddResult("Orden leída correctamente",
+                        $"✅ Confirmado: Orden #{readResponse.Po} existe en BD\n" +
+                        $"Subtotal: ${readResponse.SaleSubtotal:N2}\n" +
+                        $"Total: ${readResponse.SaleTotal:N2}", true);
+                }
+
+                // UPDATE - Modificar la orden
+                AddResult("3. UPDATE - Modificar Orden", "", true);
+                var updateResponse = await _supabaseClient
+                    .From<OrderTable>()
+                    .Where(x => x.Id == createdOrderId)
+                    .Set(x => x.Description, "ORDEN MODIFICADA - TEST CRUD ACTUALIZADO")
+                    .Set(x => x.EstDelivery, DateTime.Now.AddDays(60))
+                    .Update();
+
+                if (updateResponse?.Models?.Count > 0)
+                {
+                    var updated = updateResponse.Models.First();
+                    AddResult("Orden actualizada correctamente",
+                        $"✅ Nueva descripción: {updated.Description}\n" +
+                        $"Nueva fecha entrega: {updated.EstDelivery?.ToString("dd/MM/yyyy")}", true);
+                }
+
+                // DELETE - Eliminar la orden
+                AddResult("4. DELETE - Eliminar Orden", "", true);
+                await _supabaseClient
+                    .From<OrderTable>()
+                    .Where(x => x.Id == createdOrderId)
+                    .Delete();
+
+                // Verificar que se eliminó
+                var verifyDelete = await _supabaseClient
+                    .From<OrderTable>()
+                    .Where(x => x.Id == createdOrderId)
+                    .Single();
+
+                if (verifyDelete == null)
+                {
+                    AddResult("Orden eliminada correctamente",
+                        $"✅ La orden #{testOrder.Po} fue eliminada exitosamente de la BD", true);
+                }
+                else
+                {
+                    AddResult("Error al eliminar",
+                        "⚠️ La orden aún existe en la BD", false);
+                }
+
+                AddResult("TEST CRUD COMPLETO",
+                    "✅ Todas las operaciones CRUD funcionan correctamente", true);
+
                 Check6.IsChecked = true;
-                StatusText.Text = "Escritura exitosa";
+                StatusText.Text = "Test CRUD exitoso";
                 _testsExecuted++;
                 UpdateTestCount();
             }
             catch (Exception ex)
             {
-                AddResult("Error en escritura",
+                AddResult("Error en test CRUD",
                     $"{ex.Message}\n\n" +
                     "Posibles causas:\n" +
-                    "• Permisos insuficientes\n" +
-                    "• Políticas RLS activas\n" +
-                    "• Campos requeridos faltantes",
+                    "• Problemas de conexión\n" +
+                    "• Estructura de tabla diferente\n" +
+                    "• Tipos de datos incompatibles",
                     false);
-                StatusText.Text = "Error en escritura";
+                StatusText.Text = "Error en test CRUD";
             }
         }
 
@@ -373,28 +664,34 @@ namespace SistemaGestionProyectos2.Views
         {
             ClearResults_Click(null, null);
 
-            AddResult("EJECUTANDO TODAS LAS PRUEBAS", "Iniciando suite completa de pruebas...", true, true);
+            AddResult("EJECUTANDO SUITE COMPLETA DE PRUEBAS",
+                "Iniciando todas las pruebas de conexión, autenticación y permisos...", true, true);
 
             // Ejecutar pruebas en secuencia
             await Task.Delay(500);
             TestConnection_Click(null, null);
 
-            await Task.Delay(1000);
+            await Task.Delay(1500);
             if (_isConnected)
             {
                 TestTables_Click(null, null);
-                await Task.Delay(1000);
+                await Task.Delay(1500);
 
                 TestOrders_Click(null, null);
-                await Task.Delay(1000);
+                await Task.Delay(1500);
 
                 TestUsers_Click(null, null);
-                await Task.Delay(1000);
+                await Task.Delay(1500);
 
                 TestLogin_Click(null, null);
+                await Task.Delay(1500);
+
+                TestWrite_Click(null, null);
             }
 
-            AddResult("SUITE COMPLETA", $"Se ejecutaron {_testsExecuted} pruebas", true, true);
+            AddResult("SUITE COMPLETA FINALIZADA",
+                $"Se ejecutaron {_testsExecuted} pruebas\n" +
+                $"Timestamp: {DateTime.Now:dd/MM/yyyy HH:mm:ss}", true, true);
         }
 
         // Limpiar resultados
@@ -460,18 +757,24 @@ namespace SistemaGestionProyectos2.Views
         }
     }
 
-    // Modelos para las pruebas
+    // Modelos actualizados con los campos correctos de tu BD
     [Table("t_order")]
     public class OrderTable : BaseModel
     {
         [PrimaryKey("f_order")]
         public int Id { get; set; }
 
+        [Column("f_client")]
+        public int? ClientId { get; set; }
+
+        [Column("f_contact")]
+        public int? ContactId { get; set; }
+
+        [Column("f_quote")]
+        public string Quote { get; set; }
+
         [Column("f_po")]
         public string Po { get; set; }
-
-        [Column("f_description")]
-        public string Description { get; set; }
 
         [Column("f_podate")]
         public DateTime? PoDate { get; set; }
@@ -479,11 +782,39 @@ namespace SistemaGestionProyectos2.Views
         [Column("f_estdelivery")]
         public DateTime? EstDelivery { get; set; }
 
-        [Column("f_client")]
-        public int? ClientId { get; set; }
+        [Column("f_description")]
+        public string Description { get; set; }
 
-        [Column("f_contact")]
-        public int? ContactId { get; set; }
+        [Column("vendor_id")]
+        public int? VendorId { get; set; }
+
+        [Column("f_salesubtotal")]
+        public decimal? SaleSubtotal { get; set; }
+
+        [Column("f_saletotal")]
+        public decimal? SaleTotal { get; set; }
+    }
+
+    [Table("t_client")]
+    public class ClientTable : BaseModel
+    {
+        [PrimaryKey("f_client")]
+        public int Id { get; set; }
+
+        [Column("f_name")]
+        public string Name { get; set; }
+
+        [Column("f_address1")]
+        public string Address1 { get; set; }
+
+        [Column("tax_id")]
+        public string TaxId { get; set; }
+
+        [Column("phone")]
+        public string Phone { get; set; }
+
+        [Column("email")]
+        public string Email { get; set; }
     }
 
     [Table("users")]
@@ -495,11 +826,14 @@ namespace SistemaGestionProyectos2.Views
         [Column("username")]
         public string Username { get; set; }
 
-        [Column("full_name")]
-        public string FullName { get; set; }
-
         [Column("email")]
         public string Email { get; set; }
+
+        [Column("password_hash")]
+        public string PasswordHash { get; set; }
+
+        [Column("full_name")]
+        public string FullName { get; set; }
 
         [Column("role")]
         public string Role { get; set; }

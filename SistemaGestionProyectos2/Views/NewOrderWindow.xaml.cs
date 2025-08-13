@@ -15,98 +15,183 @@ namespace SistemaGestionProyectos2.Views
     public partial class NewOrderWindow : Window
     {
         private readonly SupabaseService _supabaseService;
-        private List<ClientData> _clients;
-        private List<ContactData> _contacts;
-        private List<UserSession> _vendors;
+        private List<ClientDb> _clients;
+        private List<ContactDb> _contacts;
+        private List<VendorDb> _vendors;
+        private UserSession _currentUser;
+        private bool _isLoading = false;
 
         public NewOrderWindow()
         {
             InitializeComponent();
-            // _supabaseService = SupabaseService.Instance;
-            LoadSampleData();
+            _supabaseService = SupabaseService.Instance;
+
+            // Obtener usuario actual del Owner window si es posible
+            if (this.Owner is OrdersManagementWindow parentWindow)
+            {
+                // Podríamos pasar el usuario si lo necesitamos
+            }
+
+            _ = LoadInitialDataAsync();
         }
 
-        
+        // Constructor alternativo con usuario
+        public NewOrderWindow(UserSession currentUser) : this()
+        {
+            _currentUser = currentUser;
+        }
 
-        private void LoadSampleData()
+        private async Task LoadInitialDataAsync()
         {
             try
             {
-                // Datos de ejemplo para clientes
-                _clients = new List<ClientData>
-        {
-            new ClientData { Id = 1, Name = "Ventas Industriales" },
-            new ClientData { Id = 2, Name = "BorgWarner" },
-            new ClientData { Id = 3, Name = "Lennox" },
-            new ClientData { Id = 4, Name = "La Casa del Caballo" },
-            new ClientData { Id = 5, Name = "Gerber" },
-            new ClientData { Id = 6, Name = "Engicom" },
-            new ClientData { Id = 7, Name = "Purem" },
-            new ClientData { Id = 8, Name = "Android" }
-        };
-                ClientComboBox.ItemsSource = _clients;
+                _isLoading = true;
+                SaveButton.IsEnabled = false;
+                SaveButton.Content = "Cargando datos...";
 
-                // Datos de ejemplo para vendedores
-                _vendors = new List<UserSession>
-        {
-            new UserSession { Id = 1, FullName = "MARIO GARZA", Role = "salesperson" },
-            new UserSession { Id = 2, FullName = "CYNTHIA GARCÍA", Role = "salesperson" },
-            new UserSession { Id = 3, FullName = "JEHU ARREDONDO", Role = "salesperson" },
-            new UserSession { Id = 4, FullName = "LEONARDO DAVID", Role = "salesperson" },
-            new UserSession { Id = 5, FullName = "EDSON", Role = "salesperson" },
-            new UserSession { Id = 6, FullName = "JUAN MORENO", Role = "salesperson" }
-        };
-                VendorComboBox.ItemsSource = _vendors;
+                // Cargar clientes desde Supabase
+                _clients = await _supabaseService.GetClients();
+
+                if (_clients != null && _clients.Count > 0)
+                {
+                    ClientComboBox.ItemsSource = _clients;
+                    ClientComboBox.DisplayMemberPath = "Name";
+                    ClientComboBox.SelectedValuePath = "Id";
+
+                    System.Diagnostics.Debug.WriteLine($"✅ Clientes cargados: {_clients.Count}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠️ No se encontraron clientes");
+                }
+
+                // Cargar vendedores desde Supabase
+                _vendors = await _supabaseService.GetVendors();
+
+                if (_vendors != null && _vendors.Count > 0)
+                {
+                    VendorComboBox.ItemsSource = _vendors;
+                    VendorComboBox.DisplayMemberPath = "VendorName";
+                    VendorComboBox.SelectedValuePath = "Id";
+
+                    System.Diagnostics.Debug.WriteLine($"✅ Vendedores cargados: {_vendors.Count}");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠️ No se encontraron vendedores");
+                }
 
                 // Establecer fecha por defecto
                 OrderDatePicker.SelectedDate = DateTime.Now;
                 DeliveryDatePicker.SelectedDate = DateTime.Now.AddDays(30);
+
+                System.Diagnostics.Debug.WriteLine($"✅ Datos iniciales cargados");
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ Error cargando datos iniciales: {ex.Message}");
                 MessageBox.Show(
-                    $"Error al cargar datos:\n{ex.Message}",
+                    $"Error al cargar datos:\n{ex.Message}\n\n" +
+                    "Verifique su conexión a internet.",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
+            finally
+            {
+                _isLoading = false;
+                SaveButton.IsEnabled = true;
+                SaveButton.Content = "GUARDAR";
+            }
         }
 
-        private void ClientComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void ClientComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (ClientComboBox.SelectedItem is ClientData selectedClient)
+            if (ClientComboBox.SelectedItem is ClientDb selectedClient)
             {
-                ContactComboBox.IsEnabled = true;
+                System.Diagnostics.Debug.WriteLine($"📋 Cliente seleccionado: {selectedClient.Name} (ID: {selectedClient.Id})");
 
-                // Datos de ejemplo para contactos
-                _contacts = new List<ContactData>
-        {
-            new ContactData
-            {
-                Id = 1,
-                Name = $"Contacto Principal - {selectedClient.Name}",
-                Email = $"contacto@{selectedClient.Name.ToLower().Replace(" ", "")}.com"
-            },
-            new ContactData
-            {
-                Id = 2,
-                Name = $"Contacto Secundario - {selectedClient.Name}",
-                Email = $"ventas@{selectedClient.Name.ToLower().Replace(" ", "")}.com"
-            }
-        };
+                ContactComboBox.IsEnabled = false;
+                ContactComboBox.ItemsSource = null;
 
-                ContactComboBox.ItemsSource = _contacts;
-
-                // Si solo hay un contacto, seleccionarlo automáticamente
-                if (_contacts.Count == 1)
+                try
                 {
-                    ContactComboBox.SelectedIndex = 0;
+                    // Cargar contactos del cliente desde Supabase
+                    _contacts = await _supabaseService.GetContactsByClient(selectedClient.Id);
+
+                    System.Diagnostics.Debug.WriteLine($"📞 Contactos encontrados: {_contacts?.Count ?? 0}");
+
+                    if (_contacts != null && _contacts.Count > 0)
+                    {
+                        // Debug: Imprimir los contactos encontrados
+                        foreach (var contact in _contacts)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"   - Contacto: {contact.ContactName ?? "SIN NOMBRE"} (ID: {contact.Id})");
+                        }
+
+                        ContactComboBox.ItemsSource = _contacts;
+                        ContactComboBox.DisplayMemberPath = "ContactName";
+                        ContactComboBox.SelectedValuePath = "Id";
+                        ContactComboBox.IsEnabled = true;
+
+                        // Si solo hay un contacto, seleccionarlo automáticamente
+                        if (_contacts.Count == 1)
+                        {
+                            ContactComboBox.SelectedIndex = 0;
+                            System.Diagnostics.Debug.WriteLine($"✅ Auto-seleccionado único contacto");
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"⚠️ No hay contactos para el cliente {selectedClient.Name}");
+
+                        // Crear un contacto temporal/genérico
+                        _contacts = new List<ContactDb>
+                        {
+                            new ContactDb
+                            {
+                                Id = 0,
+                                ContactName = $"Contacto General - {selectedClient.Name}",
+                                ClientId = selectedClient.Id,
+                                Email = "sin-email@temporal.com"
+                            }
+                        };
+
+                        ContactComboBox.ItemsSource = _contacts;
+                        ContactComboBox.DisplayMemberPath = "ContactName";
+                        ContactComboBox.SelectedValuePath = "Id";
+                        ContactComboBox.IsEnabled = true;
+                        ContactComboBox.SelectedIndex = 0;
+
+                        System.Diagnostics.Debug.WriteLine($"ℹ️ Creado contacto temporal para {selectedClient.Name}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ Error cargando contactos: {ex.Message}");
+
+                    // En caso de error, crear contacto temporal
+                    _contacts = new List<ContactDb>
+                    {
+                        new ContactDb
+                        {
+                            Id = 0,
+                            ContactName = "Error al cargar contactos",
+                            ClientId = selectedClient.Id
+                        }
+                    };
+
+                    ContactComboBox.ItemsSource = _contacts;
+                    ContactComboBox.DisplayMemberPath = "ContactName";
+                    ContactComboBox.SelectedValuePath = "Id";
+                    ContactComboBox.IsEnabled = true;
                 }
             }
             else
             {
                 ContactComboBox.IsEnabled = false;
                 ContactComboBox.ItemsSource = null;
+                System.Diagnostics.Debug.WriteLine("⚠️ No hay cliente seleccionado");
             }
         }
 
@@ -136,7 +221,7 @@ namespace SistemaGestionProyectos2.Views
             e.Handled = !regex.IsMatch(newText);
         }
 
-        private void SaveButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             // Validar campos obligatorios
             if (!ValidateForm())
@@ -149,19 +234,68 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "GUARDANDO...";
 
-                // En modo offline, solo mostrar mensaje de éxito
-                MessageBox.Show(
-                    $"Orden {OrderNumberTextBox.Text} guardada exitosamente.\n\n" +
-                    $"Cliente: {(ClientComboBox.SelectedItem as ClientData)?.Name}\n" +
-                    $"Vendedor: {(VendorComboBox.SelectedItem as UserSession)?.FullName}\n" +
-                    $"Total: {TotalTextBlock.Text}\n\n" +
-                    "(Modo offline - Los datos se guardan temporalmente)",
-                    "Orden Guardada",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                // Obtener el ID del contacto seleccionado
+                int? contactId = null;
+                if (ContactComboBox.SelectedValue != null)
+                {
+                    var selectedValue = ContactComboBox.SelectedValue;
+                    if (selectedValue is int intValue && intValue > 0)
+                    {
+                        contactId = intValue;
+                    }
+                }
 
-                this.DialogResult = true;
-                this.Close();
+                // Crear nueva orden
+                var newOrder = new OrderDb
+                {
+                    Po = OrderNumberTextBox.Text.Trim().ToUpper(),
+                    Quote = QuotationTextBox.Text?.Trim().ToUpper(),
+                    PoDate = OrderDatePicker.SelectedDate,
+                    ClientId = (int?)ClientComboBox.SelectedValue,
+                    ContactId = contactId, // Usar el contactId procesado
+                    Description = DescriptionTextBox.Text.Trim(),
+                    SalesmanId = (int?)VendorComboBox.SelectedValue,
+                    EstDelivery = DeliveryDatePicker.SelectedDate,
+                    SaleSubtotal = decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal) ? subtotal : 0,
+                    SaleTotal = subtotal * 1.16m,
+                    Expense = decimal.TryParse(ExpenseTextBox.Text, out decimal expense) ? expense : 0,
+                    OrderStatus = 1, // Estado inicial: PENDIENTE
+                    ProgressPercentage = 0,
+                    OrderPercentage = 0
+                };
+
+                // Log para depuración
+                System.Diagnostics.Debug.WriteLine($"📝 Creando orden:");
+                System.Diagnostics.Debug.WriteLine($"   PO: {newOrder.Po}");
+                System.Diagnostics.Debug.WriteLine($"   Cliente ID: {newOrder.ClientId}");
+                System.Diagnostics.Debug.WriteLine($"   Contacto ID: {newOrder.ContactId}");
+                System.Diagnostics.Debug.WriteLine($"   Vendedor ID: {newOrder.SalesmanId}");
+                System.Diagnostics.Debug.WriteLine($"   Total: {newOrder.SaleTotal}");
+
+                // Guardar en Supabase con el ID del usuario actual
+                var userId = _currentUser?.Id ?? 1; // Por defecto 1 si no hay usuario
+                var createdOrder = await _supabaseService.CreateOrder(newOrder, userId);
+
+                if (createdOrder != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"✅ Orden creada con ID: {createdOrder.Id}");
+
+                    MessageBox.Show(
+                        $"✅ Orden {newOrder.Po} guardada exitosamente.\n\n" +
+                        $"Cliente: {(ClientComboBox.SelectedItem as ClientDb)?.Name}\n" +
+                        $"Vendedor: {(VendorComboBox.SelectedItem as VendorDb)?.VendorName}\n" +
+                        $"Total: {TotalTextBlock.Text}",
+                        "Orden Guardada",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    this.DialogResult = true;
+                    this.Close();
+                }
+                else
+                {
+                    throw new Exception("No se pudo crear la orden en la base de datos");
+                }
             }
             catch (Exception ex)
             {
@@ -170,6 +304,8 @@ namespace SistemaGestionProyectos2.Views
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"❌ Error completo: {ex}");
             }
             finally
             {
@@ -191,8 +327,14 @@ namespace SistemaGestionProyectos2.Views
             if (ClientComboBox.SelectedItem == null)
                 errors.Add("• Cliente es obligatorio");
 
-            if (ContactComboBox.SelectedItem == null)
-                errors.Add("• Contacto es obligatorio");
+            // Validación mejorada para contacto
+            if (ContactComboBox.IsEnabled && ContactComboBox.ItemsSource != null)
+            {
+                if (ContactComboBox.SelectedItem == null)
+                {
+                    errors.Add("• Debe seleccionar un contacto");
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
                 errors.Add("• Descripción es obligatoria");
@@ -207,6 +349,15 @@ namespace SistemaGestionProyectos2.Views
 
             if (!DeliveryDatePicker.SelectedDate.HasValue)
                 errors.Add("• Fecha de Entrega es obligatoria");
+
+            // Validar que la fecha de entrega sea posterior a la fecha de orden
+            if (OrderDatePicker.SelectedDate.HasValue && DeliveryDatePicker.SelectedDate.HasValue)
+            {
+                if (DeliveryDatePicker.SelectedDate.Value < OrderDatePicker.SelectedDate.Value)
+                {
+                    errors.Add("• La fecha de entrega debe ser posterior a la fecha de O.C.");
+                }
+            }
 
             if (errors.Any())
             {
@@ -223,26 +374,55 @@ namespace SistemaGestionProyectos2.Views
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "¿Está seguro que desea cancelar?\nLos datos no guardados se perderán.",
-                "Confirmar",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
+            if (_isLoading)
             {
-                this.DialogResult = false;
-                this.Close();
+                MessageBox.Show(
+                    "Por favor espere a que se carguen los datos.",
+                    "Cargando",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
             }
+
+            // Verificar si hay cambios sin guardar
+            bool hasChanges = !string.IsNullOrWhiteSpace(OrderNumberTextBox.Text) ||
+                            !string.IsNullOrWhiteSpace(DescriptionTextBox.Text) ||
+                            !string.IsNullOrWhiteSpace(SubtotalTextBox.Text) ||
+                            ClientComboBox.SelectedItem != null;
+
+            if (hasChanges)
+            {
+                var result = MessageBox.Show(
+                    "¿Está seguro que desea cancelar?\nLos datos no guardados se perderán.",
+                    "Confirmar",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.No)
+                {
+                    return;
+                }
+            }
+
+            this.DialogResult = false;
+            this.Close();
         }
 
         private void NewClientButton_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show(
-                "Función para agregar nuevo cliente.\nEn desarrollo...",
+                "Función para agregar nuevo cliente.\n" +
+                "Será implementada en una próxima versión.\n\n" +
+                "Por ahora, use los clientes existentes.",
                 "Nuevo Cliente",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+        }
+
+        // Permitir solo números en el campo de gasto
+        private void ExpenseTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            NumericTextBox_PreviewTextInput(sender, e);
         }
     }
 }

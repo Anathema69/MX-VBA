@@ -17,22 +17,22 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<OrderViewModel> _orders;
         private CollectionViewSource _ordersViewSource;
         private readonly SupabaseService _supabaseService;
+        private List<ClientDb> _clients;
+        private List<VendorDb> _vendors;
+        private List<OrderStatusDb> _orderStatuses;
 
-        // Constructor que recibe el usuario actual
         public OrdersManagementWindow(UserSession user)
         {
             InitializeComponent();
             _currentUser = user;
             _orders = new ObservableCollection<OrderViewModel>();
-            //_supabaseService = SupabaseService.Instance;
+            _supabaseService = SupabaseService.Instance;
 
             InitializeUI();
             ConfigurePermissions();
 
-            // Test de conexión
-            //TestSupabaseConnection();
-
-            LoadOrders();
+            // Cargar datos iniciales
+            _ = LoadInitialDataAsync();
         }
 
         private void InitializeUI()
@@ -59,8 +59,6 @@ namespace SistemaGestionProyectos2.Views
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
                     OrderPercentageColumn.Visibility = Visibility.Visible;
-
-                    // Admin puede eliminar órdenes (opcional)
                     EnableDeleteButtons(true);
                     break;
 
@@ -90,73 +88,100 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void EnableDeleteButtons(bool enable)
+        private async Task LoadInitialDataAsync()
         {
-            // Esta función habilitará los botones de eliminar en el DataGrid
-            // Se aplicará cuando se carguen los datos
+            try
+            {
+                StatusText.Text = "Cargando datos...";
+
+                // Cargar clientes, vendedores y estados en paralelo
+                var clientsTask = _supabaseService.GetClients();
+                var vendorsTask = _supabaseService.GetVendors();
+                var statusesTask = _supabaseService.GetOrderStatuses();
+
+                await Task.WhenAll(clientsTask, vendorsTask, statusesTask);
+
+                _clients = await clientsTask;
+                _vendors = await vendorsTask;
+                _orderStatuses = await statusesTask;
+
+                System.Diagnostics.Debug.WriteLine($"✅ Datos cargados: {_clients.Count} clientes, {_vendors.Count} vendedores, {_orderStatuses.Count} estados");
+
+                // Ahora cargar las órdenes
+                await LoadOrders();
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Error cargando datos";
+                MessageBox.Show(
+                    $"Error al cargar datos iniciales:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
-        private async void LoadOrders()
+        private async Task LoadOrders()
         {
             try
             {
                 StatusText.Text = "Cargando órdenes...";
-
-                // Limpiar la colección actual
                 _orders.Clear();
 
-                // Por ahora, cargar directamente datos de ejemplo
-                LoadSampleOrders();
+                // Cargar primero las 100 órdenes más recientes para velocidad
+                var ordersFromDb = await _supabaseService.GetOrders(limit: 100, offset: 0);
 
-                /* CÓDIGO PARA SUPABASE (comentado por ahora)
-                try 
+                if (ordersFromDb != null && ordersFromDb.Count > 0)
                 {
-                    // Verificar si tenemos servicio de Supabase
-                    if (_supabaseService != null)
+                    foreach (var order in ordersFromDb)
                     {
-                        var ordersFromDb = await _supabaseService.GetOrders();
+                        // Obtener nombre del cliente
+                        var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
 
-                        if (ordersFromDb != null && ordersFromDb.Count > 0)
+                        // Obtener nombre del vendedor
+                        var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+
+                        // Obtener nombre del estado
+                        var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
+
+                        _orders.Add(new OrderViewModel
                         {
-                            foreach (var order in ordersFromDb)
-                            {
-                                _orders.Add(new OrderViewModel
-                                {
-                                    Id = order.Id,
-                                    OrderNumber = order.OrderNumber,
-                                    OrderDate = order.OrderDate,
-                                    ClientName = order.ClientName,
-                                    Description = order.Description,
-                                    VendorName = order.VendorName,
-                                    PromiseDate = order.PromiseDate,
-                                    ProgressPercentage = order.ProgressPercentage,
-                                    OrderPercentage = order.OrderPercentage,
-                                    Subtotal = order.Subtotal,
-                                    Total = order.Total,
-                                    Status = order.Status,
-                                    Invoiced = order.Invoiced,
-                                    LastInvoiceDate = order.LastInvoiceDate
-                                });
-                            }
+                            Id = order.Id,
+                            OrderNumber = order.Po ?? "N/A",
+                            OrderDate = order.PoDate ?? DateTime.Now,
+                            ClientName = client?.Name ?? "Sin cliente",
+                            Description = order.Description ?? "",
+                            VendorName = vendor?.VendorName ?? "Sin vendedor",
+                            PromiseDate = order.EstDelivery ?? DateTime.Now.AddDays(30),
+                            ProgressPercentage = order.ProgressPercentage,
+                            OrderPercentage = order.OrderPercentage,
+                            Subtotal = order.SaleSubtotal ?? 0,
+                            Total = order.SaleTotal ?? 0,
+                            Status = status?.Name ?? "PENDIENTE",
+                            Invoiced = false // Por ahora
+                        });
+                    }
 
-                            UpdateStatusBar();
-                            StatusText.Text = $"{_orders.Count} órdenes cargadas desde el servidor";
-                            return; // Si cargó de BD, salir
-                        }
+                    StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
+                    System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
+
+                    // Cargar el resto en segundo plano si hay más de 100
+                    if (ordersFromDb.Count == 100)
+                    {
+                        _ = LoadRemainingOrdersAsync();
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error cargando de Supabase: {ex.Message}");
+                    StatusText.Text = "No se encontraron órdenes";
+                    System.Diagnostics.Debug.WriteLine("⚠️ No se encontraron órdenes en la BD");
                 }
-
-                // Si llegamos aquí, cargar datos de ejemplo
-                LoadSampleOrders();
-                */
             }
             catch (Exception ex)
             {
                 StatusText.Text = "Error al cargar órdenes";
+                System.Diagnostics.Debug.WriteLine($"❌ Error cargando órdenes: {ex.Message}");
+
                 MessageBox.Show(
                     $"Error al cargar órdenes:\n{ex.Message}",
                     "Error",
@@ -165,72 +190,74 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void LoadSampleOrders()
+        private async Task LoadRemainingOrdersAsync()
         {
-            _orders.Clear();
-
-            // Datos de ejemplo
-            var sampleOrders = new List<OrderViewModel>
+            try
             {
-                new OrderViewModel
+                int offset = 100;
+                int batchSize = 100;
+                bool hasMore = true;
+
+                while (hasMore)
                 {
-                    Id = 1,
-                    OrderNumber = "051124",
-                    OrderDate = new DateTime(2024, 11, 1),
-                    ClientName = "Ventas Industriales",
-                    Description = "Rodillo",
-                    VendorName = "MARIO GARZA",
-                    PromiseDate = new DateTime(2025, 8, 12),
-                    ProgressPercentage = 45,
-                    OrderPercentage = 30,
-                    Subtotal = 40353.60m,
-                    Total = 40353.60m * 1.16m,
-                    Status = "EN PROCESO"
-                },
-                new OrderViewModel
-                {
-                    Id = 2,
-                    OrderNumber = "2450045194",
-                    OrderDate = new DateTime(2024, 12, 1),
-                    ClientName = "BorgWarner",
-                    Description = "Gauge para tubo",
-                    VendorName = "CYNTHIA GARCÍA",
-                    PromiseDate = new DateTime(2025, 8, 12),
-                    ProgressPercentage = 75,
-                    OrderPercentage = 60,
-                    Subtotal = 5568.00m,
-                    Total = 5568.00m * 1.16m,
-                    Status = "EN PROCESO"
-                },
-                new OrderViewModel
-                {
-                    Id = 3,
-                    OrderNumber = "G000130110",
-                    OrderDate = new DateTime(2025, 1, 1),
-                    ClientName = "Lennox",
-                    Description = "Engrane tapa brazo, plato aluminio",
-                    VendorName = "JEHU ARREDONDO",
-                    PromiseDate = new DateTime(2025, 9, 15),
-                    ProgressPercentage = 20,
-                    OrderPercentage = 10,
-                    Subtotal = 11623.20m,
-                    Total = 11623.20m * 1.16m,
-                    Status = "EN PROCESO"
+                    var morOrders = await _supabaseService.GetOrders(limit: batchSize, offset: offset);
+
+                    if (morOrders != null && morOrders.Count > 0)
+                    {
+                        // Agregar al UI en el thread principal
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            foreach (var order in morOrders)
+                            {
+                                var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                                var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+                                var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
+
+                                _orders.Add(new OrderViewModel
+                                {
+                                    Id = order.Id,
+                                    OrderNumber = order.Po ?? "N/A",
+                                    OrderDate = order.PoDate ?? DateTime.Now,
+                                    ClientName = client?.Name ?? "Sin cliente",
+                                    Description = order.Description ?? "",
+                                    VendorName = vendor?.VendorName ?? "Sin vendedor",
+                                    PromiseDate = order.EstDelivery ?? DateTime.Now.AddDays(30),
+                                    ProgressPercentage = order.ProgressPercentage,
+                                    OrderPercentage = order.OrderPercentage,
+                                    Subtotal = order.SaleSubtotal ?? 0,
+                                    Total = order.SaleTotal ?? 0,
+                                    Status = status?.Name ?? "PENDIENTE",
+                                    Invoiced = false
+                                });
+                            }
+
+                            StatusText.Text = $"{_orders.Count} órdenes cargadas";
+                        });
+
+                        offset += batchSize;
+                        hasMore = morOrders.Count == batchSize;
+                    }
+                    else
+                    {
+                        hasMore = false;
+                    }
+
+                    // Pequeña pausa para no saturar
+                    await Task.Delay(100);
                 }
-            };
 
-            foreach (var order in sampleOrders)
-            {
-                _orders.Add(order);
+                System.Diagnostics.Debug.WriteLine($"✅ Carga completa: {_orders.Count} órdenes totales");
             }
-
-            UpdateStatusBar();
-            StatusText.Text = $"{_orders.Count} órdenes de ejemplo cargadas (modo offline)";
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando órdenes adicionales: {ex.Message}");
+            }
         }
 
-        private void UpdateStatusBar()
+        private void EnableDeleteButtons(bool enable)
         {
-            StatusText.Text = $"{_orders.Count} órdenes cargadas";
+            // Esta función habilitará los botones de eliminar en el DataGrid
+            // Se aplicará cuando se carguen los datos
         }
 
         private string GetRoleDisplayName(string role)
@@ -264,21 +291,14 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Abrir formulario de nueva orden
-                var newOrderWindow = new NewOrderWindow();
+                // Pasar el usuario actual a la ventana de nueva orden
+                var newOrderWindow = new NewOrderWindow(_currentUser);
                 newOrderWindow.Owner = this;
 
                 if (newOrderWindow.ShowDialog() == true)
                 {
-                    // Si se guardó exitosamente, actualizar la lista
-                    MessageBox.Show(
-                        "La orden se agregó a la lista (modo offline).",
-                        "Información",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
-                    // Opcional: agregar la orden a la lista local
-                    // _orders.Add(new OrderViewModel { ... });
+                    // Recargar órdenes después de crear una nueva
+                    _ = LoadOrders();
                 }
             }
             catch (Exception ex)
@@ -301,9 +321,7 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Simular actualización
-                await Task.Delay(500);
-                LoadOrders(); // Esto ahora carga datos de ejemplo
+                await LoadOrders();
             }
             finally
             {
@@ -317,26 +335,35 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_ordersViewSource?.View == null) return;
+            var searchText = SearchBox.Text?.Trim();
 
-            var searchText = SearchBox.Text.ToLower();
-
-            _ordersViewSource.View.Filter = item =>
+            // Si no hay texto o es muy corto, cargar todas las órdenes
+            if (string.IsNullOrWhiteSpace(searchText))
             {
-                if (string.IsNullOrWhiteSpace(searchText))
-                    return true;
+                await LoadOrders();
+                return;
+            }
 
-                var order = item as OrderViewModel;
-                if (order == null) return false;
+            // Aplicar filtro local en lugar de buscar en Supabase
+            if (_ordersViewSource?.View != null)
+            {
+                _ordersViewSource.View.Filter = item =>
+                {
+                    var order = item as OrderViewModel;
+                    if (order == null) return false;
 
-                return order.OrderNumber.ToLower().Contains(searchText) ||
-                       order.ClientName.ToLower().Contains(searchText) ||
-                       order.Description.ToLower().Contains(searchText);
-            };
+                    var searchLower = searchText.ToLower();
+                    return order.OrderNumber.ToLower().Contains(searchLower) ||
+                           order.ClientName.ToLower().Contains(searchLower) ||
+                           order.Description.ToLower().Contains(searchLower) ||
+                           order.VendorName.ToLower().Contains(searchLower);
+                };
 
-            UpdateStatusBar();
+                var count = _ordersViewSource.View.Cast<object>().Count();
+                StatusText.Text = $"{count} órdenes encontradas";
+            }
         }
 
         private void StatusFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -373,15 +400,8 @@ namespace SistemaGestionProyectos2.Views
 
                 if (editWindow.ShowDialog() == true)
                 {
-                    // La orden ya fue actualizada en el objeto
-                    // Refrescar el DataGrid para mostrar los cambios
-                    OrdersDataGrid.Items.Refresh();
-
-                    // Actualizar status bar
-                    StatusText.Text = $"Orden {order.OrderNumber} actualizada exitosamente";
-
-                    // Opcional: Si estuviéramos conectados a Supabase, aquí se guardaría
-                    // await _supabaseService.UpdateOrder(order);
+                    // Recargar órdenes después de editar
+                    _ = LoadOrders();
                 }
             }
             catch (Exception ex)
@@ -422,15 +442,16 @@ namespace SistemaGestionProyectos2.Views
             {
                 try
                 {
-                    // TODO: Implementar eliminación en Supabase
-                    // await _supabaseService.DeleteOrder(order.Id);
+                    // Por ahora, solo remover de la lista local
+                    // TODO: Implementar eliminación en Supabase cuando sea necesario
 
                     _orders.Remove(order);
                     UpdateStatusBar();
 
                     MessageBox.Show(
-                        "Orden eliminada correctamente.",
-                        "Éxito",
+                        "Orden marcada para eliminación.\n" +
+                        "(Nota: La eliminación real está deshabilitada por seguridad)",
+                        "Información",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                 }
@@ -445,57 +466,10 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async void TestSupabaseConnection()
+        private void UpdateStatusBar()
         {
-            try
-            {
-                var supabase = SupabaseService.Instance;
-
-                // Intento simple de query
-                var client = supabase.GetClient();
-                if (client != null)
-                {
-                    // Query directa usando el modelo OrderDb
-                    var result = await client
-                        .From<OrderDb>()  // Usar el modelo definido
-                        .Select("*")
-                        .Limit(10)
-                        .Get();
-
-                    MessageBox.Show($"Conexión exitosa. Registros encontrados: {result?.Models?.Count ?? 0}",
-                        "Test Supabase",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
-                    // Mostrar algunos detalles de la primera orden si existe
-                    if (result?.Models?.Count > 0)
-                    {
-                        var firstOrder = result.Models.First();
-                        MessageBox.Show(
-                            $"Primera orden:\n" +
-                            $"ID: {firstOrder.Id}\n" +
-                            $"Número: {firstOrder.OrderNumber}\n" +
-                            $"Fecha: {firstOrder.OrderDate}",
-                            "Datos de Prueba",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Information);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Cliente de Supabase no inicializado",
-                        "Error",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error de conexión:\n{ex.Message}\n\nDetalles:\n{ex.StackTrace}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
+            var visibleCount = _ordersViewSource?.View?.Cast<object>().Count() ?? 0;
+            StatusText.Text = $"{visibleCount} órdenes visibles de {_orders.Count} total";
         }
     }
 }

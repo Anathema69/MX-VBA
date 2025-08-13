@@ -3,7 +3,6 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.Models;
 
@@ -13,38 +12,28 @@ namespace SistemaGestionProyectos2.Views
     {
         private readonly SupabaseService _supabaseService;
 
-        // Diccionario temporal de usuarios con sus roles (después se obtendrá de la BD)
-        private readonly Dictionary<string, (string password, string fullName, string role)> _users = new()
-        {
-            // Administradores
-            { "admin", ("admin123", "Administrador General", "admin") },
-            
-            // Coordinadores
-            { "coordinador", ("ima2025", "Coordinador General", "coordinator") },
-            { "coord1", ("ima2025", "Coordinador de Producción", "coordinator") },
-            
-            // Vendedores
-            { "mgarza", ("ima2025", "MARIO GARZA", "salesperson") }
-        };
-
         public LoginWindow()
         {
             try
             {
                 InitializeComponent();
+                _supabaseService = SupabaseService.Instance;
 
-
-                // _supabaseService = SupabaseService.Instance;
-                // Valores por defecto para pruebas
-                
+                // Quitar valores por defecto en producción
+                UsernameTextBox.Text = "";
+                PasswordBox.Password = "";
 
                 // Enfocar el campo de usuario
                 UsernameTextBox.Focus();
-                UsernameTextBox.SelectAll();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error en LoginWindow:\n{ex.Message}", "Error");
+                MessageBox.Show(
+                    $"Error inicializando conexión con base de datos:\n{ex.Message}\n\n" +
+                    "Verifique su conexión a internet y configuración.",
+                    "Error de Inicialización",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
@@ -76,7 +65,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Botón de Login
+        // Botón de Login - AHORA CON SUPABASE
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
             // Validación
@@ -92,36 +81,43 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                await Task.Delay(1500); // Simular carga
-
-                // USAR SOLO MODO OFFLINE POR AHORA
-                string username = UsernameTextBox.Text.ToLower().Trim();
+                string username = UsernameTextBox.Text.Trim();
                 string password = PasswordBox.Password;
 
-                if (_users.ContainsKey(username) && _users[username].password == password)
+                // AUTENTICACIÓN CON SUPABASE
+                var (success, user, message) = await _supabaseService.AuthenticateUser(username, password);
+
+                if (success && user != null)
                 {
-                    var userData = _users[username];
-                    ShowStatus("✅", "Acceso autorizado (Modo Offline)", "#4CAF50", true);
+                    ShowStatus("✅", "Acceso autorizado", "#4CAF50", true);
                     await Task.Delay(500);
 
+                    // Crear sesión de usuario
                     var currentUser = new UserSession
                     {
-                        Id = 1,
-                        Username = username,
-                        FullName = userData.fullName,
-                        Role = userData.role,
+                        Id = user.Id,
+                        Username = user.Username,
+                        FullName = user.FullName,
+                        Role = user.Role,
                         LoginTime = DateTime.Now
                     };
+
+                    // Log para debug
+                    System.Diagnostics.Debug.WriteLine($"✅ Login exitoso: {user.FullName} ({user.Role})");
 
                     // Crear ventana de carga
                     var loadingWindow = new LoadingWindow();
                     loadingWindow.Show();
-
                     this.Hide();
 
-                    loadingWindow.UpdateStatus("Preparando Sistema", "Modo Offline...");
+                    // Simular carga
+                    loadingWindow.UpdateStatus("Preparando Sistema", $"Bienvenido {user.FullName}");
                     await Task.Delay(800);
 
+                    loadingWindow.UpdateStatus("Cargando Módulos", "Configurando permisos...");
+                    await Task.Delay(600);
+
+                    // Abrir menú principal
                     MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
                     mainMenu.Show();
 
@@ -130,46 +126,40 @@ namespace SistemaGestionProyectos2.Views
                 }
                 else
                 {
-                    ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
+                    ShowStatus("❌", message ?? "Credenciales incorrectas", "#F44336", false);
+
+                    // Mostrar mensaje más visible
+                    MessageBox.Show(
+                        message ?? "Usuario o contraseña incorrectos.\n\nPor favor verifique sus credenciales.",
+                        "Error de Autenticación",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    // Limpiar contraseña
+                    PasswordBox.Clear();
+                    PasswordBox.Focus();
                 }
             }
             catch (Exception ex)
             {
-                ShowStatus("⚠️", $"Error: {ex.Message}", "#F44336", false);
+                ShowStatus("⚠️", "Error de conexión", "#F44336", false);
+
+                MessageBox.Show(
+                    "No se pudo conectar con el servidor.\n\n" +
+                    "Posibles causas:\n" +
+                    "• Sin conexión a internet\n" +
+                    "• Servidor no disponible\n" +
+                    "• Error en configuración\n\n" +
+                    $"Detalles: {ex.Message}",
+                    "Error de Conexión",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
             }
             finally
             {
                 EnableControls();
-            }
-        }
-
-        // Modo offline como fallback
-        private async Task LoginOfflineMode()
-        {
-            string username = UsernameTextBox.Text.ToLower().Trim();
-            string password = PasswordBox.Password;
-
-            if (_users.ContainsKey(username) && _users[username].password == password)
-            {
-                var userData = _users[username];
-                ShowStatus("🔌", "Modo Offline", "#FF9800", true);
-                await Task.Delay(500);
-
-                var currentUser = new UserSession
-                {
-                    Username = username,
-                    FullName = userData.fullName + " (Offline)",
-                    Role = userData.role,
-                    LoginTime = DateTime.Now
-                };
-
-                MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
-                mainMenu.Show();
-                this.Close();
-            }
-            else
-            {
-                ShowStatus("❌", "Credenciales incorrectas", "#F44336", false);
             }
         }
 
@@ -202,6 +192,7 @@ namespace SistemaGestionProyectos2.Views
             UsernameTextBox.IsEnabled = false;
             PasswordBox.IsEnabled = false;
             LoginButton.IsEnabled = false;
+            TestConnectionButton.IsEnabled = false;
         }
 
         private void EnableControls()
@@ -209,6 +200,7 @@ namespace SistemaGestionProyectos2.Views
             UsernameTextBox.IsEnabled = true;
             PasswordBox.IsEnabled = true;
             LoginButton.IsEnabled = true;
+            TestConnectionButton.IsEnabled = true;
         }
 
         // Permitir login con Enter
@@ -221,24 +213,38 @@ namespace SistemaGestionProyectos2.Views
             base.OnKeyDown(e);
         }
 
-        private void TestConnectionButton_Click(object sender, RoutedEventArgs e)
+        // Botón de test de conexión
+        private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Abrir el módulo completo de pruebas
-                var testWindow = new SupabaseTestWindow();
-                testWindow.ShowDialog();
+                DisableControls();
+                ShowLoading("Probando conexión con Supabase...");
+
+                // Intentar obtener clientes como prueba
+                var clients = await _supabaseService.GetClients();
+
+                if (clients != null)
+                {
+                    ShowStatus("✅", $"Conexión exitosa - {clients.Count} clientes en BD", "#4CAF50", true);
+                }
+                else
+                {
+                    ShowStatus("⚠️", "Conexión establecida pero sin datos", "#FFA726", false);
+                }
+
+                await Task.Delay(2000);
+                LoadingPanel.Visibility = Visibility.Collapsed;
+                StatusPanel.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"Error al abrir el módulo de pruebas:\n{ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                ShowStatus("❌", $"Error: {ex.Message}", "#F44336", false);
+            }
+            finally
+            {
+                EnableControls();
             }
         }
     }
 }
-
-// UserSession ya está definido en Models/UserSession.cs
