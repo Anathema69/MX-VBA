@@ -1,10 +1,11 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
+using System;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Threading.Tasks;
-using SistemaGestionProyectos2.Services;
-using SistemaGestionProyectos2.Models;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -66,13 +67,18 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Botón de Login - AHORA CON SUPABASE
+        // Actualizar el método LoginButton_Click en LoginWindow.xaml.cs
+
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
+            var logger = JsonLoggerService.Instance;
+
             // Validación
             if (string.IsNullOrWhiteSpace(UsernameTextBox.Text) ||
                 string.IsNullOrWhiteSpace(PasswordBox.Password))
             {
                 ShowStatus("⚠️", "Por favor complete todos los campos", "#FFA726", false);
+                logger.LogWarning("AUTH", "LOGIN_VALIDATION_FAILED", new { reason = "Empty fields" });
                 return;
             }
 
@@ -84,12 +90,18 @@ namespace SistemaGestionProyectos2.Views
                 string username = UsernameTextBox.Text.Trim();
                 string password = PasswordBox.Password;
 
+                logger.LogInfo("AUTH", "LOGIN_ATTEMPT", new { username });
+
                 // AUTENTICACIÓN CON SUPABASE
                 var (success, user, message) = await _supabaseService.AuthenticateUser(username, password);
 
                 if (success && user != null)
                 {
                     ShowStatus("✅", "Acceso autorizado", "#4CAF50", true);
+
+                    // Log de login exitoso
+                    logger.LogLogin(username, true, user.Id.ToString(), user.Role);
+
                     await Task.Delay(500);
 
                     // Crear sesión de usuario
@@ -102,7 +114,6 @@ namespace SistemaGestionProyectos2.Views
                         LoginTime = DateTime.Now
                     };
 
-                    // Log para debug
                     System.Diagnostics.Debug.WriteLine($"✅ Login exitoso: {user.FullName} ({user.Role})");
 
                     // Crear ventana de carga
@@ -128,7 +139,9 @@ namespace SistemaGestionProyectos2.Views
                 {
                     ShowStatus("❌", message ?? "Credenciales incorrectas", "#F44336", false);
 
-                    // Mostrar mensaje más visible
+                    // Log de login fallido
+                    logger.LogLogin(username, false, null, null);
+
                     MessageBox.Show(
                         message ?? "Usuario o contraseña incorrectos.\n\nPor favor verifique sus credenciales.",
                         "Error de Autenticación",
@@ -144,12 +157,14 @@ namespace SistemaGestionProyectos2.Views
             {
                 ShowStatus("⚠️", "Error de conexión", "#F44336", false);
 
+                logger.LogError("AUTH", "LOGIN_ERROR", new
+                {
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+
                 MessageBox.Show(
                     "No se pudo conectar con el servidor.\n\n" +
-                    "Posibles causas:\n" +
-                    "• Sin conexión a internet\n" +
-                    "• Servidor no disponible\n" +
-                    "• Error en configuración\n\n" +
                     $"Detalles: {ex.Message}",
                     "Error de Conexión",
                     MessageBoxButton.OK,
@@ -214,37 +229,98 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Botón de test de conexión
+        // Versión MINIMALISTA del método TestConnectionButton_Click
+        // Reemplazar el método TestConnectionButton_Click en LoginWindow.xaml.cs
+
         private async void TestConnectionButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 DisableControls();
-                ShowLoading("Probando conexión con Supabase...");
+                ShowLoading("Probando conexión con base de datos...");
 
-                // Intentar obtener clientes como prueba
-                var clients = await _supabaseService.GetClients();
+                // Intentar conexión simple con Supabase
+                bool isConnected = await _supabaseService.TestConnection();
 
-                if (clients != null)
+                if (isConnected)
                 {
-                    ShowStatus("✅", $"Conexión exitosa - {clients.Count} clientes en BD", "#4CAF50", true);
+                    // Intentar obtener el conteo de clientes como prueba adicional
+                    try
+                    {
+                        var clients = await _supabaseService.GetClients();
+
+                        ShowStatus("✅", "Conexión exitosa", "#4CAF50", true);
+
+                        await Task.Delay(500); // Breve pausa para que se vea el status
+
+                        // Mostrar ventana simple de confirmación
+                        MessageBox.Show(
+                            $"✅ Conexión establecida correctamente\n\n" +
+                            $"Base de datos: Supabase\n" +
+                            $"Estado: Operativa\n" +
+                            $"Clientes registrados: {clients?.Count ?? 0}\n" +
+                            $"Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                            "Test de Conexión Exitoso",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Conexión OK pero error al obtener datos
+                        ShowStatus("⚠️", "Conexión parcial", "#FFA726", false);
+
+                        MessageBox.Show(
+                            $"⚠️ Conexión establecida pero con advertencias\n\n" +
+                            $"La conexión a la base de datos funciona, pero hubo un problema al obtener datos de prueba.\n\n" +
+                            $"Detalles: {ex.Message}",
+                            "Test de Conexión - Advertencia",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
                 }
                 else
                 {
-                    ShowStatus("⚠️", "Conexión establecida pero sin datos", "#FFA726", false);
+                    ShowStatus("❌", "Sin conexión", "#F44336", false);
+
+                    MessageBox.Show(
+                        "❌ No se pudo establecer conexión\n\n" +
+                        "Posibles causas:\n" +
+                        "• Sin conexión a internet\n" +
+                        "• Servidor no disponible\n" +
+                        "• Credenciales incorrectas en configuración\n\n" +
+                        "Verifique su conexión e intente nuevamente.",
+                        "Test de Conexión Fallido",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
                 }
 
+                // Limpiar el estado después de 2 segundos
                 await Task.Delay(2000);
                 LoadingPanel.Visibility = Visibility.Collapsed;
                 StatusPanel.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
-                ShowStatus("❌", $"Error: {ex.Message}", "#F44336", false);
+                ShowStatus("❌", "Error en test", "#F44336", false);
+
+                MessageBox.Show(
+                    $"❌ Error durante el test de conexión\n\n" +
+                    $"Mensaje: {ex.Message}\n\n" +
+                    "Por favor, verifique:\n" +
+                    "• El archivo appsettings.json existe\n" +
+                    "• Las credenciales de Supabase están configuradas\n" +
+                    "• Tiene conexión a internet",
+                    "Error en Test",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"Error en test de conexión: {ex}");
             }
             finally
             {
                 EnableControls();
             }
         }
+
     }
 }
