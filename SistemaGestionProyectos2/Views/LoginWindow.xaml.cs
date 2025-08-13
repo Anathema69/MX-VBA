@@ -220,6 +220,24 @@ namespace SistemaGestionProyectos2.Views
             }
             base.OnKeyDown(e);
         }
+
+        private void TestConnectionButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Abrir el módulo completo de pruebas
+                var testWindow = new SupabaseTestWindow();
+                testWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el módulo de pruebas:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
     }
 }
 

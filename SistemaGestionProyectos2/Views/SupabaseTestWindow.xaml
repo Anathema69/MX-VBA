@@ -1,0 +1,394 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.SupabaseTestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="IMA Mecatrónica - Módulo de Pruebas Supabase" 
+        Height="700" 
+        Width="900"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        MinHeight="500"
+        MinWidth="700">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="Black" Height="60">
+            <Grid>
+                <StackPanel Orientation="Horizontal" 
+                           VerticalAlignment="Center"
+                           Margin="20,0">
+                    <TextBlock Text="🧪" 
+                             Foreground="#4CAF50"
+                             FontSize="24"
+                             Margin="0,0,15,0"/>
+                    <TextBlock Text="MÓDULO DE PRUEBAS SUPABASE" 
+                             Foreground="White"
+                             FontSize="20"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Margin="0,0,20,0">
+                    <Border x:Name="ConnectionStatusBorder"
+                           Background="#333"
+                           CornerRadius="5"
+                           Padding="10,5">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="StatusIndicator"
+                                    Width="10"
+                                    Height="10"
+                                    Fill="Gray"
+                                    Margin="0,0,8,0"/>
+                            <TextBlock x:Name="ConnectionStatusText"
+                                     Text="No conectado"
+                                     Foreground="White"
+                                     FontSize="12"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Contenido Principal -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Panel Izquierdo - Lista de Pruebas -->
+            <Border Grid.Column="0" 
+                   Background="#f5f5f5"
+                   BorderBrush="#DDD"
+                   BorderThickness="0,0,1,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Título -->
+                    <Border Grid.Row="0"
+                           Background="#e0e0e0"
+                           Padding="15,10">
+                        <TextBlock Text="PRUEBAS DISPONIBLES"
+                                 FontWeight="Bold"
+                                 FontSize="12"/>
+                    </Border>
+
+                    <!-- Lista de Pruebas -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="10">
+                            <!-- Test 1: Conexión Básica -->
+                            <Button x:Name="TestConnectionBtn"
+                                   Click="TestConnection_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#2196F3"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="🔌"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Test de Conexión"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Verificar conexión básica"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check1"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Test 2: Listar Tablas -->
+                            <Button x:Name="TestTablesBtn"
+                                   Click="TestTables_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#FF9800"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="📊"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Listar Tablas"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Ver estructura de BD"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check2"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Test 3: Cargar Órdenes -->
+                            <Button x:Name="TestOrdersBtn"
+                                   Click="TestOrders_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#4CAF50"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="📦"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Cargar Órdenes"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Obtener registros de t_order"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check3"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Test 4: Verificar Usuarios -->
+                            <Button x:Name="TestUsersBtn"
+                                   Click="TestUsers_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#9C27B0"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="👥"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Verificar Usuarios"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Listar usuarios del sistema"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check4"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Test 5: Simular Login -->
+                            <Button x:Name="TestLoginBtn"
+                                   Click="TestLogin_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#F44336"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="🔐"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Simular Login"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Probar autenticación"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check5"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- Test 6: Test de Escritura -->
+                            <Button x:Name="TestWriteBtn"
+                                   Click="TestWrite_Click"
+                                   Margin="0,5"
+                                   Height="60"
+                                   Background="White"
+                                   BorderBrush="#607D8B"
+                                   BorderThickness="1"
+                                   Cursor="Hand">
+                                <Grid Width="250">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" 
+                                             Text="✏️"
+                                             FontSize="20"
+                                             VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Test de Escritura"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"/>
+                                        <TextBlock Text="Crear registro de prueba"
+                                                 FontSize="10"
+                                                 Foreground="#666"/>
+                                    </StackPanel>
+                                    <CheckBox x:Name="Check6"
+                                            Grid.Column="2"
+                                            IsEnabled="False"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Botones de Acción -->
+                    <Border Grid.Row="2"
+                           Background="#e0e0e0"
+                           Padding="10">
+                        <StackPanel>
+                            <Button x:Name="RunAllTestsBtn"
+                                   Content="▶ EJECUTAR TODAS LAS PRUEBAS"
+                                   Height="35"
+                                   Background="#4CAF50"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   Click="RunAllTests_Click"
+                                   Cursor="Hand"/>
+                            <Button x:Name="ClearResultsBtn"
+                                   Content="🗑 LIMPIAR RESULTADOS"
+                                   Height="30"
+                                   Background="White"
+                                   Margin="0,5,0,0"
+                                   Click="ClearResults_Click"
+                                   Cursor="Hand"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Panel Derecho - Resultados -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Título de Resultados -->
+                <Border Grid.Row="0"
+                       Background="#333"
+                       Padding="15,10">
+                    <Grid>
+                        <TextBlock Text="RESULTADOS DE PRUEBAS"
+                                 Foreground="White"
+                                 FontWeight="Bold"
+                                 FontSize="12"/>
+                        <TextBlock x:Name="TimestampText"
+                                 HorizontalAlignment="Right"
+                                 Foreground="#AAA"
+                                 FontSize="10"/>
+                    </Grid>
+                </Border>
+
+                <!-- Área de Resultados -->
+                <ScrollViewer Grid.Row="1" 
+                            VerticalScrollBarVisibility="Auto"
+                            Background="#1e1e1e">
+                    <RichTextBox x:Name="ResultsRichTextBox"
+                               Background="#1e1e1e"
+                               Foreground="#d4d4d4"
+                               FontFamily="Consolas"
+                               FontSize="12"
+                               Padding="15"
+                               IsReadOnly="True"
+                               BorderThickness="0">
+                        <FlowDocument>
+                            <Paragraph>
+                                <Run Text="🚀 Módulo de Pruebas Listo" 
+                                    Foreground="#4CAF50"
+                                    FontWeight="Bold"/>
+                                <LineBreak/>
+                                <Run Text="Seleccione una prueba del panel izquierdo para comenzar..."
+                                    Foreground="#888"/>
+                            </Paragraph>
+                        </FlowDocument>
+                    </RichTextBox>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2" Background="#222">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Estado: " Foreground="White"/>
+                    <TextBlock x:Name="StatusText" 
+                             Text="Listo" 
+                             Foreground="#4CAF50"
+                             FontWeight="Bold"/>
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Pruebas ejecutadas: " Foreground="White"/>
+                    <TextBlock x:Name="TestCountText" 
+                             Text="0" 
+                             Foreground="White"
+                             FontWeight="Bold"/>
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
