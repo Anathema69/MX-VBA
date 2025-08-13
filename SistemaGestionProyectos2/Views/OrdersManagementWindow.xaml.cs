@@ -121,6 +121,8 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // Actualizar el método LoadOrders en OrdersManagementWindow.xaml.cs
+
         private async Task LoadOrders()
         {
             try
@@ -138,28 +140,20 @@ namespace SistemaGestionProyectos2.Views
                         // Obtener nombre del cliente
                         var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
 
-                        // Obtener nombre del vendedor
+                        // Obtener nombre del vendedor desde t_vendor (usando f_salesman)
                         var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
 
                         // Obtener nombre del estado
                         var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
 
-                        _orders.Add(new OrderViewModel
-                        {
-                            Id = order.Id,
-                            OrderNumber = order.Po ?? "N/A",
-                            OrderDate = order.PoDate ?? DateTime.Now,
-                            ClientName = client?.Name ?? "Sin cliente",
-                            Description = order.Description ?? "",
-                            VendorName = vendor?.VendorName ?? "Sin vendedor",
-                            PromiseDate = order.EstDelivery ?? DateTime.Now.AddDays(30),
-                            ProgressPercentage = order.ProgressPercentage,
-                            OrderPercentage = order.OrderPercentage,
-                            Subtotal = order.SaleSubtotal ?? 0,
-                            Total = order.SaleTotal ?? 0,
-                            Status = status?.Name ?? "PENDIENTE",
-                            Invoiced = false // Por ahora
-                        });
+                        // Usar el método de extensión para convertir a ViewModel
+                        var viewModel = order.ToViewModel(
+                            clientName: client?.Name,
+                            vendorName: vendor?.VendorName,
+                            statusName: status?.Name
+                        );
+
+                        _orders.Add(viewModel);
                     }
 
                     StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
@@ -200,42 +194,34 @@ namespace SistemaGestionProyectos2.Views
 
                 while (hasMore)
                 {
-                    var morOrders = await _supabaseService.GetOrders(limit: batchSize, offset: offset);
+                    var moreOrders = await _supabaseService.GetOrders(limit: batchSize, offset: offset);
 
-                    if (morOrders != null && morOrders.Count > 0)
+                    if (moreOrders != null && moreOrders.Count > 0)
                     {
                         // Agregar al UI en el thread principal
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            foreach (var order in morOrders)
+                            foreach (var order in moreOrders)
                             {
                                 var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
                                 var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
                                 var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
 
-                                _orders.Add(new OrderViewModel
-                                {
-                                    Id = order.Id,
-                                    OrderNumber = order.Po ?? "N/A",
-                                    OrderDate = order.PoDate ?? DateTime.Now,
-                                    ClientName = client?.Name ?? "Sin cliente",
-                                    Description = order.Description ?? "",
-                                    VendorName = vendor?.VendorName ?? "Sin vendedor",
-                                    PromiseDate = order.EstDelivery ?? DateTime.Now.AddDays(30),
-                                    ProgressPercentage = order.ProgressPercentage,
-                                    OrderPercentage = order.OrderPercentage,
-                                    Subtotal = order.SaleSubtotal ?? 0,
-                                    Total = order.SaleTotal ?? 0,
-                                    Status = status?.Name ?? "PENDIENTE",
-                                    Invoiced = false
-                                });
+                                // Usar el método de extensión
+                                var viewModel = order.ToViewModel(
+                                    clientName: client?.Name,
+                                    vendorName: vendor?.VendorName,
+                                    statusName: status?.Name
+                                );
+
+                                _orders.Add(viewModel);
                             }
 
                             StatusText.Text = $"{_orders.Count} órdenes cargadas";
                         });
 
                         offset += batchSize;
-                        hasMore = morOrders.Count == batchSize;
+                        hasMore = moreOrders.Count == batchSize;
                     }
                     else
                     {

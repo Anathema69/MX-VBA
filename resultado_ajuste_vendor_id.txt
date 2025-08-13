@@ -1,0 +1,117 @@
+-- 1. ANÁLISIS PREVIO
+-- =====================================================
+-- Ver el estado actual de ambos campos
+SELECT 
+    'ANÁLISIS DE CAMPOS VENDOR' as info,
+    COUNT(*) as total_ordenes,
+    COUNT(f_salesman) as ordenes_con_f_salesman,
+    COUNT(vendor_id) as ordenes_con_vendor_id,
+    COUNT(CASE WHEN f_salesman IS NOT NULL AND vendor_id IS NOT NULL THEN 1 END) as ordenes_con_ambos,
+    COUNT(CASE WHEN f_salesman IS NOT NULL AND vendor_id IS NULL THEN 1 END) as solo_f_salesman,
+    COUNT(CASE WHEN f_salesman IS NULL AND vendor_id IS NOT NULL THEN 1 END) as solo_vendor_id,
+    COUNT(CASE WHEN f_salesman IS NULL AND vendor_id IS NULL THEN 1 END) as sin_vendedor
+FROM t_order;
+
+-- RESULTADOS:
+[
+  {
+    "info": "ANÁLISIS DE CAMPOS VENDOR",
+    "total_ordenes": 648,
+    "ordenes_con_f_salesman": 648,
+    "ordenes_con_vendor_id": 0,
+    "ordenes_con_ambos": 0,
+    "solo_f_salesman": 648,
+    "solo_vendor_id": 0,
+    "sin_vendedor": 0
+  }
+]
+
+-- -- Ver casos donde difieren (si los hay)
+
+-- resultados (primeros  10, pero todos son SOLO F_SALESMAN):
+[
+  {
+    "f_order": 676,
+    "f_po": "REC-666",
+    "f_salesman": 5,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 3,
+    "f_po": "72130968",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 679,
+    "f_po": "TEST-001",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 4,
+    "f_po": "2450027866",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 5,
+    "f_po": "201801005",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 6,
+    "f_po": "39289",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 7,
+    "f_po": "1487200024",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 8,
+    "f_po": "3487000220",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 9,
+    "f_po": "39454",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  },
+  {
+    "f_order": 10,
+    "f_po": "3487000564",
+    "f_salesman": 1,
+    "vendor_id": null,
+    "estado": "SOLO F_SALESMAN"
+  }
+]
+
+-- Backup ok, sin problemas
+--4. ELIMINAR LA COLUMNA VENDOR_ID: ERROR:  2BP01: cannot drop column vendor_id of table t_order because other objects depend on it
+DETAIL:  view v_orders_detail depends on column vendor_id of table t_order
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+
+--  	- Ver si hay vistas que usan vendor_id:
+-- resultado:
+[
+  {
+    "viewname": "v_orders_detail",
+    "definition": " SELECT o.f_order,\n    o.f_po AS order_number,\n    o.f_quote AS quotation_number,\n    o.f_podate AS order_date,\n    o.f_estdelivery AS promise_date,\n    o.f_description AS description,\n    o.f_salesubtotal AS subtotal,\n    o.f_saletotal AS total,\n    o.f_expense AS expense,\n    o.progress_percentage,\n    o.order_percentage,\n    o.invoiced,\n    o.last_invoice_date,\n    c.f_client AS client_id,\n    c.f_name AS client_name,\n    ct.f_contact AS contact_id,\n    ct.f_contactname AS contact_name,\n    ct.f_email AS contact_email,\n    o.vendor_id,\n    u.full_name AS vendor_name,\n    o.f_orderstat AS status_id,\n    os.f_name AS status_name,\n    (o.f_saletotal - o.f_expense) AS profit,\n        CASE\n            WHEN (o.f_saletotal > (0)::numeric) THEN round((((o.f_saletotal - o.f_expense) / o.f_saletotal) * (100)::numeric), 2)\n            ELSE (0)::numeric\n        END AS profit_margin,\n    o.created_at,\n    o.updated_at,\n    o.created_by\n   FROM ((((t_order o\n     LEFT JOIN t_client c ON ((o.f_client = c.f_client)))\n     LEFT JOIN t_contact ct ON ((o.f_contact = ct.f_contact)))\n     LEFT JOIN users u ON ((o.vendor_id = u.id)))\n     LEFT JOIN order_status os ON ((o.f_orderstat = os.f_orderstatus)))\n  ORDER BY o.f_podate DESC, o.f_order DESC;"
+  }
+]

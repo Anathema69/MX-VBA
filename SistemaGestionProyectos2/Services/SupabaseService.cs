@@ -92,7 +92,7 @@ namespace SistemaGestionProyectos2.Services
         // MÉTODOS PARA ÓRDENES
         // ===============================================
 
-        public async Task<List<OrderDb>> GetOrders(int limit = 100)
+        public async Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0)
         {
             try
             {
@@ -100,7 +100,7 @@ namespace SistemaGestionProyectos2.Services
                     .From<OrderDb>()
                     .Select("*")
                     .Order("f_podate", Postgrest.Constants.Ordering.Descending)
-                    .Limit(limit)
+                    .Range(offset, offset + limit - 1)
                     .Get();
 
                 return response?.Models ?? new List<OrderDb>();
@@ -156,8 +156,21 @@ namespace SistemaGestionProyectos2.Services
                 if (order.PoDate == null || order.PoDate == default)
                     order.PoDate = DateTime.Now;
 
-                // No intentar asignar CreatedBy ya que no existe en el modelo
-                // Si necesitas tracking de usuario, deberás agregarlo al modelo OrderDb
+                // Asegurar valores por defecto
+                if (order.ProgressPercentage == 0)
+                    order.ProgressPercentage = 0;
+
+                if (order.OrderPercentage == 0)
+                    order.OrderPercentage = 0;
+
+                // Log para debug
+                System.Diagnostics.Debug.WriteLine($"📝 Creando orden en Supabase:");
+                System.Diagnostics.Debug.WriteLine($"   PO: {order.Po}");
+                System.Diagnostics.Debug.WriteLine($"   Cliente: {order.ClientId}");
+                System.Diagnostics.Debug.WriteLine($"   Contacto: {order.ContactId}");
+                System.Diagnostics.Debug.WriteLine($"   Vendedor: {order.SalesmanId}");
+                System.Diagnostics.Debug.WriteLine($"   Progress: {order.ProgressPercentage}%");
+                System.Diagnostics.Debug.WriteLine($"   Order%: {order.OrderPercentage}%");
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -181,8 +194,10 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
-                // No intentar asignar UpdatedBy ya que no existe en el modelo
-                // Si necesitas tracking de usuario, deberás agregarlo al modelo OrderDb
+                System.Diagnostics.Debug.WriteLine($"📝 Actualizando orden {order.Id}:");
+                System.Diagnostics.Debug.WriteLine($"   Progress: {order.ProgressPercentage}%");
+                System.Diagnostics.Debug.WriteLine($"   Order%: {order.OrderPercentage}%");
+                System.Diagnostics.Debug.WriteLine($"   Estado: {order.OrderStatus}");
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -346,21 +361,35 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("📋 Obteniendo vendedores de t_vendor...");
+
                 var response = await _supabaseClient
-                    .From<UserDb>()
-                    .Where(x => x.Role == "salesperson")
+                    .From<VendorTableDb>()
                     .Where(x => x.IsActive == true)
+                    .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
-                var users = response?.Models ?? new List<UserDb>();
+                var vendors = response?.Models ?? new List<VendorTableDb>();
 
-                // Convertir UserDb a VendorDb
-                return users.Select(u => VendorDb.FromUser(u)).ToList();
+                System.Diagnostics.Debug.WriteLine($"✅ Vendedores encontrados: {vendors.Count}");
+
+                foreach (var v in vendors)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   - {v.VendorName} (ID: {v.Id})");
+                }
+
+                // Convertir VendorTableDb a VendorDb para compatibilidad
+                return vendors.Select(v => new VendorDb
+                {
+                    Id = v.Id,
+                    VendorName = v.VendorName
+                }).ToList();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo vendedores: {ex.Message}");
-                throw;
+                System.Diagnostics.Debug.WriteLine($"❌ Error obteniendo vendedores: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   Stack: {ex.StackTrace}");
+                throw new Exception($"Error al cargar vendedores: {ex.Message}", ex);
             }
         }
 
@@ -382,30 +411,6 @@ namespace SistemaGestionProyectos2.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error obteniendo estados: {ex.Message}");
-                throw;
-            }
-        }
-
-        // ===============================================
-        // MÉTODOS PARA ÓRDENES CON PAGINACIÓN
-        // ===============================================
-
-        public async Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0)
-        {
-            try
-            {
-                var response = await _supabaseClient
-                    .From<OrderDb>()
-                    .Select("*")
-                    .Order("f_podate", Postgrest.Constants.Ordering.Descending)
-                    .Range(offset, offset + limit - 1)
-                    .Get();
-
-                return response?.Models ?? new List<OrderDb>();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo órdenes: {ex.Message}");
                 throw;
             }
         }
@@ -444,22 +449,13 @@ namespace SistemaGestionProyectos2.Services
         public int Id { get; set; }
 
         [Column("f_po")]
-        public string Po { get; set; } // Cambiado de OrderNumber a Po
-
-        // Alias para compatibilidad
-        public string OrderNumber => Po;
+        public string Po { get; set; }
 
         [Column("f_quote")]
-        public string Quote { get; set; } // Cambiado de QuotationNumber a Quote
-
-        // Alias para compatibilidad
-        public string QuotationNumber => Quote;
+        public string Quote { get; set; }
 
         [Column("f_podate")]
-        public DateTime? PoDate { get; set; } // Cambiado de OrderDate a PoDate
-
-        // Alias para compatibilidad
-        public DateTime? OrderDate => PoDate;
+        public DateTime? PoDate { get; set; }
 
         [Column("f_client")]
         public int? ClientId { get; set; }
@@ -471,41 +467,41 @@ namespace SistemaGestionProyectos2.Services
         public string Description { get; set; }
 
         [Column("f_salesman")]
-        public int? SalesmanId { get; set; } // Cambiado de VendorId a SalesmanId
-
-        // Alias para compatibilidad
-        public int? VendorId => SalesmanId;
+        public int? SalesmanId { get; set; }
 
         [Column("f_estdelivery")]
-        public DateTime? EstDelivery { get; set; } // Cambiado de PromiseDate a EstDelivery
-
-        // Alias para compatibilidad
-        public DateTime? PromiseDate => EstDelivery;
+        public DateTime? EstDelivery { get; set; }
 
         [Column("f_salesubtotal")]
-        public decimal? SaleSubtotal { get; set; } // Cambiado de Subtotal a SaleSubtotal
-
-        // Alias para compatibilidad
-        public decimal Subtotal => SaleSubtotal ?? 0;
+        public decimal? SaleSubtotal { get; set; }
 
         [Column("f_saletotal")]
-        public decimal? SaleTotal { get; set; } // Cambiado de Total a SaleTotal
-
-        // Alias para compatibilidad
-        public decimal Total => SaleTotal ?? 0;
+        public decimal? SaleTotal { get; set; }
 
         [Column("f_expense")]
         public decimal? Expense { get; set; }
 
         [Column("f_orderstat")]
-        public int? OrderStatus { get; set; } // Cambiado de StatusId a OrderStatus
+        public int? OrderStatus { get; set; }
 
-        // Alias para compatibilidad
-        public int? StatusId => OrderStatus;
-
-        // Campos adicionales que pueden estar en la BD
+        [Column("progress_percentage")]
         public int ProgressPercentage { get; set; }
+
+        [Column("order_percentage")]
         public int OrderPercentage { get; set; }
+
+        // Campos de auditoría
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("updated_by")]
+        public int? UpdatedBy { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
     }
 
     [Table("t_client")]
@@ -549,7 +545,7 @@ namespace SistemaGestionProyectos2.Services
         public int ClientId { get; set; }
 
         [Column("f_contactname")]
-        public string ContactName { get; set; } // Cambiado de Name a ContactName
+        public string ContactName { get; set; }
 
         [Column("f_email")]
         public string Email { get; set; }
@@ -617,7 +613,7 @@ namespace SistemaGestionProyectos2.Services
         public int Id { get; set; }
         public string VendorName { get; set; }
 
-        // Constructor desde UserDb
+        // Constructor desde UserDb (ya no se usa)
         public static VendorDb FromUser(UserDb user)
         {
             return new VendorDb
@@ -626,5 +622,37 @@ namespace SistemaGestionProyectos2.Services
                 VendorName = user.FullName
             };
         }
+    }
+
+    // Modelo real de la tabla t_vendor
+    [Table("t_vendor")]
+    public class VendorTableDb : BaseModel
+    {
+        [PrimaryKey("f_vendor")]
+        public int Id { get; set; }
+
+        [Column("f_vendorname")]
+        public string VendorName { get; set; }
+
+        [Column("f_user_id")]
+        public int? UserId { get; set; }
+
+        [Column("f_commission_rate")]
+        public decimal? CommissionRate { get; set; }
+
+        [Column("f_phone")]
+        public string Phone { get; set; }
+
+        [Column("f_email")]
+        public string Email { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
     }
 }

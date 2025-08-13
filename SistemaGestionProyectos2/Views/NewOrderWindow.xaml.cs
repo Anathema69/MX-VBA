@@ -221,6 +221,9 @@ namespace SistemaGestionProyectos2.Views
             e.Handled = !regex.IsMatch(newText);
         }
 
+
+        // Reemplazar el método SaveButton_Click en NewOrderWindow.xaml.cs
+
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             // Validar campos obligatorios
@@ -234,25 +237,30 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "GUARDANDO...";
 
-                // Obtener el ID del contacto seleccionado
+                // Obtener el ID del contacto seleccionado de manera segura
                 int? contactId = null;
-                if (ContactComboBox.SelectedValue != null)
+                if (ContactComboBox.SelectedItem is ContactDb selectedContact)
                 {
-                    var selectedValue = ContactComboBox.SelectedValue;
-                    if (selectedValue is int intValue && intValue > 0)
+                    // Si es un contacto real (ID > 0), usar su ID
+                    if (selectedContact.Id > 0)
                     {
-                        contactId = intValue;
+                        contactId = selectedContact.Id;
+                    }
+                    // Si es un contacto temporal (ID = 0), dejar como null
+                    else
+                    {
+                        contactId = null;
                     }
                 }
 
-                // Crear nueva orden
+                // Crear nueva orden con valores por defecto para los porcentajes
                 var newOrder = new OrderDb
                 {
                     Po = OrderNumberTextBox.Text.Trim().ToUpper(),
                     Quote = QuotationTextBox.Text?.Trim().ToUpper(),
                     PoDate = OrderDatePicker.SelectedDate,
                     ClientId = (int?)ClientComboBox.SelectedValue,
-                    ContactId = contactId, // Usar el contactId procesado
+                    ContactId = contactId,
                     Description = DescriptionTextBox.Text.Trim(),
                     SalesmanId = (int?)VendorComboBox.SelectedValue,
                     EstDelivery = DeliveryDatePicker.SelectedDate,
@@ -260,20 +268,33 @@ namespace SistemaGestionProyectos2.Views
                     SaleTotal = subtotal * 1.16m,
                     Expense = decimal.TryParse(ExpenseTextBox.Text, out decimal expense) ? expense : 0,
                     OrderStatus = 1, // Estado inicial: PENDIENTE
-                    ProgressPercentage = 0,
-                    OrderPercentage = 0
+                    ProgressPercentage = 0, // Inicializar en 0
+                    OrderPercentage = 0     // Inicializar en 0
                 };
 
                 // Log para depuración
-                System.Diagnostics.Debug.WriteLine($"📝 Creando orden:");
+                System.Diagnostics.Debug.WriteLine($"📋 Creando orden:");
                 System.Diagnostics.Debug.WriteLine($"   PO: {newOrder.Po}");
                 System.Diagnostics.Debug.WriteLine($"   Cliente ID: {newOrder.ClientId}");
-                System.Diagnostics.Debug.WriteLine($"   Contacto ID: {newOrder.ContactId}");
+                System.Diagnostics.Debug.WriteLine($"   Contacto ID: {newOrder.ContactId ?? 0} (null = sin contacto)");
                 System.Diagnostics.Debug.WriteLine($"   Vendedor ID: {newOrder.SalesmanId}");
                 System.Diagnostics.Debug.WriteLine($"   Total: {newOrder.SaleTotal}");
+                System.Diagnostics.Debug.WriteLine($"   Progress%: {newOrder.ProgressPercentage}");
+                System.Diagnostics.Debug.WriteLine($"   Order%: {newOrder.OrderPercentage}");
 
-                // Guardar en Supabase con el ID del usuario actual
-                var userId = _currentUser?.Id ?? 1; // Por defecto 1 si no hay usuario
+                // IMPORTANTE: Pasar el ID del usuario actual correctamente
+                int userId = 0;
+                if (_currentUser != null)
+                {
+                    userId = _currentUser.Id;
+                    System.Diagnostics.Debug.WriteLine($"👤 Usuario creando la orden: {_currentUser.FullName} (ID: {userId})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ No hay usuario en sesión, usando ID por defecto");
+                    userId = 1; // Fallback solo si no hay usuario
+                }
+
                 var createdOrder = await _supabaseService.CreateOrder(newOrder, userId);
 
                 if (createdOrder != null)
@@ -300,7 +321,8 @@ namespace SistemaGestionProyectos2.Views
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Error al guardar la orden:\n{ex.Message}",
+                    $"Error al guardar la orden:\n{ex.Message}\n\n" +
+                    "Verifique que todos los campos estén correctos y que tenga conexión a internet.",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -314,6 +336,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // También actualizar el método ValidateForm para ser menos estricto con el contacto
         private bool ValidateForm()
         {
             var errors = new List<string>();
@@ -327,14 +350,8 @@ namespace SistemaGestionProyectos2.Views
             if (ClientComboBox.SelectedItem == null)
                 errors.Add("• Cliente es obligatorio");
 
-            // Validación mejorada para contacto
-            if (ContactComboBox.IsEnabled && ContactComboBox.ItemsSource != null)
-            {
-                if (ContactComboBox.SelectedItem == null)
-                {
-                    errors.Add("• Debe seleccionar un contacto");
-                }
-            }
+            // El contacto NO es obligatorio - puede ser null
+            // Removemos la validación del contacto
 
             if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
                 errors.Add("• Descripción es obligatoria");

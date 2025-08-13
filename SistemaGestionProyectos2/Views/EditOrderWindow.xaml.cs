@@ -208,6 +208,8 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // Reemplazar el método SaveButton_Click en EditOrderWindow.xaml.cs
+
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -228,6 +230,13 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "GUARDANDO...";
 
+                // Log detallado de lo que se está guardando
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine($"💾 GUARDANDO CAMBIOS EN ORDEN {_originalOrderDb.Id}");
+                System.Diagnostics.Debug.WriteLine($"   Usuario: {_currentUser.FullName} (ID: {_currentUser.Id})");
+                System.Diagnostics.Debug.WriteLine($"   Rol: {_currentUser.Role}");
+                System.Diagnostics.Debug.WriteLine("========================================");
+
                 // Preparar la orden actualizada
                 _originalOrderDb.EstDelivery = PromiseDatePicker.SelectedDate.Value;
                 _originalOrderDb.ProgressPercentage = (int)ProgressSlider.Value;
@@ -247,9 +256,18 @@ namespace SistemaGestionProyectos2.Views
                         _originalOrderDb.SaleTotal = subtotal * 1.16m;
                     }
                     _originalOrderDb.OrderPercentage = (int)OrderPercentageSlider.Value;
+
+                    System.Diagnostics.Debug.WriteLine($"   📊 Campos financieros actualizados:");
+                    System.Diagnostics.Debug.WriteLine($"      Subtotal: ${_originalOrderDb.SaleSubtotal:N2}");
+                    System.Diagnostics.Debug.WriteLine($"      Total: ${_originalOrderDb.SaleTotal:N2}");
+                    System.Diagnostics.Debug.WriteLine($"      Order %: {_originalOrderDb.OrderPercentage}%");
                 }
 
-                // Guardar en Supabase con el ID del usuario
+                System.Diagnostics.Debug.WriteLine($"   📅 Fecha Promesa: {_originalOrderDb.EstDelivery:yyyy-MM-dd}");
+                System.Diagnostics.Debug.WriteLine($"   📈 Progress %: {_originalOrderDb.ProgressPercentage}%");
+                System.Diagnostics.Debug.WriteLine($"   🔖 Estado ID: {_originalOrderDb.OrderStatus}");
+
+                // IMPORTANTE: Pasar el ID del usuario actual
                 bool success = await _supabaseService.UpdateOrder(_originalOrderDb, _currentUser.Id);
 
                 if (success)
@@ -268,7 +286,10 @@ namespace SistemaGestionProyectos2.Views
                         _order.OrderPercentage = _originalOrderDb.OrderPercentage;
                     }
 
-                    // Mensaje más limpio y rápido
+                    System.Diagnostics.Debug.WriteLine($"✅ Orden actualizada exitosamente");
+                    System.Diagnostics.Debug.WriteLine($"   Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    System.Diagnostics.Debug.WriteLine("========================================");
+
                     MessageBox.Show(
                         $"✅ Orden {_order.OrderNumber} actualizada correctamente",
                         "Éxito",
@@ -285,13 +306,17 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR AL GUARDAR CAMBIOS:");
+                System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   Stack: {ex.StackTrace}");
+                System.Diagnostics.Debug.WriteLine("========================================");
+
                 MessageBox.Show(
                     $"Error al guardar los cambios:\n{ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
-
-                System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
             }
             finally
             {
