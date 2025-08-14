@@ -222,8 +222,7 @@ namespace SistemaGestionProyectos2.Views
         }
 
 
-        // Reemplazar el método SaveButton_Click en NewOrderWindow.xaml.cs
-
+        
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             // Validar campos obligatorios
@@ -295,17 +294,21 @@ namespace SistemaGestionProyectos2.Views
                     userId = 1; // Fallback solo si no hay usuario
                 }
 
+                // Llamar al servicio para crear la orden
                 var createdOrder = await _supabaseService.CreateOrder(newOrder, userId);
 
                 if (createdOrder != null)
                 {
                     System.Diagnostics.Debug.WriteLine($"✅ Orden creada con ID: {createdOrder.Id}");
+                    System.Diagnostics.Debug.WriteLine($"   Created By: {createdOrder.CreatedBy}");
+                    System.Diagnostics.Debug.WriteLine($"   Updated By: {createdOrder.UpdatedBy}");
 
                     MessageBox.Show(
                         $"✅ Orden {newOrder.Po} guardada exitosamente.\n\n" +
                         $"Cliente: {(ClientComboBox.SelectedItem as ClientDb)?.Name}\n" +
                         $"Vendedor: {(VendorComboBox.SelectedItem as VendorDb)?.VendorName}\n" +
-                        $"Total: {TotalTextBlock.Text}",
+                        $"Total: {TotalTextBlock.Text}\n" +
+                        $"Creada por: {_currentUser?.FullName ?? "Sistema"}",
                         "Orden Guardada",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);

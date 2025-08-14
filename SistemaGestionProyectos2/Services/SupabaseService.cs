@@ -163,14 +163,16 @@ namespace SistemaGestionProyectos2.Services
                 if (order.OrderPercentage == 0)
                     order.OrderPercentage = 0;
 
+                // ⭐ CAMBIO IMPORTANTE: Establecer los campos de auditoría
+                order.CreatedBy = userId > 0 ? userId : 1;
+                order.UpdatedBy = userId > 0 ? userId : 1;
+
                 // Log para debug
-                System.Diagnostics.Debug.WriteLine($"📝 Creando orden en Supabase:");
-                System.Diagnostics.Debug.WriteLine($"   PO: {order.Po}");
-                System.Diagnostics.Debug.WriteLine($"   Cliente: {order.ClientId}");
-                System.Diagnostics.Debug.WriteLine($"   Contacto: {order.ContactId}");
-                System.Diagnostics.Debug.WriteLine($"   Vendedor: {order.SalesmanId}");
-                System.Diagnostics.Debug.WriteLine($"   Progress: {order.ProgressPercentage}%");
-                System.Diagnostics.Debug.WriteLine($"   Order%: {order.OrderPercentage}%");
+                System.Diagnostics.Debug.WriteLine($"Creando orden en Supabase:");
+                System.Diagnostics.Debug.WriteLine($"  PO: {order.Po}");
+                System.Diagnostics.Debug.WriteLine($"  Cliente: {order.ClientId}");
+                System.Diagnostics.Debug.WriteLine($"  Created By: {order.CreatedBy}");  
+                System.Diagnostics.Debug.WriteLine($"  Updated By: {order.UpdatedBy}");  
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -194,10 +196,14 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
+                // ⭐ CAMBIO IMPORTANTE: Establecer quien actualiza
+                order.UpdatedBy = userId > 0 ? userId : 1;
+
                 System.Diagnostics.Debug.WriteLine($"📝 Actualizando orden {order.Id}:");
                 System.Diagnostics.Debug.WriteLine($"   Progress: {order.ProgressPercentage}%");
                 System.Diagnostics.Debug.WriteLine($"   Order%: {order.OrderPercentage}%");
                 System.Diagnostics.Debug.WriteLine($"   Estado: {order.OrderStatus}");
+                System.Diagnostics.Debug.WriteLine($"   👤 Updated By: {order.UpdatedBy}");  
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -216,6 +222,7 @@ namespace SistemaGestionProyectos2.Services
                     .Set(x => x.SaleTotal, order.SaleTotal)
                     .Set(x => x.Expense, order.Expense)
                     .Set(x => x.OrderStatus, order.OrderStatus)
+                    .Set(x => x.UpdatedBy, order.UpdatedBy)  
                     .Update();
 
                 return response?.Models?.Count > 0;
@@ -490,7 +497,7 @@ namespace SistemaGestionProyectos2.Services
         [Column("order_percentage")]
         public int OrderPercentage { get; set; }
 
-        // Campos de auditoría
+        // Campos de auditoría - ESTOS SON LOS NUEVOS/MODIFICADOS
         [Column("created_by")]
         public int? CreatedBy { get; set; }
 
