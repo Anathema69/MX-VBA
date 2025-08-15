@@ -1,13 +1,15 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using SistemaGestionProyectos2.Models;
-using SistemaGestionProyectos2.Services;
+using System.Windows.Media;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -20,6 +22,7 @@ namespace SistemaGestionProyectos2.Views
         private List<ClientDb> _clients;
         private List<VendorDb> _vendors;
         private List<OrderStatusDb> _orderStatuses;
+        public bool IsAdmin => _currentUser?.Role == "admin";
 
         public OrdersManagementWindow(UserSession user)
         {
@@ -27,6 +30,9 @@ namespace SistemaGestionProyectos2.Views
             _currentUser = user;
             _orders = new ObservableCollection<OrderViewModel>();
             _supabaseService = SupabaseService.Instance;
+
+            // IMPORTANTE: Establecer el DataContext para los bindings
+            this.DataContext = this;
 
             InitializeUI();
             ConfigurePermissions();
@@ -157,6 +163,13 @@ namespace SistemaGestionProyectos2.Views
                     }
 
                     StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
+
+                    // AGREGAR ESTA LÍNEA AL FINAL
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        ConfigureButtonsVisibility();
+                    }), System.Windows.Threading.DispatcherPriority.Loaded);
+
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
                     // Cargar el resto en segundo plano si hay más de 100
@@ -496,6 +509,73 @@ namespace SistemaGestionProyectos2.Views
 
                 System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
             }
+        }
+
+        // Agregar este método en OrdersManagementWindow.xaml.cs
+
+        // Método para configurar la visibilidad de los botones después de cargar el DataGrid
+        private void ConfigureButtonsVisibility()
+        {
+            // Si no es admin, ocultar el botón de facturas en todas las filas
+            if (_currentUser.Role != "admin")
+            {
+                // Ocultar la columna completa de facturas es más eficiente
+                foreach (var column in OrdersDataGrid.Columns)
+                {
+                    if (column is DataGridTemplateColumn templateColumn &&
+                        templateColumn.Header?.ToString() == "ACCIONES")
+                    {
+                        // Necesitamos modificar el template
+                        OrdersDataGrid.UpdateLayout();
+
+                        // Iterar por todas las filas
+                        foreach (var item in OrdersDataGrid.Items)
+                        {
+                            var row = OrdersDataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+                            if (row != null)
+                            {
+                                // Buscar el botón de facturas en la fila
+                                var presenter = GetVisualChild<DataGridCellsPresenter>(row);
+                                if (presenter != null)
+                                {
+                                    // Obtener la celda de acciones (última columna)
+                                    var cell = presenter.ItemContainerGenerator.ContainerFromIndex(
+                                        OrdersDataGrid.Columns.Count - 1) as DataGridCell;
+
+                                    if (cell != null)
+                                    {
+                                        // Buscar el StackPanel dentro de la celda
+                                        var stackPanel = GetVisualChild<StackPanel>(cell);
+                                        if (stackPanel != null && stackPanel.Children.Count > 1)
+                                        {
+                                            // El segundo botón es el de facturas (índice 1)
+                                            if (stackPanel.Children[1] is Button invoiceButton)
+                                            {
+                                                invoiceButton.Visibility = Visibility.Collapsed;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Métodos helper para buscar elementos visuales
+        private T GetVisualChild<T>(DependencyObject parent) where T : Visual
+        {
+            T child = default(T);
+            int numVisuals = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < numVisuals; i++)
+            {
+                var v = VisualTreeHelper.GetChild(parent, i);
+                child = v as T ?? GetVisualChild<T>(v);
+                if (child != null)
+                    break;
+            }
+            return child;
         }
     }
 }

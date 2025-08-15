@@ -30,6 +30,20 @@ namespace SistemaGestionProyectos2.Views
             _invoices = new ObservableCollection<InvoiceViewModel>();
             _currentUser = currentUser;
 
+            // VALIDACIÓN DE SEGURIDAD - Solo admin puede acceder
+            if (_currentUser.Role != "admin")
+            {
+                MessageBox.Show(
+                    "No tiene permisos para gestionar facturas.\nSolo el administrador puede acceder a este módulo.",
+                    "Acceso Denegado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                // Cerrar la ventana inmediatamente
+                this.Loaded += (s, e) => this.Close();
+                return;
+            }
+
             InvoicesDataGrid.ItemsSource = _invoices;
 
             _ = LoadOrderAndInvoices(orderId);
@@ -191,6 +205,17 @@ namespace SistemaGestionProyectos2.Views
 
         private void AddInvoiceButton_Click(object sender, RoutedEventArgs e)
         {
+            // DOBLE VALIDACIÓN DE SEGURIDAD
+            if (_currentUser.Role != "admin")
+            {
+                MessageBox.Show(
+                    "Solo el administrador puede crear facturas.",
+                    "Permiso Denegado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             // Verificar que no se exceda el monto de la orden
             decimal currentTotal = _invoices.Where(i => !i.IsNew).Sum(i => i.Total);
             decimal remaining = _orderTotal - currentTotal;
