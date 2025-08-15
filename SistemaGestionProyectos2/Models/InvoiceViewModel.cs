@@ -1,4 +1,4 @@
-﻿// Archivo: Models/InvoiceViewModel.cs - VERSIÓN CORREGIDA
+﻿// Archivo: Models/InvoiceViewModel.cs - VERSIÓN ACTUALIZADA
 
 using System;
 using System.ComponentModel;
@@ -93,7 +93,6 @@ namespace SistemaGestionProyectos2.Models
             }
         }
 
-        // CAMBIO IMPORTANTE: Total ahora tiene set público
         public decimal Total
         {
             get => _total;
@@ -198,7 +197,7 @@ namespace SistemaGestionProyectos2.Models
             }
         }
 
-        // Días de crédito del cliente (se establecerá desde la ventana)
+        // Días de crédito del cliente
         public int ClientCreditDays { get; set; }
 
         // Métodos auxiliares
@@ -251,6 +250,21 @@ namespace SistemaGestionProyectos2.Models
             _total = _subtotal * 1.16m;
             OnPropertyChanged(nameof(Total));
             OnPropertyChanged(nameof(TotalFormatted));
+        }
+
+        // Método para validar si la factura está completa
+        public bool IsValid()
+        {
+            return !string.IsNullOrWhiteSpace(Folio) &&
+                   Subtotal > 0 &&
+                   InvoiceDate.HasValue;
+        }
+
+        // Método para resetear cambios
+        public void ResetChanges()
+        {
+            _hasChanges = false;
+            OnPropertyChanged(nameof(HasChanges));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

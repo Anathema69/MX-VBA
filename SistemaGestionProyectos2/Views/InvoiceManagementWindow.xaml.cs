@@ -1,4 +1,4 @@
-﻿// Archivo: Views/InvoiceManagementWindow.xaml.cs - VERSIÓN MEJORADA
+﻿// Archivo: Views/InvoiceManagementWindow.xaml.cs - VERSIÓN MEJORADA CON NUEVAS FUNCIONALIDADES
 
 using System;
 using System.Collections.ObjectModel;
@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
@@ -22,6 +23,7 @@ namespace SistemaGestionProyectos2.Views
         private UserSession _currentUser;
         private decimal _orderTotal;
         private bool _hasUnsavedChanges = false;
+        private bool _isCreatingNewInvoice = false; // Nueva bandera para controlar creación
 
         public InvoiceManagementWindow(int orderId, UserSession currentUser)
         {
@@ -39,13 +41,11 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
 
-                // Cerrar la ventana inmediatamente
                 this.Loaded += (s, e) => this.Close();
                 return;
             }
 
             InvoicesDataGrid.ItemsSource = _invoices;
-
             _ = LoadOrderAndInvoices(orderId);
         }
 
@@ -83,6 +83,9 @@ namespace SistemaGestionProyectos2.Views
                 await LoadInvoices();
 
                 StatusMessage.Text = "";
+
+                // Actualizar estado del botón completar factura
+                UpdateCompleteInvoiceButtonState();
             }
             catch (Exception ex)
             {
@@ -120,10 +123,10 @@ namespace SistemaGestionProyectos2.Views
                         HasChanges = false
                     };
 
-                    // IMPORTANTE: Usar SetTotalDirectly para no recalcular
+                    // Usar SetTotalDirectly para no recalcular
                     viewModel.SetTotalDirectly(invoice.Total ?? 0);
 
-                    // Manejar fechas especiales (1899-12-30 se considera como null)
+                    // Manejar fechas especiales
                     if (viewModel.PaymentDate.HasValue && viewModel.PaymentDate.Value.Year < 1900)
                     {
                         viewModel.PaymentDate = null;
@@ -146,11 +149,11 @@ namespace SistemaGestionProyectos2.Views
                     }
 
                     _invoices.Add(viewModel);
-
-                    System.Diagnostics.Debug.WriteLine($"   ✅ Factura {invoice.Folio}: Subtotal={invoice.Subtotal}, Total={invoice.Total}, Estado={viewModel.Status}");
                 }
 
                 UpdateSummary();
+                _isCreatingNewInvoice = false; // Reset la bandera después de cargar
+                AddInvoiceButton.IsEnabled = true; // Habilitar el botón
 
                 System.Diagnostics.Debug.WriteLine($"📊 Total facturado: {_invoices.Sum(i => i.Total):C}");
             }
@@ -169,16 +172,22 @@ namespace SistemaGestionProyectos2.Views
             decimal totalSubtotal = _invoices.Where(i => !i.IsNew).Sum(i => i.Subtotal);
             decimal balance = _orderTotal - totalInvoiced;
 
+            // NUEVO: Calcular balance sin IVA
+            decimal balanceWithoutTax = balance / 1.16m;
+
             // Actualizar UI
             InvoicedAmountText.Text = totalInvoiced.ToString("C", new CultureInfo("es-MX"));
             BalanceText.Text = balance.ToString("C", new CultureInfo("es-MX"));
+
+            // NUEVO: Mostrar balance sin IVA
+            BalanceWithoutTaxText.Text = balanceWithoutTax.ToString("C", new CultureInfo("es-MX"));
 
             // Actualizar barra de progreso
             double percentage = _orderTotal > 0 ? (double)(totalInvoiced / _orderTotal * 100) : 0;
             InvoiceProgressBar.Value = Math.Min(percentage, 100);
             ProgressPercentText.Text = $"{percentage:F0}%";
 
-            // Actualizar advertencia con formato de moneda mexicana
+            // Actualizar advertencia
             var cultureMX = new CultureInfo("es-MX");
             if (balance > 0)
             {
@@ -201,18 +210,60 @@ namespace SistemaGestionProyectos2.Views
             SubtotalSumText.Text = totalSubtotal.ToString("C", new CultureInfo("es-MX"));
             TotalSumText.Text = totalInvoiced.ToString("C", new CultureInfo("es-MX"));
             LastUpdateText.Text = $"Última actualización: {DateTime.Now:dd/MM/yyyy HH:mm:ss}";
+
+            // Actualizar estado del botón completar factura
+            UpdateCompleteInvoiceButtonState();
+        }
+
+        private void UpdateCompleteInvoiceButtonState()
+        {
+            // Calcular el balance actual
+            decimal totalInvoiced = _invoices.Where(i => !i.IsNew).Sum(i => i.Total);
+            decimal balance = _orderTotal - totalInvoiced;
+
+            // Habilitar el botón solo si hay balance pendiente y no hay facturas nuevas sin guardar
+            bool hasNewInvoices = _invoices.Any(i => i.IsNew);
+            CompleteInvoiceButton.IsEnabled = balance > 0 && !hasNewInvoices && !_isCreatingNewInvoice;
+
+            // Actualizar tooltip
+            if (balance <= 0)
+            {
+                CompleteInvoiceButton.ToolTip = "La facturación ya está completa";
+            }
+            else if (hasNewInvoices)
+            {
+                CompleteInvoiceButton.ToolTip = "Guarde las facturas pendientes antes de completar";
+            }
+            else if (_isCreatingNewInvoice)
+            {
+                CompleteInvoiceButton.ToolTip = "Complete la factura actual antes de crear otra";
+            }
+            else
+            {
+                decimal balanceWithoutTax = balance / 1.16m;
+                CompleteInvoiceButton.ToolTip = $"Crear factura por {balanceWithoutTax:C} (sin IVA) / {balance:C} (con IVA)";
+            }
         }
 
         private void AddInvoiceButton_Click(object sender, RoutedEventArgs e)
         {
-            // DOBLE VALIDACIÓN DE SEGURIDAD
-            if (_currentUser.Role != "admin")
+            // NUEVA VALIDACIÓN: Verificar si ya hay una factura nueva siendo creada
+            if (_isCreatingNewInvoice)
             {
                 MessageBox.Show(
-                    "Solo el administrador puede crear facturas.",
-                    "Permiso Denegado",
+                    "Ya hay una factura nueva en edición.\n" +
+                    "Complete o cancele la factura actual antes de crear otra.",
+                    "Factura en Edición",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.Information);
+
+                // Enfocar en la factura nueva existente
+                var newInvoice = _invoices.FirstOrDefault(i => i.IsNew);
+                if (newInvoice != null)
+                {
+                    InvoicesDataGrid.SelectedItem = newInvoice;
+                    InvoicesDataGrid.ScrollIntoView(newInvoice);
+                }
                 return;
             }
 
@@ -228,7 +279,7 @@ namespace SistemaGestionProyectos2.Views
             }
 
             // Crear nueva factura vacía
-            var newInvoice = new InvoiceViewModel
+            var newInvoiceItem = new InvoiceViewModel
             {
                 Id = 0,
                 OrderId = _currentOrder.Id,
@@ -242,26 +293,204 @@ namespace SistemaGestionProyectos2.Views
                 HasChanges = true
             };
 
-            // Establecer Total en 0
-            newInvoice.SetTotalDirectly(0);
+            newInvoiceItem.SetTotalDirectly(0);
 
-            _invoices.Add(newInvoice);
+            _invoices.Add(newInvoiceItem);
             _hasUnsavedChanges = true;
+            _isCreatingNewInvoice = true; // Marcar que hay una factura nueva en creación
 
-            // Mensaje más claro con instrucciones
-            StatusMessage.Text = "📝 Nueva factura agregada - Haga doble clic en las celdas para editar";
+            // Deshabilitar el botón mientras hay una factura nueva
+            AddInvoiceButton.IsEnabled = false;
+            CompleteInvoiceButton.IsEnabled = false;
+
+            // Mensaje más claro
+            StatusMessage.Text = "📝 Nueva factura agregada - Presione TAB para navegar, ENTER para guardar";
             StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(25, 118, 210));
 
-            // Seleccionar la nueva fila y enfocar en el primer campo editable
-            InvoicesDataGrid.SelectedItem = newInvoice;
-            InvoicesDataGrid.ScrollIntoView(newInvoice);
+            // Seleccionar la nueva fila y enfocar
+            InvoicesDataGrid.SelectedItem = newInvoiceItem;
+            InvoicesDataGrid.ScrollIntoView(newInvoiceItem);
 
-            // Dar un pequeño delay para que la UI se actualice, luego enfocar
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                InvoicesDataGrid.CurrentCell = new DataGridCellInfo(newInvoice, InvoicesDataGrid.Columns[1]); // Columna Folio
+                InvoicesDataGrid.CurrentCell = new DataGridCellInfo(newInvoiceItem, InvoicesDataGrid.Columns[1]);
                 InvoicesDataGrid.BeginEdit();
             }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        // NUEVO: Método para completar factura al 100%
+        private void CompleteInvoiceButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Calcular el monto pendiente
+            decimal totalInvoiced = _invoices.Where(i => !i.IsNew).Sum(i => i.Total);
+            decimal balance = _orderTotal - totalInvoiced;
+            decimal balanceWithoutTax = balance / 1.16m;
+
+            if (balance <= 0)
+            {
+                MessageBox.Show("La facturación ya está completa.",
+                    "Información", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Confirmar con el usuario
+            var result = MessageBox.Show(
+                $"¿Desea crear una factura por el monto restante?\n\n" +
+                $"Subtotal: {balanceWithoutTax:C}\n" +
+                $"Total con IVA: {balance:C}\n\n" +
+                "Se creará una factura con estos montos y la fecha de hoy.",
+                "Completar Facturación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            // Crear la factura con el monto restante
+            var completeInvoice = new InvoiceViewModel
+            {
+                Id = 0,
+                OrderId = _currentOrder.Id,
+                Folio = "", // El usuario debe llenarlo
+                InvoiceDate = DateTime.Now,
+                Subtotal = balanceWithoutTax,
+                StatusId = 1,
+                Status = "CREADA",
+                ClientCreditDays = _currentClient?.Credit ?? 0,
+                IsNew = true,
+                HasChanges = true
+            };
+
+            // El total se calcula automáticamente
+            completeInvoice.RecalculateTotal();
+
+            _invoices.Add(completeInvoice);
+            _hasUnsavedChanges = true;
+            _isCreatingNewInvoice = true;
+
+            // Deshabilitar botones
+            AddInvoiceButton.IsEnabled = false;
+            CompleteInvoiceButton.IsEnabled = false;
+
+            StatusMessage.Text = "⚡ Factura de completación creada - Ingrese el folio y guarde";
+            StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(255, 152, 0));
+
+            // Seleccionar y enfocar en el campo de folio
+            InvoicesDataGrid.SelectedItem = completeInvoice;
+            InvoicesDataGrid.ScrollIntoView(completeInvoice);
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                InvoicesDataGrid.CurrentCell = new DataGridCellInfo(completeInvoice, InvoicesDataGrid.Columns[1]); // Columna Folio
+                InvoicesDataGrid.BeginEdit();
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        // NUEVO: Manejar tecla Enter para guardar
+
+        
+
+        private void InvoicesDataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true; // Siempre manejar Enter para prevenir navegación por defecto
+
+                // IMPORTANTE: Primero commitear cualquier edición en progreso
+                // Esto asegura que los valores en edición se guarden en el objeto
+                InvoicesDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                InvoicesDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                // Pequeña pausa para asegurar que el commit se complete
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    // Obtener la factura actual
+                    var currentInvoice = InvoicesDataGrid.SelectedItem as InvoiceViewModel;
+
+                    // Si hay una factura nueva siendo editada, validar
+                    if (currentInvoice != null && currentInvoice.IsNew)
+                    {
+                        // Validar que tenga al menos folio y subtotal
+                        if (string.IsNullOrWhiteSpace(currentInvoice.Folio))
+                        {
+                            MessageBox.Show(
+                                "Debe ingresar el folio de la factura antes de guardar.",
+                                "Validación",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+
+                            // Enfocar en la columna de folio
+                            InvoicesDataGrid.CurrentCell = new DataGridCellInfo(currentInvoice, InvoicesDataGrid.Columns[1]);
+                            InvoicesDataGrid.BeginEdit();
+                            return;
+                        }
+
+                        if (currentInvoice.Subtotal <= 0)
+                        {
+                            MessageBox.Show(
+                                "Debe ingresar un subtotal mayor a 0 antes de guardar.",
+                                "Validación",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+
+                            // Enfocar en la columna de subtotal
+                            InvoicesDataGrid.CurrentCell = new DataGridCellInfo(currentInvoice, InvoicesDataGrid.Columns[3]);
+                            InvoicesDataGrid.BeginEdit();
+                            return;
+                        }
+                    }
+
+                    // Si hay cambios pendientes o facturas nuevas válidas, guardar
+                    if (_hasUnsavedChanges || _invoices.Any(i => i.HasChanges || (i.IsNew && !string.IsNullOrWhiteSpace(i.Folio))))
+                    {
+                        // Ejecutar guardado
+                        SaveAllButton_Click(null, null);
+                    }
+                    else
+                    {
+                        // Si no hay cambios, mostrar mensaje
+                        StatusMessage.Text = "No hay cambios para guardar";
+                        StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(158, 158, 158));
+                    }
+
+                }), System.Windows.Threading.DispatcherPriority.Input);
+            }
+            else if (e.Key == Key.Tab)
+            {
+                // Para Tab, también commitear la celda actual antes de moverse
+                InvoicesDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                e.Handled = false; // Permitir navegación normal con Tab
+            }
+            else if (e.Key == Key.Escape)
+            {
+                if (_isCreatingNewInvoice)
+                {
+                    // Cancelar edición actual
+                    InvoicesDataGrid.CancelEdit(DataGridEditingUnit.Cell);
+                    InvoicesDataGrid.CancelEdit(DataGridEditingUnit.Row);
+
+                    // Permitir cancelar la creación con ESC
+                    var newInvoice = _invoices.FirstOrDefault(i => i.IsNew);
+                    if (newInvoice != null)
+                    {
+                        var result = MessageBox.Show(
+                            "¿Desea cancelar la creación de la nueva factura?",
+                            "Cancelar",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+
+                        if (result == MessageBoxResult.Yes)
+                        {
+                            _invoices.Remove(newInvoice);
+                            _isCreatingNewInvoice = false;
+                            AddInvoiceButton.IsEnabled = true;
+                            UpdateSummary();
+                            StatusMessage.Text = "Creación cancelada";
+                            e.Handled = true;
+                        }
+                    }
+                }
+            }
         }
 
         private async void SaveAllButton_Click(object sender, RoutedEventArgs e)
@@ -273,7 +502,6 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Validar antes de guardar
             if (!ValidateInvoices())
             {
                 return;
@@ -290,7 +518,6 @@ namespace SistemaGestionProyectos2.Views
                 {
                     try
                     {
-                        // Recalcular el total basado en el subtotal actual
                         invoice.RecalculateTotal();
 
                         var invoiceDb = new InvoiceDb
@@ -309,7 +536,6 @@ namespace SistemaGestionProyectos2.Views
 
                         if (invoice.IsNew)
                         {
-                            // Crear nueva factura
                             var created = await _supabaseService.CreateInvoice(invoiceDb, _currentUser.Id);
                             if (created != null)
                             {
@@ -318,18 +544,20 @@ namespace SistemaGestionProyectos2.Views
                                 invoice.HasChanges = false;
                                 savedCount++;
 
+                                // Reset la bandera de creación
+                                _isCreatingNewInvoice = false;
+                                AddInvoiceButton.IsEnabled = true;
+
                                 System.Diagnostics.Debug.WriteLine($"✅ Factura creada: {invoice.Folio} con ID {created.Id}");
                             }
                         }
                         else if (invoice.HasChanges)
                         {
-                            // Actualizar factura existente
                             bool updated = await _supabaseService.UpdateInvoice(invoiceDb, _currentUser.Id);
                             if (updated)
                             {
                                 invoice.HasChanges = false;
                                 savedCount++;
-
                                 System.Diagnostics.Debug.WriteLine($"✅ Factura actualizada: {invoice.Folio}");
                             }
                         }
@@ -373,22 +601,56 @@ namespace SistemaGestionProyectos2.Views
         private bool ValidateInvoices()
         {
             decimal totalSum = 0;
+            var foliosInThisOrder = new HashSet<string>(); // Para validar duplicados dentro de la misma orden
 
             foreach (var invoice in _invoices)
             {
                 // Validar folio obligatorio
                 if (string.IsNullOrWhiteSpace(invoice.Folio))
                 {
-                    MessageBox.Show($"El folio es obligatorio para todas las facturas.",
-                        "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(
+                        $"El folio es obligatorio para todas las facturas.",
+                        "Validación",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    // Enfocar en la factura con problema
+                    InvoicesDataGrid.SelectedItem = invoice;
+                    InvoicesDataGrid.ScrollIntoView(invoice);
+                    InvoicesDataGrid.CurrentCell = new DataGridCellInfo(invoice, InvoicesDataGrid.Columns[1]);
+
+                    return false;
+                }
+
+                // Validar que no haya folios duplicados en la misma orden
+                if (!foliosInThisOrder.Add(invoice.Folio.Trim().ToUpper()))
+                {
+                    MessageBox.Show(
+                        $"El folio '{invoice.Folio}' está duplicado en esta orden.\n" +
+                        "Cada factura debe tener un folio único dentro de la misma orden.",
+                        "Validación",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    InvoicesDataGrid.SelectedItem = invoice;
+                    InvoicesDataGrid.ScrollIntoView(invoice);
+
                     return false;
                 }
 
                 // Validar subtotal positivo
                 if (invoice.Subtotal <= 0)
                 {
-                    MessageBox.Show($"El subtotal debe ser mayor a 0 para la factura {invoice.Folio}.",
-                        "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(
+                        $"El subtotal debe ser mayor a 0 para la factura {invoice.Folio}.",
+                        "Validación",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    InvoicesDataGrid.SelectedItem = invoice;
+                    InvoicesDataGrid.ScrollIntoView(invoice);
+                    InvoicesDataGrid.CurrentCell = new DataGridCellInfo(invoice, InvoicesDataGrid.Columns[3]);
+
                     return false;
                 }
 
@@ -396,10 +658,13 @@ namespace SistemaGestionProyectos2.Views
             }
 
             // Validar que no se exceda el monto de la orden
-            if (totalSum > _orderTotal)
+            if (totalSum > _orderTotal * 1.01m) // Tolerancia del 1% por redondeos
             {
-                MessageBox.Show($"La suma de las facturas ({totalSum:C}) excede el monto de la orden ({_orderTotal:C}).",
-                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(
+                    $"La suma de las facturas ({totalSum:C}) excede el monto de la orden ({_orderTotal:C}).",
+                    "Validación",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
                 return false;
             }
 
@@ -429,10 +694,11 @@ namespace SistemaGestionProyectos2.Views
 
             if (invoice == null) return;
 
-            // Si es nueva, solo remover de la lista
             if (invoice.IsNew)
             {
                 _invoices.Remove(invoice);
+                _isCreatingNewInvoice = false;
+                AddInvoiceButton.IsEnabled = true;
                 UpdateSummary();
                 return;
             }
@@ -466,6 +732,8 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // ACTUALIZAR el método InvoicesDataGrid_CellEditEnding (si ya existe, reemplazarlo):
+
         private void InvoicesDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.EditAction == DataGridEditAction.Commit)
@@ -473,43 +741,73 @@ namespace SistemaGestionProyectos2.Views
                 var invoice = e.Row.Item as InvoiceViewModel;
                 if (invoice != null)
                 {
+                    // Marcar que hay cambios
                     invoice.HasChanges = true;
                     _hasUnsavedChanges = true;
 
-                    // Si se editó el subtotal, recalcular el total
-                    if (e.Column.Header.ToString() == "SUBTOTAL")
+                    // Manejar específicamente cada columna
+                    var columnHeader = e.Column.Header?.ToString();
+
+                    if (columnHeader == "SUBTOTAL")
                     {
                         var textBox = e.EditingElement as TextBox;
                         if (textBox != null)
                         {
                             string cleanText = textBox.Text.Replace("$", "").Replace(",", "").Trim();
-                            if (decimal.TryParse(cleanText, out decimal subtotal))
+                            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal subtotal))
                             {
                                 invoice.Subtotal = subtotal;
                                 System.Diagnostics.Debug.WriteLine($"💰 Subtotal actualizado: {subtotal:C} -> Total: {invoice.Total:C}");
                             }
                         }
                     }
-
-                    // Si se editó la fecha de recepción, calcular fecha programada
-                    if (e.Column.Header.ToString() == "RECIBO FACT." && invoice.ReceptionDate.HasValue)
+                    else if (columnHeader == "FOLIO FACTURA")
+                    {
+                        var textBox = e.EditingElement as TextBox;
+                        if (textBox != null)
+                        {
+                            invoice.Folio = textBox.Text?.Trim();
+                            System.Diagnostics.Debug.WriteLine($"📄 Folio actualizado: {invoice.Folio}");
+                        }
+                    }
+                    else if (columnHeader == "RECIBO FACT." && invoice.ReceptionDate.HasValue)
                     {
                         invoice.ClientCreditDays = _currentClient?.Credit ?? 0;
                         System.Diagnostics.Debug.WriteLine($"📅 Fecha recepción: {invoice.ReceptionDate:d} -> Pago prog: {invoice.DueDate:d}");
                     }
 
-                    UpdateSummary();
+                    // Actualizar el resumen después de cualquier cambio
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        UpdateSummary();
+
+                        // Si es una factura nueva y ya tiene folio y subtotal, quitar el bloqueo
+                        if (invoice.IsNew && !string.IsNullOrWhiteSpace(invoice.Folio) && invoice.Subtotal > 0)
+                        {
+                            StatusMessage.Text = "Factura lista para guardar - Presione Enter o haga clic en Guardar";
+                            StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
                 }
             }
         }
 
+        
+
         private void InvoicesDataGrid_PreparingCellForEdit(object sender, DataGridPreparingCellForEditEventArgs e)
         {
-            // Marcar que se está editando
             var invoice = e.Row.Item as InvoiceViewModel;
             if (invoice != null)
             {
                 invoice.IsEditing = true;
+
+                // Si es una nueva factura, actualizar el mensaje de estado
+                if (invoice.IsNew)
+                {
+                    var columnHeader = e.Column.Header?.ToString();
+                    StatusMessage.Text = $"Editando: {columnHeader} - Use TAB para navegar, ENTER para guardar";
+                    StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(33, 150, 243));
+                }
             }
         }
 

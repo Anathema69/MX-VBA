@@ -1,4 +1,5 @@
-﻿<Window x:Class="SistemaGestionProyectos2.Views.InvoiceManagementWindow"
+﻿<!-- Archivo: Views/InvoiceManagementWindow.xaml - VERSIÓN MEJORADA -->
+<Window x:Class="SistemaGestionProyectos2.Views.InvoiceManagementWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Gestión de Facturas - IMA Mecatrónica" 
@@ -9,7 +10,7 @@
         MinWidth="1000">
 
     <Window.Resources>
-        <!-- Estilos modernos para mejorar la experiencia -->
+        <!-- Estilos mejorados y consistentes -->
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2196F3"/>
             <Setter Property="Foreground" Value="White"/>
@@ -17,6 +18,7 @@
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="38"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -30,23 +32,19 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="border" Property="Background" Value="#1976D2"/>
-                                <Setter Property="Cursor" Value="Hand"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="border" Property="Background" Value="#0D47A1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#CCCCCC"/>
+                                <Setter Property="Foreground" Value="#888888"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <!-- Animación de pulsación para feedback visual -->
-        <Storyboard x:Key="PulseAnimation">
-            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                           From="1" To="0.7" Duration="0:0:0.2"
-                           AutoReverse="True"/>
-        </Storyboard>
     </Window.Resources>
 
     <Grid>
@@ -117,7 +115,7 @@
             </Grid>
         </Border>
 
-        <!-- Información de la Orden con diseño mejorado -->
+        <!-- Información de la Orden con diseño mejorado y NUEVOS CAMPOS -->
         <Border Grid.Row="1" Padding="25,20">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
@@ -181,7 +179,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Segunda línea: Balance y progreso mejorado -->
+                <!-- Segunda línea: Balance mejorado con NUEVO CAMPO -->
                 <Grid Grid.Row="1" Margin="0,15,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -202,8 +200,21 @@
                                      FontWeight="Bold"/>
                         </StackPanel>
 
+                        <!-- NUEVO: Por Facturar sin IVA -->
+                        <StackPanel Margin="0,0,25,0">
+                            <TextBlock Text="POR FACTURAR (SIN IVA)"
+                                     Foreground="#FFE082"
+                                     FontSize="11"
+                                     FontWeight="Light"/>
+                            <TextBlock x:Name="BalanceWithoutTaxText"
+                                     Text="$37,068.97"
+                                     Foreground="#FFEB3B"
+                                     FontSize="18"
+                                     FontWeight="Bold"/>
+                        </StackPanel>
+
                         <StackPanel>
-                            <TextBlock Text="POR FACTURAR"
+                            <TextBlock Text="POR FACTURAR (CON IVA)"
                                      Foreground="#B3E5FC"
                                      FontSize="11"
                                      FontWeight="Light"/>
@@ -287,7 +298,7 @@
             </Grid>
         </Border>
 
-        <!-- Toolbar de Acciones con mejor diseño -->
+        <!-- Toolbar de Acciones con mejor diseño y NUEVO BOTÓN -->
         <Border Grid.Row="2" 
                 Background="#FAFAFA"
                 BorderBrush="#E0E0E0"
@@ -295,16 +306,12 @@
                 Padding="15,12">
             <Grid>
                 <StackPanel Orientation="Horizontal">
-                    <!-- Botón Nueva Factura con indicador visual -->
+                    <!-- Botón Nueva Factura -->
                     <Button x:Name="AddInvoiceButton"
                            Click="AddInvoiceButton_Click"
-                           Height="38"
+                           Style="{StaticResource ModernButton}"
+                           Background="#4CAF50"
                            Margin="0,0,10,0">
-                        <Button.Style>
-                            <Style BasedOn="{StaticResource ModernButton}" TargetType="Button">
-                                <Setter Property="Background" Value="#4CAF50"/>
-                            </Style>
-                        </Button.Style>
                         <StackPanel Orientation="Horizontal">
                             <Border Background="White" 
                                     Width="20" Height="20" 
@@ -322,11 +329,22 @@
                         </StackPanel>
                     </Button>
 
+                    <!-- NUEVO: Botón Completar Factura -->
+                    <Button x:Name="CompleteInvoiceButton"
+                           Click="CompleteInvoiceButton_Click"
+                           Style="{StaticResource ModernButton}"
+                           Background="#FF9800"
+                           Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚡" FontSize="16" Margin="0,0,8,0"/>
+                            <TextBlock Text="Completar Factura" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <Button x:Name="SaveAllButton"
                            Click="SaveAllButton_Click"
-                           Height="38"
-                           Margin="0,0,10,0"
-                           Style="{StaticResource ModernButton}">
+                           Style="{StaticResource ModernButton}"
+                           Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="💾" FontSize="16" Margin="0,0,8,0"/>
                             <TextBlock Text="Guardar Todo" VerticalAlignment="Center"/>
@@ -378,7 +396,7 @@
             </Grid>
         </Border>
 
-        <!-- DataGrid de Facturas con diseño moderno -->
+        <!-- DataGrid con estilos mejorados y consistentes -->
         <Border Grid.Row="3" 
                 Margin="15" 
                 Background="White"
@@ -392,10 +410,6 @@
             </Border.Effect>
 
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
                 <DataGrid x:Name="InvoicesDataGrid"
                          AutoGenerateColumns="False"
                          CanUserAddRows="False"
@@ -411,6 +425,7 @@
                          FontSize="13"
                          CellEditEnding="InvoicesDataGrid_CellEditEnding"
                          PreparingCellForEdit="InvoicesDataGrid_PreparingCellForEdit"
+                         PreviewKeyDown="InvoicesDataGrid_PreviewKeyDown"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Hidden">
 
@@ -432,6 +447,7 @@
                             <Setter Property="Padding" Value="12,0"/>
                             <Setter Property="BorderBrush" Value="#455A64"/>
                             <Setter Property="BorderThickness" Value="0,0,1,0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
                         </Style>
 
                         <!-- Row Style con hover mejorado -->
@@ -440,42 +456,17 @@
                             <Setter Property="BorderBrush" Value="#F5F5F5"/>
                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
                             <Style.Triggers>
-                                <!-- Hover con color sutil -->
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0" Opacity="0.5">
-                                                <GradientStop Color="#F5F5F5" Offset="0"/>
-                                                <GradientStop Color="#FAFAFA" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
+                                    <Setter Property="Background" Value="#F5F5F5"/>
                                 </Trigger>
-                                <!-- Selección con color más profesional -->
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                                <GradientStop Color="#E3F2FD" Offset="0"/>
-                                                <GradientStop Color="#BBDEFB" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
+                                    <Setter Property="Background" Value="#E3F2FD"/>
                                     <Setter Property="BorderBrush" Value="#2196F3"/>
                                     <Setter Property="BorderThickness" Value="2,0,0,1"/>
                                 </Trigger>
-                                <!-- Nueva factura con indicador visual -->
                                 <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0" Opacity="0.3">
-                                                <GradientStop Color="#FFF9C4" Offset="0"/>
-                                                <GradientStop Color="#FFF59D" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
+                                    <Setter Property="Background" Value="#FFF9C4"/>
                                 </DataTrigger>
-                                <!-- Cambios pendientes -->
                                 <DataTrigger Binding="{Binding HasChanges}" Value="True">
                                     <Setter Property="FontStyle" Value="Italic"/>
                                     <Setter Property="BorderBrush" Value="#FF9800"/>
@@ -488,6 +479,7 @@
                         <Style TargetType="DataGridCell">
                             <Setter Property="BorderThickness" Value="0"/>
                             <Setter Property="Padding" Value="8,0"/>
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="Transparent"/>
@@ -527,16 +519,24 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Folio -->
+                        <!-- Folio con alineación consistente -->
                         <DataGridTextColumn Header="FOLIO FACTURA" 
                                            Binding="{Binding Folio}" 
                                            Width="150">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.EditingElementStyle>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="TextAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.EditingElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Fecha Factura -->
@@ -544,18 +544,20 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding InvoiceDate, StringFormat=dd/MM/yyyy}"
+                                             HorizontalAlignment="Center"
                                              VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <DatePicker SelectedDate="{Binding InvoiceDate}"
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Subtotal -->
+                        <!-- Subtotal con alineación a la derecha -->
                         <DataGridTextColumn Header="SUBTOTAL" 
                                            Binding="{Binding Subtotal, StringFormat=C}" 
                                            Width="120">
@@ -565,8 +567,17 @@
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="Bold"/>
                                     <Setter Property="Foreground" Value="#424242"/>
+                                    <Setter Property="Margin" Value="0,0,10,0"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
+                            <DataGridTextColumn.EditingElementStyle>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="TextAlignment" Value="Right"/>
+                                    <Setter Property="Margin" Value="0,0,10,0"/>
+                                </Style>
+                            </DataGridTextColumn.EditingElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Total con IVA -->
@@ -581,6 +592,7 @@
                                     <Setter Property="FontWeight" Value="Bold"/>
                                     <Setter Property="Foreground" Value="#2E7D32"/>
                                     <Setter Property="FontSize" Value="14"/>
+                                    <Setter Property="Margin" Value="0,0,10,0"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
@@ -590,13 +602,15 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding ReceptionDate, StringFormat=dd/MM/yyyy}"
+                                             HorizontalAlignment="Center"
                                              VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <DatePicker SelectedDate="{Binding ReceptionDate}"
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
@@ -621,13 +635,15 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding PaymentDate, StringFormat=dd/MM/yyyy}"
+                                             HorizontalAlignment="Center"
                                              VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
                                     <DatePicker SelectedDate="{Binding PaymentDate}"
-                                              VerticalAlignment="Center"/>
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
@@ -656,7 +672,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Acciones con mejor diseño -->
+                        <!-- Acciones -->
                         <DataGridTemplateColumn Header="ACCIONES" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -695,7 +711,7 @@
             </Grid>
         </Border>
 
-        <!-- Footer mejorado con información más visible -->
+        <!-- Footer mejorado -->
         <Border Grid.Row="4">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">

@@ -391,9 +391,7 @@ namespace SistemaGestionProyectos2.Views
                     System.Diagnostics.Debug.WriteLine("========================================");
 
                     MessageBox.Show(
-                        $"✅ Orden {_order.OrderNumber} actualizada correctamente\n\n" +
-                        $"Subtotal: {_subtotalValue:C}\n" +
-                        $"Total: {(_subtotalValue * 1.16m):C}",
+                        $"✅ Orden {_order.OrderNumber} actualizada correctamente\n\n",
                         "Éxito",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
