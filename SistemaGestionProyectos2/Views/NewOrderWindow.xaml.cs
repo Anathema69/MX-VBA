@@ -26,6 +26,7 @@ namespace SistemaGestionProyectos2.Views
         //Para el campo de subtotal
         
         private decimal _subtotalValue = 0;
+        
 
         public NewOrderWindow()
         {
@@ -200,9 +201,99 @@ namespace SistemaGestionProyectos2.Views
                 System.Diagnostics.Debug.WriteLine("⚠️ No hay cliente seleccionado");
             }
         }
-        
+
+        // En NewOrderWindow.xaml.cs, verificar que estos métodos estén correctos:
+
+        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            // Al enfocar, mostrar solo el número sin formato
+            if (_subtotalValue > 0)
+            {
+                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
+            }
+            else if (SubtotalTextBox.Text == "$0.00" || SubtotalTextBox.Text == "0.00")
+            {
+                SubtotalTextBox.Text = "";
+            }
+
+            SubtotalTextBox.SelectAll();
+
+            if (SubtotalHelpText != null)
+            {
+                SubtotalHelpText.Text = "Ingrese el monto sin símbolo de moneda";
+                SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"🔍 GotFocus - _subtotalValue actual: {_subtotalValue}");
+        }
+
+        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Limpiar el texto de cualquier formato
+            string cleanText = SubtotalTextBox.Text
+                .Replace("$", "")
+                .Replace(",", "")
+                .Replace(" ", "")
+                .Trim();
+
+            System.Diagnostics.Debug.WriteLine($"🔍 LostFocus - Texto limpio: '{cleanText}'");
+
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                // Mostrar con formato de moneda
+                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
+
+                System.Diagnostics.Debug.WriteLine($"✅ _subtotalValue establecido a: {_subtotalValue}");
+
+                if (SubtotalHelpText != null)
+                    SubtotalHelpText.Text = "";
+            }
+            else
+            {
+                _subtotalValue = 0;
+                SubtotalTextBox.Text = "$0.00";
+
+                System.Diagnostics.Debug.WriteLine($"⚠️ No se pudo parsear, _subtotalValue = 0");
+
+                if (SubtotalHelpText != null)
+                    SubtotalHelpText.Text = "";
+            }
+        }
+
+        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Verificar que los controles existan antes de usarlos
+            if (TotalTextBlock == null || SubtotalHelpText == null)
+                return;
+
+            // Solo calcular si el TextBox tiene el foco (está siendo editado)
+            if (SubtotalTextBox.IsFocused)
+            {
+                string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+
+                if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal subtotal))
+                {
+                    _subtotalValue = subtotal;
+                    decimal total = subtotal * 1.16m;
+                    TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
+
+                    // Mostrar preview del formato
+                    SubtotalHelpText.Text = $"= {subtotal.ToString("C", new CultureInfo("es-MX"))}";
+                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
+
+                    System.Diagnostics.Debug.WriteLine($"📝 TextChanged - _subtotalValue actualizado a: {_subtotalValue}");
+                }
+                else if (!string.IsNullOrEmpty(SubtotalTextBox.Text))
+                {
+                    SubtotalHelpText.Text = "Ingrese solo números";
+                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Red;
+                }
+            }
+        }
 
         
+
 
         private void CalculateTotal()
         {
@@ -216,84 +307,9 @@ namespace SistemaGestionProyectos2.Views
                 TotalTextBlock.Text = "$0.00";
             }
         }
-        // Método corregido con verificación de null
-        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            // Verificar que los controles existan antes de usarlos
-            if (TotalTextBlock == null || SubtotalHelpText == null)
-                return;
+        
 
-            // Solo calcular si no tiene formato de moneda
-            string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim();
-
-            if (decimal.TryParse(text, out decimal subtotal))
-            {
-                _subtotalValue = subtotal;
-                decimal total = subtotal * 1.16m;
-                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
-
-                // Mostrar preview del formato si está editando
-                if (SubtotalTextBox.IsFocused)
-                {
-                    SubtotalHelpText.Text = $"= {subtotal.ToString("C", new CultureInfo("es-MX"))}";
-                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
-                }
-            }
-            else
-            {
-                TotalTextBlock.Text = "$0.00";
-                if (SubtotalTextBox.IsFocused && !string.IsNullOrEmpty(SubtotalTextBox.Text))
-                {
-                    SubtotalHelpText.Text = "Ingrese solo números";
-                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Red;
-                }
-            }
-        }
-
-        // También corregir el método GotFocus
-        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-            if (_subtotalValue > 0)
-            {
-                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
-            }
-            else if (SubtotalTextBox.Text == "$0.00" || SubtotalTextBox.Text == "0.00")
-            {
-                SubtotalTextBox.Text = "";
-            }
-
-            // Seleccionar todo el texto para facilitar edición
-            SubtotalTextBox.SelectAll();
-
-            // Verificar que SubtotalHelpText no sea null
-            if (SubtotalHelpText != null)
-            {
-                SubtotalHelpText.Text = "Ingrese el monto sin símbolo de moneda";
-                SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
-            }
-        }
-
-        // También corregir el método LostFocus
-        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (decimal.TryParse(SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim(), out decimal subtotal))
-            {
-                _subtotalValue = subtotal;
-                // Mostrar con formato de moneda
-                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
-
-                if (SubtotalHelpText != null)
-                    SubtotalHelpText.Text = "";
-            }
-            else
-            {
-                _subtotalValue = 0;
-                SubtotalTextBox.Text = "$0.00";
-
-                if (SubtotalHelpText != null)
-                    SubtotalHelpText.Text = "";
-            }
-        }
+        
 
         private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -327,17 +343,18 @@ namespace SistemaGestionProyectos2.Views
                 int? contactId = null;
                 if (ContactComboBox.SelectedItem is ContactDb selectedContact)
                 {
-                    // Si es un contacto real (ID > 0), usar su ID
                     if (selectedContact.Id > 0)
                     {
                         contactId = selectedContact.Id;
                     }
-                    // Si es un contacto temporal (ID = 0), dejar como null
                     else
                     {
                         contactId = null;
                     }
                 }
+
+                // IMPORTANTE: Usar _subtotalValue aquí también
+                System.Diagnostics.Debug.WriteLine($"💰 Creando orden con subtotal: {_subtotalValue:C}");
 
                 // Crear nueva orden con valores por defecto para los porcentajes
                 var newOrder = new OrderDb
@@ -350,25 +367,23 @@ namespace SistemaGestionProyectos2.Views
                     Description = DescriptionTextBox.Text.Trim(),
                     SalesmanId = (int?)VendorComboBox.SelectedValue,
                     EstDelivery = DeliveryDatePicker.SelectedDate,
-                    SaleSubtotal = _subtotalValue,
-                    SaleTotal = _subtotalValue * 1.16m,
-                    Expense = 0, // Siempre  en 0
-                    OrderStatus = 0, // CAMBIADO: 0 = CREADA (antes era 1 = EN PROCESO)
-                    ProgressPercentage = 0, // Inicializar en 0
-                    OrderPercentage = 0     // Inicializar en 0
+                    SaleSubtotal = _subtotalValue,  // Usar _subtotalValue
+                    SaleTotal = _subtotalValue * 1.16m,  // Calcular con IVA
+                    Expense = 0,
+                    OrderStatus = 0,
+                    ProgressPercentage = 0,
+                    OrderPercentage = 0
                 };
 
                 // Log para depuración
                 System.Diagnostics.Debug.WriteLine($"📋 Creando orden:");
                 System.Diagnostics.Debug.WriteLine($"   PO: {newOrder.Po}");
                 System.Diagnostics.Debug.WriteLine($"   Cliente ID: {newOrder.ClientId}");
-                System.Diagnostics.Debug.WriteLine($"   Contacto ID: {newOrder.ContactId ?? 0} (null = sin contacto)");
+                System.Diagnostics.Debug.WriteLine($"   Contacto ID: {newOrder.ContactId ?? 0}");
                 System.Diagnostics.Debug.WriteLine($"   Vendedor ID: {newOrder.SalesmanId}");
-                System.Diagnostics.Debug.WriteLine($"   Total: {newOrder.SaleTotal}");
-                System.Diagnostics.Debug.WriteLine($"   Progress%: {newOrder.ProgressPercentage}");
-                System.Diagnostics.Debug.WriteLine($"   Order%: {newOrder.OrderPercentage}");
+                System.Diagnostics.Debug.WriteLine($"   Subtotal: ${newOrder.SaleSubtotal:N2}");
+                System.Diagnostics.Debug.WriteLine($"   Total: ${newOrder.SaleTotal:N2}");
 
-                // IMPORTANTE: Pasar el ID del usuario actual correctamente
                 int userId = 0;
                 if (_currentUser != null)
                 {
@@ -378,7 +393,7 @@ namespace SistemaGestionProyectos2.Views
                 else
                 {
                     System.Diagnostics.Debug.WriteLine($"⚠️ No hay usuario en sesión, usando ID por defecto");
-                    userId = 1; // Fallback solo si no hay usuario
+                    userId = 1;
                 }
 
                 // Llamar al servicio para crear la orden
@@ -387,14 +402,13 @@ namespace SistemaGestionProyectos2.Views
                 if (createdOrder != null)
                 {
                     System.Diagnostics.Debug.WriteLine($"✅ Orden creada con ID: {createdOrder.Id}");
-                    System.Diagnostics.Debug.WriteLine($"   Created By: {createdOrder.CreatedBy}");
-                    System.Diagnostics.Debug.WriteLine($"   Updated By: {createdOrder.UpdatedBy}");
 
                     MessageBox.Show(
                         $"✅ Orden {newOrder.Po} guardada exitosamente.\n\n" +
                         $"Cliente: {(ClientComboBox.SelectedItem as ClientDb)?.Name}\n" +
                         $"Vendedor: {(VendorComboBox.SelectedItem as VendorDb)?.VendorName}\n" +
-                        $"Total: {TotalTextBlock.Text}\n" +
+                        $"Subtotal: {_subtotalValue:C}\n" +
+                        $"Total: {(_subtotalValue * 1.16m):C}\n" +
                         $"Creada por: {_currentUser?.FullName ?? "Sistema"}",
                         "Orden Guardada",
                         MessageBoxButton.OK,
@@ -425,8 +439,6 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.Content = "GUARDAR";
             }
         }
-
-        // También actualizar el método ValidateForm para ser menos estricto con el contacto
         private bool ValidateForm()
         {
             var errors = new List<string>();
@@ -446,13 +458,14 @@ namespace SistemaGestionProyectos2.Views
             if (VendorComboBox.SelectedItem == null)
                 errors.Add("• Vendedor es obligatorio");
 
-            if (_subtotalValue <= 0)
-                errors.Add("• Subtotal debe ser mayor a 0");
+            // CORRECCIÓN: Usar _subtotalValue en lugar de parsear el texto
+            System.Diagnostics.Debug.WriteLine($"🔍 Validando subtotal: _subtotalValue = {_subtotalValue}");
+            System.Diagnostics.Debug.WriteLine($"🔍 Texto en SubtotalTextBox = '{SubtotalTextBox.Text}'");
 
-            if (string.IsNullOrWhiteSpace(SubtotalTextBox.Text) ||
-                !decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal) ||
-                subtotal <= 0)
-                errors.Add("• Subtotal debe ser mayor a 0");
+            if (_subtotalValue <= 0)
+            {
+                errors.Add($"• Subtotal debe ser mayor a 0 (valor actual: {_subtotalValue:C})");
+            }
 
             if (!DeliveryDatePicker.SelectedDate.HasValue)
                 errors.Add("• Fecha de Entrega es obligatoria");
@@ -475,6 +488,7 @@ namespace SistemaGestionProyectos2.Views
                 return false;
             }
 
+            System.Diagnostics.Debug.WriteLine($"✅ Validación exitosa con subtotal: {_subtotalValue:C}");
             return true;
         }
 

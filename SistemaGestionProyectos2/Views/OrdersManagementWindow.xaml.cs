@@ -41,10 +41,15 @@ namespace SistemaGestionProyectos2.Views
             _ = LoadInitialDataAsync();
         }
 
+        
+
         private void InitializeUI()
         {
             // Configurar información del usuario
             UserStatusText.Text = $"Usuario: {_currentUser.FullName} ({GetRoleDisplayName(_currentUser.Role)})";
+
+            // ⭐ IMPORTANTE: AGREGAR ESTA LÍNEA PARA QUE FUNCIONE EL BINDING
+            this.Tag = _currentUser.Role;
 
             // Configurar el DataGrid
             _ordersViewSource = new CollectionViewSource { Source = _orders };
@@ -52,6 +57,10 @@ namespace SistemaGestionProyectos2.Views
 
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - Manejo de Órdenes - {_currentUser.FullName}";
+
+            // Debug para verificar el rol
+            System.Diagnostics.Debug.WriteLine($"🔍 Usuario actual: {_currentUser.FullName}, Rol: {_currentUser.Role}");
+            System.Diagnostics.Debug.WriteLine($"🔍 Window.Tag establecido a: {this.Tag}");
         }
 
         private void ConfigurePermissions()

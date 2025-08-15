@@ -124,68 +124,12 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void LoadOrderData()
-        {
-            // Cargar datos de la orden
-            OrderNumberHeader.Text = $" - #{_order.OrderNumber}";
+        
+        
 
-            // Campos de solo lectura
-            OrderNumberTextBox.Text = _order.OrderNumber;
-            OrderDateTextBox.Text = _order.OrderDate.ToString("dd/MM/yyyy");
-            ClientTextBox.Text = _order.ClientName;
-            VendorTextBox.Text = _order.VendorName;
-            DescriptionTextBox.Text = _order.Description;
+        
 
-            // Campos editables para todos
-            PromiseDatePicker.SelectedDate = _order.PromiseDate;
-            ProgressSlider.Value = _originalOrderDb?.ProgressPercentage ?? _order.ProgressPercentage;
-            ProgressValueText.Text = $"{(int)ProgressSlider.Value}%";
-
-            // Seleccionar el estado actual
-            SelectComboBoxItemByTag(StatusComboBox, _originalOrderDb?.OrderStatus ?? 1);
-
-            // Campos financieros (solo Admin)
-            if (_currentUser.Role == "admin")
-            {
-                SubtotalTextBox.Text = _order.Subtotal.ToString("F2");
-                SubtotalTextBox.Text = _order.Subtotal.ToString("C", new CultureInfo("es-MX"));
-                TotalTextBlock.Text = _order.Total.ToString("C", new CultureInfo("es-MX"));
-                OrderPercentageSlider.Value = _originalOrderDb?.OrderPercentage ?? _order.OrderPercentage;
-                OrderPercentageText.Text = $"{(int)OrderPercentageSlider.Value}%";
-            }
-
-            // Información de auditoría
-            LastModifiedText.Text = $"Última modificación: {DateTime.Now:dd/MM/yyyy HH:mm} - Editando como: {_currentUser.FullName}";
-        }
-        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-            if (_subtotalValue > 0)
-            {
-                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
-            }
-            SubtotalTextBox.SelectAll();
-        }
-
-        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
-            {
-                _subtotalValue = subtotal;
-                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
-            }
-        }
-
-        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim();
-
-            if (decimal.TryParse(text, out decimal subtotal))
-            {
-                _subtotalValue = subtotal;
-                decimal total = subtotal * 1.16m;
-                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
-            }
-        }
+        
 
         private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -251,8 +195,119 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        
 
+
+        private void LoadOrderData()
+        {
+            // Cargar datos de la orden
+            OrderNumberHeader.Text = $" - #{_order.OrderNumber}";
+
+            // Campos de solo lectura
+            OrderNumberTextBox.Text = _order.OrderNumber;
+            OrderDateTextBox.Text = _order.OrderDate.ToString("dd/MM/yyyy");
+            ClientTextBox.Text = _order.ClientName;
+            VendorTextBox.Text = _order.VendorName;
+            DescriptionTextBox.Text = _order.Description;
+
+            // Campos editables para todos
+            PromiseDatePicker.SelectedDate = _order.PromiseDate;
+            ProgressSlider.Value = _originalOrderDb?.ProgressPercentage ?? _order.ProgressPercentage;
+            ProgressValueText.Text = $"{(int)ProgressSlider.Value}%";
+
+            // Seleccionar el estado actual
+            SelectComboBoxItemByTag(StatusComboBox, _originalOrderDb?.OrderStatus ?? 1);
+
+            // Campos financieros (solo Admin)
+            if (_currentUser.Role == "admin")
+            {
+                // IMPORTANTE: Establecer _subtotalValue con el valor actual
+                _subtotalValue = _order.Subtotal;
+
+                // Mostrar con formato de moneda
+                SubtotalTextBox.Text = _subtotalValue.ToString("C", new CultureInfo("es-MX"));
+                TotalTextBlock.Text = _order.Total.ToString("C", new CultureInfo("es-MX"));
+                OrderPercentageSlider.Value = _originalOrderDb?.OrderPercentage ?? _order.OrderPercentage;
+                OrderPercentageText.Text = $"{(int)OrderPercentageSlider.Value}%";
+
+                System.Diagnostics.Debug.WriteLine($"💰 Subtotal inicial cargado: {_subtotalValue:C}");
+            }
+
+            // Información de auditoría
+            LastModifiedText.Text = $"Última modificación: {DateTime.Now:dd/MM/yyyy HH:mm} - Editando como: {_currentUser.FullName}";
+        }
+
+        // Actualizar SubtotalTextBox_TextChanged para actualizar _subtotalValue
+        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Solo procesar si el TextBox tiene el foco (está siendo editado activamente)
+            if (!SubtotalTextBox.IsFocused)
+                return;
+
+            string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Replace(" ", "").Trim();
+
+            if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                decimal total = subtotal * 1.16m;
+                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
+
+                System.Diagnostics.Debug.WriteLine($"📝 Subtotal actualizado mientras se escribe: {_subtotalValue:C}");
+            }
+        }
+
+        // Actualizar SubtotalTextBox_GotFocus
+        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            // Mostrar el valor sin formato para facilitar la edición
+            if (_subtotalValue > 0)
+            {
+                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
+            }
+            SubtotalTextBox.SelectAll();
+
+            System.Diagnostics.Debug.WriteLine($"🔍 GotFocus - Mostrando valor para editar: {_subtotalValue}");
+        }
+
+        // Actualizar SubtotalTextBox_LostFocus
+        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Limpiar formato y actualizar _subtotalValue
+            string cleanText = SubtotalTextBox.Text
+                .Replace("$", "")
+                .Replace(",", "")
+                .Replace(" ", "")
+                .Replace("MXN", "")
+                .Replace("MX", "")
+                .Trim();
+
+            System.Diagnostics.Debug.WriteLine($"🔍 LostFocus - Texto limpio: '{cleanText}'");
+
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
+
+                // Actualizar el total
+                decimal total = _subtotalValue * 1.16m;
+                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
+
+                System.Diagnostics.Debug.WriteLine($"✅ Subtotal final establecido: {_subtotalValue:C}");
+            }
+            else if (_subtotalValue > 0)
+            {
+                // Si no se pudo parsear pero tenemos un valor previo, restaurarlo
+                SubtotalTextBox.Text = _subtotalValue.ToString("C", new CultureInfo("es-MX"));
+                System.Diagnostics.Debug.WriteLine($"⚠️ Restaurando valor previo: {_subtotalValue:C}");
+            }
+            else
+            {
+                _subtotalValue = 0;
+                SubtotalTextBox.Text = "$0.00";
+                System.Diagnostics.Debug.WriteLine($"❌ Sin valor válido, estableciendo a 0");
+            }
+        }
+
+        // IMPORTANTE: Actualizar SaveButton_Click para usar _subtotalValue
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -293,23 +348,17 @@ namespace SistemaGestionProyectos2.Views
                 // Si es admin, actualizar campos financieros
                 if (_currentUser.Role == "admin")
                 {
-
-                    // admin ahora puede editar el PO, (orden de compra)
+                    // Actualizar PO si cambió
                     _originalOrderDb.Po = OrderNumberTextBox.Text.Trim().ToUpper();
-                    
-                    if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
-                    {
-                        // _originalOrderDb.SaleSubtotal = subtotal;
-                        // _originalOrderDb.SaleTotal = subtotal * 1.16m;
-                        _originalOrderDb.SaleSubtotal = _subtotalValue;
-                        _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
-                        
-                    }
+
+                    // USAR _subtotalValue EN LUGAR DE PARSEAR EL TEXTO
+                    _originalOrderDb.SaleSubtotal = _subtotalValue;
+                    _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
                     _originalOrderDb.OrderPercentage = (int)OrderPercentageSlider.Value;
 
                     System.Diagnostics.Debug.WriteLine($"   📊 Campos financieros actualizados:");
-                    System.Diagnostics.Debug.WriteLine($"      Subtotal: ${_originalOrderDb.SaleSubtotal:N2}");
-                    System.Diagnostics.Debug.WriteLine($"      Total: ${_originalOrderDb.SaleTotal:N2}");
+                    System.Diagnostics.Debug.WriteLine($"      Subtotal (desde _subtotalValue): ${_subtotalValue:N2}");
+                    System.Diagnostics.Debug.WriteLine($"      Total calculado: ${(_subtotalValue * 1.16m):N2}");
                     System.Diagnostics.Debug.WriteLine($"      Order %: {_originalOrderDb.OrderPercentage}%");
                 }
 
@@ -331,6 +380,7 @@ namespace SistemaGestionProyectos2.Views
 
                     if (_currentUser.Role == "admin")
                     {
+                        _order.OrderNumber = _originalOrderDb.Po;
                         _order.Subtotal = _originalOrderDb.SaleSubtotal ?? 0;
                         _order.Total = _originalOrderDb.SaleTotal ?? 0;
                         _order.OrderPercentage = _originalOrderDb.OrderPercentage;
@@ -341,7 +391,9 @@ namespace SistemaGestionProyectos2.Views
                     System.Diagnostics.Debug.WriteLine("========================================");
 
                     MessageBox.Show(
-                        $"✅ Orden {_order.OrderNumber} actualizada correctamente",
+                        $"✅ Orden {_order.OrderNumber} actualizada correctamente\n\n" +
+                        $"Subtotal: {_subtotalValue:C}\n" +
+                        $"Total: {(_subtotalValue * 1.16m):C}",
                         "Éxito",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
