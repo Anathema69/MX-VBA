@@ -1,12 +1,14 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using SistemaGestionProyectos2.Models;
-using SistemaGestionProyectos2.Services;
+using System.Windows.Input;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -19,6 +21,8 @@ namespace SistemaGestionProyectos2.Views
         private bool _hasChanges = false;
         private OrderDb _originalOrderDb;
 
+        // Valor para el subtotal, se usa para formatear correctamente al perder el foco
+        private decimal _subtotalValue = 0;
         public EditOrderWindow(OrderViewModel order, UserSession currentUser)
         {
             InitializeComponent();
@@ -92,16 +96,24 @@ namespace SistemaGestionProyectos2.Views
                     // Ocultar sección financiera
                     FinancialSection.Visibility = Visibility.Collapsed;
                     FinancialFields.Visibility = Visibility.Collapsed;
+                    
+                    // Coordinador NO puede editar PO
+                    OrderNumberTextBox.IsReadOnly = true;
+                    OrderNumberTextBox.Background = System.Windows.Media.Brushes.LightGray;
                     break;
 
                 case "admin":
                     // Admin: Puede editar todo
-                    PermissionsText.Text = "Como Administrador, puede editar todos los campos disponibles";
+                    PermissionsText.Text = "Como Administrador, puede editar todos los campos disponibles incluyendo Orden de Compra";
                     PermissionsNotice.Background = System.Windows.Media.Brushes.LightGreen;
 
                     // Mostrar sección financiera
                     FinancialSection.Visibility = Visibility.Visible;
                     FinancialFields.Visibility = Visibility.Visible;
+
+                    OrderNumberTextBox.IsReadOnly = false;
+                    OrderNumberTextBox.Background = System.Windows.Media.Brushes.White;
+                    OrderNumberTextBox.Tag = "admin";
                     break;
 
                 default:
@@ -136,6 +148,7 @@ namespace SistemaGestionProyectos2.Views
             if (_currentUser.Role == "admin")
             {
                 SubtotalTextBox.Text = _order.Subtotal.ToString("F2");
+                SubtotalTextBox.Text = _order.Subtotal.ToString("C", new CultureInfo("es-MX"));
                 TotalTextBlock.Text = _order.Total.ToString("C", new CultureInfo("es-MX"));
                 OrderPercentageSlider.Value = _originalOrderDb?.OrderPercentage ?? _order.OrderPercentage;
                 OrderPercentageText.Text = $"{(int)OrderPercentageSlider.Value}%";
@@ -143,6 +156,45 @@ namespace SistemaGestionProyectos2.Views
 
             // Información de auditoría
             LastModifiedText.Text = $"Última modificación: {DateTime.Now:dd/MM/yyyy HH:mm} - Editando como: {_currentUser.FullName}";
+        }
+        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (_subtotalValue > 0)
+            {
+                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
+            }
+            SubtotalTextBox.SelectAll();
+        }
+
+        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
+            }
+        }
+
+        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+
+            if (decimal.TryParse(text, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                decimal total = subtotal * 1.16m;
+                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
+            }
+        }
+
+        private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+            fullText = fullText.Replace("$", "").Replace(",", "").Trim();
+
+            var regex = new Regex(@"^[0-9]*\.?[0-9]*$");
+            e.Handled = !regex.IsMatch(fullText);
         }
 
         private void SelectComboBoxItemByTag(ComboBox comboBox, int statusId)
@@ -188,16 +240,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
-            {
-                decimal total = subtotal * 1.16m;
-                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
-                _hasChanges = true;
-                UpdateSaveStatus();
-            }
-        }
+        
 
         private void UpdateSaveStatus()
         {
@@ -208,7 +251,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Reemplazar el método SaveButton_Click en EditOrderWindow.xaml.cs
+        
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
@@ -250,10 +293,17 @@ namespace SistemaGestionProyectos2.Views
                 // Si es admin, actualizar campos financieros
                 if (_currentUser.Role == "admin")
                 {
+
+                    // admin ahora puede editar el PO, (orden de compra)
+                    _originalOrderDb.Po = OrderNumberTextBox.Text.Trim().ToUpper();
+                    
                     if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
                     {
-                        _originalOrderDb.SaleSubtotal = subtotal;
-                        _originalOrderDb.SaleTotal = subtotal * 1.16m;
+                        // _originalOrderDb.SaleSubtotal = subtotal;
+                        // _originalOrderDb.SaleTotal = subtotal * 1.16m;
+                        _originalOrderDb.SaleSubtotal = _subtotalValue;
+                        _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
+                        
                     }
                     _originalOrderDb.OrderPercentage = (int)OrderPercentageSlider.Value;
 

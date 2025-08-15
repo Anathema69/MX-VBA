@@ -119,18 +119,32 @@
                             <ColumnDefinition Width="20"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="ORDEN DE COMPRA" 
-                                     FontSize="11"
-                                     FontWeight="SemiBold"
-                                     Margin="0,0,0,5"/>
+             FontSize="11"
+             FontWeight="SemiBold"
+             Margin="0,0,0,5"/>
                             <TextBox x:Name="OrderNumberTextBox"
-                                    Height="35"
-                                    FontSize="14"
-                                    IsReadOnly="True"
-                                    Background="#F0F0F0"/>
+            Height="35"
+            FontSize="14"
+            IsReadOnly="True"
+            Background="#F0F0F0">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="IsReadOnly" Value="True"/>
+                                        <Setter Property="Background" Value="#F0F0F0"/>
+                                        <Style.Triggers>
+                                            <!-- Habilitar edición solo para admin -->
+                                            <DataTrigger Binding="{Binding ElementName=OrderNumberTextBox, Path=Tag}" Value="admin">
+                                                <Setter Property="IsReadOnly" Value="False"/>
+                                                <Setter Property="Background" Value="White"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </StackPanel>
+
 
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="FECHA O.C." 
@@ -301,23 +315,31 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
+                    <!-- En la sección de Información Financiera (solo visible para Admin) -->
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="SUBTOTAL (MXN)" 
-                                 FontSize="11"
-                                 FontWeight="SemiBold"
-                                 Foreground="#2E7D32"
-                                 Margin="0,0,0,5"/>
-                        <Grid>
-                            <TextBlock Text="$" 
-                                     VerticalAlignment="Center"
-                                     Margin="10,0,0,0"
-                                     FontSize="14"/>
+             FontSize="11"
+             FontWeight="SemiBold"
+             Foreground="#2E7D32"
+             Margin="0,0,0,5"/>
+                        <Border Background="White"
+           BorderBrush="#999"
+           BorderThickness="1"
+           Height="35"
+           CornerRadius="3">
                             <TextBox x:Name="SubtotalTextBox"
-                                    Height="35"
-                                    FontSize="14"
-                                    Padding="25,0,5,0"
-                                    TextChanged="SubtotalTextBox_TextChanged"/>
-                        </Grid>
+                BorderThickness="0"
+                Background="Transparent"
+                VerticalAlignment="Center"
+                Margin="10,0"
+                FontSize="14"
+                FontWeight="Bold"
+                Foreground="Black"
+                TextChanged="SubtotalTextBox_TextChanged"
+                PreviewTextInput="NumericTextBox_PreviewTextInput"
+                GotFocus="SubtotalTextBox_GotFocus"
+                LostFocus="SubtotalTextBox_LostFocus"/>
+                        </Border>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">

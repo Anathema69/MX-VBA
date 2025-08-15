@@ -209,23 +209,23 @@
                 </StackPanel>
 
                 <!-- Sección: Información Financiera -->
+                
                 <Border Grid.Row="8" 
-                       Background="#f5f5f5" 
-                       Padding="10"
-                       Margin="0,0,0,15">
+       Background="#f5f5f5" 
+       Padding="10"
+       Margin="0,0,0,15">
                     <TextBlock Text="INFORMACIÓN FINANCIERA" 
-                             FontWeight="Bold"
-                             FontSize="12"/>
+             FontWeight="Bold"
+             FontSize="12"/>
                 </Border>
 
-                <!-- Subtotal, Gasto y Fecha Entrega -->
                 <Grid Grid.Row="9">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Primera fila: Subtotal y Gasto -->
+                    <!-- Primera fila: Subtotal y Total -->
                     <Grid Grid.Row="0" Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -233,83 +233,71 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
+                        <!-- SUBTOTAL - Editable con formato -->
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="SUBTOTAL VENTA (MXN) *" 
-                                     FontSize="11"
-                                     FontWeight="SemiBold"
-                                     Margin="0,0,0,5"/>
-                            <Grid>
-                                <TextBlock Text="$" 
-                                         VerticalAlignment="Center"
-                                         Margin="10,0,0,0"
-                                         FontSize="14"/>
+                            <TextBlock Text="SUBTOTAL (MXN) *" 
+                     FontSize="11"
+                     FontWeight="SemiBold"
+                     Margin="0,0,0,5"/>
+                            <Border Background="White"
+                   BorderBrush="#999"
+                   BorderThickness="1"
+                   Height="35"
+                   CornerRadius="3">
                                 <TextBox x:Name="SubtotalTextBox"
-                                        Height="35"
-                                        FontSize="14"
-                                        Padding="25,0,5,0"
-                                        TextChanged="SubtotalTextBox_TextChanged"
-                                        PreviewTextInput="NumericTextBox_PreviewTextInput"/>
-                            </Grid>
+                        BorderThickness="0"
+                        Background="Transparent"
+                        VerticalAlignment="Center"
+                        Margin="10,0"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        Foreground="Black"
+                        Text="0.00"
+                        TextChanged="SubtotalTextBox_TextChanged"
+                        PreviewTextInput="NumericTextBox_PreviewTextInput"
+                        GotFocus="SubtotalTextBox_GotFocus"
+                        LostFocus="SubtotalTextBox_LostFocus"/>
+                            </Border>
+                            <!-- Texto de ayuda debajo -->
+                            <TextBlock x:Name="SubtotalHelpText"
+                     FontSize="10"
+                     Foreground="#666"
+                     Margin="0,2,0,0"
+                     FontStyle="Italic"/>
                         </StackPanel>
 
+                        <!-- TOTAL CON IVA - Solo lectura -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="GASTO (MXN)" 
-                                     FontSize="11"
-                                     FontWeight="SemiBold"
-                                     Margin="0,0,0,5"/>
-                            <Grid>
-                                <TextBlock Text="$" 
-                                         VerticalAlignment="Center"
-                                         Margin="10,0,0,0"
-                                         FontSize="14"/>
-                                <TextBox x:Name="ExpenseTextBox"
-                                        Height="35"
-                                        FontSize="14"
-                                        Padding="25,0,5,0"
-                                        Text="0"
-                                        PreviewTextInput="NumericTextBox_PreviewTextInput"/>
-                            </Grid>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Segunda fila: Total calculado y Fecha Entrega -->
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
                             <TextBlock Text="TOTAL CON IVA (16%)" 
-                                     FontSize="11"
-                                     FontWeight="SemiBold"
-                                     Margin="0,0,0,5"/>
+                     FontSize="11"
+                     FontWeight="SemiBold"
+                     Margin="0,0,0,5"/>
                             <Border Background="#E8F5E9"
-                                   BorderBrush="#4CAF50"
-                                   BorderThickness="1"
-                                   Height="35"
-                                   CornerRadius="3">
+                   BorderBrush="#4CAF50"
+                   BorderThickness="1"
+                   Height="35"
+                   CornerRadius="3">
                                 <TextBlock x:Name="TotalTextBlock"
-                                         Text="$ 0.00"
-                                         VerticalAlignment="Center"
-                                         Margin="10,0"
-                                         FontSize="14"
-                                         FontWeight="Bold"
-                                         Foreground="#2E7D32"/>
+                         Text="$0.00"
+                         VerticalAlignment="Center"
+                         Margin="10,0"
+                         FontSize="14"
+                         FontWeight="Bold"
+                         Foreground="#2E7D32"/>
                             </Border>
                         </StackPanel>
-
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="FECHA ENTREGA EST. *" 
-                                     FontSize="11"
-                                     FontWeight="SemiBold"
-                                     Margin="0,0,0,5"/>
-                            <DatePicker x:Name="DeliveryDatePicker"
-                                       Height="35"
-                                       FontSize="14"/>
-                        </StackPanel>
                     </Grid>
+
+                    <!-- Segunda fila: Fecha Entrega -->
+                    <StackPanel Grid.Row="1">
+                        <TextBlock Text="FECHA ENTREGA EST. *" 
+                 FontSize="11"
+                 FontWeight="SemiBold"
+                 Margin="0,0,0,5"/>
+                        <DatePicker x:Name="DeliveryDatePicker"
+                   Height="35"
+                   FontSize="14"/>
+                    </StackPanel>
                 </Grid>
             </Grid>
         </ScrollViewer>

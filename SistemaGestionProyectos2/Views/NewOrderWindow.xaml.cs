@@ -10,6 +10,8 @@ using System.Windows.Input;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 
+
+
 namespace SistemaGestionProyectos2.Views
 {
     public partial class NewOrderWindow : Window
@@ -20,6 +22,10 @@ namespace SistemaGestionProyectos2.Views
         private List<VendorDb> _vendors;
         private UserSession _currentUser;
         private bool _isLoading = false;
+
+        //Para el campo de subtotal
+        
+        private decimal _subtotalValue = 0;
 
         public NewOrderWindow()
         {
@@ -194,35 +200,116 @@ namespace SistemaGestionProyectos2.Views
                 System.Diagnostics.Debug.WriteLine("⚠️ No hay cliente seleccionado");
             }
         }
+        
 
-        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            CalculateTotal();
-        }
+        
 
         private void CalculateTotal()
         {
             if (decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal))
             {
-                decimal total = subtotal * 1.16m; // Agregar 16% de IVA
+                decimal total = subtotal * 1.16m;
                 TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
             }
             else
             {
-                TotalTextBlock.Text = "$ 0.00";
+                TotalTextBlock.Text = "$0.00";
+            }
+        }
+        // Método corregido con verificación de null
+        private void SubtotalTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            // Verificar que los controles existan antes de usarlos
+            if (TotalTextBlock == null || SubtotalHelpText == null)
+                return;
+
+            // Solo calcular si no tiene formato de moneda
+            string text = SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+
+            if (decimal.TryParse(text, out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                decimal total = subtotal * 1.16m;
+                TotalTextBlock.Text = total.ToString("C", new CultureInfo("es-MX"));
+
+                // Mostrar preview del formato si está editando
+                if (SubtotalTextBox.IsFocused)
+                {
+                    SubtotalHelpText.Text = $"= {subtotal.ToString("C", new CultureInfo("es-MX"))}";
+                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
+                }
+            }
+            else
+            {
+                TotalTextBlock.Text = "$0.00";
+                if (SubtotalTextBox.IsFocused && !string.IsNullOrEmpty(SubtotalTextBox.Text))
+                {
+                    SubtotalHelpText.Text = "Ingrese solo números";
+                    SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Red;
+                }
+            }
+        }
+
+        // También corregir el método GotFocus
+        private void SubtotalTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (_subtotalValue > 0)
+            {
+                SubtotalTextBox.Text = _subtotalValue.ToString("F2");
+            }
+            else if (SubtotalTextBox.Text == "$0.00" || SubtotalTextBox.Text == "0.00")
+            {
+                SubtotalTextBox.Text = "";
+            }
+
+            // Seleccionar todo el texto para facilitar edición
+            SubtotalTextBox.SelectAll();
+
+            // Verificar que SubtotalHelpText no sea null
+            if (SubtotalHelpText != null)
+            {
+                SubtotalHelpText.Text = "Ingrese el monto sin símbolo de moneda";
+                SubtotalHelpText.Foreground = System.Windows.Media.Brushes.Gray;
+            }
+        }
+
+        // También corregir el método LostFocus
+        private void SubtotalTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (decimal.TryParse(SubtotalTextBox.Text.Replace("$", "").Replace(",", "").Trim(), out decimal subtotal))
+            {
+                _subtotalValue = subtotal;
+                // Mostrar con formato de moneda
+                SubtotalTextBox.Text = subtotal.ToString("C", new CultureInfo("es-MX"));
+
+                if (SubtotalHelpText != null)
+                    SubtotalHelpText.Text = "";
+            }
+            else
+            {
+                _subtotalValue = 0;
+                SubtotalTextBox.Text = "$0.00";
+
+                if (SubtotalHelpText != null)
+                    SubtotalHelpText.Text = "";
             }
         }
 
         private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            // Permitir solo números y punto decimal
+            // Permitir solo números y un punto decimal
+            var textBox = sender as TextBox;
+            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+
+            // Remover formato si existe
+            fullText = fullText.Replace("$", "").Replace(",", "").Trim();
+
             var regex = new Regex(@"^[0-9]*\.?[0-9]*$");
-            var newText = (sender as TextBox).Text + e.Text;
-            e.Handled = !regex.IsMatch(newText);
+            e.Handled = !regex.IsMatch(fullText);
         }
 
 
-        
+
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             // Validar campos obligatorios
@@ -263,10 +350,10 @@ namespace SistemaGestionProyectos2.Views
                     Description = DescriptionTextBox.Text.Trim(),
                     SalesmanId = (int?)VendorComboBox.SelectedValue,
                     EstDelivery = DeliveryDatePicker.SelectedDate,
-                    SaleSubtotal = decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal) ? subtotal : 0,
-                    SaleTotal = subtotal * 1.16m,
-                    Expense = decimal.TryParse(ExpenseTextBox.Text, out decimal expense) ? expense : 0,
-                    OrderStatus = 1, // Estado inicial: PENDIENTE
+                    SaleSubtotal = _subtotalValue,
+                    SaleTotal = _subtotalValue * 1.16m,
+                    Expense = 0, // Siempre  en 0
+                    OrderStatus = 0, // CAMBIADO: 0 = CREADA (antes era 1 = EN PROCESO)
                     ProgressPercentage = 0, // Inicializar en 0
                     OrderPercentage = 0     // Inicializar en 0
                 };
@@ -353,14 +440,14 @@ namespace SistemaGestionProyectos2.Views
             if (ClientComboBox.SelectedItem == null)
                 errors.Add("• Cliente es obligatorio");
 
-            // El contacto NO es obligatorio - puede ser null
-            // Removemos la validación del contacto
-
             if (string.IsNullOrWhiteSpace(DescriptionTextBox.Text))
                 errors.Add("• Descripción es obligatoria");
 
             if (VendorComboBox.SelectedItem == null)
                 errors.Add("• Vendedor es obligatorio");
+
+            if (_subtotalValue <= 0)
+                errors.Add("• Subtotal debe ser mayor a 0");
 
             if (string.IsNullOrWhiteSpace(SubtotalTextBox.Text) ||
                 !decimal.TryParse(SubtotalTextBox.Text, out decimal subtotal) ||
@@ -370,7 +457,6 @@ namespace SistemaGestionProyectos2.Views
             if (!DeliveryDatePicker.SelectedDate.HasValue)
                 errors.Add("• Fecha de Entrega es obligatoria");
 
-            // Validar que la fecha de entrega sea posterior a la fecha de orden
             if (OrderDatePicker.SelectedDate.HasValue && DeliveryDatePicker.SelectedDate.HasValue)
             {
                 if (DeliveryDatePicker.SelectedDate.Value < OrderDatePicker.SelectedDate.Value)
