@@ -164,10 +164,11 @@ namespace SistemaGestionProyectos2.Views
             InvoiceProgressBar.Value = Math.Min(percentage, 100);
             ProgressPercentText.Text = $"{percentage:F0}%";
 
-            // Actualizar advertencia
+            // Actualizar advertencia con formato de moneda mexicana
+            var cultureMX = new CultureInfo("es-MX");
             if (balance > 0)
             {
-                WarningText.Text = $"⚠️ Puede facturar hasta {balance:C} más";
+                WarningText.Text = $"⚠️ Puede facturar hasta {balance.ToString("C", cultureMX)} más";
                 WarningText.Foreground = new SolidColorBrush(Color.FromRgb(255, 224, 130));
             }
             else if (balance < 0)
@@ -222,12 +223,20 @@ namespace SistemaGestionProyectos2.Views
             _invoices.Add(newInvoice);
             _hasUnsavedChanges = true;
 
-            StatusMessage.Text = "Nueva factura agregada. Complete los datos y guarde.";
-            StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(255, 152, 0));
+            // Mensaje más claro con instrucciones
+            StatusMessage.Text = "📝 Nueva factura agregada - Haga doble clic en las celdas para editar";
+            StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(25, 118, 210));
 
-            // Seleccionar la nueva fila para edición
+            // Seleccionar la nueva fila y enfocar en el primer campo editable
             InvoicesDataGrid.SelectedItem = newInvoice;
             InvoicesDataGrid.ScrollIntoView(newInvoice);
+
+            // Dar un pequeño delay para que la UI se actualice, luego enfocar
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                InvoicesDataGrid.CurrentCell = new DataGridCellInfo(newInvoice, InvoicesDataGrid.Columns[1]); // Columna Folio
+                InvoicesDataGrid.BeginEdit();
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private async void SaveAllButton_Click(object sender, RoutedEventArgs e)
