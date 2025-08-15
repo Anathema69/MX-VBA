@@ -338,12 +338,12 @@
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#9C27B0" Offset="0"/>
-                                                                <GradientStop Color="#BA68C8" Offset="1"/>
+                                                                <GradientStop Color="#34495e" Offset="0"/>
+                                                                <GradientStop Color="#2c3e50" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#7B1FA2"/>
+                                                    <Setter Property="BorderBrush" Value="#2c3e59"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
 
@@ -352,12 +352,12 @@
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#FF9800" Offset="0"/>
-                                                                <GradientStop Color="#FFB74D" Offset="1"/>
+                                                                <GradientStop Color="#f1c40f" Offset="0"/>
+                                                                <GradientStop Color="#f39c12" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#F57C00"/>
+                                                    <Setter Property="BorderBrush" Value="#f39c12"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
 
@@ -366,12 +366,12 @@
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#4CAF50" Offset="0"/>
-                                                                <GradientStop Color="#66BB6A" Offset="1"/>
+                                                                <GradientStop Color="#2ecc71" Offset="0"/>
+                                                                <GradientStop Color="#27ae60" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#388E3C"/>
+                                                    <Setter Property="BorderBrush" Value="#27ae4f"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
 
@@ -380,12 +380,12 @@
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#E91E63" Offset="0"/>
-                                                                <GradientStop Color="#F06292" Offset="1"/>
+                                                                <GradientStop Color="#1abc9c" Offset="0"/>
+                                                                <GradientStop Color="#16a085" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#C2185B"/>
+                                                    <Setter Property="BorderBrush" Value="#16a04f"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
 
@@ -394,26 +394,27 @@
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#F44336" Offset="0"/>
-                                                                <GradientStop Color="#EF5350" Offset="1"/>
+                                                                <GradientStop Color="#e74c3c" Offset="0"/>
+                                                                <GradientStop Color="#c0392b" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#D32F2F"/>
+                                                    <Setter Property="BorderBrush" Value="#c0393f"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
 
                                                 <!-- EN ESPERA - Azul cielo -->
-                                                <DataTrigger Binding="{Binding Status}" Value="EN ESPERA">
+                                                <DataTrigger Binding="{Binding Status}" Value="CERRADA">
                                                     <Setter Property="Background">
                                                         <Setter.Value>
                                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#2196F3" Offset="0"/>
-                                                                <GradientStop Color="#64B5F6" Offset="1"/>
+                                                                <GradientStop Color="#95a5a6" Offset="0"/>
+                                                                <!-- Gris azulado -->
+                                                                <GradientStop Color="#7f8c8d" Offset="1"/>
                                                             </LinearGradientBrush>
                                                         </Setter.Value>
                                                     </Setter>
-                                                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                                                    <Setter Property="BorderBrush" Value="#7f8c9f"/>
                                                     <Setter Property="BorderThickness" Value="1"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
