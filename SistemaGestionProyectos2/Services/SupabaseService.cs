@@ -443,6 +443,154 @@ namespace SistemaGestionProyectos2.Services
                 return false;
             }
         }
+
+        // ===============================================
+        // MÉTODOS PARA FACTURAS
+        // ===============================================
+        public async Task<List<InvoiceDb>> GetInvoicesByOrder(int orderId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Where(x => x.OrderId == orderId)
+                    .Order("f_invoicedate", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<InvoiceDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo facturas: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<InvoiceDb> CreateInvoice(InvoiceDb invoice, int userId = 0)
+        {
+            try
+            {
+                // Calcular el total con IVA si no está establecido
+                if (invoice.Total == null || invoice.Total == 0)
+                {
+                    invoice.Total = (invoice.Subtotal ?? 0) * 1.16m;
+                }
+
+                // Establecer el usuario creador
+                invoice.CreatedBy = userId > 0 ? userId : 1;
+
+                // Estado inicial: CREADA (1)
+                if (invoice.InvoiceStatus == null)
+                {
+                    invoice.InvoiceStatus = 1;
+                }
+
+                var response = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Insert(invoice);
+
+                if (response?.Models?.Count > 0)
+                {
+                    return response.Models.First();
+                }
+
+                throw new Exception("No se pudo crear la factura");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creando factura: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateInvoice(InvoiceDb invoice, int userId = 0)
+        {
+            try
+            {
+                // Recalcular el total con IVA
+                invoice.Total = (invoice.Subtotal ?? 0) * 1.16m;
+
+                // Actualizar el estado basado en las fechas
+                if (invoice.PaymentDate.HasValue)
+                {
+                    invoice.InvoiceStatus = 4; // PAGADA
+                }
+                else if (invoice.ReceptionDate.HasValue)
+                {
+                    // Verificar si está vencida
+                    if (invoice.DueDate.HasValue && DateTime.Now > invoice.DueDate.Value)
+                    {
+                        invoice.InvoiceStatus = 3; // VENCIDA
+                    }
+                    else
+                    {
+                        invoice.InvoiceStatus = 2; // PENDIENTE
+                    }
+                }
+                else
+                {
+                    invoice.InvoiceStatus = 1; // CREADA
+                }
+
+                var response = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Where(x => x.Id == invoice.Id)
+                    .Set(x => x.Folio, invoice.Folio)
+                    .Set(x => x.InvoiceDate, invoice.InvoiceDate)
+                    .Set(x => x.ReceptionDate, invoice.ReceptionDate)
+                    .Set(x => x.Subtotal, invoice.Subtotal)
+                    .Set(x => x.Total, invoice.Total)
+                    .Set(x => x.InvoiceStatus, invoice.InvoiceStatus)
+                    .Set(x => x.PaymentDate, invoice.PaymentDate)
+                    .Set(x => x.DueDate, invoice.DueDate)
+                    .Update();
+
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando factura: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteInvoice(int invoiceId, int userId = 0)
+        {
+            try
+            {
+                // TODO: Registrar en tabla de auditoría antes de eliminar
+                await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Where(x => x.Id == invoiceId)
+                    .Delete();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error eliminando factura: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<List<InvoiceStatusDb>> GetInvoiceStatuses()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<InvoiceStatusDb>()
+                    .Order("display_order", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<InvoiceStatusDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo estados de factura: {ex.Message}");
+                throw;
+            }
+        }
+
     }
 
     // ===============================================
@@ -662,4 +810,77 @@ namespace SistemaGestionProyectos2.Services
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
     }
+
+    // NUEVOS CAMBIOS PARA FACTURAS
+    [Table("t_invoice")]
+    public class InvoiceDb : BaseModel
+    {
+        [PrimaryKey("f_invoice")]
+        public int Id { get; set; }
+
+        [Column("f_order")]
+        public int? OrderId { get; set; }
+
+        [Column("f_folio")]
+        public string Folio { get; set; }
+
+        [Column("f_invoicedate")]
+        public DateTime? InvoiceDate { get; set; }
+
+        [Column("f_receptiondate")]
+        public DateTime? ReceptionDate { get; set; }  // Fecha recibo factura
+
+        [Column("f_subtotal")]
+        public decimal? Subtotal { get; set; }
+
+        [Column("f_total")]
+        public decimal? Total { get; set; }
+
+        [Column("f_invoicestat")]
+        public int? InvoiceStatus { get; set; }
+
+        [Column("f_paymentdate")]
+        public DateTime? PaymentDate { get; set; }  // Fecha pago real
+
+        [Column("due_date")]
+        public DateTime? DueDate { get; set; }  // Pago programado (calculado)
+
+        [Column("payment_method")]
+        public string PaymentMethod { get; set; }
+
+        [Column("payment_reference")]
+        public string PaymentReference { get; set; }
+
+        [Column("balance_due")]
+        public decimal? BalanceDue { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+    }
+
+    [Table("invoice_status")]
+    public class InvoiceStatusDb : BaseModel
+    {
+        [PrimaryKey("f_invoicestat")]
+        public int Id { get; set; }
+
+        [Column("f_name")]
+        public string Name { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("display_order")]
+        public int DisplayOrder { get; set; }
+    }
+
+    // METODOS PARA FACTURAS
+
 }
+

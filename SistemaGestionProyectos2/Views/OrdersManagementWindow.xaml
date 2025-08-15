@@ -440,30 +440,50 @@
                     </DataGridTemplateColumn>
 
                     <!-- Acciones -->
-                    <DataGridTemplateColumn Header="ACCIONES" Width="100">
+                    <!-- En OrdersManagementWindow.xaml, reemplazar la columna de ACCIONES con esta versión actualizada -->
+
+                    <!-- Acciones -->
+                    <DataGridTemplateColumn Header="ACCIONES" Width="150">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <Button Content="✏" 
-                                           Click="EditButton_Click"
-                                           Tag="{Binding}"
-                                           Background="Transparent"
-                                           BorderThickness="0"
-                                           FontSize="16"
-                                           Cursor="Hand"
-                                           ToolTip="Editar"
-                                           Margin="5,0"/>
+                       Click="EditButton_Click"
+                       Tag="{Binding}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       FontSize="16"
+                       Cursor="Hand"
+                       ToolTip="Editar"
+                       Margin="5,0"/>
+                                    <Button x:Name="InvoiceBtn"
+                       Content="💰" 
+                       Click="InvoiceButton_Click"
+                       Tag="{Binding}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       FontSize="16"
+                       Cursor="Hand"
+                       ToolTip="Gestionar Facturas"
+                       Margin="5,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <!-- Aquí se puede agregar lógica para ocultar según el rol si es necesario -->
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                     <Button x:Name="DeleteBtn"
-                                           Content="🗑" 
-                                           Click="DeleteButton_Click"
-                                           Tag="{Binding}"
-                                           Background="Transparent"
-                                           BorderThickness="0"
-                                           FontSize="16"
-                                           Cursor="Hand"
-                                           ToolTip="Eliminar"
-                                           Margin="5,0"
-                                           Visibility="Collapsed"/>
+                       Content="🗑" 
+                       Click="DeleteButton_Click"
+                       Tag="{Binding}"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       FontSize="16"
+                       Cursor="Hand"
+                       ToolTip="Eliminar"
+                       Margin="5,0"
+                       Visibility="Collapsed"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

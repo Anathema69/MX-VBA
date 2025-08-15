@@ -457,5 +457,45 @@ namespace SistemaGestionProyectos2.Views
             var visibleCount = _ordersViewSource?.View?.Cast<object>().Count() ?? 0;
             StatusText.Text = $"{visibleCount} órdenes visibles de {_orders.Count} total";
         }
+
+        private void InvoiceButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Verificar permisos - Solo Admin puede gestionar facturas
+            if (_currentUser.Role != "admin")
+            {
+                MessageBox.Show(
+                    "Solo el administrador puede gestionar facturas.",
+                    "Acceso Denegado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var button = sender as Button;
+            var order = button?.Tag as OrderViewModel;
+
+            if (order == null) return;
+
+            try
+            {
+                // Abrir ventana de gestión de facturas
+                var invoiceWindow = new InvoiceManagementWindow(order.Id, _currentUser);
+                invoiceWindow.Owner = this;
+                invoiceWindow.ShowDialog();
+
+                // Opcional: Recargar órdenes para actualizar cualquier cambio
+                // _ = LoadOrders();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir gestión de facturas:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
+            }
+        }
     }
 }
