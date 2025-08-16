@@ -466,6 +466,67 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // Agregar en SupabaseService.cs después del método GetInvoicesByOrder
+
+        public async Task<Dictionary<int, decimal>> GetInvoicedTotalsByOrders(List<int> orderIds)
+        {
+            var result = new Dictionary<int, decimal>();
+
+            try
+            {
+                if (orderIds == null || !orderIds.Any())
+                    return result;
+
+                // Obtener todas las facturas de las órdenes especificadas
+                var invoices = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.In, orderIds)
+                    .Get();
+
+                if (invoices?.Models != null)
+                {
+                    // Agrupar por orden y sumar totales
+                    var grouped = invoices.Models
+                        .Where(i => i.OrderId.HasValue && i.Total.HasValue)
+                        .GroupBy(i => i.OrderId.Value)
+                        .Select(g => new {
+                            OrderId = g.Key,
+                            Total = g.Sum(i => i.Total ?? 0)
+                        });
+
+                    foreach (var item in grouped)
+                    {
+                        result[item.OrderId] = item.Total;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"📊 Totales facturados calculados para {result.Count} órdenes");
+
+                // Asegurar que todas las órdenes tengan un valor (0 si no tienen facturas)
+                foreach (var orderId in orderIds)
+                {
+                    if (!result.ContainsKey(orderId))
+                    {
+                        result[orderId] = 0;
+                    }
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo totales facturados: {ex.Message}");
+
+                // Retornar diccionario con ceros en caso de error
+                foreach (var orderId in orderIds)
+                {
+                    result[orderId] = 0;
+                }
+
+                return result;
+            }
+        }
+
         public async Task<InvoiceDb> CreateInvoice(InvoiceDb invoice, int userId = 0)
         {
             try

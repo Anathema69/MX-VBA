@@ -93,58 +93,43 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Sección: Información Básica (Solo Lectura) -->
+                <!-- Sección: Información Básica (Solo Lectura para Coordinador) -->
                 <Border Grid.Row="1" 
                        Background="#f5f5f5" 
                        Padding="10"
                        Margin="0,0,0,15">
-                    <TextBlock Text="INFORMACIÓN BÁSICA (Solo Lectura)" 
+                    <TextBlock Text="INFORMACIÓN BÁSICA" 
                              FontWeight="Bold"
                              FontSize="12"/>
                 </Border>
 
-                <!-- Campos de solo lectura -->
+                <!-- Campos de solo lectura (se muestran solo para Coordinador) -->
                 <Grid Grid.Row="2" Margin="0,0,0,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Primera fila -->
+                    <!-- Primera fila: Orden y Fecha (Solo lectura siempre) -->
                     <Grid Grid.Row="0" Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="20"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
+
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="ORDEN DE COMPRA" 
-             FontSize="11"
-             FontWeight="SemiBold"
-             Margin="0,0,0,5"/>
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
                             <TextBox x:Name="OrderNumberTextBox"
-            Height="35"
-            FontSize="14"
-            IsReadOnly="True"
-            Background="#F0F0F0">
-                                <TextBox.Style>
-                                    <Style TargetType="TextBox">
-                                        <Setter Property="IsReadOnly" Value="True"/>
-                                        <Setter Property="Background" Value="#F0F0F0"/>
-                                        <Style.Triggers>
-                                            <!-- Habilitar edición solo para admin -->
-                                            <DataTrigger Binding="{Binding ElementName=OrderNumberTextBox, Path=Tag}" Value="admin">
-                                                <Setter Property="IsReadOnly" Value="False"/>
-                                                <Setter Property="Background" Value="White"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBox.Style>
-                            </TextBox>
+                                    Height="35"
+                                    FontSize="14"
+                                    IsReadOnly="True"
+                                    Background="#F0F0F0"/>
                         </StackPanel>
-
 
                         <StackPanel Grid.Column="2">
                             <TextBlock Text="FECHA O.C." 
@@ -159,7 +144,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Segunda fila -->
+                    <!-- Segunda fila: Cliente y Vendedor (Solo lectura para Coordinador) -->
                     <Grid Grid.Row="1" Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -192,7 +177,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Descripción -->
+                    <!-- Descripción (Solo lectura para Coordinador) -->
                     <StackPanel Grid.Row="2" Margin="0,0,0,15">
                         <TextBlock Text="DESCRIPCIÓN" 
                                  FontSize="11"
@@ -213,35 +198,44 @@
                        Background="#E8F5E9" 
                        Padding="10"
                        Margin="0,0,0,15">
-                    <TextBlock Text="CAMPOS EDITABLES" 
+                    <TextBlock x:Name="EditableSectionTitle"
+                             Text="CAMPOS EDITABLES" 
                              FontWeight="Bold"
                              FontSize="12"
                              Foreground="#2E7D32"/>
                 </Border>
 
-                <!-- Campos editables para Coordinador -->
+                <!-- Campos editables según rol -->
                 <Grid Grid.Row="4" Margin="0,0,0,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Fecha Promesa -->
-                    <StackPanel Grid.Row="0" Margin="0,0,0,15">
-                        <TextBlock Text="FECHA PROMESA / ENTREGA EST. *" 
+                    <!-- ADMIN: Orden de Compra (editable solo para admin) -->
+                    <StackPanel x:Name="OrderNumberEditPanel" 
+                                Grid.Row="0" 
+                                Margin="0,0,0,15"
+                                Visibility="Collapsed">
+                        <TextBlock Text="ORDEN DE COMPRA *" 
                                  FontSize="11"
                                  FontWeight="SemiBold"
                                  Foreground="#2E7D32"
                                  Margin="0,0,0,5"/>
-                        <DatePicker x:Name="PromiseDatePicker"
-                                   Height="35"
-                                   FontSize="14"
-                                   Background="White"/>
+                        <TextBox x:Name="EditableOrderNumberTextBox"
+                                Height="35"
+                                FontSize="14"
+                                CharacterCasing="Upper"/>
                     </StackPanel>
 
-                    <!-- % Avance -->
-                    <Grid Grid.Row="1" Margin="0,0,0,15">
+                    <!-- ADMIN: Cotización y Cliente -->
+                    <Grid x:Name="AdminFieldsPanel1"
+                          Grid.Row="1" 
+                          Margin="0,0,0,15"
+                          Visibility="Collapsed">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="20"/>
@@ -249,44 +243,146 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="% AVANCE *" 
+                            <TextBlock Text="COTIZACIÓN" 
                                      FontSize="11"
                                      FontWeight="SemiBold"
                                      Foreground="#2E7D32"
                                      Margin="0,0,0,5"/>
-                            <Grid>
-                                <Slider x:Name="ProgressSlider"
-                                       Minimum="0"
-                                       Maximum="100"
-                                       Value="0"
-                                       Height="35"
-                                       VerticalAlignment="Center"
-                                       ValueChanged="ProgressSlider_ValueChanged"/>
-                                <TextBlock x:Name="ProgressValueText"
-                                         Text="0%"
-                                         HorizontalAlignment="Right"
-                                         VerticalAlignment="Center"
-                                         Margin="0,0,10,0"
-                                         FontWeight="Bold"
-                                         Foreground="#2E7D32"/>
-                            </Grid>
+                            <TextBox x:Name="EditableQuotationTextBox"
+                                    Height="35"
+                                    FontSize="14"
+                                    CharacterCasing="Upper"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="ESTATUS *" 
+                            <TextBlock Text="CLIENTE *" 
                                      FontSize="11"
                                      FontWeight="SemiBold"
                                      Foreground="#2E7D32"
                                      Margin="0,0,0,5"/>
-                            <ComboBox x:Name="StatusComboBox"
+                            <ComboBox x:Name="EditableClientComboBox"
                                      Height="35"
-                                     FontSize="14">
-                                <ComboBoxItem Content="EN PROCESO"/>
-                                <ComboBoxItem Content="COMPLETADA"/>
-                                <ComboBoxItem Content="EN ESPERA"/>
-                                <ComboBoxItem Content="CANCELADA"/>
-                            </ComboBox>
+                                     FontSize="14"/>
                         </StackPanel>
+                    </Grid>
+
+                    <!-- ADMIN: Contacto y Vendedor -->
+                    <Grid x:Name="AdminFieldsPanel2"
+                          Grid.Row="2" 
+                          Margin="0,0,0,15"
+                          Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="20"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="CONTACTO" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Foreground="#2E7D32"
+                                     Margin="0,0,0,5"/>
+                            <ComboBox x:Name="EditableContactComboBox"
+                                     Height="35"
+                                     FontSize="14"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="VENDEDOR *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Foreground="#2E7D32"
+                                     Margin="0,0,0,5"/>
+                            <ComboBox x:Name="EditableVendorComboBox"
+                                     Height="35"
+                                     FontSize="14"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ADMIN: Descripción -->
+                    <StackPanel x:Name="AdminDescriptionPanel"
+                                Grid.Row="3" 
+                                Margin="0,0,0,15"
+                                Visibility="Collapsed">
+                        <TextBlock Text="DESCRIPCIÓN *" 
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Foreground="#2E7D32"
+                                 Margin="0,0,0,5"/>
+                        <TextBox x:Name="EditableDescriptionTextBox"
+                                Height="60"
+                                FontSize="14"
+                                TextWrapping="Wrap"
+                                AcceptsReturn="True"
+                                VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+
+                    <!-- TODOS: Fecha Promesa y % Avance -->
+                    <Grid Grid.Row="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Fecha Promesa (Todos pueden editar) -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                            <TextBlock Text="FECHA PROMESA / ENTREGA EST. *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Foreground="#2E7D32"
+                                     Margin="0,0,0,5"/>
+                            <DatePicker x:Name="PromiseDatePicker"
+                                       Height="35"
+                                       FontSize="14"
+                                       Background="White"/>
+                        </StackPanel>
+
+                        <!-- % Avance y Estado -->
+                        <Grid Grid.Row="1" Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="% AVANCE *" 
+                                         FontSize="11"
+                                         FontWeight="SemiBold"
+                                         Foreground="#2E7D32"
+                                         Margin="0,0,0,5"/>
+                                <Grid>
+                                    <Slider x:Name="ProgressSlider"
+                                           Minimum="0"
+                                           Maximum="100"
+                                           Value="0"
+                                           Height="35"
+                                           VerticalAlignment="Center"
+                                           ValueChanged="ProgressSlider_ValueChanged"/>
+                                    <TextBlock x:Name="ProgressValueText"
+                                             Text="0%"
+                                             HorizontalAlignment="Right"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,10,0"
+                                             FontWeight="Bold"
+                                             Foreground="#2E7D32"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="ESTATUS *" 
+                                         FontSize="11"
+                                         FontWeight="SemiBold"
+                                         Foreground="#2E7D32"
+                                         Margin="0,0,0,5"/>
+                                <ComboBox x:Name="StatusComboBox"
+                                         Height="35"
+                                         FontSize="14"
+                                         SelectionChanged="StatusComboBox_SelectionChanged">
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Grid>
 
@@ -311,34 +407,31 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="20"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="20"/>
-                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- En la sección de Información Financiera (solo visible para Admin) -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="SUBTOTAL (MXN)" 
-             FontSize="11"
-             FontWeight="SemiBold"
-             Foreground="#2E7D32"
-             Margin="0,0,0,5"/>
+                        <TextBlock Text="SUBTOTAL (MXN) *" 
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Foreground="#2E7D32"
+                                 Margin="0,0,0,5"/>
                         <Border Background="White"
-           BorderBrush="#999"
-           BorderThickness="1"
-           Height="35"
-           CornerRadius="3">
+                               BorderBrush="#999"
+                               BorderThickness="1"
+                               Height="35"
+                               CornerRadius="3">
                             <TextBox x:Name="SubtotalTextBox"
-                BorderThickness="0"
-                Background="Transparent"
-                VerticalAlignment="Center"
-                Margin="10,0"
-                FontSize="14"
-                FontWeight="Bold"
-                Foreground="Black"
-                TextChanged="SubtotalTextBox_TextChanged"
-                PreviewTextInput="NumericTextBox_PreviewTextInput"
-                GotFocus="SubtotalTextBox_GotFocus"
-                LostFocus="SubtotalTextBox_LostFocus"/>
+                                    BorderThickness="0"
+                                    Background="Transparent"
+                                    VerticalAlignment="Center"
+                                    Margin="10,0"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Foreground="Black"
+                                    TextChanged="SubtotalTextBox_TextChanged"
+                                    PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                    GotFocus="SubtotalTextBox_GotFocus"
+                                    LostFocus="SubtotalTextBox_LostFocus"/>
                         </Border>
                     </StackPanel>
 
@@ -359,30 +452,6 @@
                                      FontWeight="Bold"
                                      Foreground="#2E7D32"/>
                         </Border>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="% ORDEN" 
-                                 FontSize="11"
-                                 FontWeight="SemiBold"
-                                 Foreground="#2E7D32"
-                                 Margin="0,0,0,5"/>
-                        <Grid>
-                            <Slider x:Name="OrderPercentageSlider"
-                                   Minimum="0"
-                                   Maximum="100"
-                                   Value="0"
-                                   Height="35"
-                                   VerticalAlignment="Center"
-                                   ValueChanged="OrderPercentageSlider_ValueChanged"/>
-                            <TextBlock x:Name="OrderPercentageText"
-                                     Text="0%"
-                                     HorizontalAlignment="Right"
-                                     VerticalAlignment="Center"
-                                     Margin="0,0,10,0"
-                                     FontWeight="Bold"
-                                     Foreground="#2E7D32"/>
-                        </Grid>
                     </StackPanel>
                 </Grid>
 
@@ -449,6 +518,9 @@
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
                                     <Setter TargetName="border" Property="Background" Value="#388E3C"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="border" Property="Background" Value="#CCCCCC"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

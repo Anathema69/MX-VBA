@@ -73,7 +73,7 @@ namespace SistemaGestionProyectos2.Views
                     NewOrderButton.IsEnabled = true;
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
-                    OrderPercentageColumn.Visibility = Visibility.Visible;
+                    //OrderPercentageColumn.Visibility = Visibility.Visible;
                     EnableDeleteButtons(true);
                     break;
 
@@ -85,7 +85,10 @@ namespace SistemaGestionProyectos2.Views
                     // NO puede ver campos financieros
                     SubtotalColumn.Visibility = Visibility.Collapsed;
                     TotalColumn.Visibility = Visibility.Collapsed;
-                    OrderPercentageColumn.Visibility = Visibility.Collapsed;
+
+                    // Monto facturado tampoco
+                    InvoicedColumn.Visibility = Visibility.Collapsed;
+                    //OrderPercentageColumn.Visibility = Visibility.Collapsed;
 
                     // NO puede eliminar
                     EnableDeleteButtons(false);
@@ -150,12 +153,18 @@ namespace SistemaGestionProyectos2.Views
 
                 if (ordersFromDb != null && ordersFromDb.Count > 0)
                 {
+                    // Obtener los IDs de las órdenes para buscar sus facturas
+                    var orderIds = ordersFromDb.Select(o => o.Id).ToList();
+
+                    // Obtener totales facturados para todas las órdenes
+                    var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+
                     foreach (var order in ordersFromDb)
                     {
                         // Obtener nombre del cliente
                         var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
 
-                        // Obtener nombre del vendedor desde t_vendor (usando f_salesman)
+                        // Obtener nombre del vendedor desde t_vendor
                         var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
 
                         // Obtener nombre del estado
@@ -168,12 +177,22 @@ namespace SistemaGestionProyectos2.Views
                             statusName: status?.Name
                         );
 
+                        // Agregar el monto facturado
+                        if (invoicedTotals.ContainsKey(order.Id))
+                        {
+                            viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                        }
+                        else
+                        {
+                            viewModel.InvoicedAmount = 0;
+                        }
+
                         _orders.Add(viewModel);
                     }
 
                     StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
 
-                    // AGREGAR ESTA LÍNEA AL FINAL
+                    // Configurar visibilidad de botones después de cargar
                     Dispatcher.BeginInvoke(new Action(() =>
                     {
                         ConfigureButtonsVisibility();
@@ -220,6 +239,10 @@ namespace SistemaGestionProyectos2.Views
 
                     if (moreOrders != null && moreOrders.Count > 0)
                     {
+                        // Obtener totales facturados para este batch
+                        var orderIds = moreOrders.Select(o => o.Id).ToList();
+                        var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+
                         // Agregar al UI en el thread principal
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
@@ -229,12 +252,17 @@ namespace SistemaGestionProyectos2.Views
                                 var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
                                 var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
 
-                                // Usar el método de extensión
                                 var viewModel = order.ToViewModel(
                                     clientName: client?.Name,
                                     vendorName: vendor?.VendorName,
                                     statusName: status?.Name
                                 );
+
+                                // Agregar el monto facturado
+                                if (invoicedTotals.ContainsKey(order.Id))
+                                {
+                                    viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                                }
 
                                 _orders.Add(viewModel);
                             }

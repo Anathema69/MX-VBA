@@ -316,17 +316,33 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <DataGridTextColumn x:Name="OrderPercentageColumn"
-                                       Header="% ORDEN" 
-                                       Binding="{Binding OrderPercentage, StringFormat={}{0}%}" 
-                                       Width="80"
-                                       Visibility="Collapsed">
+                    
+                    <DataGridTextColumn x:Name="InvoicedColumn"
+                   Header="FACTURADO" 
+                   Binding="{Binding InvoicedAmount, StringFormat=C}" 
+                   Width="110">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Style.Triggers>
+                                    <!-- Verde si está completo -->
+                                    <DataTrigger Binding="{Binding Path=InvoicedPercentage}" Value="100">
+                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                    </DataTrigger>
+                                    <!-- Amarillo si está parcial -->
+                                    <DataTrigger Binding="{Binding Path=InvoicedPercentage}">
+                                        <DataTrigger.Value>
+                                            <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib">50</sys:Double>
+                                        </DataTrigger.Value>
+                                        <Setter Property="Foreground" Value="#FF9800"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
+
+
 
                     <!-- Estado con colores -->
                     <!-- En el DataGridTemplateColumn del ESTATUS -->

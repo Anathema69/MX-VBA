@@ -15,8 +15,15 @@ namespace SistemaGestionProyectos2.Models
         public int OrderPercentage { get; set; }
         public decimal Subtotal { get; set; }
         public decimal Total { get; set; }
+
+        public decimal InvoicedAmount { get; set; }
         public string Status { get; set; }
         public bool Invoiced { get; set; }
         public DateTime? LastInvoiceDate { get; set; }
+
+        public string InvoicedAmountFormatted => InvoicedAmount.ToString("C");
+        public decimal PendingAmount => Total - InvoicedAmount;
+        public string PendingAmountFormatted => PendingAmount.ToString("C");
+        public double InvoicedPercentage => Total > 0 ? (double)(InvoicedAmount / Total * 100) : 0;
     }
 }

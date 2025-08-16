@@ -24,7 +24,7 @@ namespace SistemaGestionProyectos2.Services
         }
     }
 
-    // IMPORTANTE: Esta clase debe estar FUERA de la clase anterior, no anidada
+    
     public class IsAdminToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
