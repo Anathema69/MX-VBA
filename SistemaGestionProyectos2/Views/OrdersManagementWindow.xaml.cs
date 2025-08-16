@@ -508,7 +508,7 @@ namespace SistemaGestionProyectos2.Views
             StatusText.Text = $"{visibleCount} órdenes visibles de {_orders.Count} total";
         }
 
-        private void InvoiceButton_Click(object sender, RoutedEventArgs e)
+        private async void InvoiceButton_Click(object sender, RoutedEventArgs e)
         {
             // Verificar permisos - Solo Admin puede gestionar facturas
             if (_currentUser.Role != "admin")
@@ -528,13 +528,40 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
+                // Verificar que la orden esté en estado correcto para facturar
+                bool canInvoice = await _supabaseService.CanCreateInvoice(order.Id);
+
+                if (!canInvoice)
+                {
+                    // Obtener el estado actual
+                    var currentStatus = order.Status;
+
+                    string message = currentStatus switch
+                    {
+                        "CREADA" => "La orden debe estar EN PROCESO para poder facturar.\n" +
+                                   "Cambie el estado de la orden primero.",
+                        "COMPLETADA" => "Esta orden está completada.\n" +
+                                      "Todas las facturas ya fueron pagadas.",
+                        "CANCELADA" => "Esta orden está cancelada.\n" +
+                                     "No se pueden gestionar facturas.",
+                        _ => $"No se pueden gestionar facturas en el estado: {currentStatus}"
+                    };
+
+                    MessageBox.Show(
+                        message,
+                        "Facturación No Disponible",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+
                 // Abrir ventana de gestión de facturas
                 var invoiceWindow = new InvoiceManagementWindow(order.Id, _currentUser);
                 invoiceWindow.Owner = this;
                 invoiceWindow.ShowDialog();
 
-                // Opcional: Recargar órdenes para actualizar cualquier cambio
-                // _ = LoadOrders();
+                // Recargar órdenes para actualizar estados y montos facturados
+                await LoadOrders();
             }
             catch (Exception ex)
             {
@@ -548,7 +575,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Agregar este método en OrdersManagementWindow.xaml.cs
+        
 
         // Método para configurar la visibilidad de los botones después de cargar el DataGrid
         private void ConfigureButtonsVisibility()

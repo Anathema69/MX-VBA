@@ -58,6 +58,25 @@ namespace SistemaGestionProyectos2.Views
                 // Cargar información de la orden
                 _currentOrder = await _supabaseService.GetOrderById(orderId);
 
+
+                // Validar que se pueda facturar
+                bool canInvoice = await _supabaseService.CanCreateInvoice(orderId);
+                if (!canInvoice)
+                {
+                    var statusName = await _supabaseService.GetStatusName(_currentOrder.OrderStatus ?? 0);
+
+                    MessageBox.Show(
+                        $"No se pueden gestionar facturas en este momento.\n\n" +
+                        $"Estado actual de la orden: {statusName}\n" +
+                        $"Las facturas solo se pueden crear cuando la orden está EN PROCESO.",
+                        "Facturación No Disponible",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    this.Close();
+                    return;
+                }
+
                 if (_currentOrder == null)
                 {
                     MessageBox.Show("No se pudo cargar la información de la orden.",
@@ -544,7 +563,6 @@ namespace SistemaGestionProyectos2.Views
                                 invoice.HasChanges = false;
                                 savedCount++;
 
-                                // Reset la bandera de creación
                                 _isCreatingNewInvoice = false;
                                 AddInvoiceButton.IsEnabled = true;
 
@@ -566,6 +584,21 @@ namespace SistemaGestionProyectos2.Views
                     {
                         errorCount++;
                         System.Diagnostics.Debug.WriteLine($"❌ Error guardando factura {invoice.Folio}: {ex.Message}");
+                    }
+                }
+
+                // NUEVO: Verificar y actualizar estado de la orden después de guardar facturas
+                if (savedCount > 0)
+                {
+                    StatusMessage.Text = "Verificando estado de la orden...";
+                    bool statusUpdated = await _supabaseService.CheckAndUpdateOrderStatus(_currentOrder.Id, _currentUser.Id);
+
+                    if (statusUpdated)
+                    {
+                        StatusMessage.Text = "✅ Estado de la orden actualizado automáticamente";
+                        StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+
+                        
                     }
                 }
 

@@ -664,6 +664,26 @@ namespace SistemaGestionProyectos2.Views
 
                 if (success)
                 {
+                    // Registrar cambio de estado en historial si cambió
+                    if (selectedStatus?.Tag is int newStatusId && newStatusId != _currentStatusId)
+                    {
+                        var oldStatusName = await _supabaseService.GetStatusName(_currentStatusId);
+                        var newStatusName = await _supabaseService.GetStatusName(newStatusId);
+
+                        await _supabaseService.LogOrderHistory(
+                            _order.Id,
+                            _currentUser.Id,
+                            "STATUS_CHANGE",
+                            "f_orderstat",
+                            oldStatusName,
+                            newStatusName,
+                            $"Cambio manual de estado por {_currentUser.FullName}"
+                        );
+                    }
+
+                    // Verificar si se debe actualizar automáticamente el estado
+                    await _supabaseService.CheckAndUpdateOrderStatus(_order.Id, _currentUser.Id);
+
                     // Actualizar el objeto local
                     if (_currentUser.Role == "admin")
                     {

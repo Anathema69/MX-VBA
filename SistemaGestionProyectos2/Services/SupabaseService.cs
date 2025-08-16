@@ -652,6 +652,198 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // ===============================================
+        // MÉTODOS PARA MANEJO DE ESTADOS
+        // ===============================================
+
+        public async Task<bool> CheckAndUpdateOrderStatus(int orderId, int userId = 0)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔄 Verificando estado de orden {orderId}...");
+
+                // Obtener la orden
+                var order = await GetOrderById(orderId);
+                if (order == null) return false;
+
+                // Obtener el estado actual
+                var currentStatusName = await GetStatusName(order.OrderStatus ?? 0);
+                System.Diagnostics.Debug.WriteLine($"   Estado actual: {currentStatusName}");
+
+                // Si ya está en estado final, no hacer nada
+                if (currentStatusName == "CANCELADA" || currentStatusName == "COMPLETADA")
+                {
+                    System.Diagnostics.Debug.WriteLine($"   ℹ️ Orden en estado final, no se requieren cambios");
+                    return false;
+                }
+
+                // Obtener todas las facturas de la orden
+                var invoices = await GetInvoicesByOrder(orderId);
+
+                // Calcular totales
+                decimal totalInvoiced = invoices.Sum(i => i.Total ?? 0);
+                decimal orderTotal = order.SaleTotal ?? 0;
+                bool allInvoicesReceived = invoices.Any() && invoices.All(i => i.ReceptionDate.HasValue);
+                bool allInvoicesPaid = invoices.Any() && invoices.All(i => i.PaymentDate.HasValue);
+
+                System.Diagnostics.Debug.WriteLine($"   Total orden: {orderTotal:C}");
+                System.Diagnostics.Debug.WriteLine($"   Total facturado: {totalInvoiced:C}");
+                System.Diagnostics.Debug.WriteLine($"   Todas recibidas: {allInvoicesReceived}");
+                System.Diagnostics.Debug.WriteLine($"   Todas pagadas: {allInvoicesPaid}");
+
+                int newStatusId = order.OrderStatus ?? 0;
+                bool statusChanged = false;
+
+                // Lógica de cambio de estado automático
+                if (allInvoicesPaid && invoices.Any())
+                {
+                    // COMPLETADA - Todas las facturas pagadas
+                    newStatusId = await GetStatusIdByName("COMPLETADA");
+                    if (newStatusId != order.OrderStatus)
+                    {
+                        order.ProgressPercentage = 100; // Avance al 100%
+                        statusChanged = true;
+                        System.Diagnostics.Debug.WriteLine($"   ✅ Cambiando a COMPLETADA");
+                    }
+                }
+                else if (allInvoicesReceived && invoices.Any())
+                {
+                    // CERRADA - Todas las facturas recibidas
+                    newStatusId = await GetStatusIdByName("CERRADA");
+                    if (newStatusId != order.OrderStatus)
+                    {
+                        statusChanged = true;
+                        System.Diagnostics.Debug.WriteLine($"   ✅ Cambiando a CERRADA");
+                    }
+                }
+                else if (orderTotal > 0 && Math.Abs(totalInvoiced - orderTotal) < 0.01m) // Tolerancia de 1 centavo
+                {
+                    // LIBERADA - Facturación al 100%
+                    newStatusId = await GetStatusIdByName("LIBERADA");
+                    if (newStatusId != order.OrderStatus)
+                    {
+                        order.ProgressPercentage = 100; // Avance al 100%
+                        statusChanged = true;
+                        System.Diagnostics.Debug.WriteLine($"   ✅ Cambiando a LIBERADA (100% facturado)");
+                    }
+                }
+
+                // Si cambió el estado, actualizar
+                if (statusChanged)
+                {
+                    order.OrderStatus = newStatusId;
+                    order.UpdatedBy = userId > 0 ? userId : 1;
+
+                    var updated = await UpdateOrder(order, userId);
+
+                    if (updated)
+                    {
+                        // Registrar en historial
+                        await LogOrderHistory(orderId, userId, "STATUS_CHANGE",
+                            "f_orderstat",
+                            currentStatusName,
+                            await GetStatusName(newStatusId),
+                            $"Cambio automático de estado");
+
+                        System.Diagnostics.Debug.WriteLine($"   ✅ Estado actualizado exitosamente");
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error verificando estado de orden: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> CanCreateInvoice(int orderId)
+        {
+            try
+            {
+                var order = await GetOrderById(orderId);
+                if (order == null) return false;
+
+                var statusName = await GetStatusName(order.OrderStatus ?? 0);
+                //saber el orderstatus  de los estados, si es 1,2,3,4
+
+                var numStatus = order.OrderStatus ?? 0;
+
+                // Solo permitir facturas en estado 'EN PROCESO' hasta 'COMPLETADA', que es del estado 1 -> 4
+                return numStatus >= 1 && numStatus < 4;
+
+
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<string> GetStatusName(int statusId)
+        {
+            try
+            {
+                var statuses = await GetOrderStatuses();
+                var status = statuses?.FirstOrDefault(s => s.Id == statusId);
+                return status?.Name ?? "DESCONOCIDO";
+            }
+            catch
+            {
+                return "DESCONOCIDO";
+            }
+        }
+
+        public async Task<int> GetStatusIdByName(string statusName)
+        {
+            try
+            {
+                var statuses = await GetOrderStatuses();
+                var status = statuses?.FirstOrDefault(s =>
+                    s.Name.Equals(statusName, StringComparison.OrdinalIgnoreCase));
+                return status?.Id ?? 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        public async Task<bool> LogOrderHistory(int orderId, int userId, string action,
+            string fieldName = null, string oldValue = null, string newValue = null,
+            string description = null)
+        {
+            try
+            {
+                var history = new OrderHistoryDb
+                {
+                    OrderId = orderId,
+                    UserId = userId > 0 ? userId : 1,
+                    Action = action,
+                    FieldName = fieldName,
+                    OldValue = oldValue,
+                    NewValue = newValue,
+                    ChangeDescription = description,
+                    IpAddress = "127.0.0.1", // En producción obtener la IP real
+                    ChangedAt = DateTime.Now
+                };
+
+                var response = await _supabaseClient
+                    .From<OrderHistoryDb>()
+                    .Insert(history);
+
+                System.Diagnostics.Debug.WriteLine($"📝 Historial registrado: {action} en orden {orderId}");
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error registrando historial: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 
     // ===============================================
@@ -941,7 +1133,41 @@ namespace SistemaGestionProyectos2.Services
         public int DisplayOrder { get; set; }
     }
 
-    // METODOS PARA FACTURAS
+    // Agregar después de la clase InvoiceStatusDb
+
+    [Table("order_history")]
+    public class OrderHistoryDb : BaseModel
+    {
+        [PrimaryKey("id")]
+        public int Id { get; set; }
+
+        [Column("order_id")]
+        public int OrderId { get; set; }
+
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        [Column("action")]
+        public string Action { get; set; }
+
+        [Column("field_name")]
+        public string FieldName { get; set; }
+
+        [Column("old_value")]
+        public string OldValue { get; set; }
+
+        [Column("new_value")]
+        public string NewValue { get; set; }
+
+        [Column("change_description")]
+        public string ChangeDescription { get; set; }
+
+        [Column("ip_address")]
+        public string IpAddress { get; set; }
+
+        [Column("changed_at")]
+        public DateTime? ChangedAt { get; set; }
+    }
 
 }
 
