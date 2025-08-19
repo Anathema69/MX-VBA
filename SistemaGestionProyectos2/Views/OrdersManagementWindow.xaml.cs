@@ -80,6 +80,16 @@ namespace SistemaGestionProyectos2.Views
                 case "coordinator":
                     // Coordinador NO puede crear nuevas órdenes
                     NewOrderButton.IsEnabled = false;
+
+                    // lo 'ocultamos' para que no lo vea
+                    NewOrderButton.Visibility = Visibility.Collapsed;
+
+                    // Como ya no existe el botón de crear para el coordinador, debemos mover el botón de refresh a la izquierda
+                    RefreshButton.Width = 90;
+
+            
+                    
+
                     NewOrderButton.ToolTip = "Solo el administrador puede crear órdenes";
 
                     // NO puede ver campos financieros
@@ -540,8 +550,7 @@ namespace SistemaGestionProyectos2.Views
                     {
                         "CREADA" => "La orden debe estar EN PROCESO para poder facturar.\n" +
                                    "Cambie el estado de la orden primero.",
-                        "COMPLETADA" => "Esta orden está completada.\n" +
-                                      "Todas las facturas ya fueron pagadas.",
+                        
                         "CANCELADA" => "Esta orden está cancelada.\n" +
                                      "No se pueden gestionar facturas.",
                         _ => $"No se pueden gestionar facturas en el estado: {currentStatus}"
@@ -557,7 +566,6 @@ namespace SistemaGestionProyectos2.Views
 
                 // Abrir ventana de gestión de facturas
                 var invoiceWindow = new InvoiceManagementWindow(order.Id, _currentUser);
-                invoiceWindow.Owner = this;
                 invoiceWindow.ShowDialog();
 
                 // Recargar órdenes para actualizar estados y montos facturados
@@ -622,6 +630,38 @@ namespace SistemaGestionProyectos2.Views
                                 }
                             }
                         }
+                    }
+                }
+            }
+            // Si es admin, mostrar botones de factura en todas las filas
+            if (_currentUser.Role == "admin")
+            {
+                // Hacer visible la columna de acciones con facturas
+                var invoiceButtons = FindVisualChildren<Button>(OrdersDataGrid)
+                    .Where(b => b.Name == "InvoiceBtn");
+
+                foreach (var btn in invoiceButtons)
+                {
+                    btn.Visibility = Visibility.Visible;
+                }
+            }
+        }
+        // Método auxiliar para encontrar controles hijos
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
                     }
                 }
             }

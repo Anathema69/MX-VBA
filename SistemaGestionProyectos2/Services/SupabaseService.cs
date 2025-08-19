@@ -772,7 +772,7 @@ namespace SistemaGestionProyectos2.Services
                 var numStatus = order.OrderStatus ?? 0;
 
                 // Solo permitir facturas en estado 'EN PROCESO' hasta 'COMPLETADA', que es del estado 1 -> 4
-                return numStatus >= 1 && numStatus < 4;
+                return numStatus >= 1 && numStatus <= 4;
 
 
             }

@@ -26,6 +26,8 @@ namespace SistemaGestionProyectos2.Views
         private decimal _subtotalValue = 0;
         private int _currentStatusId = 0;
         private bool _isLoadingData = false;
+        private bool _isCancellingFromButton = false; // Agregar esta variable de instancia al inicio de la clase
+
 
         public EditOrderWindow(OrderViewModel order, UserSession currentUser)
         {
@@ -42,6 +44,19 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                if (_currentUser.Role == "admin")
+                {
+                    // SOLUCIÓN: Colapsar todo el Grid de campos de solo lectura
+                    ReadOnlyFieldsGrid.Visibility = Visibility.Collapsed;
+                    // Buscar el elemento por nombre (útil si el nombre viene de una variable)
+                    var border = this.FindName("FieldNameBasic") as Border;
+                    if (border != null)
+                    {
+                        border.Visibility = Visibility.Collapsed;
+                    }
+
+                }
+
                 _isLoadingData = true;
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "Cargando...";
@@ -104,9 +119,46 @@ namespace SistemaGestionProyectos2.Views
 
         private void SetupControls()
         {
-            // Llenar ComboBox de estados
+            // Llenar ComboBox de estados según el estado actual
             StatusComboBox.Items.Clear();
-            foreach (var status in _orderStatuses.OrderBy(s => s.DisplayOrder))
+
+            List<OrderStatusDb> availableStatuses = new List<OrderStatusDb>();
+
+            // Lógica de estados disponibles según el estado actual (SIN CANCELADA)
+            switch (_currentStatusId)
+            {
+                case 0: // CREADA
+                        // Puede ir a: CREADA (mismo), EN PROCESO
+                    availableStatuses = _orderStatuses
+                        .Where(s => s.Id == 0 || s.Id == 1)
+                        .OrderBy(s => s.DisplayOrder)
+                        .ToList();
+                    break;
+
+                case 1: // EN PROCESO
+                        // Puede ir a: EN PROCESO (mismo), LIBERADA
+                    availableStatuses = _orderStatuses
+                        .Where(s => s.Id == 1 || s.Id == 2)
+                        .OrderBy(s => s.DisplayOrder)
+                        .ToList();
+                    break;
+
+                case 2: // LIBERADA
+                        // Solo puede quedarse en LIBERADA
+                    availableStatuses = _orderStatuses
+                        .Where(s => s.Id == 2)
+                        .ToList();
+                    break;
+
+                default: // CERRADA, COMPLETADA, CANCELADA
+                         // Estados finales - no se pueden cambiar
+                    availableStatuses = _orderStatuses
+                        .Where(s => s.Id == _currentStatusId)
+                        .ToList();
+                    break;
+            }
+
+            foreach (var status in availableStatuses)
             {
                 StatusComboBox.Items.Add(new ComboBoxItem
                 {
@@ -151,6 +203,8 @@ namespace SistemaGestionProyectos2.Views
 
                     // Ocultar todos los campos de admin
                     OrderNumberEditPanel.Visibility = Visibility.Collapsed;
+                    FechaCompraEditPanel.Visibility = Visibility.Collapsed; 
+                    
                     AdminFieldsPanel1.Visibility = Visibility.Collapsed;
                     AdminFieldsPanel2.Visibility = Visibility.Collapsed;
                     AdminDescriptionPanel.Visibility = Visibility.Collapsed;
@@ -168,6 +222,11 @@ namespace SistemaGestionProyectos2.Views
 
                     // Mostrar campos editables de admin
                     OrderNumberEditPanel.Visibility = Visibility.Visible;
+
+                    // Aparece fecha pero no es editable
+                    FechaCompraEditPanel.Visibility = Visibility.Visible;
+                    FechaCompraEditPanel.IsEnabled = false;
+
                     AdminFieldsPanel1.Visibility = Visibility.Visible;
                     AdminFieldsPanel2.Visibility = Visibility.Visible;
                     AdminDescriptionPanel.Visibility = Visibility.Visible;
@@ -192,9 +251,17 @@ namespace SistemaGestionProyectos2.Views
 
             // Campos de solo lectura (siempre)
             OrderDateTextBox.Text = _order.OrderDate.ToString("dd/MM/yyyy");
+            EditableFechaCompra.Text = OrderDateTextBox.Text;
+
+
+            // Imprimir en consola la fehca de O.C
+
 
             if (_currentUser.Role == "admin")
             {
+
+                
+                
                 // Admin: cargar en campos editables
                 EditableOrderNumberTextBox.Text = _order.OrderNumber;
                 EditableQuotationTextBox.Text = _originalOrderDb?.Quote ?? "";
@@ -203,11 +270,7 @@ namespace SistemaGestionProyectos2.Views
                 EditableVendorComboBox.SelectedValue = _originalOrderDb?.SalesmanId;
                 EditableDescriptionTextBox.Text = _order.Description;
 
-                // Ocultar campos de solo lectura duplicados
-                OrderNumberTextBox.Visibility = Visibility.Collapsed;
-                ClientTextBox.Visibility = Visibility.Collapsed;
-                VendorTextBox.Visibility = Visibility.Collapsed;
-                DescriptionTextBox.Visibility = Visibility.Collapsed;
+                
 
                 // Campos financieros
                 _subtotalValue = _order.Subtotal;
@@ -216,7 +279,10 @@ namespace SistemaGestionProyectos2.Views
             }
             else
             {
-                // Coordinador: mostrar en solo lectura
+
+                // Coordinador: mostrar en solo lectura - mantener visible
+                ReadOnlyFieldsGrid.Visibility = Visibility.Visible;
+
                 OrderNumberTextBox.Text = _order.OrderNumber;
                 ClientTextBox.Text = _order.ClientName;
                 VendorTextBox.Text = _order.VendorName;
@@ -340,8 +406,8 @@ namespace SistemaGestionProyectos2.Views
                     return;
                 }
 
-                // Si se está cambiando a CANCELADA, mostrar confirmación especial
-                if (newStatusName.ToUpper() == "CANCELADA")
+                // Solo llamar a HandleCancelOrder si NO viene del botón
+                if (newStatusName.ToUpper() == "CANCELADA" && !_isCancellingFromButton)
                 {
                     HandleCancelOrder();
                 }
@@ -507,8 +573,8 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
 
-            // No permitir cambiar manualmente a LIBERADA, CERRADA o COMPLETADA
-            if ((toName == "LIBERADA" || toName == "CERRADA" || toName == "COMPLETADA") &&
+            /* No permitir cambiar manualmente a LIBERADA, CERRADA o COMPLETADA
+            if (( toName == "CERRADA" || toName == "COMPLETADA") &&
                 fromStatusId != toStatusId)
             {
                 MessageBox.Show(
@@ -518,7 +584,7 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return false;
-            }
+            }*/
 
             return true;
         }
@@ -698,11 +764,7 @@ namespace SistemaGestionProyectos2.Views
                     var statusName = _orderStatuses.FirstOrDefault(s => s.Id == _originalOrderDb.OrderStatus)?.Name;
                     _order.Status = statusName ?? "PENDIENTE";
 
-                    MessageBox.Show(
-                        $"✅ Orden {_order.OrderNumber} actualizada correctamente",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    
 
                     this.DialogResult = true;
                     this.Close();
@@ -779,19 +841,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasChanges)
-            {
-                var result = MessageBox.Show(
-                    "Hay cambios sin guardar. ¿Está seguro que desea salir sin guardar?",
-                    "Confirmar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.No)
-                {
-                    return;
-                }
-            }
+            
 
             this.DialogResult = false;
             this.Close();
@@ -799,21 +849,48 @@ namespace SistemaGestionProyectos2.Views
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (_hasChanges && DialogResult != true)
-            {
-                var result = MessageBox.Show(
-                    "Hay cambios sin guardar. ¿Está seguro que desea salir?",
-                    "Cambios sin guardar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.No)
-                {
-                    e.Cancel = true;
-                }
-            }
+            
 
             base.OnClosing(e);
+        }
+
+        private void CancelOrderButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Prevenir múltiples ejecuciones
+            if (_isCancellingFromButton) return;
+
+            // Primero verificar si la orden ya está cancelada
+            var currentStatus = _orderStatuses?.FirstOrDefault(s => s.Id == _currentStatusId);
+            if (currentStatus?.Name?.ToUpper() == "CANCELADA")
+            {
+                MessageBox.Show(
+                    "Esta orden ya está cancelada.",
+                    "Información",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // Verificar si el estado actual permite cancelación
+            if (_currentStatusId > 1)
+            {
+                MessageBox.Show(
+                    "Solo se pueden cancelar órdenes en estado CREADA o EN PROCESO.\n" +
+                    "Esta orden ya está en un estado avanzado.",
+                    "No se puede cancelar",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // Marcar que estamos cancelando desde el botón
+            _isCancellingFromButton = true;
+
+            // Llamar directamente a HandleCancelOrder sin cambiar el ComboBox
+            HandleCancelOrder();
+
+            // Resetear la bandera
+            _isCancellingFromButton = false;
         }
     }
 }

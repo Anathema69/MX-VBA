@@ -6,6 +6,9 @@
         Height="750" 
         Width="1200"
         WindowStartupLocation="CenterOwner"
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize"
         MinHeight="600"
         MinWidth="1000">
 
@@ -57,7 +60,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header Negro con gradiente sutil -->
-        <Border Grid.Row="0" Height="65">
+        <Border Grid.Row="0"  Height="60" >
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                     <GradientStop Color="#1a1a1a" Offset="0"/>
@@ -66,8 +69,8 @@
             </Border.Background>
             <Grid>
                 <StackPanel Orientation="Horizontal" 
-                           VerticalAlignment="Center"
-                           Margin="25,0">
+                            VerticalAlignment="Center"
+                            Margin="0,0,20,0">
                     <Border Background="#FFC107" 
                             Width="40" Height="40" 
                             CornerRadius="20"
@@ -82,36 +85,21 @@
                              FontSize="22"
                              FontWeight="Light"
                              VerticalAlignment="Center"/>
+                    <Button Content="⬅ Volver" 
+                            Click="BackButton_Click"
+                            Background="Transparent"
+                            BorderBrush="White"
+                            BorderThickness="1"
+                            Foreground="White"
+                            Padding="15,5"
+                            Margin="1120,0,10,0"
+                            Cursor="Hand" Width="85"/>
+                        
+                    
                 </StackPanel>
+               
 
-                <Button HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Margin="0,0,20,0"
-                       Width="35"
-                       Height="35"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       Cursor="Hand"
-                       Click="CloseButton_Click">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="border" 
-                                    Background="Transparent"
-                                    CornerRadius="5">
-                                <TextBlock Text="✕" 
-                                         Foreground="White" 
-                                         FontSize="18"
-                                         HorizontalAlignment="Center"
-                                         VerticalAlignment="Center"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="border" Property="Background" Value="#F44336"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
+                
             </Grid>
         </Border>
 

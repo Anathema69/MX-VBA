@@ -352,18 +352,7 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Confirmar con el usuario
-            var result = MessageBox.Show(
-                $"¿Desea crear una factura por el monto restante?\n\n" +
-                $"Subtotal: {balanceWithoutTax:C}\n" +
-                $"Total con IVA: {balance:C}\n\n" +
-                "Se creará una factura con estos montos y la fecha de hoy.",
-                "Completar Facturación",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-                return;
+           
 
             // Crear la factura con el monto restante
             var completeInvoice = new InvoiceViewModel
@@ -602,16 +591,7 @@ namespace SistemaGestionProyectos2.Views
                     }
                 }
 
-                if (errorCount > 0)
-                {
-                    MessageBox.Show($"Se guardaron {savedCount} facturas.\n{errorCount} facturas tuvieron errores.",
-                        "Guardado parcial", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-                else
-                {
-                    MessageBox.Show($"✅ Se guardaron {savedCount} facturas correctamente.",
-                        "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                
 
                 _hasUnsavedChanges = false;
                 StatusMessage.Text = $"Guardado: {DateTime.Now:HH:mm:ss}";
@@ -706,14 +686,7 @@ namespace SistemaGestionProyectos2.Views
 
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
-            {
-                var result = MessageBox.Show("Hay cambios sin guardar. ¿Desea continuar y perder los cambios?",
-                    "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes)
-                    return;
-            }
+            
 
             await LoadInvoices();
             StatusMessage.Text = "Datos actualizados";
@@ -750,8 +723,7 @@ namespace SistemaGestionProyectos2.Views
                         _invoices.Remove(invoice);
                         UpdateSummary();
 
-                        MessageBox.Show("Factura eliminada correctamente.",
-                            "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
+                        
 
                         System.Diagnostics.Debug.WriteLine($"✅ Factura {invoice.Folio} eliminada");
                     }
@@ -765,7 +737,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // ACTUALIZAR el método InvoicesDataGrid_CellEditEnding (si ya existe, reemplazarlo):
+        
 
         private void InvoicesDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
@@ -846,32 +818,16 @@ namespace SistemaGestionProyectos2.Views
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
-            {
-                var result = MessageBox.Show("Hay cambios sin guardar. ¿Desea salir sin guardar?",
-                    "Confirmar", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes)
-                    return;
-            }
+            
 
             this.Close();
         }
 
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+       
+        // Para volver atrás
+        private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
-            {
-                var result = MessageBox.Show("Hay cambios sin guardar. ¿Está seguro de salir?",
-                    "Cambios sin guardar", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-                if (result == MessageBoxResult.No)
-                {
-                    e.Cancel = true;
-                }
-            }
-
-            base.OnClosing(e);
+            this.Close();
         }
     }
 }

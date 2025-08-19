@@ -8,9 +8,7 @@
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized">
 
-    <Window.Resources>
-        <local:IsAdminToVisibilityConverter x:Key="AdminVisibilityConverter"/>
-    </Window.Resources>
+    
 
 
     <Grid>
@@ -346,117 +344,59 @@
 
                     <!-- Estado con colores -->
                     <!-- En el DataGridTemplateColumn del ESTATUS -->
-                    <DataGridTemplateColumn Header="ESTATUS" Width="140">
+                    <!-- Columna Estado con estilo de badges -->
+                    <DataGridTemplateColumn x:Name="StatusColumn"
+                        Header="ESTADO" 
+                        Width="130">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border CornerRadius="5" 
-                   Padding="8,4"
-                   HorizontalAlignment="Center">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Style.Triggers>
-                                                <!-- CREADA - Morado vibrante -->
-                                                <DataTrigger Binding="{Binding Status}" Value="CREADA">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#34495e" Offset="0"/>
-                                                                <GradientStop Color="#2c3e50" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#2c3e59"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-
-                                                <!-- EN PROCESO - Naranja intenso -->
-                                                <DataTrigger Binding="{Binding Status}" Value="EN PROCESO">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#f1c40f" Offset="0"/>
-                                                                <GradientStop Color="#f39c12" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#f39c12"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-
-                                                <!-- COMPLETADA - Verde brillante -->
-                                                <DataTrigger Binding="{Binding Status}" Value="COMPLETADA">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#2ecc71" Offset="0"/>
-                                                                <GradientStop Color="#27ae60" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#27ae4f"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-
-                                                <!-- LIBERADA - Rosa/Magenta vibrante -->
-                                                <DataTrigger Binding="{Binding Status}" Value="LIBERADA">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#1abc9c" Offset="0"/>
-                                                                <GradientStop Color="#16a085" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#16a04f"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-
-                                                <!-- CANCELADA - Rojo intenso -->
-                                                <DataTrigger Binding="{Binding Status}" Value="CANCELADA">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#e74c3c" Offset="0"/>
-                                                                <GradientStop Color="#c0392b" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#c0393f"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-
-                                                <!-- EN ESPERA - Azul cielo -->
-                                                <DataTrigger Binding="{Binding Status}" Value="CERRADA">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                                                <GradientStop Color="#95a5a6" Offset="0"/>
-                                                                <!-- Gris azulado -->
-                                                                <GradientStop Color="#7f8c8d" Offset="1"/>
-                                                            </LinearGradientBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Setter Property="BorderBrush" Value="#7f8c9f"/>
-                                                    <Setter Property="BorderThickness" Value="1"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-
-                                    <!-- Texto en blanco para mejor contraste -->
+                                <Border x:Name="StatusBorder" 
+                    CornerRadius="3" 
+                    Padding="8,4"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Status}" 
-                         FontWeight="Bold"
-                         FontSize="13"
-                         Foreground="White">  <!-- ⭐ Texto blanco -->
-                                        <TextBlock.Effect>
-                                            <DropShadowEffect ShadowDepth="1" 
-                                        Direction="270" 
-                                        Color="Black" 
-                                        Opacity="0.3" 
-                                        BlurRadius="2"/>
-                                        </TextBlock.Effect>
-                                    </TextBlock>
+                          FontWeight="SemiBold"
+                          FontSize="11"
+                          HorizontalAlignment="Center"/>
                                 </Border>
+                                <DataTemplate.Triggers>
+                                    <!-- CREADA - Gris -->
+                                    <DataTrigger Binding="{Binding Status}" Value="CREADA">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#E0E0E0"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#616161"/>
+                                    </DataTrigger>
+
+                                    <!-- EN PROCESO - Naranja -->
+                                    <DataTrigger Binding="{Binding Status}" Value="EN PROCESO">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFE0B2"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#E65100"/>
+                                    </DataTrigger>
+
+                                    <!-- LIBERADA - Amarillo Tráfico -->
+                                    <DataTrigger Binding="{Binding Status}" Value="LIBERADA">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFD600"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#000000"/>
+                                    </DataTrigger>
+
+                                    <!-- CERRADA - Azul -->
+                                    <DataTrigger Binding="{Binding Status}" Value="CERRADA">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#2196F3"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#FFFFFF"/>
+                                    </DataTrigger>
+
+                                    <!-- COMPLETADA - Verde -->
+                                    <DataTrigger Binding="{Binding Status}" Value="COMPLETADA">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#C8E6C9"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#1B5E20"/>
+                                    </DataTrigger>
+
+                                    <!-- CANCELADA - Rojo -->
+                                    <DataTrigger Binding="{Binding Status}" Value="CANCELADA">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFCDD2"/>
+                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#B71C1C"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -487,9 +427,7 @@
                        Cursor="Hand"
                        ToolTip="Gestionar Facturas"
                        Margin="5,0"
-                       Visibility="{Binding Path=Tag, 
-                                   RelativeSource={RelativeSource AncestorType=Window}, 
-                                   Converter={StaticResource AdminVisibilityConverter}}"/>
+                       Visibility="Collapsed"/>
 
                                     <!-- Botón Eliminar - Oculto -->
                                     <Button x:Name="DeleteBtn"

@@ -68,6 +68,8 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    
                 </Grid.RowDefinitions>
 
                 <!-- Aviso de permisos -->
@@ -94,7 +96,7 @@
                 </Border>
 
                 <!-- Sección: Información Básica (Solo Lectura para Coordinador) -->
-                <Border Grid.Row="1" 
+                <Border x:Name="FieldNameBasic" Grid.Row="1" 
                        Background="#f5f5f5" 
                        Padding="10"
                        Margin="0,0,0,15">
@@ -104,7 +106,7 @@
                 </Border>
 
                 <!-- Campos de solo lectura (se muestran solo para Coordinador) -->
-                <Grid Grid.Row="2" Margin="0,0,0,20">
+                <Grid x:Name="ReadOnlyFieldsGrid" Grid.Row="2" Margin="0,0,0,20">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -112,7 +114,7 @@
                     </Grid.RowDefinitions>
 
                     <!-- Primera fila: Orden y Fecha (Solo lectura siempre) -->
-                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                    <Grid x:Name="infoBasic" Grid.Row="0" Margin="0,0,0,15">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="20"/>
@@ -128,7 +130,9 @@
                                     Height="35"
                                     FontSize="14"
                                     IsReadOnly="True"
-                                    Background="#F0F0F0"/>
+                                    Background="#FAFAFA"
+                                    BorderBrush="#E0E0E0"
+                                     />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
@@ -205,9 +209,10 @@
                              Foreground="#2E7D32"/>
                 </Border>
 
-                <!-- Campos editables según rol -->
-                <Grid Grid.Row="4" Margin="0,0,0,20">
+                <!-- Campos editables PARA EL ADMIN -->
+                <Grid Grid.Row="4" Margin="0,0,0,15">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -215,21 +220,50 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- ADMIN: Orden de Compra (editable solo para admin) -->
-                    <StackPanel x:Name="OrderNumberEditPanel" 
-                                Grid.Row="0" 
-                                Margin="0,0,0,15"
-                                Visibility="Collapsed">
-                        <TextBlock Text="ORDEN DE COMPRA *" 
-                                 FontSize="11"
-                                 FontWeight="SemiBold"
-                                 Foreground="#2E7D32"
-                                 Margin="0,0,0,5"/>
-                        <TextBox x:Name="EditableOrderNumberTextBox"
-                                Height="35"
-                                FontSize="14"
-                                CharacterCasing="Upper"/>
-                    </StackPanel>
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <!-- Orden de compra más ancho -->
+                            <ColumnDefinition Width="10"/>
+                            <!-- Espacio entre columnas -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Fecha más estrecho -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Orden de Compra - Columna Izquierda -->
+                        <StackPanel x:Name="OrderNumberEditPanel" 
+                Grid.Column="0"
+                Visibility="Visible">
+                            <!-- Cambiar a Visible para admin -->
+                            <TextBlock Text="ORDEN DE COMPRA *" 
+                 FontSize="11"
+                 FontWeight="SemiBold"
+                 Foreground="#2E7D32"
+                 Margin="0,0,0,5"/>
+                            <TextBox x:Name="EditableOrderNumberTextBox"
+                Height="35"
+                FontSize="14"
+                CharacterCasing="Upper"/>
+                        </StackPanel>
+
+                        <!-- Fecha - Columna Derecha -->
+                        <StackPanel x:Name="FechaCompraEditPanel" 
+                Grid.Column="2"
+                Visibility="Visible">
+                            <!-- Cambiar a Visible para admin -->
+                            <TextBlock Text="FECHA O.C." 
+                 FontSize="11"
+                 FontWeight="SemiBold"
+                 Margin="0,0,0,5"/>
+                            <!-- Color normal, no editable -->
+                            <TextBox x:Name="EditableFechaCompra"
+                Height="35"
+                FontSize="14"
+                IsReadOnly="True"
+                Background="#F0F0F0"/>
+                            <!-- Fondo gris para indicar solo lectura -->
+                        </StackPanel>
+                    </Grid>
 
                     <!-- ADMIN: Cotización y Cliente -->
                     <Grid x:Name="AdminFieldsPanel1"
@@ -469,6 +503,57 @@
                                  Text="Última modificación: -"
                                  FontSize="10"
                                  Foreground="#666"/>
+                    </StackPanel>
+                </Border>
+                <!-- Botón Cancelar Orden - Zona Peligrosa -->
+                <Border Grid.Row="9" 
+        Background="#FFEBEE" 
+        BorderBrush="#F44336"
+        BorderThickness="1"
+        Padding="20"
+        Margin="0,30,0,20"
+        CornerRadius="5">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ ZONA PELIGROSA" 
+                   FontWeight="Bold"
+                   FontSize="12"
+                   Foreground="#C62828"
+                   Margin="0,0,0,10"/>
+                        <TextBlock Text="Esta acción es permanente y no se puede deshacer. La orden quedará cancelada definitivamente."
+                   TextWrapping="Wrap"
+                   Foreground="#666"
+                   FontSize="11"
+                   Margin="0,0,0,15"/>
+                        <Button x:Name="CancelOrderButton"
+                Content="CANCELAR ORDEN"
+                Width="180"
+                Height="40"
+                Background="#F44336"
+                Foreground="White"
+                FontWeight="Bold"
+                HorizontalAlignment="Left"
+                Click="CancelOrderButton_Click"
+                Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border"
+                            Background="#F44336"
+                            CornerRadius="3">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        TextElement.Foreground="White"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#D32F2F"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#B71C1C"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </StackPanel>
                 </Border>
             </Grid>
