@@ -55,10 +55,46 @@ namespace SistemaGestionProyectos2.Views
             _ordersViewSource = new CollectionViewSource { Source = _orders };
             OrdersDataGrid.ItemsSource = _ordersViewSource.View;
 
+
+            // Nuevo método para configurar el filtro de estado
+            ConfigureStatusFilterComboBox();
+
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - Manejo de Órdenes - {_currentUser.FullName}";
 
             
+        }
+
+        private void ConfigureStatusFilterComboBox()
+        {
+            // Limpiar items existentes
+            StatusFilter.Items.Clear();
+
+            // Agregar opción "Todos"
+            var todosItem = new ComboBoxItem { Content = "Todos", IsSelected = true };
+            StatusFilter.Items.Add(todosItem);
+
+            if (_currentUser.Role == "coordinator")
+            {
+                // Coordinador solo ve estados 0, 1, 2
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
+
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para coordinador: 3 estados");
+            }
+            else if (_currentUser.Role == "admin")
+            {
+                // Admin ve todos los estados
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CERRADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "COMPLETADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CANCELADA" });
+
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para admin: todos los estados");
+            }
         }
 
         private void ConfigurePermissions()
@@ -136,7 +172,6 @@ namespace SistemaGestionProyectos2.Views
         }
 
 
-
         private async Task LoadOrders()
         {
             try
@@ -144,8 +179,27 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Cargando órdenes...";
                 _orders.Clear();
 
-                // Cargar primero las 100 órdenes más recientes para velocidad
-                var ordersFromDb = await _supabaseService.GetOrders(limit: 100, offset: 0);
+                // Determinar filtro según el rol
+                List<int> statusFilter = null;
+                if (_currentUser.Role == "coordinator")
+                {
+                    // Coordinador solo ve estados 0, 1 y 2
+                    statusFilter = new List<int> { 0, 1, 2 };
+                    System.Diagnostics.Debug.WriteLine("👤 Aplicando filtro de coordinador: estados 0, 1, 2");
+                }
+                else if (_currentUser.Role == "admin")
+                {
+                    // Admin ve todo
+                    statusFilter = null;
+                    System.Diagnostics.Debug.WriteLine("👑 Admin: sin filtros, mostrando todas las órdenes");
+                }
+
+                // Cargar primero las 100 órdenes más recientes con el filtro aplicado
+                var ordersFromDb = await _supabaseService.GetOrders(
+                    limit: 100,
+                    offset: 0,
+                    filterStatuses: statusFilter
+                );
 
                 if (ordersFromDb != null && ordersFromDb.Count > 0)
                 {
@@ -186,19 +240,34 @@ namespace SistemaGestionProyectos2.Views
                         _orders.Add(viewModel);
                     }
 
-                    StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
+                    // Mostrar mensaje específico según el rol
+                    if (_currentUser.Role == "coordinator")
+                    {
+                        StatusText.Text = $"{_orders.Count} órdenes activas cargadas (CREADA, EN PROCESO, LIBERADA)";
+                    }
+                    else
+                    {
+                        StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
+                    }
 
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
                     // Cargar el resto en segundo plano si hay más de 100
                     if (ordersFromDb.Count == 100)
                     {
-                        _ = LoadRemainingOrdersAsync();
+                        _ = LoadRemainingOrdersAsync(statusFilter);
                     }
                 }
                 else
                 {
-                    StatusText.Text = "No se encontraron órdenes";
+                    if (_currentUser.Role == "coordinator")
+                    {
+                        StatusText.Text = "No se encontraron órdenes activas";
+                    }
+                    else
+                    {
+                        StatusText.Text = "No se encontraron órdenes";
+                    }
                 }
             }
             catch (Exception ex)
@@ -214,7 +283,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async Task LoadRemainingOrdersAsync()
+        private async Task LoadRemainingOrdersAsync(List<int> statusFilter = null)
         {
             try
             {
@@ -224,7 +293,12 @@ namespace SistemaGestionProyectos2.Views
 
                 while (hasMore)
                 {
-                    var moreOrders = await _supabaseService.GetOrders(limit: batchSize, offset: offset);
+                    // Aplicar el mismo filtro que en la carga inicial
+                    var moreOrders = await _supabaseService.GetOrders(
+                        limit: batchSize,
+                        offset: offset,
+                        filterStatuses: statusFilter
+                    );
 
                     if (moreOrders != null && moreOrders.Count > 0)
                     {
@@ -256,7 +330,14 @@ namespace SistemaGestionProyectos2.Views
                                 _orders.Add(viewModel);
                             }
 
-                            StatusText.Text = $"{_orders.Count} órdenes cargadas";
+                            if (_currentUser.Role == "coordinator")
+                            {
+                                StatusText.Text = $"{_orders.Count} órdenes activas cargadas";
+                            }
+                            else
+                            {
+                                StatusText.Text = $"{_orders.Count} órdenes cargadas";
+                            }
                         });
 
                         offset += batchSize;
@@ -279,7 +360,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        
+
 
         private string GetRoleDisplayName(string role)
         {
@@ -367,6 +448,7 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
+                // LoadOrders ya aplica el filtro según el rol
                 await LoadOrders();
             }
             finally

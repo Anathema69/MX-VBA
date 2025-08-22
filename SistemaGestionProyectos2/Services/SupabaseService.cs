@@ -1,11 +1,13 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using Postgrest.Attributes;
+using Postgrest.Interfaces;
+using Postgrest.Models;
+using Postgrest.Responses;
+using Supabase;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Supabase;
-using Postgrest.Attributes;
-using Postgrest.Models;
 
 namespace SistemaGestionProyectos2.Services
 {
@@ -92,18 +94,58 @@ namespace SistemaGestionProyectos2.Services
         // MÉTODOS PARA ÓRDENES
         // ===============================================
 
-        public async Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0)
+        public async Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0, List<int> filterStatuses = null)
         {
             try
             {
-                var response = await _supabaseClient
-                    .From<OrderDb>()
-                    .Select("*")
-                    .Order("f_podate", Postgrest.Constants.Ordering.Descending)
-                    .Range(offset, offset + limit - 1)
-                    .Get();
+                ModeledResponse<OrderDb> response;
 
-                return response?.Models ?? new List<OrderDb>();
+                if (filterStatuses != null && filterStatuses.Count > 0)
+                {
+                    // Para el coordinador: usar Filter con OR
+                    if (filterStatuses.Count == 3 && filterStatuses.Contains(0) && filterStatuses.Contains(1) && filterStatuses.Contains(2))
+                    {
+                        // Construir filtro OR para estados 0, 1, 2
+                        response = await _supabaseClient
+                            .From<OrderDb>()
+                            .Select("*")
+                            .Filter("f_orderstat", Postgrest.Constants.Operator.In, filterStatuses.ToArray())
+                            .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                            .Range(offset, offset + limit - 1)
+                            .Get();
+                    }
+                    else
+                    {
+                        // Para filtros individuales
+                        response = await _supabaseClient
+                            .From<OrderDb>()
+                            .Select("*")
+                            .Filter("f_orderstat", Postgrest.Constants.Operator.Equals, filterStatuses[0])
+                            .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                            .Range(offset, offset + limit - 1)
+                            .Get();
+                    }
+                }
+                else
+                {
+                    // Sin filtro - obtener todas (para admin)
+                    response = await _supabaseClient
+                        .From<OrderDb>()
+                        .Select("*")
+                        .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                        .Range(offset, offset + limit - 1)
+                        .Get();
+                }
+
+                var orders = response?.Models ?? new List<OrderDb>();
+
+                System.Diagnostics.Debug.WriteLine($"📊 Órdenes obtenidas: {orders.Count}");
+                if (filterStatuses != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   Con filtro de estados: [{string.Join(", ", filterStatuses)}]");
+                }
+
+                return orders;
             }
             catch (Exception ex)
             {
