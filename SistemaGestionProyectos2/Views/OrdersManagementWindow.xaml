@@ -6,11 +6,13 @@
         Height="800" 
         Width="1400"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized">
+        WindowState="Maximized"
+        x:Name="OrdersWindow">
 
+    <Window.Resources>
+        <local:AdminVisibilityConverter x:Key="AdminVisibilityConverter"/>
+    </Window.Resources>
     
-
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -406,41 +408,32 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <!-- Botón Editar - Siempre visible -->
-                                    <Button Content="✏" 
-                       Click="EditButton_Click"
-                       Tag="{Binding}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       FontSize="16"
-                       Cursor="Hand"
-                       ToolTip="Editar"
-                       Margin="5,0"/>
+                                    <Button    Content="✏" 
+                                               Click="EditButton_Click"
+                                               Tag="{Binding}"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               FontSize="16"
+                                               Cursor="Hand"
+                                               ToolTip="Editar"
+                                               Margin="5,0"/>
 
                                     <!-- Botón Facturas - Solo visible para Admin usando Tag del Window -->
                                     <Button x:Name="InvoiceBtn"
-                       Content="💰" 
-                       Click="InvoiceButton_Click"
-                       Tag="{Binding}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       FontSize="16"
-                       Cursor="Hand"
-                       ToolTip="Gestionar Facturas"
-                       Margin="5,0"
-                       Visibility="Collapsed"/>
+                                               Content="💰" 
+                                               Click="InvoiceButton_Click"
+                                               Tag="{Binding}"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               FontSize="16"
+                                               Cursor="Hand"
+                                               ToolTip="Gestionar Facturas"
+                                               Margin="5,0"
+                                               Visibility="{Binding ElementName=OrdersWindow, 
+                                                           Path=Tag, 
+                                                           Converter={StaticResource AdminVisibilityConverter}}"/>
 
-                                    <!-- Botón Eliminar - Oculto -->
-                                    <Button x:Name="DeleteBtn"
-                       Content="🗑" 
-                       Click="DeleteButton_Click"
-                       Tag="{Binding}"
-                       Background="Transparent"
-                       BorderThickness="0"
-                       FontSize="16"
-                       Cursor="Hand"
-                       ToolTip="Eliminar"
-                       Margin="5,0"
-                       Visibility="Collapsed"/>
+                                    
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

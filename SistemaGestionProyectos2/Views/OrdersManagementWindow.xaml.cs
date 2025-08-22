@@ -58,9 +58,7 @@ namespace SistemaGestionProyectos2.Views
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - Manejo de Órdenes - {_currentUser.FullName}";
 
-            // Debug para verificar el rol
-            System.Diagnostics.Debug.WriteLine($"🔍 Usuario actual: {_currentUser.FullName}, Rol: {_currentUser.Role}");
-            System.Diagnostics.Debug.WriteLine($"🔍 Window.Tag establecido a: {this.Tag}");
+            
         }
 
         private void ConfigurePermissions()
@@ -69,39 +67,27 @@ namespace SistemaGestionProyectos2.Views
             switch (_currentUser.Role)
             {
                 case "admin":
-                    // Admin puede ver y editar todo
+                    
                     NewOrderButton.IsEnabled = true;
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
-                    //OrderPercentageColumn.Visibility = Visibility.Visible;
-                    EnableDeleteButtons(true);
+                    InvoicedColumn.Visibility = Visibility.Visible;
                     break;
 
                 case "coordinator":
                     // Coordinador NO puede crear nuevas órdenes
                     NewOrderButton.IsEnabled = false;
-
-                    // lo 'ocultamos' para que no lo vea
                     NewOrderButton.Visibility = Visibility.Collapsed;
 
-                    // Como ya no existe el botón de crear para el coordinador, debemos mover el botón de refresh a la izquierda
+                    // Como ya no existe el botón de crear para el coordinador, 
+                    // debemos mover el botón de refresh a la izquierda
                     RefreshButton.Width = 90;
-
-            
-                    
-
                     NewOrderButton.ToolTip = "Solo el administrador puede crear órdenes";
 
                     // NO puede ver campos financieros
                     SubtotalColumn.Visibility = Visibility.Collapsed;
                     TotalColumn.Visibility = Visibility.Collapsed;
-
-                    // Monto facturado tampoco
                     InvoicedColumn.Visibility = Visibility.Collapsed;
-                    //OrderPercentageColumn.Visibility = Visibility.Collapsed;
-
-                    // NO puede eliminar
-                    EnableDeleteButtons(false);
                     break;
 
                 case "salesperson":
@@ -149,7 +135,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Actualizar el método LoadOrders en OrdersManagementWindow.xaml.cs
+
 
         private async Task LoadOrders()
         {
@@ -202,12 +188,6 @@ namespace SistemaGestionProyectos2.Views
 
                     StatusText.Text = $"{_orders.Count} órdenes más recientes cargadas";
 
-                    // Configurar visibilidad de botones después de cargar
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        ConfigureButtonsVisibility();
-                    }), System.Windows.Threading.DispatcherPriority.Loaded);
-
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
                     // Cargar el resto en segundo plano si hay más de 100
@@ -219,19 +199,18 @@ namespace SistemaGestionProyectos2.Views
                 else
                 {
                     StatusText.Text = "No se encontraron órdenes";
-                    System.Diagnostics.Debug.WriteLine("⚠️ No se encontraron órdenes en la BD");
                 }
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Error al cargar órdenes";
-                System.Diagnostics.Debug.WriteLine($"❌ Error cargando órdenes: {ex.Message}");
-
+                StatusText.Text = "Error cargando órdenes";
                 MessageBox.Show(
                     $"Error al cargar órdenes:\n{ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
             }
         }
 
@@ -300,11 +279,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void EnableDeleteButtons(bool enable)
-        {
-            // Esta función habilitará los botones de eliminar en el DataGrid
-            // Se aplicará cuando se carguen los datos
-        }
+        
 
         private string GetRoleDisplayName(string role)
         {
@@ -583,103 +558,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+
         
-
-        // Método para configurar la visibilidad de los botones después de cargar el DataGrid
-        private void ConfigureButtonsVisibility()
-        {
-            // Si no es admin, ocultar el botón de facturas en todas las filas
-            if (_currentUser.Role != "admin")
-            {
-                // Ocultar la columna completa de facturas es más eficiente
-                foreach (var column in OrdersDataGrid.Columns)
-                {
-                    if (column is DataGridTemplateColumn templateColumn &&
-                        templateColumn.Header?.ToString() == "ACCIONES")
-                    {
-                        // Necesitamos modificar el template
-                        OrdersDataGrid.UpdateLayout();
-
-                        // Iterar por todas las filas
-                        foreach (var item in OrdersDataGrid.Items)
-                        {
-                            var row = OrdersDataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
-                            if (row != null)
-                            {
-                                // Buscar el botón de facturas en la fila
-                                var presenter = GetVisualChild<DataGridCellsPresenter>(row);
-                                if (presenter != null)
-                                {
-                                    // Obtener la celda de acciones (última columna)
-                                    var cell = presenter.ItemContainerGenerator.ContainerFromIndex(
-                                        OrdersDataGrid.Columns.Count - 1) as DataGridCell;
-
-                                    if (cell != null)
-                                    {
-                                        // Buscar el StackPanel dentro de la celda
-                                        var stackPanel = GetVisualChild<StackPanel>(cell);
-                                        if (stackPanel != null && stackPanel.Children.Count > 1)
-                                        {
-                                            // El segundo botón es el de facturas (índice 1)
-                                            if (stackPanel.Children[1] is Button invoiceButton)
-                                            {
-                                                invoiceButton.Visibility = Visibility.Collapsed;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // Si es admin, mostrar botones de factura en todas las filas
-            if (_currentUser.Role == "admin")
-            {
-                // Hacer visible la columna de acciones con facturas
-                var invoiceButtons = FindVisualChildren<Button>(OrdersDataGrid)
-                    .Where(b => b.Name == "InvoiceBtn");
-
-                foreach (var btn in invoiceButtons)
-                {
-                    btn.Visibility = Visibility.Visible;
-                }
-            }
-        }
-        // Método auxiliar para encontrar controles hijos
-        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-        {
-            if (depObj != null)
-            {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-                {
-                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                    if (child != null && child is T)
-                    {
-                        yield return (T)child;
-                    }
-
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                    {
-                        yield return childOfChild;
-                    }
-                }
-            }
-        }
-
-        // Métodos helper para buscar elementos visuales
-        private T GetVisualChild<T>(DependencyObject parent) where T : Visual
-        {
-            T child = default(T);
-            int numVisuals = VisualTreeHelper.GetChildrenCount(parent);
-            for (int i = 0; i < numVisuals; i++)
-            {
-                var v = VisualTreeHelper.GetChild(parent, i);
-                child = v as T ?? GetVisualChild<T>(v);
-                if (child != null)
-                    break;
-            }
-            return child;
-        }
     }
 }
