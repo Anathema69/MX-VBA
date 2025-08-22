@@ -21,22 +21,7 @@ namespace SistemaGestionProyectos2.Views
             ConfigurePermissions();
         }
 
-        // Constructor sin parámetros (para compatibilidad)
-        public MainMenuWindow()
-        {
-            InitializeComponent();
-            _currentUser = new UserSession
-            {
-                Username = "default",
-                FullName = "Usuario",
-                Role = "admin",
-                LoginTime = DateTime.Now
-            };
-
-            InitializeUI();
-            StartClock();
-            ConfigurePermissions();
-        }
+        
 
         private void InitializeUI()
         {
@@ -58,17 +43,8 @@ namespace SistemaGestionProyectos2.Views
                     OrdersModuleButton.IsEnabled = true;
                     break;
 
-                case "coordinator":
-                    // Coordinador tiene acceso al módulo de órdenes
-                    OrdersModuleButton.IsEnabled = true;
-                    break;
-
-                case "salesperson":
-                    // Vendedor NO tiene acceso al módulo de órdenes
-                    OrdersModuleButton.IsEnabled = false;
-                    OrdersModuleButton.Opacity = 0.5;
-                    OrdersModuleButton.ToolTip = "No tiene permisos para acceder a este módulo";
-                    break;
+                    // SOLO EL ADMIN TENDRÁ ACCESO AL MÓDULO DE ÓRDENES
+                    // COORDINADOR IRÁN DIRECTO AL MÓDULO DE ÓRDENES QUE SE MANEJARÁ DESDE EL LOGIN
             }
         }
 
@@ -145,12 +121,16 @@ namespace SistemaGestionProyectos2.Views
                 // Volver al login
                 LoginWindow loginWindow = new LoginWindow();
                 loginWindow.Show();
+
+                // Asegurar cerrar esta ventana, porque esta es la principal
                 this.Close();
             }
         }
 
         protected override void OnClosed(EventArgs e)
         {
+            // Detener el temporizador al cerrar la ventana
+
             _timer?.Stop();
             base.OnClosed(e);
         }

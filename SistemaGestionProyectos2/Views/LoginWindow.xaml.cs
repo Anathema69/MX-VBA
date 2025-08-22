@@ -66,8 +66,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Botón de Login - AHORA CON SUPABASE
-        // Actualizar el método LoginButton_Click en LoginWindow.xaml.cs
+        
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
         {
@@ -128,12 +127,48 @@ namespace SistemaGestionProyectos2.Views
                     loadingWindow.UpdateStatus("Cargando Módulos", "Configurando permisos...");
                     await Task.Delay(600);
 
-                    // Abrir menú principal
-                    MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
-                    mainMenu.Show();
+                    // Abrir menú principal solo para el admin, caso sea coordindador o vendedor, abrirá módulo de órdenes
+
+
+                    /*if (user.Role == "coordinator")
+                    {
+                        // Vendedor va directo al módulo de órdenes
+                        OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
+                        ordersWindow.Show();
+                    }
+                    else
+                    {
+                        // Admin abre el menú principal
+                        MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
+                        mainMenu.Show();
+                    }
+                    */
+                    // SI ES admin
+
+                    if (user.Role == "admin")
+                    {
+                        // Admin abre el menú principal
+                        MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
+                        mainMenu.Show();
+                        
+                    }
+                    else if (user.Role == "coordinator")
+                    {
+                        // Coordinador va directo al módulo de órdenes
+                        OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
+                        ordersWindow.Show();
+
+                    }
+                    else
+                    {
+                        // Vendedor va directo al módulo de órdenes
+                        OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
+                        ordersWindow.Show();
+                    }
 
                     await loadingWindow.CloseWithFade();
                     this.Close();
+
                 }
                 else
                 {

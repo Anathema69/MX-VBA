@@ -295,6 +295,31 @@ namespace SistemaGestionProyectos2.Views
         // Event Handlers
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
+            // Si eres admin volver al menú principal, si eres coordinador 'cerrarás la sesión' llevandote al login
+
+            if (_currentUser.Role == "admin")
+            {
+                // Volver al menú principal
+                MainMenuWindow mainMenu = new MainMenuWindow(_currentUser);
+                mainMenu.Show();
+            }
+            else
+            {
+                // Cerrar sesión para coordinador, pero antes preguntar
+                var result = MessageBox.Show(
+                    "¿Está seguro que desea cerrar sesión?",
+                    "Confirmar",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                // si dice que sí, cerrar sesión e ir al login cerrando esta ventana
+                if (result != MessageBoxResult.Yes) return;
+
+
+                LoginWindow loginWindow = new LoginWindow();
+                loginWindow.Show();
+            }
+
             this.Close();
         }
 

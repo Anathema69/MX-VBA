@@ -5,7 +5,9 @@
         Height="700" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized">
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize">
 
     <Grid>
         <!-- Fondo con gradiente -->
