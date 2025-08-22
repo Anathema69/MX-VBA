@@ -54,15 +54,33 @@
                            HorizontalAlignment="Right"
                            VerticalAlignment="Center"
                            Margin="0,0,20,0">
-                    <Button Content="⬅ Volver" 
-                           Click="BackButton_Click"
-                           Background="Transparent"
-                           BorderBrush="White"
-                           BorderThickness="1"
-                           Foreground="White"
-                           Padding="15,5"
-                           Margin="0,0,10,0"
-                           Cursor="Hand"/>
+                    <Button x:Name="BackButton"
+                            Click="BackButton_Click"
+                            Background="Transparent"
+                            BorderBrush="White"
+                            BorderThickness="1"
+                            Foreground="White"
+                            Padding="15,5"
+                            Margin="0,0,10,0"
+                            Cursor="Hand">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="⬅ Volver"/>
+                                <Style.Triggers>
+                                    <!-- Si el usuario es coordinador, mostrar "Cerrar Sesión" -->
+                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="coordinator">
+                                        <Setter Property="Content" Value="🚪 Cerrar Sesión"/>
+                                        <Setter Property="ToolTip" Value="Cerrar sesión y volver al login"/>
+                                    </DataTrigger>
+                                    <!-- Si es admin, mostrar "Volver" -->
+                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="admin">
+                                        <Setter Property="Content" Value="⬅ Volver"/>
+                                        <Setter Property="ToolTip" Value="Volver al menú principal"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
 
                     <Button x:Name="ExportButton"
                            Content="📊 Exportar" 

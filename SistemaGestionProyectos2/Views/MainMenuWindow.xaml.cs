@@ -124,7 +124,23 @@ namespace SistemaGestionProyectos2.Views
 
                 // Asegurar cerrar esta ventana, porque esta es la principal
                 this.Close();
+
+                // en algunos casos a pesar de haber confirmado cerrar la sesión cuándo se vuelve de la grilla de órdenes la venta del main no se cierra
+                // si la venta de login está abierta, forzar el cierre de esta ventana
+                if (Application.Current.Windows.Count > 1)
+                {
+                    foreach (var window in Application.Current.Windows)
+                    {
+                        if (window is MainMenuWindow mainMenu && mainMenu != this)
+                        {
+                            mainMenu.Close();
+                        }
+                    }
+                }
+
             }
+
+
         }
 
         protected override void OnClosed(EventArgs e)
