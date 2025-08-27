@@ -886,6 +886,162 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+
+        // ===============================================
+        // MÉTODOS PARA CLIENTES - Agregar en SupabaseService.cs
+        // ===============================================
+
+        public async Task<ClientDb> CreateClient(ClientDb client, int userId = 0)
+        {
+            try
+            {
+                // Establecer campos de auditoría
+                client.CreatedBy = userId > 0 ? userId : 1;
+                client.UpdatedBy = userId > 0 ? userId : 1;
+
+                // Valores por defecto
+                if (client.Credit == 0)
+                    client.Credit = 30; // 30 días por defecto
+
+                client.IsActive = true;
+
+                System.Diagnostics.Debug.WriteLine($"📋 Creando cliente: {client.Name}");
+
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Insert(client);
+
+                if (response?.Models?.Count > 0)
+                {
+                    return response.Models.First();
+                }
+
+                throw new Exception("No se pudo crear el cliente");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error creando cliente: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> ClientExists(string name)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name)) return false;
+
+                // Normalizar el nombre para la comparación (quitar espacios, convertir a mayúsculas)
+                string normalizedName = name.Trim().ToUpper();
+
+                // Buscar clientes con nombre similar (case insensitive)
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Filter("f_name", Postgrest.Constants.Operator.ILike, normalizedName)
+                    .Get();
+
+                // Si encontramos algún resultado, el cliente ya existe
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error verificando cliente: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Método para obtener un cliente por nombre
+        public async Task<ClientDb> GetClientByName(string name)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name)) return null;
+
+                string normalizedName = name.Trim().ToUpper();
+
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Filter("f_name", Postgrest.Constants.Operator.ILike, normalizedName)
+                    .Single();
+
+                return response;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<ClientDb> GetClientById(int clientId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Where(x => x.Id == clientId)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo cliente {clientId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        // ===============================================
+        // MÉTODOS PARA CONTACTOS - Agregar en SupabaseService.cs
+        // ===============================================
+
+        public async Task<ContactDb> CreateContact(ContactDb contact)
+        {
+            try
+            {
+                contact.IsActive = true;
+
+                System.Diagnostics.Debug.WriteLine($"📇 Creando contacto: {contact.ContactName} para cliente {contact.ClientId}");
+
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Insert(contact);
+
+                if (response?.Models?.Count > 0)
+                {
+                    return response.Models.First();
+                }
+
+                throw new Exception("No se pudo crear el contacto");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error creando contacto: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateContact(ContactDb contact)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(x => x.Id == contact.Id)
+                    .Set(x => x.ContactName, contact.ContactName)
+                    .Set(x => x.Email, contact.Email)
+                    .Set(x => x.Phone, contact.Phone)
+                    .Set(x => x.Position, contact.Position)
+                    .Set(x => x.IsPrimary, contact.IsPrimary)
+                    .Update();
+
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando contacto: {ex.Message}");
+                return false;
+            }
+        }
     }
 
     // ===============================================
@@ -983,6 +1139,18 @@ namespace SistemaGestionProyectos2.Services
 
         [Column("is_active")]
         public bool IsActive { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("updated_by")]
+        public int? UpdatedBy { get; set; }
     }
 
     [Table("t_contact")]

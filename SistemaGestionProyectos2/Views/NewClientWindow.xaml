@@ -1,0 +1,345 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.NewClientWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nuevo Cliente - IMA Mecatrónica" 
+        Height="500" 
+        Width="450"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="Black" Height="50">
+            <Grid>
+                <StackPanel Orientation="Horizontal" 
+                           VerticalAlignment="Center"
+                           Margin="20,0">
+                    <TextBlock Text="👤" 
+                             Foreground="#FFC107"
+                             FontSize="20"
+                             Margin="0,0,15,0"/>
+                    <TextBlock Text="NUEVO CLIENTE" 
+                             Foreground="White"
+                             FontSize="18"
+                             FontWeight="Bold"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock HorizontalAlignment="Right"
+                         VerticalAlignment="Center"
+                         Margin="0,0,20,0"
+                         Foreground="White"
+                         FontSize="11"
+                         FontStyle="Italic"
+                         Text="* Campos obligatorios"/>
+            </Grid>
+        </Border>
+
+        <!-- Formulario Simplificado -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="30,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Sección: Datos del Cliente -->
+                <Border Grid.Row="0" 
+                       Background="#E3F2FD" 
+                       Padding="10,8"
+                       Margin="0,0,0,15"
+                       CornerRadius="3">
+                    <TextBlock Text="INFORMACIÓN DEL CLIENTE" 
+                             FontWeight="Bold"
+                             FontSize="12"
+                             Foreground="#1976D2"/>
+                </Border>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,20">
+                    <!-- Nombre del Cliente y Días Crédito -->
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.5*"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="RAZÓN SOCIAL / EMPRESA *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <TextBox x:Name="ClientNameTextBox"
+                                    Height="35"
+                                    FontSize="14"
+                                    CharacterCasing="Upper"
+                                    TextChanged="ClientNameTextBox_TextChanged"
+                                    LostFocus="ClientNameTextBox_LostFocus">
+                                <TextBox.ToolTip>
+                                    <ToolTip>
+                                        <TextBlock Text="Nombre oficial de la empresa cliente"/>
+                                    </ToolTip>
+                                </TextBox.ToolTip>
+                            </TextBox>
+                            <TextBlock x:Name="ClientNameWarning"
+                                     Text=""
+                                     FontSize="10"
+                                     Foreground="Orange"
+                                     FontStyle="Italic"
+                                     Margin="2,2,0,0"
+                                     Visibility="Collapsed"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="DÍAS CRÉDITO *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <TextBox x:Name="CreditDaysTextBox"
+                                    Height="35"
+                                    FontSize="14"
+                                    Text="30"
+                                    PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                    MaxLength="3">
+                                <TextBox.ToolTip>
+                                    <ToolTip>
+                                        <TextBlock Text="Días de crédito otorgados (0-120)"/>
+                                    </ToolTip>
+                                </TextBox.ToolTip>
+                            </TextBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Expander para campos opcionales -->
+                    <Expander x:Name="OptionalFieldsExpander"
+                             Header="Campos adicionales (opcional)"
+                             Margin="0,0,0,10"
+                             IsExpanded="False">
+                        <StackPanel Margin="0,10,0,0">
+                            <!-- RFC y Teléfono -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="15"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="RFC / TAX ID" 
+                                             FontSize="11"
+                                             FontWeight="SemiBold"
+                                             Margin="0,0,0,5"/>
+                                    <TextBox x:Name="TaxIdTextBox"
+                                            Height="35"
+                                            FontSize="14"
+                                            CharacterCasing="Upper"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="TELÉFONO EMPRESA" 
+                                             FontSize="11"
+                                             FontWeight="SemiBold"
+                                             Margin="0,0,0,5"/>
+                                    <TextBox x:Name="CompanyPhoneTextBox"
+                                            Height="35"
+                                            FontSize="14"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Dirección -->
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="DIRECCIÓN" 
+                                         FontSize="11"
+                                         FontWeight="SemiBold"
+                                         Margin="0,0,0,5"/>
+                                <TextBox x:Name="AddressTextBox"
+                                        Height="35"
+                                        FontSize="14"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+
+                <!-- Sección: Contacto Principal -->
+                <Border Grid.Row="2" 
+                       Background="#E8F5E9" 
+                       Padding="10,8"
+                       Margin="0,0,0,15"
+                       CornerRadius="3">
+                    <TextBlock Text="CONTACTO PRINCIPAL" 
+                             FontWeight="Bold"
+                             FontSize="12"
+                             Foreground="#2E7D32"/>
+                </Border>
+
+                <StackPanel Grid.Row="3">
+                    <!-- Nombre del Contacto -->
+                    <StackPanel Margin="0,0,0,15">
+                        <TextBlock Text="NOMBRE CONTACTO *" 
+                                 FontSize="11"
+                                 FontWeight="SemiBold"
+                                 Margin="0,0,0,5"/>
+                        <TextBox x:Name="ContactNameTextBox"
+                                Height="35"
+                                FontSize="14">
+                            <TextBox.ToolTip>
+                                <ToolTip>
+                                    <TextBlock Text="Nombre completo del contacto principal"/>
+                                </ToolTip>
+                            </TextBox.ToolTip>
+                        </TextBox>
+                    </StackPanel>
+
+                    <!-- Email y Teléfono del Contacto -->
+                    <Grid Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="EMAIL CONTACTO *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <TextBox x:Name="ContactEmailTextBox"
+                                    Height="35"
+                                    FontSize="14"
+                                    CharacterCasing="Lower"
+                                    LostFocus="ContactEmailTextBox_LostFocus">
+                                <TextBox.ToolTip>
+                                    <ToolTip>
+                                        <TextBlock Text="Correo electrónico válido del contacto"/>
+                                    </ToolTip>
+                                </TextBox.ToolTip>
+                            </TextBox>
+                            <TextBlock x:Name="EmailWarning"
+                                     Text=""
+                                     FontSize="10"
+                                     Foreground="Red"
+                                     FontStyle="Italic"
+                                     Margin="2,2,0,0"
+                                     Visibility="Collapsed"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="TELÉFONO CONTACTO *" 
+                                     FontSize="11"
+                                     FontWeight="SemiBold"
+                                     Margin="0,0,0,5"/>
+                            <TextBox x:Name="ContactPhoneTextBox"
+                                    Height="35"
+                                    FontSize="14">
+                                <TextBox.ToolTip>
+                                    <ToolTip>
+                                        <TextBlock Text="Número de teléfono del contacto"/>
+                                    </ToolTip>
+                                </TextBox.ToolTip>
+                            </TextBox>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Información adicional -->
+                <Border Grid.Row="4"
+                       Background="#FFF9C4"
+                       BorderBrush="#F9A825"
+                       BorderThickness="1"
+                       CornerRadius="3"
+                       Padding="10"
+                       Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock Text="ℹ Información:"
+                                 FontWeight="Bold"
+                                 FontSize="11"
+                                 Foreground="#F57C00"
+                                 Margin="0,0,0,5"/>
+                        <TextBlock FontSize="10"
+                                 TextWrapping="Wrap"
+                                 Foreground="#666">
+                            • Este será el contacto principal del cliente<LineBreak/>
+                            • El sistema no permite clientes duplicados<LineBreak/>
+                            • Los campos adicionales son opcionales
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Botones de Acción -->
+        <Border Grid.Row="2" 
+               Background="#f5f5f5"
+               BorderBrush="#DDD"
+               BorderThickness="0,1,0,0">
+            <Grid Margin="30,15">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <CheckBox x:Name="CreateAndContinueCheckBox"
+                         Grid.Column="0"
+                         Content="Crear otro cliente después"
+                         VerticalAlignment="Center"
+                         FontSize="11"/>
+
+                <Button Grid.Column="1"
+                       x:Name="SaveButton"
+                       Content="GUARDAR Y SELECCIONAR"
+                       Width="180"
+                       Height="40"
+                       Margin="0,0,10,0"
+                       FontWeight="Bold"
+                       Click="SaveButton_Click"
+                       IsDefault="True"
+                       Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border"
+                                   Background="#4CAF50"
+                                   CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                TextElement.Foreground="White"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#45A049"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#388E3C"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="border" Property="Background" Value="#CCCCCC"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button Grid.Column="2"
+                       x:Name="CancelButton"
+                       Content="CANCELAR"
+                       Width="100"
+                       Height="40"
+                       Background="White"
+                       BorderBrush="#999"
+                       BorderThickness="1"
+                       IsCancel="True"
+                       Click="CancelButton_Click"
+                       Cursor="Hand"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

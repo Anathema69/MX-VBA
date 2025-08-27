@@ -666,6 +666,37 @@ namespace SistemaGestionProyectos2.Views
         }
 
 
-        
+        //El botón para adminsitrar clientes
+        private void ClientsManagementButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Por ahora, solo mostrar mensaje de próximamente
+                MessageBox.Show(
+                    "Módulo de Gestión de Clientes\n\n" +
+                    "Este módulo permitirá:\n" +
+                    "• Ver todos los clientes y contactos\n" +
+                    "• Editar información de clientes\n" +
+                    "• Agregar múltiples contactos\n" +
+                    "• Activar/desactivar clientes\n\n" +
+                    "Próximamente...",
+                    "Gestión de Clientes",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                // Cuando esté listo:
+                // var clientsWindow = new ClientManagementWindow(_currentUser);
+                // clientsWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir módulo de clientes:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
     }
 }

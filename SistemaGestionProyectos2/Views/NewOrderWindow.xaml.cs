@@ -528,21 +528,54 @@ namespace SistemaGestionProyectos2.Views
             this.Close();
         }
 
-        private void NewClientButton_Click(object sender, RoutedEventArgs e)
+        private async void NewClientButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Función para agregar nuevo cliente.\n" +
-                "Será implementada en una próxima versión.\n\n" +
-                "Por ahora, use los clientes existentes.",
-                "Nuevo Cliente",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            try
+            {
+                // Abrir ventana de nuevo cliente
+                var newClientWindow = new NewClientWindow(_currentUser);
+                newClientWindow.Owner = this;
+
+                if (newClientWindow.ShowDialog() == true)
+                {
+                    // Si se creó exitosamente, actualizar la lista de clientes
+                    var createdClient = newClientWindow.CreatedClient;
+                    var createdContact = newClientWindow.CreatedContact;
+
+                    if (createdClient != null)
+                    {
+                        // Recargar solo la lista de clientes (no todo)
+                        _clients = await _supabaseService.GetClients();
+
+                        if (_clients != null && _clients.Count > 0)
+                        {
+                            // Actualizar el ComboBox con los nuevos datos
+                            ClientComboBox.ItemsSource = null; // Limpiar primero
+                            ClientComboBox.ItemsSource = _clients;
+                            ClientComboBox.DisplayMemberPath = "Name";
+                            ClientComboBox.SelectedValuePath = "Id";
+
+                            // Seleccionar el cliente recién creado
+                            ClientComboBox.SelectedValue = createdClient.Id;
+
+                            System.Diagnostics.Debug.WriteLine($"✅ Cliente '{createdClient.Name}' seleccionado automáticamente");
+
+                            // El evento SelectionChanged del ComboBox cargará automáticamente los contactos
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el formulario de nuevo cliente:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                System.Diagnostics.Debug.WriteLine($"❌ Error: {ex}");
+            }
         }
 
-        // Permitir solo números en el campo de gasto
-        private void ExpenseTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            NumericTextBox_PreviewTextInput(sender, e);
-        }
     }
 }
