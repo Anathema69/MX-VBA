@@ -304,7 +304,7 @@ namespace SistemaGestionProyectos2.Services
             {
                 var response = await _supabaseClient
                     .From<ClientDb>()
-                    .Select("*")
+                    .Where(c => c.IsActive == true)  // Agregar este filtro
                     .Order("f_name", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
@@ -312,8 +312,8 @@ namespace SistemaGestionProyectos2.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo clientes: {ex.Message}");
-                throw;
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<ClientDb>();
             }
         }
 
@@ -328,15 +328,17 @@ namespace SistemaGestionProyectos2.Services
                 var response = await _supabaseClient
                     .From<ContactDb>()
                     .Where(c => c.ClientId == clientId)
-                    .Order(c => c.IsPrimary, Postgrest.Constants.Ordering.Descending)
-                    .Order(c => c.ContactName, Postgrest.Constants.Ordering.Ascending)
+                    .Where(c => c.IsActive == true)  // Agregar este filtro
+                    .Order("is_primary", Postgrest.Constants.Ordering.Descending)
+                    .Order("f_contactname", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
-                return response.Models;
+                return response?.Models ?? new List<ContactDb>();
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al obtener contactos del cliente: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                return new List<ContactDb>();
             }
         }
 
@@ -344,26 +346,23 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
-                // Si el contacto es principal, desmarcar otros contactos principales del mismo cliente
-                if (contact.IsPrimary)
-                {
-                    var existingContacts = await GetContactsByClientId(contact.ClientId);
-                    foreach (var existingContact in existingContacts.Where(c => c.IsPrimary))
-                    {
-                        existingContact.IsPrimary = false;
-                        await UpdateContact(existingContact);
-                    }
-                }
+                contact.IsActive = true;
+                System.Diagnostics.Debug.WriteLine($"📇 Creando contacto: {contact.ContactName}");
 
                 var response = await _supabaseClient
                     .From<ContactDb>()
                     .Insert(contact);
 
-                return response.Models.FirstOrDefault();
+                if (response?.Models?.Count > 0)
+                {
+                    return response.Models.First();
+                }
+                throw new Exception("No se pudo crear el contacto");
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al agregar contacto: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"❌ Error creando contacto: {ex.Message}");
+                throw;
             }
         }
 
@@ -407,22 +406,29 @@ namespace SistemaGestionProyectos2.Services
         }
 
         // Método para eliminar un contacto
-        public async Task DeleteContact(int contactId)
+        public async Task<bool> DeleteContact(int contactId)
         {
             try
             {
-                await _supabaseClient
+                System.Diagnostics.Debug.WriteLine($"🗑️ Desactivando contacto ID: {contactId}");
+
+                // Soft delete - cambiar is_active a false
+                var response = await _supabaseClient
                     .From<ContactDb>()
                     .Where(c => c.Id == contactId)
-                    .Delete();
+                    .Set(c => c.IsActive, false)
+                    .Update();
+
+                return response?.Models?.Count > 0;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error al eliminar contacto: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"❌ Error desactivando contacto: {ex.Message}");
+                return false;
             }
         }
 
-        
+
 
         public async Task<List<ContactDb>> GetContactsByClient(int clientId)
         {
@@ -991,7 +997,7 @@ namespace SistemaGestionProyectos2.Services
 
 
         // ===============================================
-        // MÉTODOS PARA CLIENTES - Agregar en SupabaseService.cs
+        // MÉTODOS PARA CLIENTES 
         // ===============================================
 
         public async Task<ClientDb> CreateClient(ClientDb client, int userId = 0)
@@ -1094,7 +1100,7 @@ namespace SistemaGestionProyectos2.Services
         }
 
         // ===============================================
-        // MÉTODOS PARA CONTACTOS - Agregar en SupabaseService.cs
+        // MÉTODOS PARA CONTACTOS 
         // ===============================================
 
         public async Task<ContactDb> CreateContact(ContactDb contact)
@@ -1123,7 +1129,7 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
-        
+
 
         public async Task<List<ContactDb>> GetAllContacts()
         {
@@ -1131,6 +1137,7 @@ namespace SistemaGestionProyectos2.Services
             {
                 var response = await _supabaseClient
                     .From<ContactDb>()
+                    .Where(c => c.IsActive == true)  // Agregar este filtro
                     .Order("f_contactname", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
@@ -1138,8 +1145,180 @@ namespace SistemaGestionProyectos2.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo todos los contactos: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
                 return new List<ContactDb>();
+            }
+        }
+
+        // ========== MÉTODOS CRUD PARA CLIENTES ==========
+        // Agregar estos métodos
+
+        // Obtener órdenes por cliente
+        public async Task<List<OrderDb>> GetOrdersByClientId(int clientId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"📋 Obteniendo órdenes del cliente ID: {clientId}");
+
+                var response = await _supabaseClient
+                    .From<OrderDb>()
+                    .Where(o => o.ClientId == clientId)
+                    .Get();
+
+                return response?.Models ?? new List<OrderDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo órdenes del cliente: {ex.Message}");
+                return new List<OrderDb>();
+            }
+        }
+
+        // Obtener solo clientes activos
+        public async Task<List<ClientDb>> GetActiveClients()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Where(c => c.IsActive == true)
+                    .Order("f_name", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<ClientDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo clientes activos: {ex.Message}");
+                return new List<ClientDb>();
+            }
+        }
+
+        // Actualizar cliente
+        public async Task<ClientDb> UpdateClient(ClientDb client)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"📝 Actualizando cliente: {client.Name}");
+
+                client.UpdatedAt = DateTime.Now;
+                client.UpdatedBy = 9; // _currentUser?.Id;
+
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Where(c => c.Id == client.Id)
+                    .Set(c => c.Name, client.Name)
+                    .Set(c => c.TaxId, client.TaxId)
+                    .Set(c => c.Phone, client.Phone)
+                    .Set(c => c.Email, client.Email)
+                    .Set(c => c.Address1, client.Address1)
+                    .Set(c => c.Credit, client.Credit)
+                    .Set(c => c.UpdatedAt, client.UpdatedAt)
+                    .Set(c => c.UpdatedBy, client.UpdatedBy)
+                    .Update();
+
+                if (response?.Models?.Count > 0)
+                {
+                    return response.Models.First();
+                }
+
+                throw new Exception("No se pudo actualizar el cliente");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error actualizando cliente: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Soft delete de cliente
+        public async Task<bool> SoftDeleteClient(int clientId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🗑️ Desactivando cliente ID: {clientId}");
+
+                var response = await _supabaseClient
+                    .From<ClientDb>()
+                    .Where(c => c.Id == clientId)
+                    .Set(c => c.IsActive, false)
+                    .Set(c => c.UpdatedAt, DateTime.Now)
+                        
+                    .Update();
+
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error desactivando cliente: {ex.Message}");
+                return false;
+            }
+        }
+
+        // ========== MÉTODOS CRUD PARA CONTACTOS ==========
+
+        // Obtener solo contactos activos de un cliente
+        public async Task<List<ContactDb>> GetActiveContactsByClientId(int clientId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.ClientId == clientId)
+                    .Where(c => c.IsActive == true)
+                    .Order("is_primary", Postgrest.Constants.Ordering.Descending)
+                    .Order("f_contactname", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<ContactDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo contactos activos: {ex.Message}");
+                return new List<ContactDb>();
+            }
+        }
+
+
+        // Soft delete de contacto
+        public async Task<bool> SoftDeleteContact(int contactId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🗑️ Desactivando contacto ID: {contactId}");
+
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.Id == contactId)
+                    .Set(c => c.IsActive, false)
+                    .Update();
+
+                return response?.Models?.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error desactivando contacto: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Contar contactos activos de un cliente
+        public async Task<int> CountActiveContactsByClientId(int clientId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.ClientId == clientId)
+                    .Where(c => c.IsActive == true)
+                    .Get();
+
+                return response?.Models?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error contando contactos: {ex.Message}");
+                return 0;
             }
         }
     }
