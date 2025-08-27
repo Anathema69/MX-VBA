@@ -323,13 +323,106 @@ namespace SistemaGestionProyectos2.Services
 
         public async Task<List<ContactDb>> GetContactsByClientId(int clientId)
         {
-            var response = await _supabaseClient
-                .From<ContactDb>()
-                .Where(c => c.ClientId == clientId)
-                .Get();
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.ClientId == clientId)
+                    .Order(c => c.IsPrimary, Postgrest.Constants.Ordering.Descending)
+                    .Order(c => c.ContactName, Postgrest.Constants.Ordering.Ascending)
+                    .Get();
 
-            return response.Models;
+                return response.Models;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener contactos del cliente: {ex.Message}", ex);
+            }
         }
+
+        public async Task<ContactDb> AddContact(ContactDb contact)
+        {
+            try
+            {
+                // Si el contacto es principal, desmarcar otros contactos principales del mismo cliente
+                if (contact.IsPrimary)
+                {
+                    var existingContacts = await GetContactsByClientId(contact.ClientId);
+                    foreach (var existingContact in existingContacts.Where(c => c.IsPrimary))
+                    {
+                        existingContact.IsPrimary = false;
+                        await UpdateContact(existingContact);
+                    }
+                }
+
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Insert(contact);
+
+                return response.Models.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al agregar contacto: {ex.Message}", ex);
+            }
+        }
+
+        // Método para actualizar un contacto existente
+        public async Task<ContactDb> UpdateContact(ContactDb contact)
+        {
+            try
+            {
+                // Si el contacto se marca como principal, desmarcar otros
+                if (contact.IsPrimary)
+                {
+                    var allContacts = await GetContactsByClientId(contact.ClientId);
+                    foreach (var c in allContacts.Where(c => c.Id != contact.Id && c.IsPrimary))
+                    {
+                        c.IsPrimary = false;
+                        await _supabaseClient
+                            .From<ContactDb>()
+                            .Where(x => x.Id == c.Id)
+                            .Set(x => x.IsPrimary, false)
+                            .Update();
+                    }
+                }
+
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.Id == contact.Id)
+                    .Set(c => c.ContactName, contact.ContactName)
+                    .Set(c => c.Position, contact.Position)
+                    .Set(c => c.Email, contact.Email)
+                    .Set(c => c.Phone, contact.Phone)
+                    .Set(c => c.IsPrimary, contact.IsPrimary)
+                    .Set(c => c.IsActive, contact.IsActive)
+                    .Update();
+
+                return response.Models.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al actualizar contacto: {ex.Message}", ex);
+            }
+        }
+
+        // Método para eliminar un contacto
+        public async Task DeleteContact(int contactId)
+        {
+            try
+            {
+                await _supabaseClient
+                    .From<ContactDb>()
+                    .Where(c => c.Id == contactId)
+                    .Delete();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al eliminar contacto: {ex.Message}", ex);
+            }
+        }
+
+        
 
         public async Task<List<ContactDb>> GetContactsByClient(int clientId)
         {
@@ -1030,28 +1123,7 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
-        public async Task<bool> UpdateContact(ContactDb contact)
-        {
-            try
-            {
-                var response = await _supabaseClient
-                    .From<ContactDb>()
-                    .Where(x => x.Id == contact.Id)
-                    .Set(x => x.ContactName, contact.ContactName)
-                    .Set(x => x.Email, contact.Email)
-                    .Set(x => x.Phone, contact.Phone)
-                    .Set(x => x.Position, contact.Position)
-                    .Set(x => x.IsPrimary, contact.IsPrimary)
-                    .Update();
-
-                return response?.Models?.Count > 0;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error actualizando contacto: {ex.Message}");
-                return false;
-            }
-        }
+        
 
         public async Task<List<ContactDb>> GetAllContacts()
         {
