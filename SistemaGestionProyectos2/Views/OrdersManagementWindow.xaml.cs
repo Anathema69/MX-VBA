@@ -671,22 +671,12 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Por ahora, solo mostrar mensaje de próximamente
-                MessageBox.Show(
-                    "Módulo de Gestión de Clientes\n\n" +
-                    "Este módulo permitirá:\n" +
-                    "• Ver todos los clientes y contactos\n" +
-                    "• Editar información de clientes\n" +
-                    "• Agregar múltiples contactos\n" +
-                    "• Activar/desactivar clientes\n\n" +
-                    "Próximamente...",
-                    "Gestión de Clientes",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                // Abrir la ventana de gestión de clientes
+                var clientsWindow = new ClientManagementWindow(_currentUser);
+                clientsWindow.ShowDialog();
 
-                // Cuando esté listo:
-                // var clientsWindow = new ClientManagementWindow(_currentUser);
-                // clientsWindow.ShowDialog();
+                // Recargar clientes después de cerrar la ventana por si hubo cambios
+                _ = LoadInitialDataAsync();
             }
             catch (Exception ex)
             {
@@ -697,6 +687,5 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxImage.Error);
             }
         }
-
     }
 }

@@ -1042,6 +1042,24 @@ namespace SistemaGestionProyectos2.Services
                 return false;
             }
         }
+
+        public async Task<List<ContactDb>> GetAllContacts()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ContactDb>()
+                    .Order("f_contactname", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<ContactDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo todos los contactos: {ex.Message}");
+                return new List<ContactDb>();
+            }
+        }
     }
 
     // ===============================================

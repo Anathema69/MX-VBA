@@ -150,37 +150,37 @@
                            Cursor="Hand"
                            ToolTip="Actualizar"/>
                     <Button x:Name="ClientsManagementButton"
-       Click="ClientsManagementButton_Click"
-       Height="40"
-       Width="150"
-       Margin="0,0,20,0"
-       Cursor="Hand"
-       Visibility="{Binding ElementName=OrdersWindow, 
-                   Path=Tag, 
-                   Converter={StaticResource AdminVisibilityConverter}}">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="border"
-                   Background="#2196F3"
-                   CornerRadius="3">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#1976D2"/>
-                                    </Trigger>
-                                    <Trigger Property="IsEnabled" Value="False">
-                                        <Setter TargetName="border" Property="Background" Value="#DDD"/>
-                                        <Setter TargetName="border" Property="Opacity" Value="0.6"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="👥" FontSize="16" Margin="0,0,8,0" Foreground="White"/>
-                            <TextBlock Text="CLIENTES" FontWeight="Bold" Foreground="White"/>
-                        </StackPanel>
+                           Click="ClientsManagementButton_Click"
+                           Height="40"
+                           Width="150"
+                           Margin="0,0,10,0"
+                           Cursor="Hand"
+                           Visibility="{Binding ElementName=OrdersWindow, 
+                                       Path=Tag, 
+                                       Converter={StaticResource AdminVisibilityConverter}}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="border"
+                                       Background="#2196F3"
+                                       CornerRadius="3">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="border" Property="Background" Value="#1976D2"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled" Value="False">
+                                                            <Setter TargetName="border" Property="Background" Value="#DDD"/>
+                                                            <Setter TargetName="border" Property="Opacity" Value="0.6"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="👥" FontSize="16" Margin="0,0,8,0" Foreground="White"/>
+                                                <TextBlock Text="CLIENTES" FontWeight="Bold" Foreground="White"/>
+                                            </StackPanel>
                     </Button>
                 </StackPanel>
 
