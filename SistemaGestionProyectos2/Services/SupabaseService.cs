@@ -321,6 +321,16 @@ namespace SistemaGestionProyectos2.Services
         // MÉTODOS PARA CONTACTOS
         // ===============================================
 
+        public async Task<List<ContactDb>> GetContactsByClientId(int clientId)
+        {
+            var response = await _supabaseClient
+                .From<ContactDb>()
+                .Where(c => c.ClientId == clientId)
+                .Get();
+
+            return response.Models;
+        }
+
         public async Task<List<ContactDb>> GetContactsByClient(int clientId)
         {
             try

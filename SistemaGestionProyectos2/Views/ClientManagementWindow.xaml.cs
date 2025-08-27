@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// SimpleClientTestWindow.xaml.cs
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -7,8 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 
@@ -17,13 +17,10 @@ namespace SistemaGestionProyectos2.Views
     public partial class ClientManagementWindow : Window
     {
         private readonly SupabaseService _supabaseService;
-        private UserSession _currentUser;
-        private ObservableCollection<ClientViewModel> _clients;
-        private ObservableCollection<ContactViewModel> _contacts;
-        private CollectionViewSource _clientsViewSource;
-        private CollectionViewSource _contactsViewSource;
-        private List<ClientDb> _allClientsDb;
-        private List<ContactDb> _allContactsDb;
+        private readonly UserSession _currentUser;
+        private ObservableCollection<SimpleClientViewModel> _clients;
+        private ObservableCollection<SimpleContactViewModel> _contacts;
+        private SimpleClientViewModel _selectedClient;
 
         public ClientManagementWindow(UserSession currentUser)
         {
@@ -31,127 +28,167 @@ namespace SistemaGestionProyectos2.Views
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
 
-            // Inicializar colecciones
-            _clients = new ObservableCollection<ClientViewModel>();
-            _contacts = new ObservableCollection<ContactViewModel>();
+            _clients = new ObservableCollection<SimpleClientViewModel>();
+            _contacts = new ObservableCollection<SimpleContactViewModel>();
 
-            // Configurar DataGrids
-            _clientsViewSource = new CollectionViewSource { Source = _clients };
-            _contactsViewSource = new CollectionViewSource { Source = _contacts };
-
-            ClientsDataGrid.ItemsSource = _clientsViewSource.View;
-            ContactsDataGrid.ItemsSource = _contactsViewSource.View;
+            ClientsListBox.ItemsSource = _clients;
+            ContactsDataGrid.ItemsSource = _contacts;
 
             // Cargar datos iniciales
-            _ = LoadDataAsync();
+            _ = LoadClientsAsync();
         }
 
-        private async Task LoadDataAsync()
+        private async Task LoadClientsAsync()
         {
             try
             {
-                StatusText.Text = "Cargando datos...";
+                StatusText.Text = "Cargando clientes...";
+                _clients.Clear();
 
-                // Cargar clientes
-                await LoadClients();
+                var clientsDb = await _supabaseService.GetClients();
 
-                // Cargar contactos
-                await LoadContacts();
+                foreach (var client in clientsDb.OrderBy(c => c.Name))
+                {
+                    _clients.Add(new SimpleClientViewModel
+                    {
+                        Id = client.Id,
+                        Name = client.Name,
+                        TaxId = client.TaxId ?? "Sin RFC",
+                        Phone = client.Phone ?? "Sin teléfono",
+                        Address = client.Address1 ?? "Sin dirección",
+                        Credit = client.Credit,
+                        IsActive = client.IsActive,
+                        StatusText = client.IsActive ? "ACTIVO" : "INACTIVO",
+                        StatusColor = client.IsActive ? "#4CAF50" : "#f44336"
+                    });
+                }
 
-                StatusText.Text = "Datos cargados";
-                LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
+                TotalClientsText.Text = _clients.Count.ToString();
+                StatusText.Text = $"Se cargaron {_clients.Count} clientes";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar datos: {ex.Message}", "Error",
+                MessageBox.Show($"Error al cargar clientes: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "Error al cargar datos";
             }
         }
 
-        private async Task LoadClients()
+        private async Task LoadContactsForClient(int clientId)
         {
-            _clients.Clear();
-
-            _allClientsDb = await _supabaseService.GetClients();
-            var contacts = await _supabaseService.GetAllContacts();
-
-            foreach (var client in _allClientsDb)
+            try
             {
-                var clientContacts = contacts.Where(c => c.ClientId == client.Id).ToList();
+                StatusText.Text = "Cargando contactos...";
+                _contacts.Clear();
 
-                _clients.Add(new ClientViewModel
+                var contactsDb = await _supabaseService.GetContactsByClientId(clientId);
+
+                foreach (var contact in contactsDb)
                 {
-                    Id = client.Id,
-                    Name = client.Name,
-                    TaxId = client.TaxId,
-                    Address1 = client.Address1,
-                    Phone = client.Phone,
-                    Credit = client.Credit,
-                    IsActive = client.IsActive,
-                    ContactCount = clientContacts.Count,
-                    StatusText = client.IsActive ? "ACTIVO" : "INACTIVO"
-                });
-            }
+                    _contacts.Add(new SimpleContactViewModel
+                    {
+                        Id = contact.Id,
+                        ClientId = contact.ClientId,
+                        ContactName = contact.ContactName,
+                        Email = contact.Email ?? "Sin email",
+                        Phone = contact.Phone ?? "Sin teléfono",
+                        Position = contact.Position ?? "Sin cargo",
+                        IsPrimary = contact.IsPrimary,
+                        IsActive = contact.IsActive
+                    });
+                }
 
-            TotalCountText.Text = _clients.Count.ToString();
+                TotalContactsText.Text = _contacts.Count.ToString();
+                StatusText.Text = $"Cliente seleccionado - {_contacts.Count} contactos";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al cargar contactos: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "Error al cargar contactos";
+            }
         }
 
-        private async Task LoadContacts()
+        private async void ClientsListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            _contacts.Clear();
+            _selectedClient = ClientsListBox.SelectedItem as SimpleClientViewModel;
 
-            _allContactsDb = await _supabaseService.GetAllContacts();
-            _allClientsDb = _allClientsDb ?? await _supabaseService.GetClients();
-
-            foreach (var contact in _allContactsDb)
+            if (_selectedClient != null)
             {
-                var client = _allClientsDb.FirstOrDefault(c => c.Id == contact.ClientId);
+                // Mostrar panel de detalles
+                NoSelectionPanel.Visibility = Visibility.Collapsed;
+                ClientDetailsPanel.Visibility = Visibility.Visible;
 
-                _contacts.Add(new ContactViewModel
+                // Actualizar información del cliente
+                ClientNameText.Text = _selectedClient.Name;
+                ClientRfcText.Text = _selectedClient.TaxId;
+                ClientPhoneText.Text = _selectedClient.Phone;
+                ClientCreditText.Text = $"{_selectedClient.Credit} días";
+
+                // Cargar contactos
+                await LoadContactsForClient(_selectedClient.Id);
+            }
+            else
+            {
+                // Ocultar panel de detalles
+                NoSelectionPanel.Visibility = Visibility.Visible;
+                ClientDetailsPanel.Visibility = Visibility.Collapsed;
+                _contacts.Clear();
+                TotalContactsText.Text = "0";
+            }
+        }
+
+        private void ContactsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var hasSelection = ContactsDataGrid.SelectedItem != null;
+            EditContactButton.IsEnabled = hasSelection;
+            DeleteContactButton.IsEnabled = hasSelection;
+        }
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var searchText = SearchBox.Text?.ToLower();
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Mostrar todos los clientes
+                foreach (var client in _clients)
                 {
-                    Id = contact.Id,
-                    ClientId = contact.ClientId,
-                    ClientName = client?.Name ?? "Sin cliente",
-                    ContactName = contact.ContactName,
-                    Email = contact.Email,
-                    Phone = contact.Phone,
-                    Position = contact.Position ?? "Compras",
-                    IsPrimary = contact.IsPrimary,
-                    IsActive = contact.IsActive
-                });
+                    var container = ClientsListBox.ItemContainerGenerator.ContainerFromItem(client) as ListBoxItem;
+                    if (container != null)
+                        container.Visibility = Visibility.Visible;
+                }
             }
-
-            // Llenar combo de filtro de clientes
-            ClientFilterCombo.ItemsSource = _allClientsDb;
-            ClientFilterCombo.Items.Insert(0, new ClientDb { Id = 0, Name = "-- Todos los clientes --" });
-            ClientFilterCombo.SelectedIndex = 0;
-        }
-
-        private void ClientsTab_Checked(object sender, RoutedEventArgs e)
-        {
-            if (ClientsDataGrid != null)
+            else
             {
-                ClientsDataGrid.Visibility = Visibility.Visible;
-                ContactsDataGrid.Visibility = Visibility.Collapsed;
-                ClientsToolbar.Visibility = Visibility.Visible;
-                ContactsToolbar.Visibility = Visibility.Collapsed;
-                TotalCountText.Text = _clients.Count.ToString();
+                // Filtrar clientes
+                foreach (var client in _clients)
+                {
+                    var container = ClientsListBox.ItemContainerGenerator.ContainerFromItem(client) as ListBoxItem;
+                    if (container != null)
+                    {
+                        var isVisible = client.Name.ToLower().Contains(searchText) ||
+                                      client.TaxId.ToLower().Contains(searchText) ||
+                                      client.Phone.ToLower().Contains(searchText);
+
+                        container.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                }
             }
         }
 
-        private void ContactsTab_Checked(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            if (ContactsDataGrid != null)
+            await LoadClientsAsync();
+
+            // Si había un cliente seleccionado, recargar sus contactos
+            if (_selectedClient != null)
             {
-                ClientsDataGrid.Visibility = Visibility.Collapsed;
-                ContactsDataGrid.Visibility = Visibility.Visible;
-                ClientsToolbar.Visibility = Visibility.Collapsed;
-                ContactsToolbar.Visibility = Visibility.Visible;
-                TotalCountText.Text = _contacts.Count.ToString();
+                await LoadContactsForClient(_selectedClient.Id);
             }
         }
 
-        private async void NewClientButton_Click(object sender, RoutedEventArgs e)
+        private void NewClientButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -160,7 +197,7 @@ namespace SistemaGestionProyectos2.Views
 
                 if (newClientWindow.ShowDialog() == true)
                 {
-                    await LoadDataAsync();
+                    _ = LoadClientsAsync();
                 }
             }
             catch (Exception ex)
@@ -170,98 +207,64 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void EditClientButton_Click(object sender, RoutedEventArgs e)
+        private void AddContactButton_Click(object sender, RoutedEventArgs e)
         {
-            var selectedClient = ClientsDataGrid.SelectedItem as ClientViewModel;
-            if (selectedClient == null) return;
+            if (_selectedClient == null) return;
 
-            MessageBox.Show($"Editar cliente: {selectedClient.Name}\n\nFuncionalidad en desarrollo...",
-                "Editar Cliente", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show($"Agregar contacto para: {_selectedClient.Name}\n\n" +
+                          "Esta funcionalidad se implementará próximamente.\n" +
+                          "Por ahora puedes agregar contactos desde Nueva Orden.",
+                          "Agregar Contacto",
+                          MessageBoxButton.OK,
+                          MessageBoxImage.Information);
         }
 
-        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private void EditContactButton_Click(object sender, RoutedEventArgs e)
         {
-            await LoadDataAsync();
+            var selectedContact = ContactsDataGrid.SelectedItem as SimpleContactViewModel;
+            if (selectedContact == null) return;
+
+            MessageBox.Show($"Editar contacto: {selectedContact.ContactName}\n\n" +
+                          "Esta funcionalidad se implementará próximamente.",
+                          "Editar Contacto",
+                          MessageBoxButton.OK,
+                          MessageBoxImage.Information);
         }
 
-        private void NewContactButton_Click(object sender, RoutedEventArgs e)
+        private async void DeleteContactButton_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Agregar nuevo contacto\n\nFuncionalidad en desarrollo...",
-                "Nuevo Contacto", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
+            var selectedContact = ContactsDataGrid.SelectedItem as SimpleContactViewModel;
+            if (selectedContact == null) return;
 
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var searchText = SearchBox.Text?.ToLower();
+            var result = MessageBox.Show(
+                $"¿Estás seguro de eliminar el contacto?\n\n{selectedContact.ContactName}\n{selectedContact.Position}",
+                "Confirmar Eliminación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
 
-            if (ClientsTab.IsChecked == true)
+            if (result == MessageBoxResult.Yes)
             {
-                // Filtrar clientes
-                if (_clientsViewSource?.View != null)
+                try
                 {
-                    _clientsViewSource.View.Filter = item =>
-                    {
-                        var client = item as ClientViewModel;
-                        if (client == null || string.IsNullOrWhiteSpace(searchText)) return true;
+                    // Aquí iría la llamada a Supabase para eliminar
+                    // await _supabaseService.DeleteContact(selectedContact.Id);
 
-                        return client.Name.ToLower().Contains(searchText) ||
-                               (client.TaxId?.ToLower().Contains(searchText) ?? false) ||
-                               (client.Phone?.ToLower().Contains(searchText) ?? false);
-                    };
+                    MessageBox.Show("Funcionalidad de eliminación en desarrollo.\n" +
+                                  "El contacto no ha sido eliminado.",
+                                  "En Desarrollo",
+                                  MessageBoxButton.OK,
+                                  MessageBoxImage.Information);
+
+                    // Recargar contactos después de eliminar
+                    // await LoadContactsForClient(_selectedClient.Id);
                 }
-            }
-            else
-            {
-                // Filtrar contactos
-                if (_contactsViewSource?.View != null)
+                catch (Exception ex)
                 {
-                    _contactsViewSource.View.Filter = item =>
-                    {
-                        var contact = item as ContactViewModel;
-                        if (contact == null || string.IsNullOrWhiteSpace(searchText)) return true;
-
-                        return contact.ContactName.ToLower().Contains(searchText) ||
-                               contact.ClientName.ToLower().Contains(searchText) ||
-                               (contact.Email?.ToLower().Contains(searchText) ?? false);
-                    };
+                    MessageBox.Show($"Error al eliminar contacto: {ex.Message}",
+                                  "Error",
+                                  MessageBoxButton.OK,
+                                  MessageBoxImage.Error);
                 }
-            }
-        }
-
-        private void ClientFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ClientFilterCombo.SelectedItem is ClientDb selectedClient && _contactsViewSource?.View != null)
-            {
-                if (selectedClient.Id == 0)
-                {
-                    // Mostrar todos
-                    _contactsViewSource.View.Filter = null;
-                }
-                else
-                {
-                    // Filtrar por cliente
-                    _contactsViewSource.View.Filter = item =>
-                    {
-                        var contact = item as ContactViewModel;
-                        return contact?.ClientId == selectedClient.Id;
-                    };
-                }
-
-                var count = _contactsViewSource.View.Cast<object>().Count();
-                TotalCountText.Text = count.ToString();
-            }
-        }
-
-        private void ClientsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            EditClientButton.IsEnabled = ClientsDataGrid.SelectedItem != null;
-        }
-
-        private void ClientsDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (ClientsDataGrid.SelectedItem is ClientViewModel client)
-            {
-                EditClientButton_Click(null, null);
             }
         }
 
@@ -271,18 +274,18 @@ namespace SistemaGestionProyectos2.Views
         }
     }
 
-    // ViewModels para los DataGrids
-    public class ClientViewModel : INotifyPropertyChanged
+    // ViewModels simples para la prueba
+    public class SimpleClientViewModel : INotifyPropertyChanged
     {
         private int _id;
         private string _name;
         private string _taxId;
-        private string _address1;
         private string _phone;
+        private string _address;
         private int _credit;
         private bool _isActive;
-        private int _contactCount;
         private string _statusText;
+        private string _statusColor;
 
         public int Id
         {
@@ -302,16 +305,16 @@ namespace SistemaGestionProyectos2.Views
             set { _taxId = value; OnPropertyChanged(); }
         }
 
-        public string Address1
-        {
-            get => _address1;
-            set { _address1 = value; OnPropertyChanged(); }
-        }
-
         public string Phone
         {
             get => _phone;
             set { _phone = value; OnPropertyChanged(); }
+        }
+
+        public string Address
+        {
+            get => _address;
+            set { _address = value; OnPropertyChanged(); }
         }
 
         public int Credit
@@ -326,16 +329,16 @@ namespace SistemaGestionProyectos2.Views
             set { _isActive = value; OnPropertyChanged(); }
         }
 
-        public int ContactCount
-        {
-            get => _contactCount;
-            set { _contactCount = value; OnPropertyChanged(); }
-        }
-
         public string StatusText
         {
             get => _statusText;
             set { _statusText = value; OnPropertyChanged(); }
+        }
+
+        public string StatusColor
+        {
+            get => _statusColor;
+            set { _statusColor = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -346,11 +349,10 @@ namespace SistemaGestionProyectos2.Views
         }
     }
 
-    public class ContactViewModel : INotifyPropertyChanged
+    public class SimpleContactViewModel : INotifyPropertyChanged
     {
         private int _id;
         private int _clientId;
-        private string _clientName;
         private string _contactName;
         private string _email;
         private string _phone;
@@ -368,12 +370,6 @@ namespace SistemaGestionProyectos2.Views
         {
             get => _clientId;
             set { _clientId = value; OnPropertyChanged(); }
-        }
-
-        public string ClientName
-        {
-            get => _clientName;
-            set { _clientName = value; OnPropertyChanged(); }
         }
 
         public string ContactName
