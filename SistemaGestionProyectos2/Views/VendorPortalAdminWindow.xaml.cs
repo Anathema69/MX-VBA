@@ -21,6 +21,9 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<VendorCommissionViewModel> _filteredCommissions;
         private List<VendorTableDb> _vendors;
         private bool _hasUnsavedChanges = false;
+        private Dictionary<int, decimal> _originalCommissionRates;
+
+        
 
         public VendorPortalAdminWindow(UserSession user)
         {
@@ -29,10 +32,14 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _commissions = new ObservableCollection<VendorCommissionViewModel>();
             _filteredCommissions = new ObservableCollection<VendorCommissionViewModel>();
-            _vendors = new List<VendorTableDb>(); // Inicializar la lista de vendors
+            _vendors = new List<VendorTableDb>();
+            _originalCommissionRates = new Dictionary<int, decimal>();
 
             InitializeUI();
             _ = LoadDataAsync();
+
+            // Suscribir al evento de cierre para el botón Back
+            BackButton.Click += BackButton_Click;
         }
 
         private void InitializeUI()
@@ -80,13 +87,13 @@ namespace SistemaGestionProyectos2.Views
 
                 _vendors = response?.Models ?? new List<VendorTableDb>();
 
-                // Llenar el combo de filtros
+                // Llenar el combo de filtros con autocompletado
                 VendorFilterCombo.Items.Clear();
-                VendorFilterCombo.Items.Add(new ComboBoxItem { Content = "Todos los vendedores", IsSelected = true });
+                VendorFilterCombo.Items.Add("Todos los vendedores");
 
                 foreach (var vendor in _vendors.OrderBy(v => v.VendorName))
                 {
-                    VendorFilterCombo.Items.Add(new ComboBoxItem { Content = vendor.VendorName, Tag = vendor.Id });
+                    VendorFilterCombo.Items.Add(vendor.VendorName);
                 }
             }
             catch (Exception ex)
@@ -141,6 +148,9 @@ namespace SistemaGestionProyectos2.Views
                     };
 
                     _commissions.Add(commission);
+
+                    // Guardar el valor original para detectar cambios
+                    _originalCommissionRates[commission.OrderId] = commission.CommissionRate;
                 }
 
                 // Actualizar vista filtrada
@@ -163,17 +173,18 @@ namespace SistemaGestionProyectos2.Views
                 return;
 
             var searchText = SearchBox?.Text?.ToLower() ?? "";
-            var selectedVendor = (VendorFilterCombo?.SelectedItem as ComboBoxItem)?.Tag as int?;
+            var selectedVendorText = VendorFilterCombo?.Text ?? "Todos los vendedores";
 
             _filteredCommissions.Clear();
 
             var filtered = _commissions.AsEnumerable();
 
             // Filtro por vendedor
-            if (selectedVendor.HasValue)
+            if (!string.IsNullOrWhiteSpace(selectedVendorText) &&
+                selectedVendorText != "Todos los vendedores")
             {
                 filtered = filtered.Where(c =>
-                    _vendors.FirstOrDefault(v => v.VendorName == c.VendorName)?.Id == selectedVendor.Value);
+                    c.VendorName.ToLower().Contains(selectedVendorText.ToLower()));
             }
 
             // Filtro por búsqueda
@@ -218,6 +229,11 @@ namespace SistemaGestionProyectos2.Views
 
             if (result != MessageBoxResult.Yes) return;
 
+            await SaveChangesAsync();
+        }
+
+        private async Task SaveChangesAsync()
+        {
             try
             {
                 SaveButton.IsEnabled = false;
@@ -228,27 +244,37 @@ namespace SistemaGestionProyectos2.Views
 
                 foreach (var commission in _commissions)
                 {
-                    // Actualizar solo las órdenes que cambiaron
-                    var orderToUpdate = await supabaseClient
-                        .From<OrderDb>()
-                        .Select("*")
-                        .Where(o => o.Id == commission.OrderId)
-                        .Single();
-
-                    if (orderToUpdate != null && orderToUpdate.CommissionRate != commission.CommissionRate)
+                    // Verificar si realmente cambió el valor
+                    if (_originalCommissionRates.ContainsKey(commission.OrderId) &&
+                        Math.Abs(_originalCommissionRates[commission.OrderId] - commission.CommissionRate) > 0.01m)
                     {
-                        orderToUpdate.CommissionRate = commission.CommissionRate;
-                        await supabaseClient
+                        var orderToUpdate = await supabaseClient
                             .From<OrderDb>()
-                            .Update(orderToUpdate);
-                        updatedCount++;
+                            .Select("*")
+                            .Where(o => o.Id == commission.OrderId)
+                            .Single();
+
+                        if (orderToUpdate != null)
+                        {
+                            orderToUpdate.CommissionRate = commission.CommissionRate;
+                            await supabaseClient
+                                .From<OrderDb>()
+                                .Update(orderToUpdate);
+                            updatedCount++;
+
+                            // Actualizar el valor original después de guardar
+                            _originalCommissionRates[commission.OrderId] = commission.CommissionRate;
+                        }
                     }
                 }
 
                 _hasUnsavedChanges = false;
-                StatusText.Text = $"Se actualizaron {updatedCount} órdenes correctamente";
-                MessageBox.Show($"Se guardaron los cambios en {updatedCount} órdenes.",
-                    "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
+                UpdateChangesIndicator();
+                StatusText.Text = updatedCount > 0
+                    ? $"Se actualizaron {updatedCount} órdenes correctamente"
+                    : "No había cambios que guardar";
+
+                
             }
             catch (Exception ex)
             {
@@ -275,41 +301,32 @@ namespace SistemaGestionProyectos2.Views
                 if (result != MessageBoxResult.Yes) return;
             }
 
+            _hasUnsavedChanges = false;
+            UpdateChangesIndicator();
             _ = LoadDataAsync();
         }
 
         private void VendorFilter_Changed(object sender, SelectionChangedEventArgs e)
         {
+            // Aplicar filtro cuando cambia la selección del combo, se espera que después de elegir en el bombox los resultados aparezcan de inmediato
             ApplyFilters();
+
+            // En caso los resultados no aparezcan de inmediato, forzar la actualización del filtro después de un pequeño delay
+            System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                new Action(() => ApplyFilters()),
+                System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+
+
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             ApplyFilters();
+            
         }
 
-        private void CommissionRate_LostFocus(object sender, RoutedEventArgs e)
-        {
-            _hasUnsavedChanges = true;
-            UpdateSummary();
-        }
-
-        private void CommissionRate_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            // Permitir solo números y punto decimal
-            var textBox = sender as TextBox;
-            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
-            var regex = new Regex(@"^\d{0,3}(\.\d{0,2})?$");
-            e.Handled = !regex.IsMatch(fullText);
-        }
-
-        private void ExportExcel_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Funcionalidad de exportación a Excel en desarrollo.",
-                "En desarrollo", MessageBoxButton.OK, MessageBoxImage.Information);
-            // TODO: Implementar exportación a Excel
-        }
-
+       
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             if (_hasUnsavedChanges)
@@ -324,6 +341,123 @@ namespace SistemaGestionProyectos2.Views
             }
 
             this.Close();
+        }
+
+        // Nuevos métodos para el manejo de edición
+        private void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Commit)
+            {
+                var item = e.Row.Item as VendorCommissionViewModel;
+                if (item != null)
+                {
+                    var textBox = e.EditingElement as TextBox;
+                    if (textBox != null && decimal.TryParse(textBox.Text, out decimal newValue))
+                    {
+                        // Validar rango
+                        if (newValue < 0) newValue = 0;
+                        if (newValue > 100) newValue = 100;
+
+                        // Verificar si realmente cambió comparando con el valor original
+                        if (_originalCommissionRates.ContainsKey(item.OrderId))
+                        {
+                            bool hasChanged = Math.Abs(_originalCommissionRates[item.OrderId] - newValue) > 0.01m;
+
+                            if (hasChanged)
+                            {
+                                _hasUnsavedChanges = true;
+                                UpdateChangesIndicator();
+                            }
+                        }
+
+                        // Actualizar valor en el ViewModel
+                        item.CommissionRate = newValue;
+                    }
+                }
+            }
+        }
+
+        private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                var dataGrid = sender as DataGrid;
+                if (dataGrid != null)
+                {
+                    dataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                    dataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                    // Guardar automáticamente sin confirmación cuando se presiona Enter
+                    if (_hasUnsavedChanges)
+                    {
+                        _ = SaveChangesAsync();
+                    }
+
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void UpdateChangesIndicator()
+        {
+            if (_hasUnsavedChanges)
+            {
+                ChangesIndicator.Text = "Cambios pendientes";
+                ChangesIndicator.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(255, 152, 0)); // Naranja
+            }
+            else
+            {
+                ChangesIndicator.Text = "Sin cambios";
+                ChangesIndicator.Foreground = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Colors.Gray);
+            }
+        }
+
+        private void VendorFilterCombo_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox != null)
+            {
+                comboBox.IsDropDownOpen = true;
+
+                // Filtrar items basado en el texto ingresado
+                var searchText = comboBox.Text + e.Text;
+
+                // Aplicar filtro después de un pequeño delay
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                    new Action(() => ApplyFilters()),
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void VendorFilterCombo_LostFocus(object sender, RoutedEventArgs e)
+        {
+            ApplyFilters();
+        }
+
+        private void VendorFilterCombo_KeyUp(object sender, KeyEventArgs e)
+        {
+            // Aplicar filtro cuando se suelta una tecla
+            if (e.Key != Key.Tab && e.Key != Key.Enter)
+            {
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(
+                    new Action(() => ApplyFilters()),
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            }
+        }
+
+        private void VendorManagement_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Módulo de Gestión de Vendedores\nEn desarrollo...",
+                "Próximamente",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            // TODO: Abrir ventana de gestión de vendedores cuando esté lista
+            // var vendorManagement = new VendorManagementWindow(_currentUser);
+            // vendorManagement.ShowDialog();
         }
     }
 }
