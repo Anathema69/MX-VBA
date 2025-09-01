@@ -380,9 +380,21 @@ namespace SistemaGestionProyectos2.Views
 
             if (_currentUser.Role == "admin")
             {
-                // Volver al menú principal
-                MainMenuWindow mainMenu = new MainMenuWindow(_currentUser);
-                mainMenu.Show();
+                // SI MAIN ESTÁ ABIERTO VOLVER A ÉL Y CERRAR CUALQUIER OTRA VENTANA
+                foreach (Window window in Application.Current.Windows)
+                {
+                    if (window is MainMenuWindow)
+                    {
+                        // SI HAY MÁS DE UN MAIN, CERRAR TODOS MENOS ESTE
+                        foreach (Window win in Application.Current.Windows)
+                        {
+                            if (win is MainMenuWindow) continue;
+                            win.Close();
+                        }
+                        window.Show();
+                        break;
+                    }
+                }
             }
             else
             {

@@ -47,6 +47,8 @@ namespace SistemaGestionProyectos2.Views
             UserNameText.Text = _currentUser.FullName;
             Title = $"Portal del Vendedor - {_currentUser.FullName}";
             CommissionsDataGrid.ItemsSource = _filteredCommissions;
+
+            
         }
 
         private async Task LoadDataAsync()
@@ -314,6 +316,21 @@ namespace SistemaGestionProyectos2.Views
         {
             
             this.Close();
+
+            // Si MAIN MENU ESTÁ ABIERTO, ACTIVARLO Y SI HAY OTRA VENTANA ABIERTA, CERRARLA
+            foreach (Window window in Application.Current.Windows)
+            {
+                if (window is MainMenuWindow mainMenu)
+                {
+                    mainMenu.Activate();
+                }
+                else if (window != this)
+                {
+                    window.Close();
+                }
+            }
+
+
         }
 
         // Nuevos métodos para el manejo de edición

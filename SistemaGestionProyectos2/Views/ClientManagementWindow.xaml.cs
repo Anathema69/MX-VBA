@@ -383,20 +383,11 @@ namespace SistemaGestionProyectos2.Views
                 var newContact = _contacts.FirstOrDefault(c => c.IsNew);
                 if (newContact != null)
                 {
-                    var result = MessageBox.Show(
-                        "¿Desea cancelar la creación del nuevo contacto?",
-                        "Cancelar",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        _contacts.Remove(newContact);
-                        _isCreatingNewContact = false;
-                        NewContactButton.IsEnabled = true;
-                        _hasUnsavedContactChanges = false;
-                        StatusText.Text = "Creación cancelada";
-                    }
+                    _contacts.Remove(newContact);
+                    _isCreatingNewContact = false;
+                    NewContactButton.IsEnabled = true;
+                    _hasUnsavedContactChanges = false;
+                    StatusText.Text = "Creación cancelada";
                 }
             }
         }

@@ -118,13 +118,12 @@ namespace SistemaGestionProyectos2.Views
             if (result == MessageBoxResult.Yes)
             {
                 _timer?.Stop();
-
+                
                 // Volver al login
                 LoginWindow loginWindow = new LoginWindow();
                 loginWindow.Show();
 
-                // Asegurar cerrar esta ventana, porque esta es la principal
-                this.Close();
+                
 
                 // en algunos casos a pesar de haber confirmado cerrar la sesión cuándo se vuelve de la grilla de órdenes la venta del main no se cierra
                 // si la venta de login está abierta, forzar el cierre de esta ventana
@@ -165,6 +164,9 @@ namespace SistemaGestionProyectos2.Views
                     // Admin ve la ventana completa con edición
                     var adminPortal = new VendorPortalAdminWindow(_currentUser);
                     adminPortal.Show();
+
+                    
+
                 }
                 else if (_currentUser.Role == "salesperson")
                 {
@@ -176,10 +178,6 @@ namespace SistemaGestionProyectos2.Views
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
                     return;
-
-                    // Cuando esté lista:
-                    // var vendorPortal = new VendorPortalWindow(_currentUser);
-                    // vendorPortal.Show();
                 }
                 else
                 {

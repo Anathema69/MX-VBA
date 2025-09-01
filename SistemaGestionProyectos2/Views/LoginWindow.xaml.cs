@@ -26,6 +26,13 @@ namespace SistemaGestionProyectos2.Views
 
                 // Enfocar el campo de usuario
                 UsernameTextBox.Focus();
+
+                // Cerrar cualquier otra ventana abierta
+                foreach (Window window in Application.Current.Windows)
+                {
+                    if (window != this)
+                        window.Close();
+                }
             }
             catch (Exception ex)
             {
