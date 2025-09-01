@@ -509,6 +509,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                    <!-- Panel de edición inline (inicialmente oculto) -->
                     <Border Name="ClientEditPanel" 
         Background="#FFF3E0" 
         Padding="20,15" 
@@ -516,51 +517,77 @@
         BorderBrush="#FF9800"
         BorderThickness="0,2,0,0">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Nombre *" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
-                                <TextBox Name="EditClientName" Height="30" Padding="5" BorderBrush="#FF9800"/>
-                            </StackPanel>
+                            <!-- Primera fila: Nombre, RFC, Teléfono -->
+                            <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                <TextBlock Text="RFC" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
-                                <TextBox Name="EditClientRFC" Height="30" Padding="5" BorderBrush="#FF9800"/>
-                            </StackPanel>
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <TextBlock Text="Nombre *" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                    <TextBox Name="EditClientName" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                                </StackPanel>
 
-                            <StackPanel Grid.Column="2" Margin="0,0,10,0">
-                                <TextBlock Text="Teléfono" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
-                                <TextBox Name="EditClientPhone" Height="30" Padding="5" BorderBrush="#FF9800"/>
-                            </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                    <TextBlock Text="RFC" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                    <TextBox Name="EditClientRFC" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                                </StackPanel>
 
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
-                                <Button Content="✓ Guardar" 
-                    Style="{StaticResource GreenButton}"
-                    Width="100"
-                    Click="SaveClientEdit_Click"
-                    Margin="0,0,5,0"/>
-                                <Button Content="✕ Cancelar" 
-                    Background="#757575"
-                    Foreground="White"
-                    Width="100"
-                    Height="35"
-                    Click="CancelClientEdit_Click">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" 
-                                CornerRadius="4">
-                                                <ContentPresenter HorizontalAlignment="Center" 
-                                            VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </StackPanel>
+                                <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                                    <TextBlock Text="Teléfono" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                    <TextBox Name="EditClientPhone" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Segunda fila: Dirección, Días de crédito y Botones -->
+                            <Grid Grid.Row="1" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <TextBlock Text="Dirección" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                    <TextBox Name="EditClientAddress" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                    <TextBlock Text="Días de Crédito" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                    <TextBox Name="EditClientCredit" Height="30" Padding="5" BorderBrush="#FF9800" Text="30"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                    <Button Content="✓ Guardar" 
+                        Style="{StaticResource GreenButton}"
+                        Width="100"
+                        Click="SaveClientEdit_Click"
+                        Margin="0,0,5,0"/>
+                                    <Button Content="✕ Cancelar" 
+                        Background="#757575"
+                        Foreground="White"
+                        Width="100"
+                        Height="35"
+                        Click="CancelClientEdit_Click">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="4">
+                                                    <ContentPresenter HorizontalAlignment="Center" 
+                                                VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
                         </Grid>
                     </Border>
                 </StackPanel>

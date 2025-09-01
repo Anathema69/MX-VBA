@@ -199,6 +199,8 @@ namespace SistemaGestionProyectos2.Views
                 EditClientName.Text = clientDb.Name;
                 EditClientRFC.Text = clientDb.TaxId ?? "";
                 EditClientPhone.Text = clientDb.Phone ?? "";
+                EditClientAddress.Text = clientDb.Address1 ?? "";
+                EditClientCredit.Text = clientDb.Credit.ToString();
 
                 // Mostrar panel de edición
                 ClientEditPanel.Visibility = Visibility.Visible;
@@ -421,14 +423,19 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
+                // Guardar el ID antes de actualizar
+                int clientId = _selectedClient.Id;
+
                 var clients = await _supabaseService.GetActiveClients();
-                var clientDb = clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
+                var clientDb = clients.FirstOrDefault(c => c.Id == clientId);
 
                 if (clientDb != null)
                 {
                     clientDb.Name = EditClientName.Text.Trim();
                     clientDb.TaxId = string.IsNullOrWhiteSpace(EditClientRFC.Text) ? null : EditClientRFC.Text.Trim();
                     clientDb.Phone = string.IsNullOrWhiteSpace(EditClientPhone.Text) ? null : EditClientPhone.Text.Trim();
+                    clientDb.Address1 = string.IsNullOrWhiteSpace(EditClientAddress.Text) ? null : EditClientAddress.Text.Trim();
+                    clientDb.Credit = int.TryParse(EditClientCredit.Text, out int credit) ? credit : 30;
 
                     await _supabaseService.UpdateClient(clientDb, _currentUser.Id);
 
@@ -438,11 +445,13 @@ namespace SistemaGestionProyectos2.Views
                     // Recargar datos
                     await LoadClientsAsync();
 
-                    // Reseleccionar el cliente
-                    var updatedClient = _clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
+                    
+                    // Reseleccionar el cliente usando el ID guardado
+                    var updatedClient = _clients.FirstOrDefault(c => c.Id == clientId);
                     if (updatedClient != null)
                     {
                         ClientsListBox.SelectedItem = updatedClient;
+                        // El evento SelectionChanged se disparará automáticamente
                     }
                 }
             }
@@ -457,6 +466,13 @@ namespace SistemaGestionProyectos2.Views
         {
             ClientEditPanel.Visibility = Visibility.Collapsed;
             StatusText.Text = "Edición cancelada";
+
+            // Limpiar campos
+            EditClientName.Clear();
+            EditClientRFC.Clear();
+            EditClientPhone.Clear();
+            EditClientAddress.Clear();
+            EditClientCredit.Text = "30";
         }
 
         // Manejar cuando se inicializa un nuevo item (si se usa CanUserAddRows)
