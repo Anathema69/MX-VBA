@@ -372,7 +372,8 @@ namespace SistemaGestionProyectos2.Views
                     Expense = 0,
                     OrderStatus = 0,
                     ProgressPercentage = 0,
-                    OrderPercentage = 0
+                    OrderPercentage = 0,
+                    CommissionRate = 0 // Valor por defecto
                 };
 
                 // Log para depuración

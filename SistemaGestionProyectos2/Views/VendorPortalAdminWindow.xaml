@@ -1,0 +1,279 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.VendorPortalAdminWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Portal del Vendedor - Administrador" 
+        Height="700" 
+        Width="1200"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Normal">
+
+    <Window.Resources>
+        <!-- Estilo para los botones -->
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#FFC107"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4"
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FFA000"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="Black" Height="60">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" 
+                           VerticalAlignment="Center" Margin="20,0">
+                    <TextBlock Text="💰" Foreground="#FFC107" 
+                              FontSize="24" Margin="0,0,15,0"/>
+                    <TextBlock Text="PORTAL DEL VENDEDOR - ADMINISTRADOR" 
+                              Foreground="White" FontSize="18" 
+                              FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" 
+                           VerticalAlignment="Center" Margin="0,0,20,0">
+                    <TextBlock Text="Usuario: " Foreground="Gray" 
+                              VerticalAlignment="Center"/>
+                    <TextBlock Name="UserNameText" Foreground="White" 
+                              FontWeight="Bold" VerticalAlignment="Center" 
+                              Margin="0,0,20,0"/>
+                    <Button Name="BackButton" Content="← VOLVER" 
+                           Background="#FF5252" Foreground="White" 
+                           Padding="10,5" FontWeight="Bold"
+                           Click="BackButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="1" Background="#F5F5F5" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Botones de acción -->
+                <Button Grid.Column="0" Name="RefreshButton" 
+                       Content="🔄 ACTUALIZAR" 
+                       Style="{StaticResource ActionButtonStyle}"
+                       Click="RefreshButton_Click"/>
+
+                <Button Grid.Column="1" Name="SaveButton" 
+                       Content="💾 GUARDAR CAMBIOS" 
+                       Style="{StaticResource ActionButtonStyle}"
+                       Background="#4CAF50" Foreground="White"
+                       Click="SaveButton_Click"/>
+
+                <!-- Filtros -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" 
+                           HorizontalAlignment="Center">
+                    <TextBlock Text="Filtrar por vendedor:" 
+                              VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox Name="VendorFilterCombo" Width="200" 
+                             SelectionChanged="VendorFilter_Changed">
+                        <ComboBoxItem Content="Todos los vendedores" IsSelected="True"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Búsqueda -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <TextBlock Text="Buscar:" VerticalAlignment="Center" 
+                              Margin="0,0,10,0"/>
+                    <TextBox Name="SearchBox" Width="200" 
+                            VerticalAlignment="Center"
+                            TextChanged="SearchBox_TextChanged"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid -->
+        <DataGrid Grid.Row="2" Name="CommissionsDataGrid" 
+                 AutoGenerateColumns="False"
+                 CanUserAddRows="False"
+                 CanUserDeleteRows="False"
+                 GridLinesVisibility="Horizontal"
+                 HeadersVisibility="Column"
+                 SelectionMode="Single"
+                 AlternatingRowBackground="#F9F9F9"
+                 RowHeight="35">
+            <DataGrid.Columns>
+                <!-- Orden de Compra -->
+                <DataGridTextColumn Header="ORDEN DE COMPRA" 
+                                   Binding="{Binding OrderNumber}" 
+                                   Width="140"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Vendedor -->
+                <DataGridTextColumn Header="VENDEDOR" 
+                                   Binding="{Binding VendorName}" 
+                                   Width="150"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Empresa -->
+                <DataGridTextColumn Header="EMPRESA" 
+                                   Binding="{Binding CompanyName}" 
+                                   Width="200"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Descripción -->
+                <DataGridTextColumn Header="DESCRIPCIÓN" 
+                                   Binding="{Binding Description}" 
+                                   Width="*"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Porcentaje Venta (EDITABLE) -->
+                <DataGridTemplateColumn Header="% COMISIÓN" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <TextBox Text="{Binding CommissionRate, StringFormat={}{0:F2}, UpdateSourceTrigger=PropertyChanged}" 
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Width="60"
+                                        TextAlignment="Right"
+                                        LostFocus="CommissionRate_LostFocus"
+                                        PreviewTextInput="CommissionRate_PreviewTextInput"/>
+                                <TextBlock Text="%" HorizontalAlignment="Right" 
+                                          VerticalAlignment="Center" 
+                                          Margin="0,0,15,0"/>
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <!-- Total (Antes de IVA) -->
+                <DataGridTextColumn Header="SUBTOTAL" 
+                                   Binding="{Binding SubtotalFormatted}" 
+                                   Width="120"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextAlignment" Value="Right"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+
+                <!-- Comisión -->
+                <DataGridTextColumn Header="COMISIÓN" 
+                                   Binding="{Binding CommissionFormatted}" 
+                                   Width="120"
+                                   IsReadOnly="True">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Foreground" Value="Green"/>
+                            <Setter Property="TextAlignment" Value="Right"/>
+                            <Setter Property="VerticalAlignment" Value="Center"/>
+                            <Setter Property="Margin" Value="5,0"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Resumen -->
+        <Border Grid.Row="3" Background="#F5F5F5" Padding="15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="Órdenes mostradas: " FontWeight="Bold"/>
+                    <TextBlock Name="OrderCountText" Text="0"/>
+                    <TextBlock Text="   |   Total en comisiones: " 
+                              FontWeight="Bold" Margin="20,0,0,0"/>
+                    <TextBlock Name="TotalCommissionsText" Text="$0.00" 
+                              FontWeight="Bold" Foreground="Green"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="📊 EXPORTAR EXCEL" 
+                           Padding="10,5" Margin="5,0"
+                           Background="#217346" Foreground="White"
+                           FontWeight="Bold" Click="ExportExcel_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Name="StatusText" Text="Listo"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Name="LastUpdateText" Text=""/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

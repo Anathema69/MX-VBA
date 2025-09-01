@@ -127,22 +127,7 @@ namespace SistemaGestionProyectos2.Views
                     loadingWindow.UpdateStatus("Cargando Módulos", "Configurando permisos...");
                     await Task.Delay(600);
 
-                    // Abrir menú principal solo para el admin, caso sea coordindador o vendedor, abrirá módulo de órdenes
-
-
-                    /*if (user.Role == "coordinator")
-                    {
-                        // Vendedor va directo al módulo de órdenes
-                        OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
-                        ordersWindow.Show();
-                    }
-                    else
-                    {
-                        // Admin abre el menú principal
-                        MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
-                        mainMenu.Show();
-                    }
-                    */
+                    
                     // SI ES admin
 
                     if (user.Role == "admin")
@@ -159,11 +144,28 @@ namespace SistemaGestionProyectos2.Views
                         ordersWindow.Show();
 
                     }
+                    // si es vendedor
+                    else if (user.Role == "salesperson")
+                    {
+                        // Vendedor abre el portal del vendedor
+                        VendorPortalWindow vendorPortal = new VendorPortalWindow(currentUser);
+                        vendorPortal.Show();
+
+                    }
                     else
                     {
-                        // Vendedor va directo al módulo de órdenes
-                        OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
-                        ordersWindow.Show();
+                        // Rol desconocido
+                        MessageBox.Show(
+                            $"Su rol '{user.Role}' no tiene acceso a ninguna sección.\nContacte al administrador.",
+                            "Rol Desconocido",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        logger.LogWarning("AUTH", "LOGIN_UNKNOWN_ROLE", new { username, role = user.Role }, user.Id.ToString());
+                        PasswordBox.Clear();
+                        PasswordBox.Focus();
+                        this.Show();
+                        await loadingWindow.CloseWithFade();
+                        return;
                     }
 
                     await loadingWindow.CloseWithFade();

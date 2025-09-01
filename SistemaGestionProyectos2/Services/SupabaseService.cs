@@ -1378,6 +1378,12 @@ namespace SistemaGestionProyectos2.Services
 
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
+
+        // Se agregó en la BD la columna de comisión, esta será usada para calcular la comisión del vendedor
+        // Visible solo en el portal de vendedor
+
+        [Column("f_commission_rate")]
+        public decimal? CommissionRate { get; set; }
     }
 
     [Table("t_client")]
@@ -1524,9 +1530,6 @@ namespace SistemaGestionProyectos2.Services
 
         [Column("f_user_id")]
         public int? UserId { get; set; }
-
-        [Column("f_commission_rate")]
-        public decimal? CommissionRate { get; set; }
 
         [Column("f_phone")]
         public string Phone { get; set; }

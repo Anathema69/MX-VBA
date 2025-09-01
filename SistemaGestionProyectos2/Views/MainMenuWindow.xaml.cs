@@ -41,6 +41,7 @@ namespace SistemaGestionProyectos2.Views
                 case "admin":
                     // Admin tiene acceso a todo
                     OrdersModuleButton.IsEnabled = true;
+                    VendorPortalButton.IsEnabled = true;
                     break;
 
                     // SOLO EL ADMIN TENDRÁ ACCESO AL MÓDULO DE ÓRDENES
@@ -149,6 +150,58 @@ namespace SistemaGestionProyectos2.Views
 
             _timer?.Stop();
             base.OnClosed(e);
+        }
+
+        // MÉTODO IMPORTANTE: Click en el portal del vendedor
+        private void VendorPortal_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo Portal del Vendedor...";
+
+                // Determinar qué ventana abrir según el rol
+                if (_currentUser.Role == "admin")
+                {
+                    // Admin ve la ventana completa con edición
+                    var adminPortal = new VendorPortalAdminWindow(_currentUser);
+                    adminPortal.Show();
+                }
+                else if (_currentUser.Role == "salesperson")
+                {
+                    // Vendedor ve solo sus comisiones
+                    // Por ahora usar la misma ventana, luego crearemos la específica
+                    MessageBox.Show(
+                        "Portal del vendedor en desarrollo. Por favor contacte al administrador.",
+                        "En desarrollo",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+
+                    // Cuando esté lista:
+                    // var vendorPortal = new VendorPortalWindow(_currentUser);
+                    // vendorPortal.Show();
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "No tiene permisos para acceder al Portal del Vendedor.",
+                        "Acceso Denegado",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                StatusText.Text = "Portal del Vendedor abierto";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el Portal del Vendedor:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir portal";
+            }
         }
     }
 }
