@@ -509,6 +509,60 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                    <Border Name="ClientEditPanel" 
+        Background="#FFF3E0" 
+        Padding="20,15" 
+        Visibility="Collapsed"
+        BorderBrush="#FF9800"
+        BorderThickness="0,2,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Nombre *" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                <TextBox Name="EditClientName" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                <TextBlock Text="RFC" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                <TextBox Name="EditClientRFC" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="0,0,10,0">
+                                <TextBlock Text="Teléfono" FontSize="11" Foreground="#666" Margin="0,0,0,3"/>
+                                <TextBox Name="EditClientPhone" Height="30" Padding="5" BorderBrush="#FF9800"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Content="✓ Guardar" 
+                    Style="{StaticResource GreenButton}"
+                    Width="100"
+                    Click="SaveClientEdit_Click"
+                    Margin="0,0,5,0"/>
+                                <Button Content="✕ Cancelar" 
+                    Background="#757575"
+                    Foreground="White"
+                    Width="100"
+                    Height="35"
+                    Click="CancelClientEdit_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4">
+                                                <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </StackPanel>
 
                 <!-- Sección de contactos -->
@@ -533,7 +587,13 @@
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="💾 Guardar"
+                                        Name="SaveContactsButton"
+                                        Style="{StaticResource GreenButton}"
+                                        Click="SaveContactsButton_Click"
+                                        Margin="5,0"/>
                                 <Button Content="+ Nuevo Contacto"
+                                      Name="NewContactButton"
                                       Style="{StaticResource BlueButton}"
                                       Click="NewContactButton_Click"/>
                                 <Button Content="✏ Editar"
@@ -550,59 +610,109 @@
                         </Grid>
                     </Border>
 
-                    <!-- Tabla de contactos -->
-                    <!-- Modificar el DataGrid existente agregando estas propiedades -->
+                    <!-- Tabla de contactos con estilo mejorado -->
                     <DataGrid Name="ContactsDataGrid" 
                                 Grid.Row="1"
                                 Margin="0"
                                 SelectionChanged="ContactsDataGrid_SelectionChanged"
-                                CanUserAddRows="True"
-                                CanUserDeleteRows="False"
                                 AutoGenerateColumns="False"
-                                CellEditEnding="ContactsDataGrid_CellEditEnding"
-                                InitializingNewItem="ContactsDataGrid_InitializingNewItem"
-                                RowEditEnding="ContactsDataGrid_RowEditEnding"> 
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                GridLinesVisibility="None"
+                                HeadersVisibility="Column"
+                                Background="White"
+                                BorderThickness="0"
+                                RowHeight="45"
+                                FontSize="13"
+                                PreviewKeyDown="ContactsDataGrid_PreviewKeyDown"
+                                CellEditEnding="ContactsDataGrid_CellEditEnding">
+
+                        <DataGrid.Resources>
+                            <!-- Header Style similar a InvoiceManagement -->
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#37474F" Offset="0"/>
+                                            <GradientStop Color="#263238" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="FontSize" Value="12"/>
+                                <Setter Property="Height" Value="42"/>
+                                <Setter Property="Padding" Value="12,0"/>
+                                <Setter Property="BorderBrush" Value="#455A64"/>
+                                <Setter Property="BorderThickness" Value="0,0,1,0"/>
+                            </Style>
+
+                            <!-- Row Style con hover mejorado -->
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="White"/>
+                                <Setter Property="BorderBrush" Value="#F5F5F5"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#F5F5F5"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                        <Setter Property="BorderBrush" Value="#2196F3"/>
+                                        <Setter Property="BorderThickness" Value="2,0,0,1"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+
+                            <!-- Cell Style -->
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="8,0"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Resources>
+
                         <DataGrid.Columns>
-                            <!-- Checkbox para principal -->
-                            <DataGridTemplateColumn Header="Principal" Width="80">
+                            <!-- Las columnas existentes pero con mejor estilo -->
+                            <DataGridTemplateColumn Header="PRINCIPAL" Width="80">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <CheckBox IsChecked="{Binding IsPrimary, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                Checked="PrimaryCheckBox_Checked"
-                                                Unchecked="PrimaryCheckBox_Unchecked"/>
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Checked="PrimaryCheckBox_Checked"
+                            Unchecked="PrimaryCheckBox_Unchecked"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-
-                            <!-- Nombre -->
-                            <DataGridTextColumn Header="Nombre" 
-                  Binding="{Binding Name}" 
-                  Width="*"
-                  MinWidth="150"
-                  IsReadOnly="False">
+                            <DataGridTextColumn Header="NOMBRE" 
+                          Binding="{Binding Name}" 
+                          Width="*"
+                          MinWidth="150">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="SemiBold"/>
-                                        <Setter Property="Foreground" Value="#333"/>
+                                        <Setter Property="Padding" Value="8,0"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <!-- Cargo -->
-                            <DataGridTextColumn Header="Cargo" 
-                  Binding="{Binding Position}" 
-                  Width="200"
-                  IsReadOnly="False"/>
+                            <DataGridTextColumn Header="CARGO" 
+                          Binding="{Binding Position}" 
+                          Width="200"/>
 
-                            <!-- Email -->
-                            <DataGridTextColumn Header="Email" 
-                  Binding="{Binding Email}" 
-                  Width="*"
-                  MinWidth="200"
-                  IsReadOnly="False">
+                            <DataGridTextColumn Header="EMAIL" 
+                          Binding="{Binding Email}" 
+                          Width="*"
+                          MinWidth="200">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="#2196F3"/>
@@ -610,19 +720,28 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <!-- Teléfono -->
-                            <DataGridTextColumn Header="Teléfono" 
-                  Binding="{Binding Phone}" 
-                  Width="150"
-                  IsReadOnly="False"/>
+                            <DataGridTextColumn Header="TELÉFONO" 
+                          Binding="{Binding Phone}" 
+                          Width="150"/>
 
-
-                            <DataGridTemplateColumn Header="Estado" Width="100">
+                            <!-- Estado con diseño mejorado -->
+                            <DataGridTemplateColumn Header="ESTADO" Width="100">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border Background="#4CAF50" CornerRadius="12" Padding="10,4">
-                                            <TextBlock Text="Activo" Foreground="White" FontSize="11" 
-                                                     FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <Border CornerRadius="12" 
+                           Padding="10,4"
+                           HorizontalAlignment="Center"
+                           Background="#4CAF50">
+                                            <Border.Effect>
+                                                <DropShadowEffect ShadowDepth="1" 
+                                            Color="#000000" 
+                                            Opacity="0.2" 
+                                            BlurRadius="3"/>
+                                            </Border.Effect>
+                                            <TextBlock Text="Activo" 
+                                 FontWeight="Bold"
+                                 FontSize="11"
+                                 Foreground="White"/>
                                         </Border>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>

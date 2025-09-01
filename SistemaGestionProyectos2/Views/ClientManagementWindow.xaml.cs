@@ -25,6 +25,10 @@ namespace SistemaGestionProyectos2.Views
         private bool _isEditMode = false;
         private ObservableCollection<SimpleClientViewModel> _allClients; // Para el filtrado
 
+        // Estado para manejo de creación/edición de contactos al igual que hicimos en facturación
+        private bool _isCreatingNewContact = false;
+        private bool _hasUnsavedContactChanges = false;
+
         public ClientManagementWindow(UserSession currentUser)
         {
             InitializeComponent();
@@ -55,7 +59,7 @@ namespace SistemaGestionProyectos2.Views
 
                 foreach (var client in clientsDb.OrderBy(c => c.Name))
                 {
-                    var contactCount = await _supabaseService.CountActiveContactsByClientId(client.Id);
+                    var contactCount = allContacts.Count(c => c.ClientId == client.Id && c.IsActive);
 
                     var clientVm = new SimpleClientViewModel
                     {
@@ -182,165 +186,217 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async  void EditClientButton_Click(object sender, RoutedEventArgs e)
+        private async void EditClientButton_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedClient == null) return;
 
-            // Obtener el cliente actual de la BD
+            // Cargar los valores actuales en los campos de edición
             var clients = await _supabaseService.GetActiveClients();
             var clientDb = clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
-            if (clientDb == null) return;
 
-            // Crear un diálogo simple para editar
-            var dialog = new Window
+            if (clientDb != null)
             {
-                Title = "Editar Cliente",
-                Width = 450,
-                Height = 400,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = this,
-                ShowInTaskbar = false
-            };
+                EditClientName.Text = clientDb.Name;
+                EditClientRFC.Text = clientDb.TaxId ?? "";
+                EditClientPhone.Text = clientDb.Phone ?? "";
 
-            var grid = new Grid { Margin = new Thickness(20) };
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-            // Campos del formulario
-            var nameLabel = new TextBlock { Text = "Nombre:", Margin = new Thickness(0, 0, 0, 5) };
-            Grid.SetRow(nameLabel, 0);
-            grid.Children.Add(nameLabel);
-
-            var nameTextBox = new TextBox { Text = clientDb.Name, Margin = new Thickness(0, 0, 0, 10) };
-            Grid.SetRow(nameTextBox, 1);
-            grid.Children.Add(nameTextBox);
-
-            var rfcLabel = new TextBlock { Text = "RFC:", Margin = new Thickness(0, 0, 0, 5) };
-            Grid.SetRow(rfcLabel, 2);
-            grid.Children.Add(rfcLabel);
-
-            var rfcTextBox = new TextBox { Text = clientDb.TaxId ?? "", Margin = new Thickness(0, 0, 0, 10) };
-            Grid.SetRow(rfcTextBox, 3);
-            grid.Children.Add(rfcTextBox);
-
-            var phoneLabel = new TextBlock { Text = "Teléfono:", Margin = new Thickness(0, 0, 0, 5) };
-            Grid.SetRow(phoneLabel, 4);
-            grid.Children.Add(phoneLabel);
-
-            var phoneTextBox = new TextBox { Text = clientDb.Phone ?? "", Margin = new Thickness(0, 0, 0, 10) };
-            Grid.SetRow(phoneTextBox, 5);
-            grid.Children.Add(phoneTextBox);
-
-            // Botones
-            var buttonPanel = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-
-            var saveButton = new Button
-            {
-                Content = "Guardar",
-                Width = 100,
-                Height = 35,
-                Margin = new Thickness(0, 0, 10, 0),
-                Background = new SolidColorBrush(Color.FromRgb(33, 150, 243)),
-                Foreground = Brushes.White,
-                Cursor = Cursors.Hand
-            };
-
-            var cancelButton = new Button
-            {
-                Content = "Cancelar",
-                Width = 100,
-                Height = 35,
-                Background = Brushes.LightGray,
-                Cursor = Cursors.Hand
-            };
-
-            saveButton.Click += async (s, args) =>
-            {
-                if (string.IsNullOrWhiteSpace(nameTextBox.Text))
-                {
-                    MessageBox.Show("El nombre del cliente es obligatorio", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                try
-                {
-                    clientDb.Name = nameTextBox.Text.Trim();
-                    clientDb.TaxId = string.IsNullOrWhiteSpace(rfcTextBox.Text) ? null : rfcTextBox.Text.Trim();
-                    clientDb.Phone = string.IsNullOrWhiteSpace(phoneTextBox.Text) ? null : phoneTextBox.Text.Trim();
-
-                    await _supabaseService.UpdateClient(clientDb);
-
-                    dialog.DialogResult = true;
-                    dialog.Close();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error al actualizar cliente: {ex.Message}", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            };
-
-            cancelButton.Click += (s, args) =>
-            {
-                dialog.DialogResult = false;
-                dialog.Close();
-            };
-
-            buttonPanel.Children.Add(saveButton);
-            buttonPanel.Children.Add(cancelButton);
-            Grid.SetRow(buttonPanel, 7);
-            grid.Children.Add(buttonPanel);
-
-            dialog.Content = grid;
-
-            if (dialog.ShowDialog() == true)
-            {
-                await LoadClientsAsync();
-                // Reseleccionar el cliente
-                var updatedClient = _clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
-                if (updatedClient != null)
-                {
-                    ClientsListBox.SelectedItem = updatedClient;
-                }
+                // Mostrar panel de edición
+                ClientEditPanel.Visibility = Visibility.Visible;
+                EditClientName.Focus();
+                EditClientName.SelectAll();
             }
         }
+
 
         private void NewContactButton_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedClient == null) return;
 
-            // Agregar un nuevo contacto vacío a la colección
+            if (_isCreatingNewContact)
+            {
+                MessageBox.Show(
+                    "Ya hay un contacto nuevo en edición.\n" +
+                    "Complete o cancele el contacto actual antes de crear otro.",
+                    "Contacto en Edición",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             var newContact = new SimpleContactViewModel
             {
-                Id = 0, // 0 indica que es nuevo
-                Name = "Nuevo Contacto",
+                Id = 0,
+                Name = "",
                 Email = "",
                 Phone = "",
-                Position = "Sin cargo",
-                IsPrimary = false,
-                ClientId = _selectedClient.Id
+                Position = "",
+                IsPrimary = _contacts.Count == 0,
+                ClientId = _selectedClient.Id,
+                IsNew = true
             };
 
             _contacts.Add(newContact);
+            _isCreatingNewContact = true;
+            _hasUnsavedContactChanges = true;
 
-            // Seleccionar la nueva fila y entrar en modo edición
+            NewContactButton.IsEnabled = false; // Bloquear botón
+            StatusText.Text = "📝 Nuevo contacto - Complete todos los campos y presione Guardar o Enter";
+
             ContactsDataGrid.SelectedItem = newContact;
             ContactsDataGrid.ScrollIntoView(newContact);
 
-            // Entrar en modo edición en la primera celda editable
-            ContactsDataGrid.CurrentCell = new DataGridCellInfo(newContact, ContactsDataGrid.Columns[1]);
-            ContactsDataGrid.BeginEdit();
+            // Focus en la columna Nombre con delay
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                ContactsDataGrid.CurrentCell = new DataGridCellInfo(newContact, ContactsDataGrid.Columns[1]);
+                ContactsDataGrid.BeginEdit();
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+
+
+        private async void SaveContactsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_hasUnsavedContactChanges)
+            {
+                MessageBox.Show("No hay cambios para guardar", "Información",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                // Validar todos los contactos antes de guardar
+                foreach (var contact in _contacts.Where(c => c.IsNew || c.HasChanges))
+                {
+                    // Validación de campos obligatorios
+                    if (string.IsNullOrWhiteSpace(contact.Name))
+                    {
+                        MessageBox.Show("El nombre del contacto es obligatorio", "Validación",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ContactsDataGrid.SelectedItem = contact;
+                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[1]);
+                        ContactsDataGrid.BeginEdit();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(contact.Position))
+                    {
+                        MessageBox.Show("El cargo del contacto es obligatorio", "Validación",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ContactsDataGrid.SelectedItem = contact;
+                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[2]);
+                        ContactsDataGrid.BeginEdit();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(contact.Email))
+                    {
+                        MessageBox.Show("El email del contacto es obligatorio", "Validación",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ContactsDataGrid.SelectedItem = contact;
+                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[3]);
+                        ContactsDataGrid.BeginEdit();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(contact.Phone))
+                    {
+                        MessageBox.Show("El teléfono del contacto es obligatorio", "Validación",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        ContactsDataGrid.SelectedItem = contact;
+                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[4]);
+                        ContactsDataGrid.BeginEdit();
+                        return;
+                    }
+
+                    var contactDb = new ContactDb
+                    {
+                        Id = contact.Id,
+                        ClientId = contact.ClientId,
+                        ContactName = contact.Name.Trim(),
+                        Email = contact.Email.Trim(),
+                        Phone = contact.Phone.Trim(),
+                        Position = contact.Position.Trim(),
+                        IsPrimary = contact.IsPrimary,
+                        IsActive = true
+                    };
+
+                    if (contact.IsNew)
+                    {
+                        var created = await _supabaseService.CreateContact(contactDb);
+                        contact.Id = created.Id;
+                        contact.IsNew = false;
+                        _isCreatingNewContact = false;
+                        NewContactButton.IsEnabled = true;
+                    }
+                    else
+                    {
+                        await _supabaseService.UpdateContact(contactDb);
+                    }
+
+                    contact.HasChanges = false;
+                }
+
+                _hasUnsavedContactChanges = false;
+                StatusText.Text = "✓ Contactos guardados exitosamente";
+
+                // Recargar para sincronizar con BD
+                await LoadContactsForClient(_selectedClient.Id);
+
+                // Actualizar contador en la lista
+                var clientInList = _allClients.FirstOrDefault(c => c.Id == _selectedClient.Id);
+                if (clientInList != null)
+                {
+                    clientInList.ContactCount = _contacts.Count;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al guardar: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusText.Text = "✗ Error al guardar";
+            }
+        }
+
+        // Manejar teclas Enter y Escape en el DataGrid
+        private void ContactsDataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+
+                // IMPORTANTE: Primero commitear la edición actual
+                ContactsDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                ContactsDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                // Delay para asegurar que el commit se complete
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    SaveContactsButton_Click(null, null);
+                }), System.Windows.Threading.DispatcherPriority.Input);
+            }
+            else if (e.Key == Key.Escape && _isCreatingNewContact)
+            {
+                var newContact = _contacts.FirstOrDefault(c => c.IsNew);
+                if (newContact != null)
+                {
+                    var result = MessageBox.Show(
+                        "¿Desea cancelar la creación del nuevo contacto?",
+                        "Cancelar",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        _contacts.Remove(newContact);
+                        _isCreatingNewContact = false;
+                        NewContactButton.IsEnabled = true;
+                        _hasUnsavedContactChanges = false;
+                        StatusText.Text = "Creación cancelada";
+                    }
+                }
+            }
         }
 
 
@@ -352,6 +408,55 @@ namespace SistemaGestionProyectos2.Views
             // Simplemente enfocar la celda para editar
             ContactsDataGrid.CurrentCell = new DataGridCellInfo(selectedContact, ContactsDataGrid.Columns[1]);
             ContactsDataGrid.BeginEdit();
+        }
+
+        private async void SaveClientEdit_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(EditClientName.Text))
+            {
+                MessageBox.Show("El nombre del cliente es obligatorio", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var clients = await _supabaseService.GetActiveClients();
+                var clientDb = clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
+
+                if (clientDb != null)
+                {
+                    clientDb.Name = EditClientName.Text.Trim();
+                    clientDb.TaxId = string.IsNullOrWhiteSpace(EditClientRFC.Text) ? null : EditClientRFC.Text.Trim();
+                    clientDb.Phone = string.IsNullOrWhiteSpace(EditClientPhone.Text) ? null : EditClientPhone.Text.Trim();
+
+                    await _supabaseService.UpdateClient(clientDb, _currentUser.Id);
+
+                    StatusText.Text = "✓ Cliente actualizado exitosamente";
+                    ClientEditPanel.Visibility = Visibility.Collapsed;
+
+                    // Recargar datos
+                    await LoadClientsAsync();
+
+                    // Reseleccionar el cliente
+                    var updatedClient = _clients.FirstOrDefault(c => c.Id == _selectedClient.Id);
+                    if (updatedClient != null)
+                    {
+                        ClientsListBox.SelectedItem = updatedClient;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al actualizar: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CancelClientEdit_Click(object sender, RoutedEventArgs e)
+        {
+            ClientEditPanel.Visibility = Visibility.Collapsed;
+            StatusText.Text = "Edición cancelada";
         }
 
         // Manejar cuando se inicializa un nuevo item (si se usa CanUserAddRows)
@@ -548,32 +653,11 @@ namespace SistemaGestionProyectos2.Views
             if (e.EditAction == DataGridEditAction.Commit)
             {
                 var contact = e.Row.Item as SimpleContactViewModel;
-                if (contact == null) return;
-
-                // Validaciones básicas
-                if (e.Column.Header.ToString() == "Nombre")
+                if (contact != null && !contact.IsNew)
                 {
-                    var textBox = e.EditingElement as TextBox;
-                    if (string.IsNullOrWhiteSpace(textBox?.Text))
-                    {
-                        e.Cancel = true;
-                        MessageBox.Show("El nombre del contacto es obligatorio", "Error",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
-                }
-                else if (e.Column.Header.ToString() == "Email")
-                {
-                    var textBox = e.EditingElement as TextBox;
-                    if (!string.IsNullOrWhiteSpace(textBox?.Text))
-                    {
-                        // Validación básica de email
-                        if (!textBox.Text.Contains("@"))
-                        {
-                            e.Cancel = true;
-                            MessageBox.Show("El email no tiene un formato válido", "Error",
-                                MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                    }
+                    contact.HasChanges = true;
+                    _hasUnsavedContactChanges = true;
+                    StatusText.Text = "✏️ Cambios pendientes - Presione Guardar o Enter";
                 }
             }
         }
@@ -694,6 +778,10 @@ namespace SistemaGestionProyectos2.Views
         public string Phone { get; set; }
         public string Position { get; set; }
         public int ClientId { get; set; }
+
+        // Estado para manejo de creación/edición
+        public bool IsNew { get; set; }
+        public bool HasChanges { get; set; }
 
         public bool IsPrimary
         {

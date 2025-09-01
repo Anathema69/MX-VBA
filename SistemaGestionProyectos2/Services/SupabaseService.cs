@@ -1195,34 +1195,25 @@ namespace SistemaGestionProyectos2.Services
         }
 
         // Actualizar cliente
-        public async Task<ClientDb> UpdateClient(ClientDb client)
+        public async Task<bool> UpdateClient(ClientDb client, int userId)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine($"📝 Actualizando cliente: {client.Name}");
 
-                client.UpdatedAt = DateTime.Now;
-                client.UpdatedBy = 9; // _currentUser?.Id;
-
                 var response = await _supabaseClient
                     .From<ClientDb>()
                     .Where(c => c.Id == client.Id)
                     .Set(c => c.Name, client.Name)
-                    .Set(c => c.TaxId, client.TaxId)
-                    .Set(c => c.Phone, client.Phone)
-                    .Set(c => c.Email, client.Email)
-                    .Set(c => c.Address1, client.Address1)
+                    .Set(c => c.TaxId, client.TaxId ?? "")
+                    .Set(c => c.Phone, client.Phone ?? "")
+                    .Set(c => c.Address1, client.Address1 ?? "")
                     .Set(c => c.Credit, client.Credit)
-                    .Set(c => c.UpdatedAt, client.UpdatedAt)
-                    .Set(c => c.UpdatedBy, client.UpdatedBy)
+                    .Set(c => c.UpdatedAt, DateTime.Now)
+                    .Set(c => c.UpdatedBy, userId)
                     .Update();
 
-                if (response?.Models?.Count > 0)
-                {
-                    return response.Models.First();
-                }
-
-                throw new Exception("No se pudo actualizar el cliente");
+                return response?.Models?.Count > 0;
             }
             catch (Exception ex)
             {
