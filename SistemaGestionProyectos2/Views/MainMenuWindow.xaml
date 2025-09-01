@@ -231,7 +231,7 @@
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
-                                            <TextBlock Text="💰" 
+                                            <TextBlock Text="🤝" 
                               FontSize="36"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center"

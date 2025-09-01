@@ -207,11 +207,7 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 await LoadVendorsAsync();
-                MessageBox.Show(
-                    $"Vendedor {(selected.IsActive ? "desactivado" : "activado")} correctamente.",
-                    "Éxito",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                
             }
             catch (Exception ex)
             {

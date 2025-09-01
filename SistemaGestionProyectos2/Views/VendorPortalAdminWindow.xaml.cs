@@ -216,18 +216,10 @@ namespace SistemaGestionProyectos2.Views
         {
             if (!_hasUnsavedChanges)
             {
-                MessageBox.Show("No hay cambios por guardar.", "Información",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var result = MessageBox.Show(
-                "¿Está seguro de guardar los cambios en las comisiones?",
-                "Confirmar Guardado",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes) return;
+           
 
             await SaveChangesAsync();
         }
@@ -290,16 +282,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
-            {
-                var result = MessageBox.Show(
-                    "Hay cambios sin guardar. ¿Desea continuar sin guardar?",
-                    "Cambios sin guardar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result != MessageBoxResult.Yes) return;
-            }
+           
 
             _hasUnsavedChanges = false;
             UpdateChangesIndicator();
@@ -329,17 +312,7 @@ namespace SistemaGestionProyectos2.Views
        
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
-            {
-                var result = MessageBox.Show(
-                    "Hay cambios sin guardar. ¿Desea salir sin guardar?",
-                    "Cambios sin guardar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
-
-                if (result != MessageBoxResult.Yes) return;
-            }
-
+            
             this.Close();
         }
 

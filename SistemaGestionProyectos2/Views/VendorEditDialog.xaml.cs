@@ -240,14 +240,7 @@ namespace SistemaGestionProyectos2.Views
                     .From<VendorTableDb>()
                     .Insert(newVendor);
 
-                if (vendorResponse?.Models?.Count > 0)
-                {
-                    MessageBox.Show(
-                        $"Vendedor creado exitosamente.\n\nUsuario: {newUser.Username}\nContraseña: {_tempPassword}",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                
             }
         }
 
@@ -289,7 +282,7 @@ namespace SistemaGestionProyectos2.Views
                     userToUpdate.FullName = VendorNameTextBox.Text.Trim().ToUpper();
                     userToUpdate.IsActive = IsActiveCheckBox.IsChecked ?? true;
 
-                    // Actualizar password si se proporcionó
+                    
                     if (!string.IsNullOrWhiteSpace(_tempPassword))
                     {
                         userToUpdate.PasswordHash = BCrypt.Net.BCrypt.HashPassword(_tempPassword);

@@ -54,16 +54,7 @@ namespace SistemaGestionProyectos2.Views
         // Cerrar aplicación
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "¿Está seguro que desea salir del sistema?",
-                "IMA Mecatrónica",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                Application.Current.Shutdown();
-            }
+            Application.Current.Shutdown();
         }
 
         

@@ -511,19 +511,7 @@ namespace SistemaGestionProyectos2.Views
                             !string.IsNullOrWhiteSpace(SubtotalTextBox.Text) ||
                             ClientComboBox.SelectedItem != null;
 
-            if (hasChanges)
-            {
-                var result = MessageBox.Show(
-                    "¿Está seguro que desea cancelar?\nLos datos no guardados se perderán.",
-                    "Confirmar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.No)
-                {
-                    return;
-                }
-            }
+           
 
             this.DialogResult = false;
             this.Close();

@@ -5,7 +5,9 @@
         Height="650" 
         Width="1000"
         WindowStartupLocation="CenterOwner"
-        WindowState="Normal">
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize">
 
     <Window.Resources>
         <!-- Estilos para botones -->
@@ -79,8 +81,8 @@
                               FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <Button Grid.Column="2" Name="CloseButton" Content="✕ CERRAR" 
-                       Background="#757575" Foreground="White" 
+                <Button Grid.Column="2" Name="CloseButton" Content="⬅ Volver"
+                       Background="Transparent" Foreground="White" 
                        Padding="10,5" FontWeight="Bold"
                        Margin="0,0,20,0"
                        Click="CloseButton_Click"
