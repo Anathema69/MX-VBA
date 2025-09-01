@@ -449,15 +449,11 @@ namespace SistemaGestionProyectos2.Views
 
         private void VendorManagement_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Módulo de Gestión de Vendedores\nEn desarrollo...",
-                "Próximamente",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            var vendorManagement = new VendorManagementWindow(_currentUser);
+            vendorManagement.ShowDialog();
 
-            // TODO: Abrir ventana de gestión de vendedores cuando esté lista
-            // var vendorManagement = new VendorManagementWindow(_currentUser);
-            // vendorManagement.ShowDialog();
+            // Recargar datos por si se agregaron vendedores
+            _ = LoadDataAsync();
         }
     }
 }
