@@ -17,6 +17,366 @@
         <SolidColorBrush x:Key="BorderGray" Color="#E2E8F0"/>
         <SolidColorBrush x:Key="TextGray" Color="#718096"/>
         <SolidColorBrush x:Key="DarkText" Color="#2D3748"/>
+
+        <!-- DataTemplate para las Cards de Comisiones -->
+        <DataTemplate x:Key="CommissionCardTemplate">
+            <Border Margin="0,0,0,15" Background="White" 
+                    CornerRadius="12" Padding="0">
+                <Border.Effect>
+                    <DropShadowEffect Color="#000000" Direction="270" 
+                                    ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
+                </Border.Effect>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Indicador lateral de estado -->
+                    <Border Grid.Column="0" 
+                            CornerRadius="12,0,0,12">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource DangerColor}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource SuccessColor}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+
+                    <!-- Avatar y Vendedor -->
+                    <Border Grid.Column="1" Width="80" Margin="20,20,15,20">
+                        <StackPanel>
+                            <Border Width="60" Height="60" CornerRadius="30" 
+                                    Margin="0,0,0,8" HorizontalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#e84118" Offset="0"/>
+                                                            <GradientStop Color="#c23616" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource SuccessColor}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding ClientInitial}" 
+                                         FontSize="20" FontWeight="Bold"
+                                         Foreground="White"
+                                         HorizontalAlignment="Center" 
+                                         VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding VendorName}" 
+                                     FontSize="11" FontWeight="Bold"
+                                     HorizontalAlignment="Center"
+                                     TextWrapping="Wrap"
+                                     MaxWidth="70">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource DangerDarkColor}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Información Principal -->
+                    <Grid Grid.Column="2" Margin="0,20,20,20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Título con VENDEDOR y cliente -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+                            <TextBlock FontSize="18" FontWeight="Bold">
+                                <Run Text="{Binding VendorName}">
+                                    <Run.Style>
+                                        <Style TargetType="Run">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerColor}"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Run.Style>
+                                </Run>
+                                <Run Text=" - " Foreground="{StaticResource TextGray}"/>
+                                <Run Text="{Binding ClientName}" Foreground="{StaticResource DarkText}"/>
+                            </TextBlock>
+                            <Grid Margin="0,5,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="📄 Orden: " FontSize="13" 
+                                         Foreground="{StaticResource TextGray}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding OrderNumber}" FontSize="13" 
+                                         Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Column="2" Text="  •  " FontSize="13" 
+                                         Foreground="{StaticResource BorderGray}"/>
+
+                                <!-- Para Pendientes -->
+                                <TextBlock Grid.Column="3" Text="📅 " FontSize="13" 
+                                         Foreground="{StaticResource TextGray}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Grid.Column="4" Text="{Binding OrderDate, StringFormat=dd/MM/yyyy}" 
+                                         FontSize="13" Foreground="{StaticResource DarkText}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Para Pagados -->
+                                <TextBlock Grid.Column="5" Text="✅ Pagado: " FontSize="13" 
+                                         Foreground="{StaticResource SuccessColor}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Grid.Column="6" Text="{Binding PaymentDate, StringFormat=dd/MM/yyyy}" 
+                                         FontSize="13" Foreground="{StaticResource DarkText}" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Detalles Financieros -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
+                                    CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="Subtotal" FontSize="11" 
+                                             Foreground="{StaticResource TextGray}"/>
+                                    <TextBlock Text="{Binding FormattedSubtotal}" 
+                                             FontSize="16" FontWeight="Bold"
+                                             Foreground="{StaticResource DarkText}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" 
+                                    CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                <Setter Property="Background" Value="#FEE2E2"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                <Setter Property="Background" Value="#E8F5E9"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock Text="Comisión" FontSize="11" 
+                                             Foreground="{StaticResource TextGray}"/>
+                                    <TextBlock Text="{Binding FormattedRate}" 
+                                             FontSize="16" FontWeight="Bold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerColor}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" 
+                                    CornerRadius="8" Padding="15,10">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                <Setter Property="Background" Value="#FEE2E2"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                <Setter Property="Background" Value="#E8F5E9"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock FontSize="11" FontWeight="Bold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                        <Setter Property="Text" Value="A PAGAR"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerDarkColor}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                        <Setter Property="Text" Value="PAGADO"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding FormattedCommission}" 
+                                             FontSize="18" FontWeight="Bold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource DangerColor}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Botón de Acción / Indicador de completado -->
+                    <Border Grid.Column="3" Margin="0,20,20,20" VerticalAlignment="Center">
+                        <Grid>
+                            <!-- Botón para pendientes -->
+                            <Button Content="✅ MARCAR COMO PAGADO" 
+                                    Background="{StaticResource SuccessColor}"
+                                    Foreground="White"
+                                    FontSize="13" FontWeight="Bold"
+                                    Padding="20,15" BorderThickness="0"
+                                    Cursor="Hand"
+                                    Click="MarkAsPaid_Click"
+                                    Tag="{Binding}">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" 
+                                                            CornerRadius="8"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Opacity" Value="0.9"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPending}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <!-- Indicador para pagados -->
+                            <StackPanel Orientation="Horizontal">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="✓" FontSize="24" 
+                                         Foreground="{StaticResource SuccessColor}"
+                                         FontWeight="Bold" Margin="0,0,10,0"/>
+                                <TextBlock Text="COMPLETADO" 
+                                         FontSize="13" FontWeight="Bold"
+                                         Foreground="{StaticResource SuccessColor}"
+                                         VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Background="{StaticResource BackgroundGray}">
@@ -84,7 +444,7 @@
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
-                
+
             </Grid>
         </Border>
 
@@ -107,7 +467,7 @@
                                      Foreground="{StaticResource TextGray}" 
                                      VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="$18,512.30" FontSize="24" FontWeight="Bold" 
+                        <TextBlock x:Name="TotalPendingText" Text="$0.00" FontSize="24" FontWeight="Bold" 
                                  Foreground="{StaticResource DangerColor}"/>
                     </StackPanel>
                 </Border>
@@ -118,11 +478,11 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="✅" FontSize="20" Margin="0,0,8,0"/>
-                            <TextBlock Text="Pagadas este mes" FontSize="13" 
+                            <TextBlock Text="Total Pagado" FontSize="13" 
                                      Foreground="{StaticResource TextGray}" 
                                      VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="$45,512.30" FontSize="24" FontWeight="Bold" 
+                        <TextBlock x:Name="TotalPaidText" Text="$0.00" FontSize="24" FontWeight="Bold" 
                                  Foreground="{StaticResource SuccessColor}"/>
                     </StackPanel>
                 </Border>
@@ -133,12 +493,12 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="👥" FontSize="20" Margin="0,0,8,0"/>
-                            <TextBlock Text="Vendedores por pagar" FontSize="13" 
+                            <TextBlock Text="Vendedores únicos" FontSize="13" 
                                      Foreground="{StaticResource TextGray}" 
                                      VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="3" FontSize="28" FontWeight="Bold" 
-                                 Foreground="{StaticResource DangerColor}"/>
+                        <TextBlock x:Name="UniqueVendorsText" Text="0" FontSize="28" FontWeight="Bold" 
+                                 Foreground="{StaticResource DarkText}"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -155,23 +515,21 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Filtro de Estado -->
-                <ComboBox Grid.Column="0" Margin="0,0,10,0" 
+                <ComboBox x:Name="StatusFilterCombo" Grid.Column="0" Margin="0,0,10,0" 
                           Background="White" BorderBrush="{StaticResource BorderGray}"
-                          BorderThickness="2" Padding="12,10" MinWidth="150">
-                    <ComboBoxItem Content="⚠️ Pendientes" IsSelected="True"/>
+                          BorderThickness="2" Padding="12,10" MinWidth="150"
+                          SelectionChanged="StatusFilter_SelectionChanged">
+                    <ComboBoxItem Content="Todas" IsSelected="True"/>
+                    <ComboBoxItem Content="⚠️ Pendientes"/>
                     <ComboBoxItem Content="✅ Pagadas"/>
-                    <ComboBoxItem Content="Todas"/>
                 </ComboBox>
 
                 <!-- Filtro de Vendedor -->
-                <ComboBox Grid.Column="1" Margin="0,0,10,0"
+                <ComboBox x:Name="VendorFilterCombo" Grid.Column="1" Margin="0,0,10,0"
                           Background="White" BorderBrush="{StaticResource BorderGray}"
-                          BorderThickness="2" Padding="12,10" MinWidth="180">
+                          BorderThickness="2" Padding="12,10" MinWidth="180"
+                          SelectionChanged="VendorFilter_SelectionChanged">
                     <ComboBoxItem Content="Todos los Vendedores" IsSelected="True"/>
-                    <ComboBoxItem Content="VENDEDOR_1"/>
-                    <ComboBoxItem Content="VENDEDOR_2"/>
-                    <ComboBoxItem Content="VENDEDOR_3"/>
-                    <ComboBoxItem Content="VENDEDOR_4"/>
                 </ComboBox>
 
                 <!-- Ordenar por -->
@@ -179,670 +537,31 @@
                     <TextBlock Text="Ordenar por:" FontSize="13" 
                              Foreground="{StaticResource TextGray}"
                              VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Background="White" BorderBrush="{StaticResource BorderGray}"
-                              BorderThickness="2" Padding="12,10" MinWidth="150">
-                        <ComboBoxItem Content="Monto (Mayor a menor)" IsSelected="True"/>
+                    <ComboBox x:Name="SortCombo" Background="White" BorderBrush="{StaticResource BorderGray}"
+                              BorderThickness="2" Padding="12,10" MinWidth="150"
+                              SelectionChanged="Sort_SelectionChanged">
+                        <ComboBoxItem Content="Estado y Monto" IsSelected="True"/>
+                        <ComboBoxItem Content="Monto (Mayor a menor)"/>
                         <ComboBoxItem Content="Monto (Menor a mayor)"/>
-                        <ComboBoxItem Content="Fecha (Más antiguo)"/>
+                        <ComboBoxItem Content="Fecha (Más reciente)"/>
                         <ComboBoxItem Content="Vendedor (A-Z)"/>
                     </ComboBox>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Contenedor de Cards en Lista -->
+        <!-- Contenedor de Cards con ItemsControl -->
         <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" 
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="30,20">
-            <StackPanel>
-
-                <!-- Card 1: PENDIENTE - VENDEDOR_4 (Mayor monto) -->
-                <Border Margin="0,0,0,15" Background="White" 
-                        CornerRadius="12" Padding="0">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#000000" Direction="270" 
-                                        ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
-                    </Border.Effect>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="5"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Indicador lateral de estado -->
-                        <Border Grid.Column="0" Background="{StaticResource DangerColor}" 
-                                CornerRadius="12,0,0,12"/>
-
-                        <!-- Avatar y Vendedor (DESTACADO) -->
-                        <Border Grid.Column="1" Width="80" Margin="20,20,15,20">
-                            <StackPanel>
-                                <Border Width="60" Height="60" CornerRadius="30" 
-                                        Margin="0,0,0,8" HorizontalAlignment="Center">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#e84118" Offset="0"/>
-                                            <GradientStop Color="#c23616" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <TextBlock Text="V4" 
-                                             FontSize="20" FontWeight="Bold"
-                                             Foreground="White"
-                                             HorizontalAlignment="Center" 
-                                             VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="VENDEDOR_4" 
-                                         FontSize="11" FontWeight="Bold"
-                                         Foreground="{StaticResource DangerDarkColor}"
-                                         HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Información Principal -->
-                        <Grid Grid.Column="2" Margin="0,20,20,20">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Título con VENDEDOR DESTACADO y cliente -->
-                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock FontSize="18" FontWeight="Bold">
-                                    <Run Text="VENDEDOR_4" Foreground="{StaticResource DangerColor}"/>
-                                    <Run Text=" - " Foreground="{StaticResource TextGray}"/>
-                                    <Run Text="ZURI TECHNOLOGIES" Foreground="{StaticResource DarkText}"/>
-                                </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="📄 Orden: " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="202509-05" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="  •  " FontSize="13" 
-                                             Foreground="{StaticResource BorderGray}"/>
-                                    <TextBlock Text="📅 " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="15/09/2024" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Detalles Financieros -->
-                            <Grid Grid.Row="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Subtotal" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBlock Text="$65,123.00" 
-                                                 FontSize="16" FontWeight="Bold"
-                                                 Foreground="{StaticResource DarkText}"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Background="#FEE2E2" 
-        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Comisión" FontSize="11" 
-                 Foreground="{StaticResource TextGray}"/>
-
-                                        <!-- TextBox editable con estilo personalizado -->
-                                        <Grid>
-                                            <TextBox x:Name="CommissionTextBox" 
-                     Text="10" 
-                     FontSize="16" 
-                     FontWeight="Bold"
-                     Foreground="{StaticResource DangerColor}"
-                     Background="Transparent" 
-                     BorderThickness="0"
-                     TextAlignment="Center"
-                     MaxLength="5"
-                     Width="40"
-                     HorizontalAlignment="Left"
-                     PreviewTextInput="Commission_PreviewTextInput"
-                     LostFocus="Commission_LostFocus"
-                     GotFocus="Commission_GotFocus"
-                     MouseDoubleClick="Commission_MouseDoubleClick">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox">
-                                                        <Setter Property="IsReadOnly" Value="True"/>
-                                                        <Setter Property="Cursor" Value="Hand"/>
-                                                        <Setter Property="Template">
-                                                            <Setter.Value>
-                                                                <ControlTemplate TargetType="TextBox">
-                                                                    <Grid>
-                                                                        <Border x:Name="EditBorder" 
-                                                Background="White" 
-                                                BorderBrush="{StaticResource DangerColor}"
-                                                BorderThickness="0"
-                                                CornerRadius="4"
-                                                Opacity="0"
-                                                Padding="2"/>
-                                                                        <ScrollViewer x:Name="PART_ContentHost" 
-                                                      VerticalAlignment="Center"
-                                                      HorizontalAlignment="Center"/>
-                                                                    </Grid>
-                                                                    <ControlTemplate.Triggers>
-                                                                        <Trigger Property="IsReadOnly" Value="False">
-                                                                            <Setter TargetName="EditBorder" Property="BorderThickness" Value="2"/>
-                                                                            <Setter TargetName="EditBorder" Property="Opacity" Value="1"/>
-                                                                            <Setter Property="Cursor" Value="IBeam"/>
-                                                                        </Trigger>
-                                                                    </ControlTemplate.Triggers>
-                                                                </ControlTemplate>
-                                                            </Setter.Value>
-                                                        </Setter>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
-                                            <TextBlock Text="%" 
-                     FontSize="16" 
-                     FontWeight="Bold"
-                     Foreground="{StaticResource DangerColor}"
-                     Margin="45,0,0,0"
-                     IsHitTestVisible="False"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="#FEE2E2" 
-                                        CornerRadius="8" Padding="15,10">
-                                    <StackPanel>
-                                        <TextBlock Text="A PAGAR" FontSize="11" 
-                                                 Foreground="{StaticResource DangerDarkColor}"
-                                                 FontWeight="Bold"/>
-                                        <TextBlock Text="$6,512.30" 
-                                                 FontSize="18" FontWeight="Bold"
-                                                 Foreground="{StaticResource DangerColor}"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </Grid>
-
-                        <!-- Botón de Acción -->
-                        <Border Grid.Column="3" Margin="0,20,20,20" VerticalAlignment="Center">
-                            <Button Content="✅ MARCAR COMO PAGADO" 
-                                    Background="{StaticResource SuccessColor}"
-                                    Foreground="White"
-                                    FontSize="13" FontWeight="Bold"
-                                    Padding="20,15" BorderThickness="0"
-                                    Cursor="Hand">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" 
-                                                CornerRadius="8"
-                                                Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Opacity" Value="0.9"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Card 2: PENDIENTE - VENDEDOR_2 -->
-                <Border Margin="0,0,0,15" Background="White" 
-                        CornerRadius="12" Padding="0">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#000000" Direction="270" 
-                                        ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
-                    </Border.Effect>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="5"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Indicador lateral de estado -->
-                        <Border Grid.Column="0" Background="{StaticResource DangerColor}" 
-                                CornerRadius="12,0,0,12"/>
-
-                        <!-- Avatar y Vendedor -->
-                        <Border Grid.Column="1" Width="80" Margin="20,20,15,20">
-                            <StackPanel>
-                                <Border Width="60" Height="60" CornerRadius="30" 
-                                        Margin="0,0,0,8" HorizontalAlignment="Center">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#e84118" Offset="0"/>
-                                            <GradientStop Color="#c23616" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <TextBlock Text="V2" 
-                                             FontSize="20" FontWeight="Bold"
-                                             Foreground="White"
-                                             HorizontalAlignment="Center" 
-                                             VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="VENDEDOR_2" 
-                                         FontSize="11" FontWeight="Bold"
-                                         Foreground="{StaticResource DangerDarkColor}"
-                                         HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Información Principal -->
-                        <Grid Grid.Column="2" Margin="0,20,20,20">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Título con VENDEDOR DESTACADO -->
-                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock FontSize="18" FontWeight="Bold">
-                                    <Run Text="VENDEDOR_2" Foreground="{StaticResource DangerColor}"/>
-                                    <Run Text=" - " Foreground="{StaticResource TextGray}"/>
-                                    <Run Text="MICROSOFT" Foreground="{StaticResource DarkText}"/>
-                                </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="📄 Orden: " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="202509-02" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="  •  " FontSize="13" 
-                                             Foreground="{StaticResource BorderGray}"/>
-                                    <TextBlock Text="📅 " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="10/09/2024" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Detalles Financieros -->
-                            <Grid Grid.Row="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Subtotal" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBlock Text="$50,000.00" 
-                                                 FontSize="16" FontWeight="Bold"
-                                                 Foreground="{StaticResource DarkText}"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Background="#FEE2E2" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Comisión" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBox Text="10" FontSize="16" FontWeight="Bold"
-                                                Foreground="{StaticResource DangerColor}"
-                                                Background="Transparent" BorderThickness="0"
-                                                ToolTip="Doble clic para editar">
-                                            <TextBox.Template>
-                                                <ControlTemplate TargetType="TextBox">
-                                                    <Grid>
-                                                        <TextBlock x:Name="DisplayText" 
-                                                                 Text="{TemplateBinding Text}" 
-                                                                 FontSize="16" FontWeight="Bold"
-                                                                 Foreground="{StaticResource DangerColor}"/>
-                                                        <TextBlock Text="%" FontSize="16" FontWeight="Bold"
-                                                                 Foreground="{StaticResource DangerColor}"
-                                                                 Margin="18,0,0,0"/>
-                                                    </Grid>
-                                                </ControlTemplate>
-                                            </TextBox.Template>
-                                        </TextBox>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="#FEE2E2" 
-                                        CornerRadius="8" Padding="15,10">
-                                    <StackPanel>
-                                        <TextBlock Text="A PAGAR" FontSize="11" 
-                                                 Foreground="{StaticResource DangerDarkColor}"
-                                                 FontWeight="Bold"/>
-                                        <TextBlock Text="$5,000.00" 
-                                                 FontSize="18" FontWeight="Bold"
-                                                 Foreground="{StaticResource DangerColor}"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </Grid>
-
-                        <!-- Botón de Acción -->
-                        <Border Grid.Column="3" Margin="0,20,20,20" VerticalAlignment="Center">
-                            <Button Content="✅ MARCAR COMO PAGADO" 
-                                    Background="{StaticResource SuccessColor}"
-                                    Foreground="White"
-                                    FontSize="13" FontWeight="Bold"
-                                    Padding="20,15" BorderThickness="0"
-                                    Cursor="Hand">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" 
-                                                CornerRadius="8"
-                                                Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Opacity" Value="0.9"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Card 3: PENDIENTE - VENDEDOR_3 (Menor monto) -->
-                <Border Margin="0,0,0,15" Background="White" 
-                        CornerRadius="12" Padding="0">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#000000" Direction="270" 
-                                        ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
-                    </Border.Effect>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="5"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Indicador lateral de estado -->
-                        <Border Grid.Column="0" Background="{StaticResource DangerColor}" 
-                                CornerRadius="12,0,0,12"/>
-
-                        <!-- Avatar y Vendedor -->
-                        <Border Grid.Column="1" Width="80" Margin="20,20,15,20">
-                            <StackPanel>
-                                <Border Width="60" Height="60" CornerRadius="30" 
-                                        Margin="0,0,0,8" HorizontalAlignment="Center">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                            <GradientStop Color="#e84118" Offset="0"/>
-                                            <GradientStop Color="#c23616" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                    <TextBlock Text="V3" 
-                                             FontSize="20" FontWeight="Bold"
-                                             Foreground="White"
-                                             HorizontalAlignment="Center" 
-                                             VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="VENDEDOR_3" 
-                                         FontSize="11" FontWeight="Bold"
-                                         Foreground="{StaticResource DangerDarkColor}"
-                                         HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Información Principal -->
-                        <Grid Grid.Column="2" Margin="0,20,20,20">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Título con VENDEDOR DESTACADO -->
-                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock FontSize="18" FontWeight="Bold">
-                                    <Run Text="VENDEDOR_3" Foreground="{StaticResource DangerColor}"/>
-                                    <Run Text=" - " Foreground="{StaticResource TextGray}"/>
-                                    <Run Text="TECHCORP" Foreground="{StaticResource DarkText}"/>
-                                </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="📄 Orden: " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="202509-08" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="  •  " FontSize="13" 
-                                             Foreground="{StaticResource BorderGray}"/>
-                                    <TextBlock Text="📅 " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="20/09/2024" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Detalles Financieros -->
-                            <Grid Grid.Row="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Subtotal" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBlock Text="$35,000.00" 
-                                                 FontSize="16" FontWeight="Bold"
-                                                 Foreground="{StaticResource DarkText}"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Background="#FEE2E2" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Comisión" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBox Text="15" FontSize="16" FontWeight="Bold"
-                                                Foreground="{StaticResource DangerColor}"
-                                                Background="Transparent" BorderThickness="0"
-                                                ToolTip="Doble clic para editar">
-                                            <TextBox.Template>
-                                                <ControlTemplate TargetType="TextBox">
-                                                    <Grid>
-                                                        <TextBlock x:Name="DisplayText" 
-                                                                 Text="{TemplateBinding Text}" 
-                                                                 FontSize="16" FontWeight="Bold"
-                                                                 Foreground="{StaticResource DangerColor}"/>
-                                                        <TextBlock Text="%" FontSize="16" FontWeight="Bold"
-                                                                 Foreground="{StaticResource DangerColor}"
-                                                                 Margin="18,0,0,0"/>
-                                                    </Grid>
-                                                </ControlTemplate>
-                                            </TextBox.Template>
-                                        </TextBox>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="#FEE2E2" 
-                                        CornerRadius="8" Padding="15,10">
-                                    <StackPanel>
-                                        <TextBlock Text="A PAGAR" FontSize="11" 
-                                                 Foreground="{StaticResource DangerDarkColor}"
-                                                 FontWeight="Bold"/>
-                                        <TextBlock Text="$5,250.00" 
-                                                 FontSize="18" FontWeight="Bold"
-                                                 Foreground="{StaticResource DangerColor}"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </Grid>
-
-                        <!-- Botón de Acción -->
-                        <Border Grid.Column="3" Margin="0,20,20,20" VerticalAlignment="Center">
-                            <Button Content="✅ MARCAR COMO PAGADO" 
-                                    Background="{StaticResource SuccessColor}"
-                                    Foreground="White"
-                                    FontSize="13" FontWeight="Bold"
-                                    Padding="20,15" BorderThickness="0"
-                                    Cursor="Hand">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" 
-                                                CornerRadius="8"
-                                                Padding="{TemplateBinding Padding}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Opacity" Value="0.9"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
-                        </Border>
-                    </Grid>
-                </Border>
-
-                <!-- Separador visual -->
-                <Border Height="1" Background="{StaticResource BorderGray}" Margin="0,20,0,20"/>
-
-                <!-- Card 4: PAGADA - VENDEDOR_1 -->
-                <Border Margin="0,0,0,15" Background="White" Opacity="0.85"
-                        CornerRadius="12" Padding="0">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#000000" Direction="270" 
-                                        ShadowDepth="1" Opacity="0.08" BlurRadius="5"/>
-                    </Border.Effect>
-
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="5"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Indicador lateral de estado -->
-                        <Border Grid.Column="0" Background="{StaticResource SuccessColor}" 
-                                CornerRadius="12,0,0,12"/>
-
-                        <!-- Avatar y Vendedor -->
-                        <Border Grid.Column="1" Width="80" Margin="20,20,15,20">
-                            <StackPanel>
-                                <Border Width="60" Height="60" CornerRadius="30" 
-                                        Margin="0,0,0,8" HorizontalAlignment="Center"
-                                        Background="{StaticResource SuccessColor}">
-                                    <TextBlock Text="V1" 
-                                             FontSize="20" FontWeight="Bold"
-                                             Foreground="White"
-                                             HorizontalAlignment="Center" 
-                                             VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock Text="VENDEDOR_1" 
-                                         FontSize="11" FontWeight="Bold"
-                                         Foreground="{StaticResource SuccessColor}"
-                                         HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Información Principal -->
-                        <Grid Grid.Column="2" Margin="0,20,20,20">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <!-- Título -->
-                            <StackPanel Grid.Row="0" Margin="0,0,0,10">
-                                <TextBlock FontSize="18" FontWeight="Bold">
-                                    <Run Text="VENDEDOR_1" Foreground="{StaticResource SuccessColor}"/>
-                                    <Run Text=" - " Foreground="{StaticResource TextGray}"/>
-                                    <Run Text="ANDROID INC." Foreground="{StaticResource DarkText}"/>
-                                </TextBlock>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="📄 Orden: " FontSize="13" 
-                                             Foreground="{StaticResource TextGray}"/>
-                                    <TextBlock Text="202509-01" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="  •  " FontSize="13" 
-                                             Foreground="{StaticResource BorderGray}"/>
-                                    <TextBlock Text="✅ Pagado: " FontSize="13" 
-                                             Foreground="{StaticResource SuccessColor}"/>
-                                    <TextBlock Text="20/09/2024" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </StackPanel>
-
-                            <!-- Detalles Financieros -->
-                            <Grid Grid.Row="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Subtotal" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBlock Text="$45,000.00" 
-                                                 FontSize="16" FontWeight="Bold"
-                                                 Foreground="{StaticResource DarkText}"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="1" Background="#E8F5E9" 
-                                        CornerRadius="8" Padding="15,10" Margin="0,0,10,0">
-                                    <StackPanel>
-                                        <TextBlock Text="Comisión" FontSize="11" 
-                                                 Foreground="{StaticResource TextGray}"/>
-                                        <TextBlock Text="20%" 
-                                                 FontSize="16" FontWeight="Bold"
-                                                 Foreground="{StaticResource SuccessColor}"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <Border Grid.Column="2" Background="#E8F5E9" 
-                                        CornerRadius="8" Padding="15,10">
-                                    <StackPanel>
-                                        <TextBlock Text="PAGADO" FontSize="11" 
-                                                 Foreground="{StaticResource SuccessColor}"
-                                                 FontWeight="Bold"/>
-                                        <TextBlock Text="$9,000.00" 
-                                                 FontSize="18" FontWeight="Bold"
-                                                 Foreground="{StaticResource SuccessColor}"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </Grid>
-
-                        <!-- Indicador de completado -->
-                        <Border Grid.Column="3" Margin="0,20,20,20" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="✓" FontSize="24" 
-                                         Foreground="{StaticResource SuccessColor}"
-                                         FontWeight="Bold" Margin="0,0,10,0"/>
-                                <TextBlock Text="COMPLETADO" 
-                                         FontSize="13" FontWeight="Bold"
-                                         Foreground="{StaticResource SuccessColor}"
-                                         VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </Border>
-
-            </StackPanel>
+            <ItemsControl x:Name="CommissionsItemsControl"
+                          ItemTemplate="{StaticResource CommissionCardTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
         </ScrollViewer>
     </Grid>
 </Window>

@@ -21,14 +21,25 @@ namespace SistemaGestionProyectos2.Views
         private readonly UserSession _currentUser;
         private ObservableCollection<CommissionCardViewModel> _allCommissions;
         private ObservableCollection<CommissionCardViewModel> _displayedCommissions;
+        private string _currentStatusFilter = "Todas";
+        private string _currentVendorFilter = "Todos los Vendedores";
+        private string _currentSort = "Estado y Monto";
 
         public VendorCardsDemo(UserSession currentUser)
         {
-            InitializeComponent();
-            _currentUser = currentUser;
-            _supabaseService = SupabaseService.Instance;
+            // PRIMERO: Inicializar las colecciones
             _allCommissions = new ObservableCollection<CommissionCardViewModel>();
             _displayedCommissions = new ObservableCollection<CommissionCardViewModel>();
+
+            // SEGUNDO: Inicializar componentes
+            InitializeComponent();
+
+            // TERCERO: Asignar el resto
+            _currentUser = currentUser;
+            _supabaseService = SupabaseService.Instance;
+
+            // CUARTO: Vincular la colección al ItemsControl
+            CommissionsItemsControl.ItemsSource = _displayedCommissions;
 
             InitializeUI();
             _ = LoadCommissionsAsync();
@@ -59,6 +70,7 @@ namespace SistemaGestionProyectos2.Views
                 {
                     MessageBox.Show("No se encontraron comisiones registradas", "Información",
                         MessageBoxButton.OK, MessageBoxImage.Information);
+                    UpdateStatistics(); // Actualizar estadísticas con valores en 0
                     return;
                 }
 
@@ -85,6 +97,18 @@ namespace SistemaGestionProyectos2.Views
                 var allVendors = vendorsResponse?.Models ?? new System.Collections.Generic.List<VendorTableDb>();
                 var vendors = allVendors.Where(v => vendorIds.Contains(v.Id))
                     .ToDictionary(v => v.Id);
+
+                // Llenar el combo de vendedores
+                if (VendorFilterCombo != null)
+                {
+                    VendorFilterCombo.Items.Clear();
+                    VendorFilterCombo.Items.Add("Todos los Vendedores");
+                    foreach (var vendor in vendors.Values.OrderBy(v => v.VendorName))
+                    {
+                        VendorFilterCombo.Items.Add(vendor.VendorName);
+                    }
+                    VendorFilterCombo.SelectedIndex = 0;
+                }
 
                 // 4. Cargar TODOS los clientes y filtrar en memoria
                 var clientIds = orders.Values.Where(o => o.ClientId.HasValue)
@@ -152,8 +176,8 @@ namespace SistemaGestionProyectos2.Views
                 ApplyFilters();
                 UpdateStatistics();
 
-                MessageBox.Show($"Se cargaron {_allCommissions.Count} comisiones", "Datos Cargados",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                // No mostrar mensaje, solo actualizar la UI
+                System.Diagnostics.Debug.WriteLine($"Se cargaron {_allCommissions.Count} comisiones");
             }
             catch (Exception ex)
             {
@@ -176,13 +200,68 @@ namespace SistemaGestionProyectos2.Views
 
         private void ApplyFilters()
         {
-            // Por ahora, mostrar todos ordenados: Pendientes primero, luego Pagados
+            // Validación de seguridad
+            if (_displayedCommissions == null)
+            {
+                _displayedCommissions = new ObservableCollection<CommissionCardViewModel>();
+                if (CommissionsItemsControl != null)
+                    CommissionsItemsControl.ItemsSource = _displayedCommissions;
+            }
+
+            if (_allCommissions == null)
+            {
+                _allCommissions = new ObservableCollection<CommissionCardViewModel>();
+                return;
+            }
+
+
             _displayedCommissions.Clear();
 
-            var sorted = _allCommissions
-                .OrderBy(c => c.Status == "PENDIENTE" ? 0 : 1)  // Pendientes primero
-                .ThenByDescending(c => c.CommissionAmount)       // Por monto (mayor a menor)
-                .ThenBy(c => c.OrderDate);                      // Por fecha
+            var filtered = _allCommissions.AsEnumerable();
+
+            // Aplicar filtro de estado
+            if (_currentStatusFilter == "⚠️ Pendientes")
+            {
+                filtered = filtered.Where(c => c.Status == "PENDIENTE");
+            }
+            else if (_currentStatusFilter == "✅ Pagadas")
+            {
+                filtered = filtered.Where(c => c.Status == "PAGADO");
+            }
+
+            // Aplicar filtro de vendedor
+            if (_currentVendorFilter != "Todos los Vendedores")
+            {
+                filtered = filtered.Where(c => c.VendorName == _currentVendorFilter);
+            }
+
+            // Aplicar ordenamiento
+            IOrderedEnumerable<CommissionCardViewModel> sorted = null;
+
+            switch (_currentSort)
+            {
+                case "Estado y Monto":
+                    sorted = filtered
+                        .OrderBy(c => c.Status == "PENDIENTE" ? 0 : 1)
+                        .ThenByDescending(c => c.CommissionAmount);
+                    break;
+                case "Monto (Mayor a menor)":
+                    sorted = filtered.OrderByDescending(c => c.CommissionAmount);
+                    break;
+                case "Monto (Menor a mayor)":
+                    sorted = filtered.OrderBy(c => c.CommissionAmount);
+                    break;
+                case "Fecha (Más reciente)":
+                    sorted = filtered.OrderByDescending(c => c.OrderDate);
+                    break;
+                case "Vendedor (A-Z)":
+                    sorted = filtered.OrderBy(c => c.VendorName);
+                    break;
+                default:
+                    sorted = filtered.OrderBy(c => c.Status == "PENDIENTE" ? 0 : 1)
+                        .ThenByDescending(c => c.CommissionAmount);
+                    break;
+            }
 
             foreach (var commission in sorted)
             {
@@ -192,30 +271,66 @@ namespace SistemaGestionProyectos2.Views
 
         private void UpdateStatistics()
         {
-            // Total de órdenes
-            var totalOrders = _allCommissions.Count;
+            // Total pendiente
+            var totalPending = _allCommissions
+                .Where(c => c.Status == "PENDIENTE")
+                .Sum(c => c.CommissionAmount);
 
             // Total pagado
             var totalPaid = _allCommissions
                 .Where(c => c.Status == "PAGADO")
                 .Sum(c => c.CommissionAmount);
 
-            // Total pendiente
-            var totalPending = _allCommissions
-                .Where(c => c.Status == "PENDIENTE")
-                .Sum(c => c.CommissionAmount);
-
-            // Total vendedores únicos
+            // Vendedores únicos
             var uniqueVendors = _allCommissions
                 .Select(c => c.VendorId)
                 .Distinct()
                 .Count();
 
-            // Actualizar los TextBlocks en el XAML (necesitarás darles nombres x:Name)
-            System.Diagnostics.Debug.WriteLine($"Total Órdenes: {totalOrders}");
-            System.Diagnostics.Debug.WriteLine($"Pagadas: {totalPaid:C}");
-            System.Diagnostics.Debug.WriteLine($"Pendientes: {totalPending:C}");
-            System.Diagnostics.Debug.WriteLine($"Vendedores: {uniqueVendors}");
+            // Actualizar los TextBlocks en el XAML
+            TotalPendingText.Text = totalPending.ToString("C");
+            TotalPaidText.Text = totalPaid.ToString("C");
+            UniqueVendorsText.Text = uniqueVendors.ToString();
+        }
+
+        // Eventos de filtros
+        private void StatusFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Evitar llamadas durante la inicialización
+            if (!IsLoaded || _displayedCommissions == null) return;
+
+            if (StatusFilterCombo?.SelectedItem is ComboBoxItem item)
+            {
+                _currentStatusFilter = item.Content.ToString();
+                ApplyFilters();
+            }
+        }
+
+        private void VendorFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded || _displayedCommissions == null) return;
+
+            if (VendorFilterCombo?.SelectedItem is string vendorName)
+            {
+                _currentVendorFilter = vendorName;
+                ApplyFilters();
+            }
+            else if (VendorFilterCombo?.SelectedItem is ComboBoxItem item)
+            {
+                _currentVendorFilter = item.Content.ToString();
+                ApplyFilters();
+            }
+        }
+
+        private void Sort_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded || _displayedCommissions == null) return;
+
+            if (SortCombo?.SelectedItem is ComboBoxItem item)
+            {
+                _currentSort = item.Content.ToString();
+                ApplyFilters();
+            }
         }
 
         // Método para abrir gestión de vendedores
@@ -236,17 +351,47 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Eventos de botones (por ahora solo mostrar mensajes)
-        private void EditCommission_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Edición de comisión - Función en desarrollo", "Demo",
-                MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
+        // Evento del botón Marcar como Pagado
         private void MarkAsPaid_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Marcar como pagado - Función en desarrollo", "Demo",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            var button = sender as Button;
+            var commission = button?.Tag as CommissionCardViewModel;
+
+            if (commission != null)
+            {
+                _ = MarkCommissionAsPaid(commission);
+            }
+        }
+
+        private async Task MarkCommissionAsPaid(CommissionCardViewModel commission)
+        {
+            try
+            {
+                var supabaseClient = _supabaseService.GetClient();
+
+                // Actualizar el registro en la base de datos
+                var update = await supabaseClient
+                    .From<VendorCommissionPaymentDb>()
+                    .Where(x => x.Id == commission.CommissionPaymentId)
+                    .Set(x => x.PaymentStatus, "paid")
+                    .Set(x => x.PaymentDate, DateTime.Now)
+                    .Set(x => x.UpdatedBy, _currentUser.Id)
+                    .Set(x => x.UpdatedAt, DateTime.Now)
+                    .Update();
+
+                if (update != null)
+                {
+                    
+
+                    // Recargar datos
+                    await LoadCommissionsAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al marcar como pagada: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         // Métodos para edición de comisión (preparados para siguiente fase)
@@ -309,6 +454,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 _subtotal = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(FormattedSubtotal));
             }
         }
 
@@ -320,6 +466,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 _commissionRate = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(FormattedRate));
                 // Recalcular comisión cuando cambie el porcentaje
                 CommissionAmount = (_subtotal * _commissionRate) / 100;
             }
@@ -333,11 +480,24 @@ namespace SistemaGestionProyectos2.Views
             {
                 _commissionAmount = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(FormattedCommission));
             }
         }
 
         // Estado
-        public string Status { get; set; } // "PENDIENTE" o "PAGADO"
+        private string _status;
+        public string Status
+        {
+            get => _status;
+            set
+            {
+                _status = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsPending));
+                OnPropertyChanged(nameof(IsPaid));
+            }
+        }
+
         public DateTime? PaymentDate { get; set; }
         public string Notes { get; set; }
 
