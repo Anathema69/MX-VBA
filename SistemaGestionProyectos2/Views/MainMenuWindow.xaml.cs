@@ -21,7 +21,7 @@ namespace SistemaGestionProyectos2.Views
             ConfigurePermissions();
         }
 
-        
+
 
         private void InitializeUI()
         {
@@ -118,12 +118,12 @@ namespace SistemaGestionProyectos2.Views
             if (result == MessageBoxResult.Yes)
             {
                 _timer?.Stop();
-                
+
                 // Volver al login
                 LoginWindow loginWindow = new LoginWindow();
                 loginWindow.Show();
 
-                
+
 
                 // en algunos casos a pesar de haber confirmado cerrar la sesión cuándo se vuelve de la grilla de órdenes la venta del main no se cierra
                 // si la venta de login está abierta, forzar el cierre de esta ventana
@@ -199,6 +199,41 @@ namespace SistemaGestionProyectos2.Views
             {
                 MessageBox.Show(
                     $"Error al abrir el Portal del Vendedor:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir portal";
+            }
+        }
+
+        // MÉTODO IMPORTANTE: Click en el portal de proveedores
+        private void OpenExpensePortal_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo Portal de Proveedores...";
+
+                // Verificar permisos (opcional)
+                if (_currentUser.Role != "admin")
+                {
+                    MessageBox.Show(
+                        "No tiene permisos para acceder al Portal de Proveedores.",
+                        "Acceso Denegado",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Abrir la ventana del Portal de Proveedores
+                var expenseWindow = new ExpenseManagementWindow(_currentUser);
+                expenseWindow.ShowDialog();
+
+                StatusText.Text = "Portal de Proveedores cerrado";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el Portal de Proveedores:\n{ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

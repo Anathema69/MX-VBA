@@ -3,9 +3,11 @@ using Postgrest.Attributes;
 using Postgrest.Interfaces;
 using Postgrest.Models;
 using Postgrest.Responses;
+using SistemaGestionProyectos2.ViewModels;
 using Supabase;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -213,8 +215,8 @@ namespace SistemaGestionProyectos2.Services
                 System.Diagnostics.Debug.WriteLine($"Creando orden en Supabase:");
                 System.Diagnostics.Debug.WriteLine($"  PO: {order.Po}");
                 System.Diagnostics.Debug.WriteLine($"  Cliente: {order.ClientId}");
-                System.Diagnostics.Debug.WriteLine($"  Created By: {order.CreatedBy}");  
-                System.Diagnostics.Debug.WriteLine($"  Updated By: {order.UpdatedBy}");  
+                System.Diagnostics.Debug.WriteLine($"  Created By: {order.CreatedBy}");
+                System.Diagnostics.Debug.WriteLine($"  Updated By: {order.UpdatedBy}");
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -245,7 +247,7 @@ namespace SistemaGestionProyectos2.Services
                 System.Diagnostics.Debug.WriteLine($"   Progress: {order.ProgressPercentage}%");
                 System.Diagnostics.Debug.WriteLine($"   Order%: {order.OrderPercentage}%");
                 System.Diagnostics.Debug.WriteLine($"   Estado: {order.OrderStatus}");
-                System.Diagnostics.Debug.WriteLine($"   👤 Updated By: {order.UpdatedBy}");  
+                System.Diagnostics.Debug.WriteLine($"   👤 Updated By: {order.UpdatedBy}");
 
                 var response = await _supabaseClient
                     .From<OrderDb>()
@@ -264,7 +266,7 @@ namespace SistemaGestionProyectos2.Services
                     .Set(x => x.SaleTotal, order.SaleTotal)
                     .Set(x => x.Expense, order.Expense)
                     .Set(x => x.OrderStatus, order.OrderStatus)
-                    .Set(x => x.UpdatedBy, order.UpdatedBy)  
+                    .Set(x => x.UpdatedBy, order.UpdatedBy)
                     .Update();
 
                 return response?.Models?.Count > 0;
@@ -640,7 +642,8 @@ namespace SistemaGestionProyectos2.Services
                     var grouped = invoices.Models
                         .Where(i => i.OrderId.HasValue && i.Total.HasValue)
                         .GroupBy(i => i.OrderId.Value)
-                        .Select(g => new {
+                        .Select(g => new
+                        {
                             OrderId = g.Key,
                             Total = g.Sum(i => i.Total ?? 0)
                         });
@@ -1234,7 +1237,7 @@ namespace SistemaGestionProyectos2.Services
                     .Where(c => c.Id == clientId)
                     .Set(c => c.IsActive, false)
                     .Set(c => c.UpdatedAt, DateTime.Now)
-                        
+
                     .Update();
 
                 return response?.Models?.Count > 0;
@@ -1313,6 +1316,422 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // ============= MÉTODOS PARA PROVEEDORES =============
+        public async Task<List<SupplierDb>> GetActiveSuppliers()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Where(s => s.IsActive == true)
+                    .Order("f_suppliername", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<SupplierDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo proveedores: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<SupplierDb> GetSupplierById(int supplierId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Where(s => s.Id == supplierId)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo proveedor {supplierId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<SupplierDb> CreateSupplier(SupplierDb supplier)
+        {
+            try
+            {
+                supplier.CreatedAt = DateTime.Now;
+                supplier.UpdatedAt = DateTime.Now;
+                supplier.IsActive = true;
+
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Insert(supplier);
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creando proveedor: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateSupplier(SupplierDb supplier)
+        {
+            try
+            {
+                supplier.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Where(s => s.Id == supplier.Id)
+                    .Update(supplier);
+
+                return response?.Models?.Any() == true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando proveedor: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<List<ExpenseDb>> GetExpenses(
+    int? supplierId = null,
+    string status = null,
+    DateTime? fromDate = null,
+    DateTime? toDate = null,
+    int limit = 100,
+    int offset = 0)
+        {
+            try
+            {
+                ModeledResponse<ExpenseDb> response;
+
+                // Construir la consulta base
+                var query = _supabaseClient.From<ExpenseDb>().Select("*");
+
+                // Aplicar filtros uno por uno
+                if (supplierId.HasValue)
+                {
+                    query = query.Filter("f_supplier", Postgrest.Constants.Operator.Equals, supplierId.Value);
+                }
+
+                if (!string.IsNullOrEmpty(status))
+                {
+                    query = query.Filter("f_status", Postgrest.Constants.Operator.Equals, status);
+                }
+
+                if (fromDate.HasValue)
+                {
+                    query = query.Filter("f_expensedate", Postgrest.Constants.Operator.GreaterThanOrEqual, fromDate.Value.ToString("yyyy-MM-dd"));
+                }
+
+                if (toDate.HasValue)
+                {
+                    query = query.Filter("f_expensedate", Postgrest.Constants.Operator.LessThanOrEqual, toDate.Value.ToString("yyyy-MM-dd"));
+                }
+
+                // Ordenar, limitar y ejecutar
+                response = await query
+                    .Order("f_expensedate", Postgrest.Constants.Ordering.Descending)
+                    .Order("f_expense", Postgrest.Constants.Ordering.Descending)
+                    .Range(offset, offset + limit - 1)
+                    .Get();
+
+                var expenses = response?.Models ?? new List<ExpenseDb>();
+
+                System.Diagnostics.Debug.WriteLine($"💰 Gastos obtenidos: {expenses.Count}");
+                if (supplierId.HasValue)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   Proveedor ID: {supplierId.Value}");
+                }
+                if (!string.IsNullOrEmpty(status))
+                {
+                    System.Diagnostics.Debug.WriteLine($"   Estado: {status}");
+                }
+
+                return expenses;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo gastos: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ExpenseDb> GetExpenseById(int expenseId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Id == expenseId)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo gasto {expenseId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<ExpenseDb> CreateExpense(ExpenseDb expense, int creditDays)
+        {
+            try
+            {
+                // Calcular fecha programada
+                expense.ScheduledDate = expense.ExpenseDate.AddDays(creditDays);
+
+                // Establecer valores por defecto
+                expense.Status = "PENDIENTE";
+                expense.CreatedAt = DateTime.Now;
+                expense.UpdatedAt = DateTime.Now;
+                expense.CreatedBy = GetCurrentUserId(); // Implementar según tu sistema de usuarios
+
+                var response = await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Insert(expense);
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creando gasto: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> UpdateExpense(ExpenseDb expense)
+        {
+            try
+            {
+                expense.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Id == expense.Id)
+                    .Update(expense);
+
+                return response?.Models?.Any() == true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando gasto: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> MarkExpenseAsPaid(int expenseId, DateTime paidDate, string payMethod)
+        {
+            try
+            {
+                var expense = await GetExpenseById(expenseId);
+                if (expense == null) return false;
+
+                expense.Status = "PAGADO";
+                expense.PaidDate = paidDate;
+                expense.PayMethod = payMethod;
+                expense.UpdatedAt = DateTime.Now;
+
+                return await UpdateExpense(expense);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error marcando gasto como pagado: {ex.Message}");
+                return false;
+            }
+        }
+
+
+        public async Task<bool> DeleteExpense(int expenseId)
+        {
+            try
+            {
+                await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Id == expenseId)
+                    .Delete();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error eliminando gasto: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<Dictionary<int, SupplierExpensesSummaryViewModel>> GetExpensesSummaryBySupplier()
+        {
+            try
+            {
+                var expenses = await GetExpenses();
+                var suppliers = await GetActiveSuppliers();
+
+                var summaryDict = new Dictionary<int, SupplierExpensesSummaryViewModel>();
+
+                foreach (var supplier in suppliers)
+                {
+                    var supplierExpenses = expenses.Where(e => e.SupplierId == supplier.Id).ToList();
+
+                    if (supplierExpenses.Any())
+                    {
+                        var summary = new SupplierExpensesSummaryViewModel
+                        {
+                            SupplierId = supplier.Id,
+                            SupplierName = supplier.SupplierName,
+                            Expenses = new ObservableCollection<ExpenseViewModel>()
+                        };
+
+                        foreach (var expense in supplierExpenses)
+                        {
+                            summary.Expenses.Add(ConvertToViewModel(expense, supplier));
+                        }
+
+                        summary.UpdateSummary();
+                        summaryDict[supplier.Id] = summary;
+                    }
+                }
+
+                return summaryDict;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo resumen de gastos: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<List<ExpenseDb>> GetUpcomingExpenses(int daysAhead = 7)
+        {
+            try
+            {
+                var futureDate = DateTime.Now.Date.AddDays(daysAhead);
+
+                var response = await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Status == "PENDIENTE")
+                    .Where(e => e.ScheduledDate != null)
+                    .Where(e => e.ScheduledDate <= futureDate)
+                    .Order("f_scheduleddate", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<ExpenseDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo gastos próximos: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene gastos vencidos
+        /// </summary>
+        public async Task<List<ExpenseDb>> GetOverdueExpenses()
+        {
+            try
+            {
+                var today = DateTime.Now.Date;
+
+                var response = await _supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Status == "PENDIENTE")
+                    .Where(e => e.ScheduledDate != null)
+                    .Where(e => e.ScheduledDate < today)
+                    .Order("f_scheduleddate", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<ExpenseDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo gastos vencidos: {ex.Message}");
+                throw;
+            }
+        }
+
+        // ============= MÉTODOS AUXILIARES =============
+
+        /// <summary>
+        /// Convierte ExpenseDb a ExpenseViewModel
+        /// </summary>
+        private ExpenseViewModel ConvertToViewModel(ExpenseDb expense, SupplierDb supplier = null)
+        {
+            return new ExpenseViewModel
+            {
+                ExpenseId = expense.Id,
+                SupplierId = expense.SupplierId,
+                SupplierName = supplier?.SupplierName ?? "Proveedor Desconocido",
+                Description = expense.Description,
+                ExpenseDate = expense.ExpenseDate,
+                TotalExpense = expense.TotalExpense,
+                ScheduledDate = expense.ScheduledDate,
+                Status = expense.Status,
+                PaidDate = expense.PaidDate,
+                PayMethod = expense.PayMethod,
+                OrderId = expense.OrderId,
+                ExpenseCategory = expense.ExpenseCategory
+            };
+        }
+
+        /// <summary>
+        /// Obtiene el ID del usuario actual (implementar según tu sistema)
+        /// </summary>
+        private string GetCurrentUserId()
+        {
+            // TODO: Implementar según tu sistema de autenticación
+            // Por ejemplo:
+            // return _currentUser?.Id?.ToString() ?? "system";
+            return "system";
+        }
+
+        /// <summary>
+        /// Obtiene estadísticas generales de gastos
+        /// </summary>
+        public async Task<ExpenseStatistics> GetExpenseStatistics()
+        {
+            try
+            {
+                var expenses = await GetExpenses();
+
+                return new ExpenseStatistics
+                {
+                    TotalPending = expenses.Where(e => e.Status == "PENDIENTE").Sum(e => e.TotalExpense),
+                    TotalPaid = expenses.Where(e => e.Status == "PAGADO").Sum(e => e.TotalExpense),
+                    TotalOverdue = expenses.Where(e => e.Status == "PENDIENTE" &&
+                                                     e.ScheduledDate.HasValue &&
+                                                     e.ScheduledDate.Value < DateTime.Now.Date)
+                                          .Sum(e => e.TotalExpense),
+                    PendingCount = expenses.Count(e => e.Status == "PENDIENTE"),
+                    PaidCount = expenses.Count(e => e.Status == "PAGADO"),
+                    OverdueCount = expenses.Count(e => e.Status == "PENDIENTE" &&
+                                                      e.ScheduledDate.HasValue &&
+                                                      e.ScheduledDate.Value < DateTime.Now.Date)
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo estadísticas: {ex.Message}");
+                throw;
+            }
+        }
+
+        public class ExpenseStatistics
+        {
+            public decimal TotalPending { get; set; }
+            public decimal TotalPaid { get; set; }
+            public decimal TotalOverdue { get; set; }
+            public int PendingCount { get; set; }
+            public int PaidCount { get; set; }
+            public int OverdueCount { get; set; }
+
+            public decimal GrandTotal => TotalPending + TotalPaid;
+        }
+
+    }
 
     }
 
@@ -1702,6 +2121,87 @@ namespace SistemaGestionProyectos2.Services
         public int? UpdatedBy { get; set; }
     }
 
+    // PARA PROVEEDORES Y GASTOS
+    [Table("t_supplier")]
+    public class SupplierDb : BaseModel
+    {
+        [PrimaryKey("f_supplier")]
+        public int Id { get; set; }
+
+        [Column("f_suppliername")]
+        public string SupplierName { get; set; }
+
+        [Column("f_credit")]
+        public int CreditDays { get; set; }
+
+        [Column("tax_id")]
+        public string TaxId { get; set; }
+
+        [Column("phone")]
+        public string Phone { get; set; }
+
+        [Column("email")]
+        public string Email { get; set; }
+
+        [Column("address")]
+        public string Address { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+    
 
 }
+
+    [Table("t_expense")]
+    public class ExpenseDb : BaseModel
+    {
+        [PrimaryKey("f_expense")]
+        public int Id { get; set; }
+
+        [Column("f_supplier")]
+        public int SupplierId { get; set; }
+
+        [Column("f_description")]
+        public string Description { get; set; }
+
+        [Column("f_expensedate")]
+        public DateTime ExpenseDate { get; set; }
+
+        [Column("f_totalexpense")]
+        public decimal TotalExpense { get; set; }
+
+        [Column("f_scheduleddate")]
+        public DateTime? ScheduledDate { get; set; }
+
+        [Column("f_status")]
+        public string Status { get; set; }
+
+        [Column("f_paiddate")]
+        public DateTime? PaidDate { get; set; }
+
+        [Column("f_paymethod")]
+        public string PayMethod { get; set; }
+
+        [Column("f_order")]
+        public int? OrderId { get; set; }
+
+        [Column("expense_category")]
+        public string ExpenseCategory { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; }
+
+        [Column("created_by")]
+        public string CreatedBy { get; set; }
+
+    }
 
