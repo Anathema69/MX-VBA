@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 
 namespace SistemaGestionProyectos2.ViewModels
 {
@@ -16,6 +17,49 @@ namespace SistemaGestionProyectos2.ViewModels
         private decimal _commission;
         private DateTime? _orderDate;
         private bool _isEditable;
+
+
+        // New property for PaymentStatus
+        private string _paymentStatus;
+        public string PaymentStatus
+        {
+            get => _paymentStatus;
+            set
+            {
+                _paymentStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        // Property to get the button text based on PaymentStatus
+        public string PaymentButtonText
+        {
+            get
+            {
+                return PaymentStatus == "Pagado" ? "Marcar Pendiente" : "Marcar Pagado";
+            }
+        }
+
+        // Para el color del fondo
+        public Brush PaymentStatusBackground
+        {
+            get
+            {
+                return PaymentStatus == "Por Pagar"
+                    ? new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)) // Rojo semi-transparente
+                    : new SolidColorBrush(Colors.Transparent);
+            }
+        }
+
+        public Brush PaymentStatusForeground
+        {
+            get
+            {
+                return PaymentStatus == "Pagado"
+                    ? new SolidColorBrush(Colors.Green)
+                    : new SolidColorBrush(Colors.Red);
+            }
+        }
 
         public int OrderId
         {

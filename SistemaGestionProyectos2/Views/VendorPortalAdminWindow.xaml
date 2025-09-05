@@ -214,18 +214,32 @@
 
                     <Border Background="#00000020" CornerRadius="15" Padding="15,8" Margin="0,0,15,0">
                         <StackPanel>
-                            <TextBlock Text="TOTAL COMISIONES"
-                                     Foreground="#FFE082"
-                                     FontSize="11"
-                                     FontWeight="Light"/>
-                            <TextBlock Name="TotalCommissionsText"
-                                     Text="$0.00"
-                                     Foreground="#4CAF50"
-                                     FontSize="24"
-                                     FontWeight="Bold"/>
+                            <TextBlock Text="COMISIONES PAGADAS"
+                 Foreground="#FFE082"
+                 FontSize="11"
+                 FontWeight="Light"/>
+                            <TextBlock Name="PaidCommissionsText"
+                 Text="$0.00"
+                 Foreground="#4CAF50"
+                 FontSize="24"
+                 FontWeight="Bold"/>
                         </StackPanel>
                     </Border>
 
+                    <Border Background="#00000020" CornerRadius="15" Padding="15,8">
+                        <StackPanel>
+                            <TextBlock Text="PENDIENTE PAGAR"
+                                        Foreground="#FFCDD2"
+                                        FontSize="11"
+                                        FontWeight="Light"/>
+                            <TextBlock Name="PendingPaymentText"
+                                        Text="$0.00"
+                                        Foreground="#F44336"
+                                        FontSize="24"
+                                        FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    
                     <Border Background="#00000020" CornerRadius="15" Padding="15,8">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="📊 " FontSize="16" Foreground="#B3E5FC"/>
@@ -236,6 +250,9 @@
                                      VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
+
+                    
+
                 </StackPanel>
 
                 <!-- Última actualización -->
@@ -586,6 +603,37 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
+
+                    <!-- ESTADO DE PAGO -->
+
+                    <DataGridTemplateColumn Header="ESTADO PAGO" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border x:Name="StatusBorder"
+                    CornerRadius="12" 
+                    Padding="10,5"
+                    HorizontalAlignment="Center"
+                    Cursor="Hand"
+                    MouseLeftButtonDown="PaymentStatus_Click">
+                                    <TextBlock x:Name="StatusText"
+                         Text="{Binding PaymentStatus}" 
+                         FontWeight="Bold"
+                         FontSize="11"
+                         HorizontalAlignment="Center"/>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding PaymentStatus}" Value="Por Pagar">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#F44336"/>
+                                        <Setter TargetName="StatusText" Property="Foreground" Value="White"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding PaymentStatus}" Value="Pagado">
+                                        <Setter TargetName="StatusBorder" Property="Background" Value="#4CAF50"/>
+                                        <Setter TargetName="StatusText" Property="Foreground" Value="White"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

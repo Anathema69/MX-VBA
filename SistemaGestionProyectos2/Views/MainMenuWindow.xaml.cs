@@ -162,10 +162,14 @@ namespace SistemaGestionProyectos2.Views
                 if (_currentUser.Role == "admin")
                 {
                     // Admin ve la ventana completa con edición
-                    var adminPortal = new VendorPortalAdminWindow(_currentUser);
-                    adminPortal.Show();
+                    //var adminPortal = new VendorPortalAdminWindow(_currentUser);
+                    //adminPortal.Show();
 
-                    
+                    // abrimeremos temporalmente la ventana de demo
+                    var demoWindow = new VendorCardsDemo(_currentUser);
+                    demoWindow.Show();
+
+
 
                 }
                 else if (_currentUser.Role == "salesperson")

@@ -110,64 +110,65 @@ namespace SistemaGestionProyectos2.Views
             {
                 var supabaseClient = _supabaseService.GetClient();
 
-                // Cargar órdenes con subtotal > 0
+                // Cargar órdenes COMPLETADAS
                 var ordersResponse = await supabaseClient
                     .From<OrderDb>()
                     .Select("*")
-                    .Filter("f_salesubtotal", Postgrest.Constants.Operator.GreaterThan, "0")
-                    .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                    .Filter("f_orderstat", Postgrest.Constants.Operator.Equals, 4)
                     .Get();
 
                 var orders = ordersResponse?.Models ?? new List<OrderDb>();
 
-                // Cargar clientes
-                var clientsResponse = await supabaseClient
-                    .From<ClientDb>()
+                // Cargar estados de pago
+                var paymentsResponse = await supabaseClient
+                    .From<VendorCommissionPaymentDb>()
                     .Select("*")
                     .Get();
-                var clients = clientsResponse?.Models?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<int, string>();
+
+                var payments = paymentsResponse?.Models?.ToDictionary(p => p.OrderId)
+                    ?? new Dictionary<int, VendorCommissionPaymentDb>();
 
                 _commissions.Clear();
 
                 foreach (var order in orders)
                 {
                     var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
-                    var clientName = order.ClientId.HasValue && clients.ContainsKey(order.ClientId.Value)
-                        ? clients[order.ClientId.Value]
-                        : "Sin cliente";
+                    if (vendor == null || vendor.VendorName.ToLower() == "sin_vendedor")
+                        continue;
+
+                    // Determinar estado de pago
+                    var paymentStatus = "Por Pagar";
+                    if (payments.ContainsKey(order.Id))
+                    {
+                        paymentStatus = payments[order.Id].PaymentStatus == "paid" ? "Pagado" : "Por Pagar";
+                    }
 
                     var commission = new VendorCommissionViewModel
                     {
                         OrderId = order.Id,
                         OrderNumber = order.Po ?? "N/A",
-                        VendorName = vendor?.VendorName ?? "Sin vendedor",
-                        CompanyName = clientName,
+                        VendorName = vendor.VendorName,
+                        CompanyName = "Cliente",
                         Description = order.Description ?? "",
-                        CommissionRate = order.CommissionRate ?? 0,
+                        CommissionRate = order.CommissionRate ?? 10,
                         Subtotal = order.SaleSubtotal ?? 0,
-                        OrderDate = order.PoDate,
-                        IsEditable = true
+                        PaymentStatus = paymentStatus
                     };
 
                     _commissions.Add(commission);
-
-                    // Guardar el valor original para detectar cambios
-                    _originalCommissionRates[commission.OrderId] = commission.CommissionRate;
                 }
 
-                // Actualizar vista filtrada
                 ApplyFilters();
                 UpdateSummary();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error cargando comisiones: {ex.Message}");
+                MessageBox.Show($"Error: {ex.Message}");
             }
         }
 
         private void ApplyFilters()
         {
-            // Verificar que las colecciones estén inicializadas
             if (_filteredCommissions == null)
                 _filteredCommissions = new ObservableCollection<VendorCommissionViewModel>();
 
@@ -199,6 +200,10 @@ namespace SistemaGestionProyectos2.Views
                     c.Description.ToLower().Contains(searchText));
             }
 
+            // ORDENAR: Primero "Por Pagar", luego "Pagado"
+            filtered = filtered.OrderBy(c => c.PaymentStatus == "Por Pagar" ? 0 : 1)
+                              .ThenByDescending(c => c.OrderDate);
+
             foreach (var commission in filtered)
             {
                 _filteredCommissions.Add(commission);
@@ -210,10 +215,19 @@ namespace SistemaGestionProyectos2.Views
         private void UpdateSummary()
         {
             OrderCountText.Text = _filteredCommissions.Count.ToString();
-            var totalCommissions = _filteredCommissions.Sum(c => c.Commission);
-            TotalCommissionsText.Text = totalCommissions.ToString("C2", new System.Globalization.CultureInfo("es-MX"));
-        }
 
+            // Total de comisiones PAGADAS (verde)
+            var paidCommissions = _filteredCommissions
+                .Where(c => c.PaymentStatus == "Pagado")
+                .Sum(c => c.Commission);
+            PaidCommissionsText.Text = paidCommissions.ToString("C2", new System.Globalization.CultureInfo("es-MX"));
+
+            // Total pendiente de pago (rojo)
+            var pendingPayments = _filteredCommissions
+                .Where(c => c.PaymentStatus == "Por Pagar")
+                .Sum(c => c.Commission);
+            PendingPaymentText.Text = pendingPayments.ToString("C2", new System.Globalization.CultureInfo("es-MX"));
+        }
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_hasUnsavedChanges)
@@ -238,26 +252,28 @@ namespace SistemaGestionProyectos2.Views
 
                 foreach (var commission in _commissions)
                 {
-                    // Verificar si realmente cambió el valor
                     if (_originalCommissionRates.ContainsKey(commission.OrderId) &&
                         Math.Abs(_originalCommissionRates[commission.OrderId] - commission.CommissionRate) > 0.01m)
                     {
-                        var orderToUpdate = await supabaseClient
+                        // Actualizar directamente usando SQL o un método más directo
+                        var response = await supabaseClient
                             .From<OrderDb>()
-                            .Select("*")
                             .Where(o => o.Id == commission.OrderId)
-                            .Single();
+                            .Set(o => o.CommissionRate, commission.CommissionRate)
+                            .Update();
 
-                        if (orderToUpdate != null)
+                        if (response?.Models?.Count > 0)
                         {
-                            orderToUpdate.CommissionRate = commission.CommissionRate;
-                            await supabaseClient
-                                .From<OrderDb>()
-                                .Update(orderToUpdate);
                             updatedCount++;
-
-                            // Actualizar el valor original después de guardar
                             _originalCommissionRates[commission.OrderId] = commission.CommissionRate;
+
+                            // También actualizar el registro en t_vendor_commission_payment si existe
+                            var paymentUpdate = await supabaseClient
+                                .From<VendorCommissionPaymentDb>()
+                                .Where(p => p.OrderId == commission.OrderId)
+                                .Set(p => p.CommissionRate, commission.CommissionRate)
+                                .Set(p => p.CommissionAmount, commission.Subtotal * (commission.CommissionRate / 100))
+                                .Update();
                         }
                     }
                 }
@@ -267,8 +283,6 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = updatedCount > 0
                     ? $"Se actualizaron {updatedCount} órdenes correctamente"
                     : "No había cambios que guardar";
-
-                
             }
             catch (Exception ex)
             {
@@ -303,6 +317,21 @@ namespace SistemaGestionProyectos2.Views
 
 
 
+        }
+        private void PaymentStatus_Click(object sender, MouseButtonEventArgs e)
+        {
+            var border = sender as Border;
+            if (border?.DataContext is VendorCommissionViewModel commission)
+            {
+                // Solo cambiar visualmente, sin guardar en BD
+                commission.PaymentStatus = commission.PaymentStatus == "Pagado" ? "Por Pagar" : "Pagado";
+
+                // Actualizar visual
+                CommissionsDataGrid.Items.Refresh();
+                UpdateSummary();
+
+                StatusText.Text = $"Estado cambiado (no guardado): {commission.OrderNumber}";
+            }
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -444,6 +473,62 @@ namespace SistemaGestionProyectos2.Views
 
             // Recargar datos por si se agregaron vendedores
             _ = LoadDataAsync();
+        }
+
+        // Método para cambiar el estado de pago al hacer clic en el botón
+        private async void TogglePaymentStatus_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var commission = button?.Tag as VendorCommissionViewModel;
+
+            if (commission == null) return;
+
+            try
+            {
+                var supabaseClient = _supabaseService.GetClient();
+
+                // Obtener el registro actual de pago de comisión
+                var paymentResponse = await supabaseClient
+                    .From<VendorCommissionPaymentDb>()
+                    .Where(p => p.OrderId == commission.OrderId)
+                    .Single();
+
+                if (paymentResponse != null)
+                {
+                    // Cambiar estado
+                    var newStatus = paymentResponse.PaymentStatus == "paid" ? "pending" : "paid";
+
+                    // Si se marca como pagado, agregar fecha de pago
+                    if (newStatus == "paid")
+                    {
+                        paymentResponse.PaymentDate = DateTime.Now;
+                    }
+                    else
+                    {
+                        paymentResponse.PaymentDate = null;
+                    }
+
+                    paymentResponse.PaymentStatus = newStatus;
+
+                    // Actualizar en BD
+                    await supabaseClient
+                        .From<VendorCommissionPaymentDb>()
+                        .Where(p => p.Id == paymentResponse.Id)
+                        .Set(p => p.PaymentStatus, newStatus)
+                        .Set(p => p.PaymentDate, paymentResponse.PaymentDate)
+                        .Update();
+
+                    // Actualizar UI
+                    commission.PaymentStatus = newStatus == "paid" ? "Pagado" : "Por Pagar";
+
+                    StatusText.Text = $"Estado de pago actualizado para orden {commission.OrderNumber}";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al cambiar estado de pago: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

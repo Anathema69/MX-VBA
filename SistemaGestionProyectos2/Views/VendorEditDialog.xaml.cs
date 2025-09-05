@@ -4,6 +4,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
@@ -13,7 +16,6 @@ namespace SistemaGestionProyectos2.Views
         private readonly SupabaseService _supabaseService;
         private readonly VendorViewModel _vendor;
         private bool _isEditMode;
-        private string _tempPassword = "";
         private bool _isPasswordVisible = false;
 
         public VendorEditDialog(VendorViewModel vendor)
@@ -32,13 +34,18 @@ namespace SistemaGestionProyectos2.Views
             {
                 Title = "Editar Vendedor";
                 HeaderText.Text = "EDITAR VENDEDOR";
+                HeaderSubtext.Text = "Modifique la información del vendedor";
+                HeaderIcon.Text = "✏️";
 
                 // Cargar datos del vendedor
                 VendorNameTextBox.Text = _vendor.VendorName;
                 EmailTextBox.Text = _vendor.Email;
-                PhoneTextBox.Text = _vendor.Phone;
+                PhoneTextBox.Text = _vendor.Phone ?? "";
                 UsernameTextBox.Text = _vendor.Username;
                 IsActiveCheckBox.IsChecked = _vendor.IsActive;
+
+                // Cargar tasa de comisión
+                CommissionRateTextBox.Text = (_vendor.CommissionRate ?? 10m).ToString("F2");
 
                 // Configurar campos de contraseña para edición
                 PasswordLabel.Text = "Nueva Contraseña (opcional)";
@@ -48,14 +55,14 @@ namespace SistemaGestionProyectos2.Views
                 // Mostrar información adicional
                 InfoSection.Visibility = Visibility.Visible;
                 VendorIdText.Text = $"ID Vendedor: {_vendor.Id}";
-                CreatedAtText.Text = $"Usuario ID: {_vendor.UserId ?? 0}";
+                CreatedAtText.Text = $"Usuario ID: {(_vendor.UserId ?? 0)}";
 
                 // Si no tiene usuario, permitir crear uno
                 if (!_vendor.UserId.HasValue || _vendor.UserId == 0)
                 {
                     PasswordLabel.Text = "Contraseña *";
-                    PasswordNote.Text = "Este vendedor no tiene usuario. Se creará uno nuevo.";
-                    PasswordNote.Foreground = System.Windows.Media.Brushes.Blue;
+                    PasswordNote.Text = "⚠️ Este vendedor no tiene usuario. Se creará uno nuevo.";
+                    PasswordNote.Foreground = new SolidColorBrush(Color.FromRgb(232, 65, 24));
                     ConfirmPasswordPanel.Visibility = Visibility.Visible;
                 }
             }
@@ -63,90 +70,171 @@ namespace SistemaGestionProyectos2.Views
             {
                 Title = "Nuevo Vendedor";
                 HeaderText.Text = "NUEVO VENDEDOR";
+                HeaderSubtext.Text = "Complete la información del vendedor";
+                HeaderIcon.Text = "➕";
+                IsActiveCheckBox.IsChecked = true;
+                InfoSection.Visibility = Visibility.Collapsed;
+                ConfirmPasswordPanel.Visibility = Visibility.Visible;
+
+                // Valor por defecto para comisión
+                CommissionRateTextBox.Text = "10.00";
             }
-        }
-
-        private bool ValidateForm()
-        {
-            ValidationText.Text = "";
-
-            // Validar nombre
-            if (string.IsNullOrWhiteSpace(VendorNameTextBox.Text))
-            {
-                ValidationText.Text = "El nombre es obligatorio";
-                return false;
-            }
-
-            // Validar email
-            if (string.IsNullOrWhiteSpace(EmailTextBox.Text))
-            {
-                ValidationText.Text = "El email es obligatorio";
-                return false;
-            }
-
-            if (!IsValidEmail(EmailTextBox.Text))
-            {
-                ValidationText.Text = "El email no es válido";
-                return false;
-            }
-
-            // Validar usuario
-            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
-            {
-                ValidationText.Text = "El nombre de usuario es obligatorio";
-                return false;
-            }
-
-            // Validar contraseña para nuevo vendedor o vendedor sin usuario
-            if (!_isEditMode || !_vendor.UserId.HasValue)
-            {
-                if (string.IsNullOrWhiteSpace(_tempPassword))
-                {
-                    ValidationText.Text = "La contraseña es obligatoria";
-                    return false;
-                }
-
-                if (_tempPassword.Length < 6)
-                {
-                    ValidationText.Text = "La contraseña debe tener al menos 6 caracteres";
-                    return false;
-                }
-
-                if (ConfirmPasswordPanel.Visibility == Visibility.Visible &&
-                    _tempPassword != ConfirmPasswordBox.Password)
-                {
-                    ValidationText.Text = "Las contraseñas no coinciden";
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private bool IsValidEmail(string email)
-        {
-            var regex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-            return regex.IsMatch(email);
         }
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!ValidateForm()) return;
+            // Validar campos obligatorios
+            if (!ValidateForm())
+                return;
 
             try
             {
                 SaveButton.IsEnabled = false;
-                SaveButton.Content = "GUARDANDO...";
+                SaveButton.Content = "Guardando...";
 
                 var supabaseClient = _supabaseService.GetClient();
 
+                // Obtener el valor de comisión
+                decimal commissionRate = 10;
+                if (decimal.TryParse(CommissionRateTextBox.Text, out decimal parsedRate))
+                {
+                    commissionRate = parsedRate;
+                }
+
                 if (_isEditMode)
                 {
-                    await UpdateVendor();
+                    // Actualizar vendedor existente
+                    var vendorToUpdate = await supabaseClient
+                        .From<VendorTableDb>()
+                        .Where(v => v.Id == _vendor.Id)
+                        .Single();
+
+                    if (vendorToUpdate != null)
+                    {
+                        vendorToUpdate.VendorName = VendorNameTextBox.Text.Trim();
+                        vendorToUpdate.Email = EmailTextBox.Text.Trim();
+                        vendorToUpdate.Phone = PhoneTextBox.Text.Trim();
+                        vendorToUpdate.IsActive = IsActiveCheckBox.IsChecked ?? true;
+                        vendorToUpdate.CommissionRate = commissionRate;
+
+                        await supabaseClient
+                            .From<VendorTableDb>()
+                            .Where(v => v.Id == _vendor.Id)
+                            .Set(v => v.VendorName, vendorToUpdate.VendorName)
+                            .Set(v => v.Email, vendorToUpdate.Email)
+                            .Set(v => v.Phone, vendorToUpdate.Phone)
+                            .Set(v => v.IsActive, vendorToUpdate.IsActive)
+                            .Set(v => v.CommissionRate, vendorToUpdate.CommissionRate)
+                            .Update();
+
+                        // Si hay usuario asociado, actualizarlo también
+                        if (_vendor.UserId.HasValue && _vendor.UserId > 0)
+                        {
+                            var userToUpdate = await supabaseClient
+                                .From<UserDb>()
+                                .Where(u => u.Id == _vendor.UserId.Value)
+                                .Single();
+
+                            if (userToUpdate != null)
+                            {
+                                userToUpdate.Username = UsernameTextBox.Text.Trim();
+                                userToUpdate.Email = EmailTextBox.Text.Trim();
+                                userToUpdate.FullName = VendorNameTextBox.Text.Trim();
+                                userToUpdate.IsActive = IsActiveCheckBox.IsChecked ?? true;
+
+                                // Si se proporcionó nueva contraseña
+                                if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
+                                {
+                                    userToUpdate.PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password);
+                                }
+
+                                await supabaseClient
+                                    .From<UserDb>()
+                                    .Where(u => u.Id == _vendor.UserId.Value)
+                                    .Update(userToUpdate);
+                            }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
+                        {
+                            // Crear nuevo usuario si no existe y se proporcionó contraseña
+                            var newUser = new UserDb
+                            {
+                                Username = UsernameTextBox.Text.Trim(),
+                                Email = EmailTextBox.Text.Trim(),
+                                PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password),
+                                FullName = VendorNameTextBox.Text.Trim(),
+                                Role = "salesperson",
+                                IsActive = IsActiveCheckBox.IsChecked ?? true
+                            };
+
+                            var createdUser = await supabaseClient
+                                .From<UserDb>()
+                                .Insert(newUser);
+
+                            if (createdUser?.Models?.Count > 0)
+                            {
+                                var userId = createdUser.Models.First().Id;
+                                await supabaseClient
+                                    .From<VendorTableDb>()
+                                    .Where(v => v.Id == _vendor.Id)
+                                    .Set(v => v.UserId, userId)
+                                    .Update();
+                            }
+                        }
+
+                        MessageBox.Show("Vendedor actualizado correctamente", "Éxito",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
                 else
                 {
-                    await CreateVendor();
+                    // Crear nuevo vendedor
+                    var newVendor = new VendorTableDb
+                    {
+                        VendorName = VendorNameTextBox.Text.Trim(),
+                        Email = EmailTextBox.Text.Trim(),
+                        Phone = PhoneTextBox.Text.Trim(),
+                        IsActive = IsActiveCheckBox.IsChecked ?? true,
+                        CommissionRate = commissionRate
+                    };
+
+                    // Primero crear el usuario si se proporcionó contraseña
+                    if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
+                    {
+                        var newUser = new UserDb
+                        {
+                            Username = UsernameTextBox.Text.Trim(),
+                            Email = EmailTextBox.Text.Trim(),
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password),
+                            FullName = VendorNameTextBox.Text.Trim(),
+                            Role = "salesperson",
+                            IsActive = IsActiveCheckBox.IsChecked ?? true
+                        };
+
+                        var createdUser = await supabaseClient
+                            .From<UserDb>()
+                            .Insert(newUser);
+
+                        if (createdUser?.Models?.Count > 0)
+                        {
+                            newVendor.UserId = createdUser.Models.First().Id;
+                        }
+                    }
+
+                    // Crear el vendedor
+                    var created = await supabaseClient
+                        .From<VendorTableDb>()
+                        .Insert(newVendor);
+
+                    if (created?.Models?.Count > 0)
+                    {
+                        MessageBox.Show("Vendedor creado correctamente", "Éxito",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        throw new Exception("No se pudo crear el vendedor");
+                    }
                 }
 
                 DialogResult = true;
@@ -156,221 +244,207 @@ namespace SistemaGestionProyectos2.Views
             {
                 MessageBox.Show($"Error al guardar: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
                 SaveButton.IsEnabled = true;
                 SaveButton.Content = "💾 GUARDAR";
             }
         }
 
-        private async Task CreateVendor()
+        private bool ValidateForm()
         {
-            var supabaseClient = _supabaseService.GetClient();
+            // Limpiar mensaje de validación
+            ValidationText.Text = "";
 
-            // Verificar si el username ya existe
-            try
+            // Validar nombre del vendedor
+            if (string.IsNullOrWhiteSpace(VendorNameTextBox.Text))
             {
-                var existingUser = await supabaseClient
-                    .From<UserDb>()
-                    .Where(u => u.Username == UsernameTextBox.Text.Trim())
-                    .Single();
+                ValidationText.Text = "El nombre del vendedor es obligatorio";
+                VendorNameTextBox.Focus();
+                return false;
+            }
 
-                if (existingUser != null)
+            // Validar email
+            if (!string.IsNullOrWhiteSpace(EmailTextBox.Text))
+            {
+                var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                if (!emailRegex.IsMatch(EmailTextBox.Text))
                 {
-                    ValidationText.Text = "El nombre de usuario ya existe";
-                    SaveButton.IsEnabled = true;
-                    SaveButton.Content = "💾 GUARDAR";
-                    return;
+                    ValidationText.Text = "El formato del email no es válido";
+                    EmailTextBox.Focus();
+                    return false;
                 }
             }
-            catch
+
+            // Validar nombre de usuario
+            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
             {
-                // No existe, continuar
+                ValidationText.Text = "El nombre de usuario es obligatorio";
+                UsernameTextBox.Focus();
+                return false;
             }
 
-            // Verificar si el email ya existe
-            try
+            // Validar comisión
+            if (!decimal.TryParse(CommissionRateTextBox.Text, out decimal rate) || rate < 0 || rate > 100)
             {
-                var existingEmail = await supabaseClient
-                    .From<UserDb>()
-                    .Where(u => u.Email == EmailTextBox.Text.Trim())
-                    .Single();
+                ValidationText.Text = "La comisión debe ser un número entre 0 y 100";
+                CommissionRateTextBox.Focus();
+                return false;
+            }
 
-                if (existingEmail != null)
+            // Validar contraseña para nuevo vendedor
+            if (!_isEditMode)
+            {
+                if (string.IsNullOrWhiteSpace(PasswordBox.Password))
                 {
-                    ValidationText.Text = "El email ya está registrado";
-                    SaveButton.IsEnabled = true;
-                    SaveButton.Content = "💾 GUARDAR";
-                    return;
+                    ValidationText.Text = "La contraseña es obligatoria para nuevos vendedores";
+                    PasswordBox.Focus();
+                    return false;
+                }
+
+                if (PasswordBox.Password != ConfirmPasswordBox.Password)
+                {
+                    ValidationText.Text = "Las contraseñas no coinciden";
+                    ConfirmPasswordBox.Focus();
+                    return false;
+                }
+
+                if (PasswordBox.Password.Length < 6)
+                {
+                    ValidationText.Text = "La contraseña debe tener al menos 6 caracteres";
+                    PasswordBox.Focus();
+                    return false;
                 }
             }
-            catch
+
+            // Validar contraseña para vendedor sin usuario
+            if (_isEditMode && (!_vendor.UserId.HasValue || _vendor.UserId == 0))
             {
-                // No existe, continuar
-            }
-
-            // Crear el usuario con password hasheado usando BCrypt
-            var newUser = new UserDb
-            {
-                Username = UsernameTextBox.Text.Trim(),
-                Email = EmailTextBox.Text.Trim(),
-                FullName = VendorNameTextBox.Text.Trim().ToUpper(),
-                Role = "salesperson",
-                IsActive = IsActiveCheckBox.IsChecked ?? true,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(_tempPassword)
-            };
-
-            var userResponse = await supabaseClient
-                .From<UserDb>()
-                .Insert(newUser);
-
-            if (userResponse?.Models?.Count > 0)
-            {
-                var createdUser = userResponse.Models.First();
-
-                // Crear el vendedor
-                var newVendor = new VendorTableDb
+                if (string.IsNullOrWhiteSpace(PasswordBox.Password))
                 {
-                    VendorName = VendorNameTextBox.Text.Trim().ToUpper(),
-                    Email = EmailTextBox.Text.Trim(),
-                    Phone = PhoneTextBox.Text?.Trim(),
-                    UserId = createdUser.Id,
-                    IsActive = IsActiveCheckBox.IsChecked ?? true
-                };
+                    ValidationText.Text = "Debe proporcionar una contraseña para crear el usuario";
+                    PasswordBox.Focus();
+                    return false;
+                }
 
-                var vendorResponse = await supabaseClient
-                    .From<VendorTableDb>()
-                    .Insert(newVendor);
-
-                
-            }
-        }
-
-        // Método UpdateVendor - parte donde actualiza password
-        private async Task UpdateVendor()
-        {
-            var supabaseClient = _supabaseService.GetClient();
-
-            // Actualizar vendedor
-            var vendorToUpdate = await supabaseClient
-                .From<VendorTableDb>()
-                .Where(v => v.Id == _vendor.Id)
-                .Single();
-
-            if (vendorToUpdate != null)
-            {
-                vendorToUpdate.VendorName = VendorNameTextBox.Text.Trim().ToUpper();
-                vendorToUpdate.Email = EmailTextBox.Text.Trim();
-                vendorToUpdate.Phone = PhoneTextBox.Text?.Trim();
-                vendorToUpdate.IsActive = IsActiveCheckBox.IsChecked ?? true;
-
-                await supabaseClient
-                    .From<VendorTableDb>()
-                    .Update(vendorToUpdate);
-            }
-
-            // Si tiene usuario y se cambió la contraseña
-            if (_vendor.UserId.HasValue && !string.IsNullOrWhiteSpace(_tempPassword))
-            {
-                var userToUpdate = await supabaseClient
-                    .From<UserDb>()
-                    .Where(u => u.Id == _vendor.UserId.Value)
-                    .Single();
-
-                if (userToUpdate != null)
+                if (PasswordBox.Password != ConfirmPasswordBox.Password)
                 {
-                    userToUpdate.Username = UsernameTextBox.Text.Trim();
-                    userToUpdate.Email = EmailTextBox.Text.Trim();
-                    userToUpdate.FullName = VendorNameTextBox.Text.Trim().ToUpper();
-                    userToUpdate.IsActive = IsActiveCheckBox.IsChecked ?? true;
-
-                    
-                    if (!string.IsNullOrWhiteSpace(_tempPassword))
-                    {
-                        userToUpdate.PasswordHash = BCrypt.Net.BCrypt.HashPassword(_tempPassword);
-                    }
-
-                    await supabaseClient
-                        .From<UserDb>()
-                        .Update(userToUpdate);
+                    ValidationText.Text = "Las contraseñas no coinciden";
+                    ConfirmPasswordBox.Focus();
+                    return false;
                 }
             }
+
+            return true;
         }
 
-        
-
-
-        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            _tempPassword = PasswordBox.Password;
-        }
-
-        
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
             Close();
         }
 
-        private void TogglePassword_Click(object sender, RoutedEventArgs e)
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            _isPasswordVisible = !_isPasswordVisible;
-
-            if (_isPasswordVisible)
+            // Si hay cambios sin guardar, preguntar
+            if (HasUnsavedChanges())
             {
-                // Mostrar contraseña
-                PasswordTextBox.Text = _tempPassword;
-                PasswordTextBox.Visibility = Visibility.Visible;
-                PasswordBox.Visibility = Visibility.Collapsed;
-                TogglePasswordButton.Content = "🙈";
+                var result = MessageBox.Show(
+                    "¿Está seguro de cerrar sin guardar los cambios?",
+                    "Confirmar",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
+            DialogResult = false;
+            Close();
+        }
+
+        private bool HasUnsavedChanges()
+        {
+            if (!_isEditMode)
+            {
+                // Para nuevo vendedor, verificar si se ha escrito algo
+                return !string.IsNullOrWhiteSpace(VendorNameTextBox.Text) ||
+                       !string.IsNullOrWhiteSpace(EmailTextBox.Text) ||
+                       !string.IsNullOrWhiteSpace(PhoneTextBox.Text) ||
+                       !string.IsNullOrWhiteSpace(UsernameTextBox.Text) ||
+                       !string.IsNullOrWhiteSpace(PasswordBox.Password);
+            }
+
+            // Para edición, comparar con valores originales
+            return VendorNameTextBox.Text != _vendor.VendorName ||
+                   EmailTextBox.Text != _vendor.Email ||
+                   (PhoneTextBox.Text ?? "") != (_vendor.Phone ?? "") ||
+                   UsernameTextBox.Text != _vendor.Username ||
+                   !string.IsNullOrWhiteSpace(PasswordBox.Password);
+        }
+
+        private void UsernameTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Validar que el username no esté vacío
+            if (string.IsNullOrWhiteSpace(UsernameTextBox.Text))
+            {
+                ValidationText.Text = "El nombre de usuario es obligatorio";
             }
             else
             {
-                // Ocultar contraseña
-                PasswordBox.Password = _tempPassword;
-                PasswordBox.Visibility = Visibility.Visible;
-                PasswordTextBox.Visibility = Visibility.Collapsed;
-                TogglePasswordButton.Content = "👁️";
+                ValidationText.Text = "";
+            }
+        }
+
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            // Sincronizar con el campo de texto si está visible
+            if (_isPasswordVisible)
+            {
+                PasswordTextBox.Text = PasswordBox.Password;
             }
         }
 
         private void PasswordTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            _tempPassword = PasswordTextBox.Text;
-        }
-
-        private async Task<bool> CheckUsernameExists(string username)
-        {
-            try
+            // Sincronizar con el PasswordBox si está visible
+            if (_isPasswordVisible)
             {
-                var supabaseClient = _supabaseService.GetClient();
-
-                var existingUser = await supabaseClient
-                    .From<UserDb>()
-                    .Where(u => u.Username == username.Trim())
-                    .Single();
-
-                return existingUser != null;
-            }
-            catch
-            {
-                return false;
+                PasswordBox.Password = PasswordTextBox.Text;
             }
         }
 
-        // Agregar validación en tiempo real (opcional)
-        private async void UsernameTextBox_LostFocus(object sender, RoutedEventArgs e)
+        private void TogglePassword_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(UsernameTextBox.Text))
+            if (_isPasswordVisible)
             {
-                if (await CheckUsernameExists(UsernameTextBox.Text))
-                {
-                    ValidationText.Text = "Este nombre de usuario ya existe";
-                    ValidationText.Foreground = System.Windows.Media.Brushes.Orange;
-                }
-                else
-                {
-                    ValidationText.Text = "";
-                }
+                // Ocultar contraseña
+                PasswordBox.Password = PasswordTextBox.Text;
+                PasswordTextBox.Visibility = Visibility.Collapsed;
+                PasswordBox.Visibility = Visibility.Visible;
+                TogglePasswordButton.Content = "👁️";
+                _isPasswordVisible = false;
             }
+            else
+            {
+                // Mostrar contraseña
+                PasswordTextBox.Text = PasswordBox.Password;
+                PasswordTextBox.Visibility = Visibility.Visible;
+                PasswordBox.Visibility = Visibility.Collapsed;
+                TogglePasswordButton.Content = "👁‍🗨";
+                _isPasswordVisible = true;
+            }
+        }
+
+        private void NumericTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+
+            // Permitir solo números y un punto decimal
+            var regex = new Regex(@"^[0-9]*\.?[0-9]*$");
+            e.Handled = !regex.IsMatch(fullText);
         }
     }
 }

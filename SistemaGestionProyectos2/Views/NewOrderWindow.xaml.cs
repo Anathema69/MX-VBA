@@ -353,6 +353,8 @@ namespace SistemaGestionProyectos2.Views
                     }
                 }
 
+                
+
                 // IMPORTANTE: Usar _subtotalValue aquí también
                 System.Diagnostics.Debug.WriteLine($"💰 Creando orden con subtotal: {_subtotalValue:C}");
 
@@ -366,6 +368,8 @@ namespace SistemaGestionProyectos2.Views
                     ContactId = contactId,
                     Description = DescriptionTextBox.Text.Trim(),
                     SalesmanId = (int?)VendorComboBox.SelectedValue,
+
+
                     EstDelivery = DeliveryDatePicker.SelectedDate,
                     SaleSubtotal = _subtotalValue,  // Usar _subtotalValue
                     SaleTotal = _subtotalValue * 1.16m,  // Calcular con IVA
@@ -373,7 +377,10 @@ namespace SistemaGestionProyectos2.Views
                     OrderStatus = 0,
                     ProgressPercentage = 0,
                     OrderPercentage = 0,
-                    CommissionRate = 0 // Valor por defecto
+
+                    // CommissionRate será 10 (el % ya lo calcula otra función) por defecto si SalesmanId >0
+                    CommissionRate = (VendorComboBox.SelectedItem != null) ? 10 : 0
+
                 };
 
                 // Log para depuración
@@ -404,17 +411,7 @@ namespace SistemaGestionProyectos2.Views
                 {
                     System.Diagnostics.Debug.WriteLine($"✅ Orden creada con ID: {createdOrder.Id}");
 
-                    MessageBox.Show(
-                        $"✅ Orden {newOrder.Po} guardada exitosamente.\n\n" +
-                        $"Cliente: {(ClientComboBox.SelectedItem as ClientDb)?.Name}\n" +
-                        $"Vendedor: {(VendorComboBox.SelectedItem as VendorDb)?.VendorName}\n" +
-                        $"Subtotal: {_subtotalValue:C}\n" +
-                        $"Total: {(_subtotalValue * 1.16m):C}\n" +
-                        $"Creada por: {_currentUser?.FullName ?? "Sistema"}",
-                        "Orden Guardada",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
+                    
                     this.DialogResult = true;
                     this.Close();
                 }

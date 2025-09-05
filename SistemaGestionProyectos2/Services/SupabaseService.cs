@@ -1312,6 +1312,8 @@ namespace SistemaGestionProyectos2.Services
                 return 0;
             }
         }
+
+
     }
 
     // ===============================================
@@ -1531,6 +1533,9 @@ namespace SistemaGestionProyectos2.Services
         [Column("f_user_id")]
         public int? UserId { get; set; }
 
+        [Column("f_commission_rate")]
+        public decimal? CommissionRate { get; set; }  
+
         [Column("f_phone")]
         public string Phone { get; set; }
 
@@ -1651,6 +1656,40 @@ namespace SistemaGestionProyectos2.Services
         [Column("changed_at")]
         public DateTime? ChangedAt { get; set; }
     }
+
+    
+
+    [Table("t_vendor_commission_payment")]
+    public class VendorCommissionPaymentDb : BaseModel
+    {
+        [PrimaryKey("id")]
+        public int Id { get; set; }
+
+        [Column("f_order")]
+        public int OrderId { get; set; }
+
+        [Column("f_vendor")]
+        public int VendorId { get; set; }
+
+        [Column("commission_rate")]
+        public decimal? CommissionRate { get; set; }
+
+        [Column("commission_amount")]
+        public decimal CommissionAmount { get; set; }
+
+        [Column("payment_status")]
+        public string PaymentStatus { get; set; } // "pending" o "paid"
+
+        [Column("payment_date")]
+        public DateTime? PaymentDate { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+    }
+
 
 }
 
