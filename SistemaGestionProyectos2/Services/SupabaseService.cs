@@ -1657,7 +1657,7 @@ namespace SistemaGestionProyectos2.Services
         public DateTime? ChangedAt { get; set; }
     }
 
-    
+
 
     [Table("t_vendor_commission_payment")]
     public class VendorCommissionPaymentDb : BaseModel
@@ -1671,11 +1671,11 @@ namespace SistemaGestionProyectos2.Services
         [Column("f_vendor")]
         public int VendorId { get; set; }
 
-        [Column("commission_rate")]
-        public decimal? CommissionRate { get; set; }
-
         [Column("commission_amount")]
         public decimal CommissionAmount { get; set; }
+
+        [Column("commission_rate")]
+        public decimal CommissionRate { get; set; }
 
         [Column("payment_status")]
         public string PaymentStatus { get; set; } // "pending" o "paid"
@@ -1683,11 +1683,23 @@ namespace SistemaGestionProyectos2.Services
         [Column("payment_date")]
         public DateTime? PaymentDate { get; set; }
 
+        [Column("payment_reference")]
+        public string PaymentReference { get; set; }
+
+        [Column("notes")]
+        public string Notes { get; set; }
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; }
 
         [Column("updated_at")]
-        public DateTime? UpdatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("updated_by")]
+        public int? UpdatedBy { get; set; }
     }
 
 
