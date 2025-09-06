@@ -314,7 +314,7 @@ namespace SistemaGestionProyectos2.Views
                         newExpense.ExpenseCategory = categoryItem.Content.ToString();
                     }
 
-                    var createdExpense = await _supabaseService.CreateExpense(newExpense, supplier.CreditDays);
+                    var createdExpense = await _supabaseService.CreateExpense(newExpense);
 
                     if (createdExpense != null)
                     {

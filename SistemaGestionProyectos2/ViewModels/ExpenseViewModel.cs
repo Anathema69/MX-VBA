@@ -17,33 +17,51 @@ namespace SistemaGestionProyectos2.ViewModels
         private DateTime? _paidDate;
         private string _payMethod;
         private int? _orderId;
-        private string _orderNumber;
         private string _expenseCategory;
-        private bool _isSelected;
+        private bool _isNew;
         private bool _isEditing;
+        private bool _hasChanges;
 
         public int ExpenseId
         {
             get => _expenseId;
-            set { _expenseId = value; OnPropertyChanged(); }
+            set
+            {
+                _expenseId = value;
+                OnPropertyChanged();
+            }
         }
 
         public int SupplierId
         {
             get => _supplierId;
-            set { _supplierId = value; OnPropertyChanged(); }
+            set
+            {
+                _supplierId = value;
+                _hasChanges = true;
+                OnPropertyChanged();
+            }
         }
 
         public string SupplierName
         {
             get => _supplierName;
-            set { _supplierName = value; OnPropertyChanged(); }
+            set
+            {
+                _supplierName = value;
+                OnPropertyChanged();
+            }
         }
 
         public string Description
         {
             get => _description;
-            set { _description = value; OnPropertyChanged(); }
+            set
+            {
+                _description = value;
+                _hasChanges = true;
+                OnPropertyChanged();
+            }
         }
 
         public DateTime ExpenseDate
@@ -52,8 +70,10 @@ namespace SistemaGestionProyectos2.ViewModels
             set
             {
                 _expenseDate = value;
+                _hasChanges = true;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ExpenseDateDisplay));
+                OnPropertyChanged(nameof(IsOverdue));
             }
         }
 
@@ -63,6 +83,7 @@ namespace SistemaGestionProyectos2.ViewModels
             set
             {
                 _totalExpense = value;
+                _hasChanges = true;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(TotalExpenseDisplay));
             }
@@ -77,7 +98,6 @@ namespace SistemaGestionProyectos2.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ScheduledDateDisplay));
                 OnPropertyChanged(nameof(IsOverdue));
-                OnPropertyChanged(nameof(DaysUntilDue));
             }
         }
 
@@ -89,9 +109,6 @@ namespace SistemaGestionProyectos2.ViewModels
                 _status = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(IsPaid));
-                OnPropertyChanged(nameof(IsPending));
-                OnPropertyChanged(nameof(StatusColor));
-                OnPropertyChanged(nameof(IsOverdue));
             }
         }
 
@@ -109,79 +126,139 @@ namespace SistemaGestionProyectos2.ViewModels
         public string PayMethod
         {
             get => _payMethod;
-            set { _payMethod = value; OnPropertyChanged(); }
+            set
+            {
+                _payMethod = value;
+                OnPropertyChanged();
+            }
         }
 
         public int? OrderId
         {
             get => _orderId;
-            set { _orderId = value; OnPropertyChanged(); }
-        }
-
-        public string OrderNumber
-        {
-            get => _orderNumber;
-            set { _orderNumber = value; OnPropertyChanged(); }
+            set
+            {
+                _orderId = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(OrderNumber));
+            }
         }
 
         public string ExpenseCategory
         {
             get => _expenseCategory;
-            set { _expenseCategory = value; OnPropertyChanged(); }
+            set
+            {
+                _expenseCategory = value;
+                _hasChanges = true;
+                OnPropertyChanged();
+            }
         }
 
-        public bool IsSelected
+        public bool IsNew
         {
-            get => _isSelected;
-            set { _isSelected = value; OnPropertyChanged(); }
+            get => _isNew;
+            set
+            {
+                _isNew = value;
+                OnPropertyChanged();
+            }
         }
 
         public bool IsEditing
         {
             get => _isEditing;
-            set { _isEditing = value; OnPropertyChanged(); }
-        }
-
-        // Propiedades calculadas
-        public bool IsPaid => Status == "PAGADO";
-        public bool IsPending => Status == "PENDIENTE";
-
-        public bool IsOverdue => !IsPaid && ScheduledDate.HasValue && ScheduledDate.Value < DateTime.Now.Date;
-
-        public int DaysUntilDue
-        {
-            get
+            set
             {
-                if (IsPaid || !ScheduledDate.HasValue)
-                    return 0;
-
-                var days = (ScheduledDate.Value.Date - DateTime.Now.Date).Days;
-                return days;
+                _isEditing = value;
+                OnPropertyChanged();
             }
         }
 
-        public string StatusColor
+        public bool HasChanges
         {
-            get
+            get => _hasChanges;
+            set
             {
-                if (IsPaid) return "#4CAF50"; // Verde
-                if (IsOverdue) return "#F44336"; // Rojo
-                if (DaysUntilDue <= 3) return "#FF9800"; // Naranja (próximo a vencer)
-                return "#2196F3"; // Azul (pendiente normal)
+                _hasChanges = value;
+                OnPropertyChanged();
             }
         }
 
-        // Propiedades de formato para mostrar
+        // Propiedades calculadas para la visualización
         public string ExpenseDateDisplay => ExpenseDate.ToString("dd/MM/yyyy");
+
         public string ScheduledDateDisplay => ScheduledDate?.ToString("dd/MM/yyyy") ?? "-";
+
         public string PaidDateDisplay => PaidDate?.ToString("dd/MM/yyyy") ?? "-";
+
         public string TotalExpenseDisplay => $"${TotalExpense:N2}";
 
+        public string OrderNumber => OrderId.HasValue ? $"ORD-{OrderId.Value:D5}" : "-";
+
+        public bool IsPaid => Status == "PAGADO";
+
+        public bool IsPending => Status == "PENDIENTE";
+
+        public bool IsOverdue
+        {
+            get
+            {
+                if (Status == "PAGADO") return false;
+                if (ScheduledDate.HasValue && ScheduledDate.Value < DateTime.Now.Date)
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // Constructor
+        public ExpenseViewModel()
+        {
+            _expenseDate = DateTime.Now;
+            _status = "PENDIENTE";
+            _isNew = false;
+            _isEditing = false;
+            _hasChanges = false;
+        }
+
+        // Implementación de INotifyPropertyChanged
         public event PropertyChangedEventHandler PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        // Método para resetear los cambios
+        public void ResetChanges()
+        {
+            _hasChanges = false;
+            OnPropertyChanged(nameof(HasChanges));
+        }
+
+        // Método para clonar el objeto (útil para edición)
+        public ExpenseViewModel Clone()
+        {
+            return new ExpenseViewModel
+            {
+                ExpenseId = this.ExpenseId,
+                SupplierId = this.SupplierId,
+                SupplierName = this.SupplierName,
+                Description = this.Description,
+                ExpenseDate = this.ExpenseDate,
+                TotalExpense = this.TotalExpense,
+                ScheduledDate = this.ScheduledDate,
+                Status = this.Status,
+                PaidDate = this.PaidDate,
+                PayMethod = this.PayMethod,
+                OrderId = this.OrderId,
+                ExpenseCategory = this.ExpenseCategory,
+                IsNew = this.IsNew,
+                IsEditing = this.IsEditing,
+                HasChanges = false
+            };
         }
     }
 }

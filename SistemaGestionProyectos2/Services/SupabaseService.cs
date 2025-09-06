@@ -1477,18 +1477,16 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
-        public async Task<ExpenseDb> CreateExpense(ExpenseDb expense, int creditDays)
+        public async Task<ExpenseDb> CreateExpense(ExpenseDb expense)
         {
             try
             {
-                // Calcular fecha programada
-                expense.ScheduledDate = expense.ExpenseDate.AddDays(creditDays);
+                
 
                 // Establecer valores por defecto
                 expense.Status = "PENDIENTE";
                 expense.CreatedAt = DateTime.Now;
-                expense.UpdatedAt = DateTime.Now;
-                expense.CreatedBy = GetCurrentUserId(); // Implementar según tu sistema de usuarios
+                expense.UpdatedAt = DateTime.Now;                
 
                 var response = await _supabaseClient
                     .From<ExpenseDb>()
@@ -1500,6 +1498,27 @@ namespace SistemaGestionProyectos2.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error creando gasto: {ex.Message}");
                 throw;
+            }
+        }
+
+        // Obtener órdenes recientes para el combox de las ordenes
+        public async Task<List<OrderDb>> GetRecentOrders(int limit = 10)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Order("f_order", Postgrest.Constants.Ordering.Descending)
+                    .Limit(limit)
+                    .Get();
+
+                return response?.Models ?? new List<OrderDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo órdenes recientes: {ex.Message}");
+                return new List<OrderDb>();
             }
         }
 

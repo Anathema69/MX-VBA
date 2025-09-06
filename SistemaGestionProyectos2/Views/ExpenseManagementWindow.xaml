@@ -130,6 +130,23 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Estilo para fila nueva en edición -->
+        <Style x:Key="NewRowStyle" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsNew}" Value="True">
+                    <Setter Property="Background" Value="#E8F5E9"/>
+                    <Setter Property="BorderBrush" Value="#4CAF50"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E3F2FD"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#BBDEFB"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -434,7 +451,7 @@
             </Grid>
         </Border>
 
-        <!-- DataGrid principal -->
+        <!-- DataGrid principal con edición inline -->
         <Border Grid.Row="3" Background="White" Margin="20,0,20,20">
             <DataGrid Name="ExpensesDataGrid"
                     AutoGenerateColumns="False"
@@ -448,6 +465,7 @@
                     RowHeight="45"
                     AlternatingRowBackground="#FAFAFA"
                     SelectionMode="Single"
+                    RowStyle="{StaticResource NewRowStyle}"
                     SelectionChanged="ExpensesDataGrid_SelectionChanged">
 
                 <DataGrid.Resources>
@@ -461,41 +479,50 @@
                         <Setter Property="BorderThickness" Value="0,0,1,1"/>
                     </Style>
 
-                    <Style TargetType="DataGridRow">
+                    <Style TargetType="DataGridCell">
                         <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E3F2FD"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#BBDEFB"/>
-                            </Trigger>
+                            <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </DataGrid.Resources>
 
                 <DataGrid.Columns>
-                    <!-- Proveedor -->
-                    <DataGridTextColumn Header="PROVEEDOR" 
-                                      Binding="{Binding SupplierName}"
-                                      Width="180"
-                                      IsReadOnly="True">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                <Setter Property="Padding" Value="5,0"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                    <!-- Proveedor - ComboBox para filas nuevas, solo lectura para existentes -->
+                    <DataGridTemplateColumn Header="PROVEEDOR" Width="200">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SupplierName}"
+                                         VerticalAlignment="Center"
+                                         Padding="5,0"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox Name="SupplierCombo"
+                                        SelectedValue="{Binding SupplierId, UpdateSourceTrigger=PropertyChanged}"
+                                        SelectedValuePath="Id"
+                                        DisplayMemberPath="SupplierName"
+                                        Loaded="SupplierCombo_Loaded"
+                                        SelectionChanged="SupplierCombo_SelectionChanged"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
 
                     <!-- Descripción - EDITABLE -->
                     <DataGridTextColumn Header="DESCRIPCIÓN" 
                                       Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                      Width="*"
-                                      IsReadOnly="False">
+                                      Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                 <Setter Property="Padding" Value="5,0"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                        <Setter Property="Background" Value="#E8F5E9"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                         <DataGridTextColumn.EditingElementStyle>
@@ -506,21 +533,37 @@
                         </DataGridTextColumn.EditingElementStyle>
                     </DataGridTextColumn>
 
-                    <!-- Orden de Compra -->
-                    <DataGridTextColumn Header="ORDEN" 
-                                      Binding="{Binding OrderNumber}"
-                                      Width="100"
-                                      IsReadOnly="True">
+                    <!-- Categoría - EDITABLE para filas nuevas -->
+                    <DataGridTextColumn Header="CATEGORÍA" 
+                                      Binding="{Binding ExpenseCategory, UpdateSourceTrigger=PropertyChanged}"
+                                      Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="VerticalAlignment" Value="Center"/>
-                                <Setter Property="HorizontalAlignment" Value="Center"/>
                                 <Setter Property="Padding" Value="5,0"/>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <!-- Fecha Compra -->
+                    <!-- Orden - ComboBox para filas nuevas -->
+                    <DataGridTemplateColumn Header="ORDEN" Width="150">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding OrderNumber}"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Padding="5,0"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox SelectedValue="{Binding OrderId, UpdateSourceTrigger=PropertyChanged}"
+                    Loaded="OrderCombo_Loaded"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
+
+                    <!-- Fecha Compra - EDITABLE -->
                     <DataGridTemplateColumn Header="F. COMPRA" Width="100">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -545,7 +588,17 @@
                                          FontWeight="SemiBold"
                                          HorizontalAlignment="Right"
                                          VerticalAlignment="Center"
-                                         Margin="0,0,10,0"/>
+                                         Margin="0,0,10,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                    <Setter Property="Foreground" Value="#4CAF50"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
@@ -560,8 +613,8 @@
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Fecha Programada -->
-                    <DataGridTemplateColumn Header="F. PROG." Width="100">
+                    <!-- Fecha Programada - Solo lectura -->
+                    <DataGridTemplateColumn Header="F. PROG." Width="100" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ScheduledDateDisplay}"
@@ -582,8 +635,8 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Estado -->
-                    <DataGridTemplateColumn Header="ESTADO" Width="100">
+                    <!-- Estado - Solo lectura -->
+                    <DataGridTemplateColumn Header="ESTADO" Width="100" IsReadOnly="True">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border CornerRadius="12"
@@ -623,7 +676,7 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <!-- Fecha Pago -->
+                    <!-- Fecha Pago - Solo lectura -->
                     <DataGridTextColumn Header="F. PAGO" 
                                       Binding="{Binding PaidDateDisplay}"
                                       Width="100"
@@ -636,7 +689,7 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <!-- Método -->
+                    <!-- Método - Solo lectura -->
                     <DataGridTextColumn Header="MÉTODO" 
                                       Binding="{Binding PayMethod}"
                                       Width="120"
@@ -654,18 +707,63 @@
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <!-- Botón Pagar (solo si está pendiente) -->
-                                    <Button Content="💵"
+                                    <!-- Botón Guardar (solo para filas nuevas) -->
+                                    <Button Content="💾"
                                            Tag="{Binding}"
-                                           Click="PayButton_Click"
+                                           Click="SaveNewButton_Click"
                                            Width="35"
                                            Height="30"
                                            Margin="2,0"
-                                           ToolTip="Registrar Pago">
+                                           ToolTip="Guardar nuevo gasto">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource SuccessButton}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                    <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+
+                                    <!-- Botón Pagar (solo si está pendiente y no es nuevo) -->
+                                    <Button Content="💵"
+                                        Tag="{Binding}"
+                                        Click="PayButton_Click"
+                                        ToolTip="Registrar Pago">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SuccessButton}">
+                                                <Setter Property="Width" Value="35"/>
+                                                <Setter Property="Height" Value="30"/>
+                                                <Setter Property="Margin" Value="2,0"/>
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsPaid}" Value="False"/>
+                                                            <Condition Binding="{Binding IsNew}" Value="False"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+
+                                    <!-- Botón Editar (solo para filas guardadas) -->
+                                    <Button Content="✏️"
+                                        Tag="{Binding}"
+                                        Click="EditButton_Click"
+                                        ToolTip="Editar completo">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                                <Setter Property="Width" Value="35"/>
+                                                <Setter Property="Height" Value="30"/>
+                                                <Setter Property="Margin" Value="2,0"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsNew}" Value="True">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -673,25 +771,31 @@
                                         </Button.Style>
                                     </Button>
 
-                                    <!-- Botón Editar -->
-                                    <Button Content="✏️"
-                                           Tag="{Binding}"
-                                           Click="EditButton_Click"
-                                           Style="{StaticResource SecondaryButton}"
-                                           Width="35"
-                                           Height="30"
-                                           Margin="2,0"
-                                           ToolTip="Editar completo"/>
-
-                                    <!-- Botón Eliminar -->
+                                    <!-- Botón Eliminar/Cancelar -->
                                     <Button Content="🗑️"
                                            Tag="{Binding}"
                                            Click="DeleteButton_Click"
                                            Style="{StaticResource DangerButton}"
                                            Width="35"
                                            Height="30"
-                                           Margin="2,0"
-                                           ToolTip="Eliminar"/>
+                                           Margin="2,0">
+                                        <Button.ToolTip>
+                                            <ToolTip>
+                                                <ToolTip.Style>
+                                                    <Style TargetType="ToolTip">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                                <Setter Property="Content" Value="Cancelar"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsNew}" Value="False">
+                                                                <Setter Property="Content" Value="Eliminar"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ToolTip.Style>
+                                            </ToolTip>
+                                        </Button.ToolTip>
+                                    </Button>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>

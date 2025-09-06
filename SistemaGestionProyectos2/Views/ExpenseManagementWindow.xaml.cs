@@ -27,6 +27,8 @@ namespace SistemaGestionProyectos2.Views
         private ExpenseViewModel _selectedExpense;
         private bool _isLoading = false;
         private bool _hasUnsavedChanges = false;
+        private bool _isCreatingNewExpense = false;
+        private ExpenseViewModel _newExpenseRow = null;
 
         public ExpenseManagementWindow(UserSession user)
         {
@@ -48,6 +50,12 @@ namespace SistemaGestionProyectos2.Views
             // Configurar fechas por defecto (último mes)
             FromDatePicker.SelectedDate = DateTime.Now.AddMonths(-1);
             ToDatePicker.SelectedDate = DateTime.Now;
+
+            // Configurar eventos del DataGrid para edición
+            ExpensesDataGrid.PreviewKeyDown += DataGrid_PreviewKeyDown;
+            ExpensesDataGrid.CellEditEnding += DataGrid_CellEditEnding;
+            ExpensesDataGrid.CurrentCellChanged += DataGrid_CurrentCellChanged;
+            ExpensesDataGrid.BeginningEdit += DataGrid_BeginningEdit;
         }
 
         private async Task LoadDataAsync()
@@ -151,7 +159,8 @@ namespace SistemaGestionProyectos2.Views
                         PaidDate = expense.PaidDate,
                         PayMethod = expense.PayMethod,
                         OrderId = expense.OrderId,
-                        ExpenseCategory = expense.ExpenseCategory
+                        ExpenseCategory = expense.ExpenseCategory,
+                        IsNew = false
                     };
 
                     _expenses.Add(expenseVm);
@@ -171,6 +180,12 @@ namespace SistemaGestionProyectos2.Views
             _filteredExpenses.Clear();
 
             var filtered = _expenses.AsEnumerable();
+
+            // No filtrar la fila nueva que se está creando
+            if (_newExpenseRow != null && _isCreatingNewExpense)
+            {
+                _filteredExpenses.Add(_newExpenseRow);
+            }
 
             // Filtro por búsqueda de texto
             var searchText = SearchBox?.Text?.Trim().ToLower();
@@ -206,8 +221,9 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
 
-            // Ordenar por fecha descendente
-            filtered = filtered.OrderByDescending(e => e.ExpenseDate)
+            // Ordenar por fecha descendente (excepto la nueva fila)
+            filtered = filtered.Where(e => !e.IsNew)
+                              .OrderByDescending(e => e.ExpenseDate)
                               .ThenByDescending(e => e.ExpenseId);
 
             foreach (var expense in filtered)
@@ -224,24 +240,27 @@ namespace SistemaGestionProyectos2.Views
             {
                 var culture = new CultureInfo("es-MX");
 
-                // Total General (todos los gastos filtrados)
-                decimal totalGeneral = _filteredExpenses.Sum(e => e.TotalExpense);
+                // Excluir filas nuevas no guardadas del cálculo
+                var validExpenses = _filteredExpenses.Where(e => !e.IsNew);
+
+                // Total General
+                decimal totalGeneral = validExpenses.Sum(e => e.TotalExpense);
                 TotalGeneralText.Text = totalGeneral.ToString("C2", culture);
 
                 // Total Pendiente
-                decimal totalPendiente = _filteredExpenses
+                decimal totalPendiente = validExpenses
                     .Where(e => e.Status == "PENDIENTE")
                     .Sum(e => e.TotalExpense);
                 TotalPendienteText.Text = totalPendiente.ToString("C2", culture);
 
                 // Total Vencido
-                decimal totalVencido = _filteredExpenses
+                decimal totalVencido = validExpenses
                     .Where(e => e.IsOverdue)
                     .Sum(e => e.TotalExpense);
                 TotalVencidoText.Text = totalVencido.ToString("C2", culture);
 
                 // Total Pagado
-                decimal totalPagado = _filteredExpenses
+                decimal totalPagado = validExpenses
                     .Where(e => e.Status == "PAGADO")
                     .Sum(e => e.TotalExpense);
                 TotalPagadoText.Text = totalPagado.ToString("C2", culture);
@@ -252,17 +271,393 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // === EVENT HANDLERS ===
+        // === NUEVA FUNCIONALIDAD: CREAR GASTO INLINE ===
+
+        private void NewExpenseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isCreatingNewExpense)
+            {
+                MessageBox.Show(
+                    "Complete o cancele el gasto actual antes de crear uno nuevo.",
+                    "Aviso",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                
+                // Enfocar en la primera celda editable de la nueva fila
+                if (_newExpenseRow != null)
+                {
+                    ExpensesDataGrid.SelectedItem = _newExpenseRow;
+                    ExpensesDataGrid.ScrollIntoView(_newExpenseRow);
+                    ExpensesDataGrid.Focus();
+                }
+                return;
+            }
+
+            try
+            {
+                _isCreatingNewExpense = true;
+                NewExpenseButton.IsEnabled = false;
+
+                // Crear nueva fila con valores por defecto
+                _newExpenseRow = new ExpenseViewModel
+                {
+                    ExpenseId = 0, // ID temporal
+                    SupplierId = 0,
+                    SupplierName = "",
+                    Description = "",
+                    ExpenseDate = DateTime.Now,
+                    TotalExpense = 0,
+                    Status = "PENDIENTE",
+                    IsNew = true,
+                    IsEditing = true
+                };
+
+                // Insertar al inicio de la colección
+                _filteredExpenses.Insert(0, _newExpenseRow);
+
+                // Seleccionar y enfocar la nueva fila
+                ExpensesDataGrid.SelectedItem = _newExpenseRow;
+                ExpensesDataGrid.ScrollIntoView(_newExpenseRow);
+                
+                // Forzar el modo de edición en la primera columna editable
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ExpensesDataGrid.CurrentCell = new DataGridCellInfo(
+                        _newExpenseRow, 
+                        ExpensesDataGrid.Columns[0]); // Columna de Proveedor
+                    ExpensesDataGrid.BeginEdit();
+                }), System.Windows.Threading.DispatcherPriority.Background);
+
+                StatusText.Text = "Creando nuevo gasto...";
+                StatusText.Foreground = new SolidColorBrush(Colors.Blue);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al crear nuevo gasto: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                _isCreatingNewExpense = false;
+                NewExpenseButton.IsEnabled = true;
+            }
+        }
+
+        private async Task<bool> SaveNewExpense()
+        {
+            if (_newExpenseRow == null) return false;
+
+            // Validar campos obligatorios
+            if (_newExpenseRow.SupplierId <= 0)
+            {
+                MessageBox.Show("Debe seleccionar un proveedor", "Validación", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(_newExpenseRow.Description))
+            {
+                MessageBox.Show("La descripción es obligatoria", "Validación", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (_newExpenseRow.TotalExpense <= 0)
+            {
+                MessageBox.Show("El monto debe ser mayor a cero", "Validación", 
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            try
+            {
+                StatusText.Text = "Guardando nuevo gasto...";
+                StatusText.Foreground = new SolidColorBrush(Colors.Orange);
+
+                // Crear el objeto para guardar en la base de datos
+                var newExpenseDb = new ExpenseDb
+                {
+                    SupplierId = _newExpenseRow.SupplierId,
+                    Description = _newExpenseRow.Description,
+                    ExpenseDate = _newExpenseRow.ExpenseDate,
+                    TotalExpense = _newExpenseRow.TotalExpense,
+                    Status = "PENDIENTE",
+                    ExpenseCategory = _newExpenseRow.ExpenseCategory,
+                    OrderId = _newExpenseRow.OrderId
+                };
+
+                // Guardar en la base de datos
+                var createdExpense = await _supabaseService.CreateExpense(newExpenseDb);
+                
+
+
+                if (createdExpense != null)
+                {
+                    // Actualizar el ViewModel con los datos guardados
+                    _newExpenseRow.ExpenseId = createdExpense.Id;
+                    _newExpenseRow.ScheduledDate = createdExpense.ScheduledDate;
+                    _newExpenseRow.IsNew = false;
+                    _newExpenseRow.IsEditing = false;
+
+                    // Agregar a la colección principal
+                    _expenses.Add(_newExpenseRow);
+
+                    // Limpiar la referencia
+                    _newExpenseRow = null;
+                    _isCreatingNewExpense = false;
+                    NewExpenseButton.IsEnabled = true;
+
+                    StatusText.Text = "Gasto guardado exitosamente";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+
+                    // Actualizar estadísticas
+                    UpdateStatistics();
+
+                    return true;
+                }
+                else
+                {
+                    throw new Exception("No se pudo crear el gasto");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al guardar el gasto: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                StatusText.Text = "Error al guardar";
+                StatusText.Foreground = new SolidColorBrush(Colors.Red);
+
+                return false;
+            }
+        }
+
+        private void CancelNewExpense()
+        {
+            if (_newExpenseRow != null && _isCreatingNewExpense)
+            {
+                _filteredExpenses.Remove(_newExpenseRow);
+                _newExpenseRow = null;
+                _isCreatingNewExpense = false;
+                NewExpenseButton.IsEnabled = true;
+
+                StatusText.Text = "Creación cancelada";
+                StatusText.Foreground = new SolidColorBrush(Colors.Gray);
+            }
+        }
+
+        // === EVENT HANDLERS PARA EDICIÓN ===
+
+        private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+        {
+            var expense = e.Row.Item as ExpenseViewModel;
+            if (expense == null) return;
+
+            // Si no es una fila nueva y la columna es de solo lectura, cancelar edición
+            if (!expense.IsNew)
+            {
+                var column = e.Column;
+                if (column.Header.ToString() == "PROVEEDOR" || 
+                    column.Header.ToString() == "ORDEN" ||
+                    column.Header.ToString() == "F. PROG." ||
+                    column.Header.ToString() == "ESTADO" ||
+                    column.Header.ToString() == "F. PAGO" ||
+                    column.Header.ToString() == "MÉTODO")
+                {
+                    e.Cancel = true;
+                }
+            }
+        }
+
+        private void DataGrid_CurrentCellChanged(object sender, EventArgs e)
+        {
+            // Manejar la navegación entre celdas
+            if (_isCreatingNewExpense && _newExpenseRow != null)
+            {
+                var currentCell = ExpensesDataGrid.CurrentCell;
+                if (currentCell.Item == _newExpenseRow)
+                {
+                    // Asegurar que la celda actual sea editable
+                    var column = currentCell.Column;
+                    if (column != null && !column.IsReadOnly)
+                    {
+                        ExpensesDataGrid.BeginEdit();
+                    }
+                }
+            }
+        }
+
+        private async void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Cancel)
+                return;
+
+            var expense = e.Row.Item as ExpenseViewModel;
+            if (expense == null)
+                return;
+
+            // Si es una fila existente (no nueva)
+            if (!expense.IsNew)
+            {
+                _hasUnsavedChanges = true;
+                await SaveExpenseChanges(expense);
+            }
+        }
+
+        private async void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var grid = sender as DataGrid;
+            if (grid == null) return;
+
+            var selectedExpense = grid.SelectedItem as ExpenseViewModel;
+
+            // Enter para confirmar
+            if (e.Key == Key.Enter)
+            {
+                if (_isCreatingNewExpense && _newExpenseRow != null && selectedExpense == _newExpenseRow)
+                {
+                    // Confirmar y guardar la nueva fila
+                    grid.CommitEdit(DataGridEditingUnit.Cell, true);
+                    grid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                    var saved = await SaveNewExpense();
+                    if (saved)
+                    {
+                        // Moverse a la siguiente fila después de guardar
+                        if (grid.Items.Count > 1)
+                        {
+                            grid.SelectedIndex = 1;
+                        }
+                    }
+                    e.Handled = true;
+                }
+                else
+                {
+                    // Comportamiento normal para filas existentes
+                    var currentColumn = grid.CurrentColumn;
+                    if (currentColumn != null && !currentColumn.IsReadOnly)
+                    {
+                        grid.CommitEdit(DataGridEditingUnit.Cell, true);
+                        grid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                        // Moverse a la siguiente fila
+                        if (grid.SelectedIndex < grid.Items.Count - 1)
+                        {
+                            grid.SelectedIndex++;
+                            grid.CurrentCell = new DataGridCellInfo(
+                                grid.Items[grid.SelectedIndex],
+                                currentColumn);
+                        }
+                        e.Handled = true;
+                    }
+                }
+            }
+            // Escape para cancelar
+            else if (e.Key == Key.Escape)
+            {
+                if (_isCreatingNewExpense && _newExpenseRow != null && selectedExpense == _newExpenseRow)
+                {
+                    // Cancelar la creación de la nueva fila
+                    grid.CancelEdit(DataGridEditingUnit.Cell);
+                    grid.CancelEdit(DataGridEditingUnit.Row);
+                    CancelNewExpense();
+                    e.Handled = true;
+                }
+                else
+                {
+                    // Cancelar edición normal
+                    grid.CancelEdit(DataGridEditingUnit.Cell);
+                    grid.CancelEdit(DataGridEditingUnit.Row);
+                    e.Handled = true;
+                }
+            }
+            // Tab para navegar entre celdas
+            else if (e.Key == Key.Tab)
+            {
+                // El comportamiento por defecto del Tab funciona bien
+                // Solo asegurar que se confirmen los cambios
+                grid.CommitEdit(DataGridEditingUnit.Cell, true);
+            }
+            // F2 para entrar en modo edición
+            else if (e.Key == Key.F2)
+            {
+                grid.BeginEdit();
+                e.Handled = true;
+            }
+        }
+
+        private async Task SaveExpenseChanges(ExpenseViewModel expense)
+        {
+            try
+            {
+                StatusText.Text = "Guardando cambios...";
+                StatusText.Foreground = new SolidColorBrush(Colors.Orange);
+
+                // Obtener el gasto de la base de datos
+                var expenseDb = await _supabaseService.GetExpenseById(expense.ExpenseId);
+                if (expenseDb == null)
+                {
+                    MessageBox.Show("No se pudo encontrar el gasto", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Actualizar solo los campos editables
+                expenseDb.Description = expense.Description;
+                expenseDb.TotalExpense = expense.TotalExpense;
+                expenseDb.ExpenseDate = expense.ExpenseDate;
+
+                var success = await _supabaseService.UpdateExpense(expenseDb);
+
+                if (success)
+                {
+                    _hasUnsavedChanges = false;
+                    StatusText.Text = "Cambios guardados";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+
+                    // Recargar para obtener la fecha programada actualizada si cambió
+                    if (expense.ExpenseDate != expenseDb.ExpenseDate)
+                    {
+                        await LoadExpenses();
+                        ApplyFilters();
+                        UpdateStatistics();
+                    }
+                }
+                else
+                {
+                    StatusText.Text = "Error al guardar";
+                    StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                    MessageBox.Show("No se pudieron guardar los cambios", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Error al guardar";
+                StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                MessageBox.Show($"Error al guardar cambios: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // === OTROS EVENT HANDLERS ===
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            ApplyFilters();
-            UpdateStatistics();
+            if (!_isCreatingNewExpense)
+            {
+                ApplyFilters();
+                UpdateStatistics();
+            }
         }
 
         private void SupplierFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_expenses != null)
+            if (_expenses != null && !_isCreatingNewExpense)
             {
                 ApplyFilters();
                 UpdateStatistics();
@@ -271,7 +666,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void StatusFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_expenses != null)
+            if (_expenses != null && !_isCreatingNewExpense)
             {
                 ApplyFilters();
                 UpdateStatistics();
@@ -280,8 +675,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void DateFilter_Changed(object sender, SelectionChangedEventArgs e)
         {
-            // Recargar datos con nuevos filtros de fecha
-            if (!_isLoading && _expenses != null)
+            if (!_isLoading && _expenses != null && !_isCreatingNewExpense)
             {
                 _ = LoadDataAsync();
             }
@@ -289,6 +683,16 @@ namespace SistemaGestionProyectos2.Views
 
         private void ClearFiltersButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_isCreatingNewExpense)
+            {
+                MessageBox.Show(
+                    "Complete o cancele el gasto actual antes de limpiar los filtros.",
+                    "Aviso",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             SearchBox.Clear();
             SupplierFilterCombo.SelectedIndex = 0;
             StatusFilterCombo.SelectedIndex = 0;
@@ -300,36 +704,17 @@ namespace SistemaGestionProyectos2.Views
 
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            await LoadDataAsync();
-        }
-
-        private void NewExpenseButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var dialog = new NewExpenseDialog();
-                if (dialog.ShowDialog() == true && dialog.Result != null)
-                {
-                    // Agregar el nuevo gasto a la lista
-                    _expenses.Add(dialog.Result);
-                    ApplyFilters();
-                    UpdateStatistics();
-
-                    MessageBox.Show(
-                        "Gasto registrado exitosamente",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
+            if (_isCreatingNewExpense)
             {
                 MessageBox.Show(
-                    $"Error al crear gasto: {ex.Message}",
-                    "Error",
+                    "Complete o cancele el gasto actual antes de actualizar.",
+                    "Aviso",
                     MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    MessageBoxImage.Information);
+                return;
             }
+
+            await LoadDataAsync();
         }
 
         private void ExpensesDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -342,11 +727,10 @@ namespace SistemaGestionProyectos2.Views
             var button = sender as Button;
             var expense = button?.Tag as ExpenseViewModel;
 
-            if (expense == null || expense.IsPaid) return;
+            if (expense == null || expense.IsPaid || expense.IsNew) return;
 
             try
             {
-                // Diálogo simple para confirmar pago
                 var result = MessageBox.Show(
                     $"¿Confirmar pago de ${expense.TotalExpense:N2} a {expense.SupplierName}?\n\n" +
                     $"Descripción: {expense.Description}\n" +
@@ -357,10 +741,8 @@ namespace SistemaGestionProyectos2.Views
 
                 if (result != MessageBoxResult.Yes) return;
 
-                // TODO: Crear un diálogo para seleccionar método de pago
                 string payMethod = "TRANSFERENCIA"; // Por defecto
 
-                // Registrar pago
                 var success = await _supabaseService.MarkExpenseAsPaid(
                     expense.ExpenseId,
                     DateTime.Now,
@@ -368,12 +750,10 @@ namespace SistemaGestionProyectos2.Views
 
                 if (success)
                 {
-                    // Actualizar en la UI
                     expense.Status = "PAGADO";
                     expense.PaidDate = DateTime.Now;
                     expense.PayMethod = payMethod;
 
-                    // Refrescar la vista
                     var index = _filteredExpenses.IndexOf(expense);
                     if (index >= 0)
                     {
@@ -412,14 +792,15 @@ namespace SistemaGestionProyectos2.Views
             var button = sender as Button;
             var expense = button?.Tag as ExpenseViewModel;
 
-            if (expense == null) return;
+            if (expense == null || expense.IsNew) return;
 
+            // Por ahora mantener el diálogo para edición completa
+            // En el futuro se puede eliminar si toda la edición es inline
             try
             {
                 var dialog = new NewExpenseDialog(expense);
                 if (dialog.ShowDialog() == true && dialog.Result != null)
                 {
-                    // Actualizar en la lista
                     var index = _expenses.IndexOf(expense);
                     if (index >= 0)
                     {
@@ -451,7 +832,7 @@ namespace SistemaGestionProyectos2.Views
             var button = sender as Button;
             var expense = button?.Tag as ExpenseViewModel;
 
-            if (expense == null) return;
+            if (expense == null || expense.IsNew) return;
 
             try
             {
@@ -504,7 +885,6 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Crear archivo CSV en lugar de Excel
                 var saveDialog = new Microsoft.Win32.SaveFileDialog
                 {
                     Filter = "CSV Files|*.csv|Text Files|*.txt",
@@ -517,11 +897,9 @@ namespace SistemaGestionProyectos2.Views
                     var culture = new CultureInfo("es-MX");
                     var sb = new StringBuilder();
 
-                    // Headers
                     sb.AppendLine("ID,Proveedor,Descripción,Categoría,Fecha Compra,Total,Fecha Programada,Estado,Fecha Pago,Método Pago");
 
-                    // Datos
-                    foreach (var expense in _filteredExpenses)
+                    foreach (var expense in _filteredExpenses.Where(e => !e.IsNew))
                     {
                         var row = new[]
                         {
@@ -540,16 +918,16 @@ namespace SistemaGestionProyectos2.Views
                         sb.AppendLine(string.Join(",", row));
                     }
 
-                    // Agregar resumen al final
                     sb.AppendLine();
                     sb.AppendLine("RESUMEN");
-                    sb.AppendLine($"Total General,{_filteredExpenses.Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Pendiente,{_filteredExpenses.Where(e => e.Status == "PENDIENTE").Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Pagado,{_filteredExpenses.Where(e => e.Status == "PAGADO").Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Vencido,{_filteredExpenses.Where(e => e.IsOverdue).Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Cantidad de Registros,{_filteredExpenses.Count}");
+                    
+                    var validExpenses = _filteredExpenses.Where(e => !e.IsNew);
+                    sb.AppendLine($"Total General,{validExpenses.Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Pendiente,{validExpenses.Where(e => e.Status == "PENDIENTE").Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Pagado,{validExpenses.Where(e => e.Status == "PAGADO").Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Vencido,{validExpenses.Where(e => e.IsOverdue).Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Cantidad de Registros,{validExpenses.Count()}");
 
-                    // Guardar archivo
                     File.WriteAllText(saveDialog.FileName, sb.ToString(), Encoding.UTF8);
 
                     MessageBox.Show(
@@ -558,7 +936,6 @@ namespace SistemaGestionProyectos2.Views
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
 
-                    // Preguntar si desea abrir el archivo
                     var openResult = MessageBox.Show(
                         "¿Desea abrir el archivo exportado?",
                         "Abrir archivo",
@@ -585,6 +962,90 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // === EVENTOS ADICIONALES PARA LA EDICIÓN INLINE ===
+
+        private void SupplierCombo_Loaded(object sender, RoutedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            if (combo != null && _suppliers != null)
+            {
+                combo.ItemsSource = _suppliers.OrderBy(s => s.SupplierName);
+            }
+        }
+
+
+        // Cargar órdenes recientes en el ComboBox
+        private async void OrderCombo_Loaded(object sender, RoutedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            if (combo != null)
+            {
+                try
+                {
+                    // Cargar las últimas 10 órdenes
+                    var orders = await _supabaseService.GetRecentOrders(10);
+
+                    // Agregar opción vacía
+                    var orderList = new List<dynamic> { new { Id = (int?)null, Display = "Sin orden" } };
+                    orderList.AddRange(orders.Select(o => new {
+                        Id = (int?)o.Id,
+                        Display = $"{o.Po} - {o.Description?.Substring(0, Math.Min(30, o.Description?.Length ?? 0))}"
+                    }));
+
+                    combo.ItemsSource = orderList;
+                    combo.DisplayMemberPath = "Display";
+                    combo.SelectedValuePath = "Id";
+                    combo.SelectedIndex = 0;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error cargando órdenes: {ex.Message}");
+                }
+            }
+        }
+
+        private void SupplierCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var expense = combo?.DataContext as ExpenseViewModel;
+            
+            if (expense != null && combo?.SelectedItem != null)
+            {
+                var selectedSupplier = combo.SelectedItem as SupplierDb;
+                if (selectedSupplier != null)
+                {
+                    expense.SupplierId = selectedSupplier.Id;
+                    expense.SupplierName = selectedSupplier.SupplierName;
+                }
+            }
+        }
+
+        private async void SaveNewButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var expense = button?.Tag as ExpenseViewModel;
+
+            if (expense != null && expense.IsNew)
+            {
+                // Confirmar la edición actual
+                ExpensesDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+                ExpensesDataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                // Guardar el gasto
+                await SaveNewExpense();
+            }
+        }
+
+        // Validación para campos numéricos
+        private void TotalAmount_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var textBox = sender as System.Windows.Controls.TextBox;
+            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+
+            decimal value;
+            e.Handled = !decimal.TryParse(fullText, out value);
+        }
+
         // === WINDOW CONTROLS ===
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -601,7 +1062,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_hasUnsavedChanges)
+            if (_hasUnsavedChanges || _isCreatingNewExpense)
             {
                 var result = MessageBox.Show(
                     "Hay cambios sin guardar. ¿Desea salir sin guardar?",
@@ -614,132 +1075,6 @@ namespace SistemaGestionProyectos2.Views
             }
 
             Close();
-        }
-
-        // === EDICIÓN INLINE ===
-
-        private async void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
-        {
-            if (e.EditAction == DataGridEditAction.Cancel)
-                return;
-
-            var expense = e.Row.Item as ExpenseViewModel;
-            if (expense == null)
-                return;
-
-            // Marcar que hay cambios pendientes
-            _hasUnsavedChanges = true;
-
-            // Guardar automáticamente después de editar
-            await SaveExpenseChanges(expense);
-        }
-
-        private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            var grid = sender as DataGrid;
-            if (grid == null) return;
-
-            // Enter para confirmar y moverse a la siguiente fila
-            if (e.Key == Key.Enter)
-            {
-                var currentColumn = grid.CurrentColumn;
-
-                // Si hay una celda seleccionada y es editable
-                if (currentColumn != null && !currentColumn.IsReadOnly)
-                {
-                    grid.CommitEdit(DataGridEditingUnit.Cell, true);
-                    grid.CommitEdit(DataGridEditingUnit.Row, true);
-
-                    // Moverse a la siguiente fila
-                    if (grid.SelectedIndex < grid.Items.Count - 1)
-                    {
-                        grid.SelectedIndex++;
-                        grid.CurrentCell = new DataGridCellInfo(
-                            grid.Items[grid.SelectedIndex],
-                            currentColumn);
-                    }
-                    e.Handled = true;
-                }
-            }
-            // Escape para cancelar edición
-            else if (e.Key == Key.Escape)
-            {
-                grid.CancelEdit(DataGridEditingUnit.Cell);
-                grid.CancelEdit(DataGridEditingUnit.Row);
-                e.Handled = true;
-            }
-            // F2 para entrar en modo edición
-            else if (e.Key == Key.F2)
-            {
-                grid.BeginEdit();
-                e.Handled = true;
-            }
-        }
-
-        private async Task SaveExpenseChanges(ExpenseViewModel expense)
-        {
-            try
-            {
-                StatusText.Text = "Guardando cambios...";
-                StatusText.Foreground = new SolidColorBrush(Colors.Orange);
-
-                // Obtener el gasto de la base de datos
-                var expenseDb = await _supabaseService.GetExpenseById(expense.ExpenseId);
-                if (expenseDb == null)
-                {
-                    MessageBox.Show("No se pudo encontrar el gasto", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                // Actualizar solo los campos editables
-                expenseDb.Description = expense.Description;
-                expenseDb.TotalExpense = expense.TotalExpense;
-                expenseDb.ExpenseDate = expense.ExpenseDate;
-
-                // Si cambió la fecha de compra, la fecha programada se recalculará por el trigger
-                var success = await _supabaseService.UpdateExpense(expenseDb);
-
-                if (success)
-                {
-                    _hasUnsavedChanges = false;
-                    StatusText.Text = "Cambios guardados";
-                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
-
-                    // Recargar para obtener la fecha programada actualizada si cambió
-                    if (expense.ExpenseDate != expenseDb.ExpenseDate)
-                    {
-                        await LoadExpenses();
-                        ApplyFilters();
-                        UpdateStatistics();
-                    }
-                }
-                else
-                {
-                    StatusText.Text = "Error al guardar";
-                    StatusText.Foreground = new SolidColorBrush(Colors.Red);
-                    MessageBox.Show("No se pudieron guardar los cambios", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                StatusText.Text = "Error al guardar";
-                StatusText.Foreground = new SolidColorBrush(Colors.Red);
-                MessageBox.Show($"Error al guardar cambios: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        // Validación para campos numéricos
-        private void TotalAmount_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            // Permitir solo números y punto decimal
-            var textBox = sender as System.Windows.Controls.TextBox;
-            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
-
-            decimal value;
-            e.Handled = !decimal.TryParse(fullText, out value);
         }
     }
 }
