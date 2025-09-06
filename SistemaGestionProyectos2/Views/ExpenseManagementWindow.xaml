@@ -418,7 +418,12 @@
                            ToolTip="Actualizar"
                            Click="RefreshButton_Click"/>
 
-                    
+                    <Button Name="ExportButton"
+                           Content="📊 Exportar"
+                           Style="{StaticResource SecondaryButton}"
+                           Width="100"
+                           Margin="0,0,10,0"
+                           Click="ExportButton_Click"/>
 
                     <Button Name="NewExpenseButton"
                            Content="➕ NUEVO GASTO"
@@ -469,36 +474,70 @@
                 </DataGrid.Resources>
 
                 <DataGrid.Columns>
-                    <!-- Columna de selección -->
-                    <DataGridCheckBoxColumn Header="✓" 
-                                          Binding="{Binding IsSelected}"
-                                          Width="40"/>
-
-                    <!-- ID -->
-                    <DataGridTextColumn Header="ID" 
-                                      Binding="{Binding ExpenseId}"
-                                      Width="60"
-                                      IsReadOnly="True"/>
-
                     <!-- Proveedor -->
                     <DataGridTextColumn Header="PROVEEDOR" 
                                       Binding="{Binding SupplierName}"
                                       Width="180"
-                                      IsReadOnly="True"/>
+                                      IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
-                    <!-- Descripción -->
+                    <!-- Descripción - EDITABLE -->
                     <DataGridTextColumn Header="DESCRIPCIÓN" 
-                                      Binding="{Binding Description}"
+                                      Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                       Width="*"
-                                      IsReadOnly="True"/>
+                                      IsReadOnly="False">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                        <DataGridTextColumn.EditingElementStyle>
+                            <Style TargetType="TextBox">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="5,2"/>
+                            </Style>
+                        </DataGridTextColumn.EditingElementStyle>
+                    </DataGridTextColumn>
+
+                    <!-- Orden de Compra -->
+                    <DataGridTextColumn Header="ORDEN" 
+                                      Binding="{Binding OrderNumber}"
+                                      Width="100"
+                                      IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Fecha Compra -->
-                    <DataGridTextColumn Header="F. COMPRA" 
-                                      Binding="{Binding ExpenseDateDisplay}"
-                                      Width="100"
-                                      IsReadOnly="True"/>
+                    <DataGridTemplateColumn Header="F. COMPRA" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ExpenseDateDisplay}"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <DatePicker SelectedDate="{Binding ExpenseDate, UpdateSourceTrigger=PropertyChanged}"
+                                          VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
 
-                    <!-- Total -->
+                    <!-- Total - EDITABLE -->
                     <DataGridTemplateColumn Header="TOTAL" Width="120">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -509,6 +548,16 @@
                                          Margin="0,0,10,0"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding TotalExpense, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Center"
+                                       TextAlignment="Right"
+                                       Padding="5,2"
+                                       PreviewTextInput="TotalAmount_PreviewTextInput"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
 
                     <!-- Fecha Programada -->
@@ -578,24 +627,39 @@
                     <DataGridTextColumn Header="F. PAGO" 
                                       Binding="{Binding PaidDateDisplay}"
                                       Width="100"
-                                      IsReadOnly="True"/>
+                                      IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Método -->
                     <DataGridTextColumn Header="MÉTODO" 
                                       Binding="{Binding PayMethod}"
                                       Width="120"
-                                      IsReadOnly="True"/>
+                                      IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Acciones -->
-                    <DataGridTemplateColumn Header="ACCIONES" Width="180">
+                    <DataGridTemplateColumn Header="ACCIONES" Width="150">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <!-- Botón Pagar (solo si está pendiente) -->
                                     <Button Content="💵"
                                            Tag="{Binding}"
                                            Click="PayButton_Click"
                                            Width="35"
+                                           Height="30"
                                            Margin="2,0"
                                            ToolTip="Registrar Pago">
                                         <Button.Style>
@@ -615,8 +679,9 @@
                                            Click="EditButton_Click"
                                            Style="{StaticResource SecondaryButton}"
                                            Width="35"
+                                           Height="30"
                                            Margin="2,0"
-                                           ToolTip="Editar"/>
+                                           ToolTip="Editar completo"/>
 
                                     <!-- Botón Eliminar -->
                                     <Button Content="🗑️"
@@ -624,6 +689,7 @@
                                            Click="DeleteButton_Click"
                                            Style="{StaticResource DangerButton}"
                                            Width="35"
+                                           Height="30"
                                            Margin="2,0"
                                            ToolTip="Eliminar"/>
                                 </StackPanel>

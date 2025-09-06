@@ -1,5 +1,4 @@
-﻿
-using SistemaGestionProyectos2.Models;
+﻿using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.ViewModels;
 using System;
@@ -27,6 +26,7 @@ namespace SistemaGestionProyectos2.Views
         private List<SupplierDb> _suppliers;
         private ExpenseViewModel _selectedExpense;
         private bool _isLoading = false;
+        private bool _hasUnsavedChanges = false;
 
         public ExpenseManagementWindow(UserSession user)
         {
@@ -500,7 +500,90 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        
+        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Crear archivo CSV en lugar de Excel
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "CSV Files|*.csv|Text Files|*.txt",
+                    Title = "Guardar reporte de gastos",
+                    FileName = $"Gastos_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    var culture = new CultureInfo("es-MX");
+                    var sb = new StringBuilder();
+
+                    // Headers
+                    sb.AppendLine("ID,Proveedor,Descripción,Categoría,Fecha Compra,Total,Fecha Programada,Estado,Fecha Pago,Método Pago");
+
+                    // Datos
+                    foreach (var expense in _filteredExpenses)
+                    {
+                        var row = new[]
+                        {
+                            expense.ExpenseId.ToString(),
+                            $"\"{expense.SupplierName ?? ""}\"",
+                            $"\"{expense.Description?.Replace("\"", "\"\"") ?? ""}\"",
+                            $"\"{expense.ExpenseCategory ?? ""}\"",
+                            expense.ExpenseDate.ToString("dd/MM/yyyy"),
+                            expense.TotalExpense.ToString("F2", culture),
+                            expense.ScheduledDate?.ToString("dd/MM/yyyy") ?? "",
+                            expense.Status ?? "",
+                            expense.PaidDate?.ToString("dd/MM/yyyy") ?? "",
+                            expense.PayMethod ?? ""
+                        };
+
+                        sb.AppendLine(string.Join(",", row));
+                    }
+
+                    // Agregar resumen al final
+                    sb.AppendLine();
+                    sb.AppendLine("RESUMEN");
+                    sb.AppendLine($"Total General,{_filteredExpenses.Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Pendiente,{_filteredExpenses.Where(e => e.Status == "PENDIENTE").Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Pagado,{_filteredExpenses.Where(e => e.Status == "PAGADO").Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Total Vencido,{_filteredExpenses.Where(e => e.IsOverdue).Sum(e => e.TotalExpense).ToString("F2", culture)}");
+                    sb.AppendLine($"Cantidad de Registros,{_filteredExpenses.Count}");
+
+                    // Guardar archivo
+                    File.WriteAllText(saveDialog.FileName, sb.ToString(), Encoding.UTF8);
+
+                    MessageBox.Show(
+                        "Reporte exportado exitosamente",
+                        "Éxito",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    // Preguntar si desea abrir el archivo
+                    var openResult = MessageBox.Show(
+                        "¿Desea abrir el archivo exportado?",
+                        "Abrir archivo",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (openResult == MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = saveDialog.FileName,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al exportar: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
 
         // === WINDOW CONTROLS ===
 
@@ -518,16 +601,145 @@ namespace SistemaGestionProyectos2.Views
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "¿Está seguro de cerrar el Portal de Proveedores?",
-                "Confirmar",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
+            if (_hasUnsavedChanges)
             {
-                Close();
+                var result = MessageBox.Show(
+                    "Hay cambios sin guardar. ¿Desea salir sin guardar?",
+                    "Cambios pendientes",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
             }
+
+            Close();
+        }
+
+        // === EDICIÓN INLINE ===
+
+        private async void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction == DataGridEditAction.Cancel)
+                return;
+
+            var expense = e.Row.Item as ExpenseViewModel;
+            if (expense == null)
+                return;
+
+            // Marcar que hay cambios pendientes
+            _hasUnsavedChanges = true;
+
+            // Guardar automáticamente después de editar
+            await SaveExpenseChanges(expense);
+        }
+
+        private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var grid = sender as DataGrid;
+            if (grid == null) return;
+
+            // Enter para confirmar y moverse a la siguiente fila
+            if (e.Key == Key.Enter)
+            {
+                var currentColumn = grid.CurrentColumn;
+
+                // Si hay una celda seleccionada y es editable
+                if (currentColumn != null && !currentColumn.IsReadOnly)
+                {
+                    grid.CommitEdit(DataGridEditingUnit.Cell, true);
+                    grid.CommitEdit(DataGridEditingUnit.Row, true);
+
+                    // Moverse a la siguiente fila
+                    if (grid.SelectedIndex < grid.Items.Count - 1)
+                    {
+                        grid.SelectedIndex++;
+                        grid.CurrentCell = new DataGridCellInfo(
+                            grid.Items[grid.SelectedIndex],
+                            currentColumn);
+                    }
+                    e.Handled = true;
+                }
+            }
+            // Escape para cancelar edición
+            else if (e.Key == Key.Escape)
+            {
+                grid.CancelEdit(DataGridEditingUnit.Cell);
+                grid.CancelEdit(DataGridEditingUnit.Row);
+                e.Handled = true;
+            }
+            // F2 para entrar en modo edición
+            else if (e.Key == Key.F2)
+            {
+                grid.BeginEdit();
+                e.Handled = true;
+            }
+        }
+
+        private async Task SaveExpenseChanges(ExpenseViewModel expense)
+        {
+            try
+            {
+                StatusText.Text = "Guardando cambios...";
+                StatusText.Foreground = new SolidColorBrush(Colors.Orange);
+
+                // Obtener el gasto de la base de datos
+                var expenseDb = await _supabaseService.GetExpenseById(expense.ExpenseId);
+                if (expenseDb == null)
+                {
+                    MessageBox.Show("No se pudo encontrar el gasto", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Actualizar solo los campos editables
+                expenseDb.Description = expense.Description;
+                expenseDb.TotalExpense = expense.TotalExpense;
+                expenseDb.ExpenseDate = expense.ExpenseDate;
+
+                // Si cambió la fecha de compra, la fecha programada se recalculará por el trigger
+                var success = await _supabaseService.UpdateExpense(expenseDb);
+
+                if (success)
+                {
+                    _hasUnsavedChanges = false;
+                    StatusText.Text = "Cambios guardados";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+
+                    // Recargar para obtener la fecha programada actualizada si cambió
+                    if (expense.ExpenseDate != expenseDb.ExpenseDate)
+                    {
+                        await LoadExpenses();
+                        ApplyFilters();
+                        UpdateStatistics();
+                    }
+                }
+                else
+                {
+                    StatusText.Text = "Error al guardar";
+                    StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                    MessageBox.Show("No se pudieron guardar los cambios", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = "Error al guardar";
+                StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                MessageBox.Show($"Error al guardar cambios: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // Validación para campos numéricos
+        private void TotalAmount_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            // Permitir solo números y punto decimal
+            var textBox = sender as System.Windows.Controls.TextBox;
+            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+
+            decimal value;
+            e.Handled = !decimal.TryParse(fullText, out value);
         }
     }
 }
