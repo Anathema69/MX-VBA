@@ -16,11 +16,14 @@ namespace SistemaGestionProyectos2.ViewModels
         private string _status;
         private DateTime? _paidDate;
         private string _payMethod;
-        private int? _orderId;
+        
         private string _expenseCategory;
         private bool _isNew;
         private bool _isEditing;
         private bool _hasChanges;
+
+        private int? _orderId;
+        private string _orderNumber;
 
         public int ExpenseId
         {
@@ -31,6 +34,9 @@ namespace SistemaGestionProyectos2.ViewModels
                 OnPropertyChanged();
             }
         }
+
+        
+
 
         public int SupplierId
         {
@@ -140,7 +146,12 @@ namespace SistemaGestionProyectos2.ViewModels
             {
                 _orderId = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(OrderNumber));
+                // Si no se proporciona OrderNumber externamente, generar uno por defecto
+                if (string.IsNullOrEmpty(_orderNumber) && value.HasValue)
+                {
+                    _orderNumber = $"ORD-{value.Value:D5}";
+                    OnPropertyChanged(nameof(OrderNumber));
+                }
             }
         }
 
@@ -194,7 +205,15 @@ namespace SistemaGestionProyectos2.ViewModels
 
         public string TotalExpenseDisplay => $"${TotalExpense:N2}";
 
-        public string OrderNumber => OrderId.HasValue ? $"ORD-{OrderId.Value:D5}" : "-";
+        public string OrderNumber
+        {
+            get => _orderNumber ?? (OrderId.HasValue ? $"ORD-{OrderId.Value:D5}" : string.Empty);
+            set
+            {
+                _orderNumber = value;
+                OnPropertyChanged();
+            }
+        }
 
         public bool IsPaid => Status == "PAGADO";
 

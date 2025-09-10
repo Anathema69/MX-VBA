@@ -8,6 +8,7 @@ using Supabase;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -1396,12 +1397,12 @@ namespace SistemaGestionProyectos2.Services
         }
 
         public async Task<List<ExpenseDb>> GetExpenses(
-    int? supplierId = null,
-    string status = null,
-    DateTime? fromDate = null,
-    DateTime? toDate = null,
-    int limit = 100,
-    int offset = 0)
+                    int? supplierId = null,
+                    string status = null,
+                    DateTime? fromDate = null,
+                    DateTime? toDate = null,
+                    int limit = 100,
+                    int offset = 0)
         {
             try
             {
@@ -1672,6 +1673,64 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        public async Task<List<OrderDb>> GetOrdersFiltered(
+    DateTime? fromDate = null,
+    string[] excludeStatuses = null,
+    int limit = 50,
+    int offset = 0)
+        {
+            try
+            {
+                // Obtener todas las órdenes recientes
+                var response = await _supabaseClient
+                    .From<OrderDb>()
+                    .Order(o => o.PoDate, Postgrest.Constants.Ordering.Descending)
+                    .Get();
+
+                var orders = response?.Models ?? new List<OrderDb>();
+
+                // Filtrar en memoria si es necesario
+                if (fromDate.HasValue)
+                {
+                    orders = orders.Where(o => o.PoDate >= fromDate.Value).ToList();
+                }
+
+                // Si necesitas excluir estados, puedes hacerlo aquí
+                // (aunque es menos eficiente que hacerlo en la query)
+
+                // Aplicar paginación
+                orders = orders.Skip(offset).Take(limit).ToList();
+
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener órdenes filtradas: {ex.Message}");
+                return new List<OrderDb>();
+            }
+        }
+
+        // Método GetRecentOrders modificado para soportar offset
+        public async Task<List<OrderDb>> GetRecentOrders(int limit = 10, int offset = 0)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<OrderDb>()
+                    .Order(o => o.PoDate, Postgrest.Constants.Ordering.Descending)
+                    .Limit(limit)
+                    .Offset(offset)
+                    .Get();
+
+                return response?.Models ?? new List<OrderDb>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener órdenes recientes: {ex.Message}");
+                return new List<OrderDb>();
+            }
+        }
+
         // ============= MÉTODOS AUXILIARES =============
 
         /// <summary>
@@ -1782,6 +1841,7 @@ namespace SistemaGestionProyectos2.Services
         [Column("f_description")]
         public string Description { get; set; }
 
+    
         [Column("f_salesman")]
         public int? SalesmanId { get; set; }
 

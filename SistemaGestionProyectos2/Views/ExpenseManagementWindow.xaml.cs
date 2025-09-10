@@ -30,6 +30,7 @@ namespace SistemaGestionProyectos2.Views
         private bool _isCreatingNewExpense = false;
         private ExpenseViewModel _newExpenseRow = null;
 
+
         public ExpenseManagementWindow(UserSession user)
         {
             InitializeComponent();
@@ -47,9 +48,7 @@ namespace SistemaGestionProyectos2.Views
             CurrentUserText.Text = $"Usuario: {_currentUser.FullName} ({_currentUser.Role})";
             ExpensesDataGrid.ItemsSource = _filteredExpenses;
 
-            // Configurar fechas por defecto (último mes)
-            FromDatePicker.SelectedDate = DateTime.Now.AddMonths(-1);
-            ToDatePicker.SelectedDate = DateTime.Now;
+            
 
             // Configurar eventos del DataGrid para edición
             ExpensesDataGrid.PreviewKeyDown += DataGrid_PreviewKeyDown;
@@ -101,175 +100,6 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async Task LoadSuppliers()
-        {
-            try
-            {
-                _suppliers = await _supabaseService.GetActiveSuppliers();
-
-                // Llenar combo de filtro de proveedores
-                SupplierFilterCombo.Items.Clear();
-                SupplierFilterCombo.Items.Add("Todos los proveedores");
-
-                foreach (var supplier in _suppliers.OrderBy(s => s.SupplierName))
-                {
-                    SupplierFilterCombo.Items.Add(supplier.SupplierName);
-                }
-
-                SupplierFilterCombo.SelectedIndex = 0;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error cargando proveedores: {ex.Message}");
-            }
-        }
-
-        private async Task LoadExpenses()
-        {
-            try
-            {
-                // Obtener fechas de filtro si están seleccionadas
-                DateTime? fromDate = FromDatePicker.SelectedDate;
-                DateTime? toDate = ToDatePicker.SelectedDate;
-
-                // Cargar gastos con filtros de fecha
-                var expensesDb = await _supabaseService.GetExpenses(
-                    fromDate: fromDate,
-                    toDate: toDate,
-                    limit: 500
-                );
-
-                _expenses.Clear();
-
-                foreach (var expense in expensesDb)
-                {
-                    // Buscar el nombre del proveedor
-                    var supplier = _suppliers?.FirstOrDefault(s => s.Id == expense.SupplierId);
-
-                    var expenseVm = new ExpenseViewModel
-                    {
-                        ExpenseId = expense.Id,
-                        SupplierId = expense.SupplierId,
-                        SupplierName = supplier?.SupplierName ?? "Proveedor Desconocido",
-                        Description = expense.Description,
-                        ExpenseDate = expense.ExpenseDate,
-                        TotalExpense = expense.TotalExpense,
-                        ScheduledDate = expense.ScheduledDate,
-                        Status = expense.Status,
-                        PaidDate = expense.PaidDate,
-                        PayMethod = expense.PayMethod,
-                        OrderId = expense.OrderId,
-                        ExpenseCategory = expense.ExpenseCategory,
-                        IsNew = false
-                    };
-
-                    _expenses.Add(expenseVm);
-                }
-
-                System.Diagnostics.Debug.WriteLine($"Gastos cargados: {_expenses.Count}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error cargando gastos: {ex.Message}");
-                throw;
-            }
-        }
-
-        private void ApplyFilters()
-        {
-            _filteredExpenses.Clear();
-
-            var filtered = _expenses.AsEnumerable();
-
-            // No filtrar la fila nueva que se está creando
-            if (_newExpenseRow != null && _isCreatingNewExpense)
-            {
-                _filteredExpenses.Add(_newExpenseRow);
-            }
-
-            // Filtro por búsqueda de texto
-            var searchText = SearchBox?.Text?.Trim().ToLower();
-            if (!string.IsNullOrEmpty(searchText))
-            {
-                filtered = filtered.Where(e =>
-                    e.Description?.ToLower().Contains(searchText) == true ||
-                    e.SupplierName?.ToLower().Contains(searchText) == true ||
-                    e.ExpenseCategory?.ToLower().Contains(searchText) == true);
-            }
-
-            // Filtro por proveedor
-            if (SupplierFilterCombo?.SelectedIndex > 0)
-            {
-                var selectedSupplier = SupplierFilterCombo.SelectedItem?.ToString();
-                if (!string.IsNullOrEmpty(selectedSupplier))
-                {
-                    filtered = filtered.Where(e => e.SupplierName == selectedSupplier);
-                }
-            }
-
-            // Filtro por estado
-            if (StatusFilterCombo?.SelectedIndex > 0)
-            {
-                var selectedStatus = (StatusFilterCombo.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (selectedStatus == "VENCIDO")
-                {
-                    filtered = filtered.Where(e => e.IsOverdue);
-                }
-                else if (!string.IsNullOrEmpty(selectedStatus))
-                {
-                    filtered = filtered.Where(e => e.Status == selectedStatus);
-                }
-            }
-
-            // Ordenar por fecha descendente (excepto la nueva fila)
-            filtered = filtered.Where(e => !e.IsNew)
-                              .OrderByDescending(e => e.ExpenseDate)
-                              .ThenByDescending(e => e.ExpenseId);
-
-            foreach (var expense in filtered)
-            {
-                _filteredExpenses.Add(expense);
-            }
-
-            RecordCountText.Text = $"{_filteredExpenses.Count} registros";
-        }
-
-        private void UpdateStatistics()
-        {
-            try
-            {
-                var culture = new CultureInfo("es-MX");
-
-                // Excluir filas nuevas no guardadas del cálculo
-                var validExpenses = _filteredExpenses.Where(e => !e.IsNew);
-
-                // Total General
-                decimal totalGeneral = validExpenses.Sum(e => e.TotalExpense);
-                TotalGeneralText.Text = totalGeneral.ToString("C2", culture);
-
-                // Total Pendiente
-                decimal totalPendiente = validExpenses
-                    .Where(e => e.Status == "PENDIENTE")
-                    .Sum(e => e.TotalExpense);
-                TotalPendienteText.Text = totalPendiente.ToString("C2", culture);
-
-                // Total Vencido
-                decimal totalVencido = validExpenses
-                    .Where(e => e.IsOverdue)
-                    .Sum(e => e.TotalExpense);
-                TotalVencidoText.Text = totalVencido.ToString("C2", culture);
-
-                // Total Pagado
-                decimal totalPagado = validExpenses
-                    .Where(e => e.Status == "PAGADO")
-                    .Sum(e => e.TotalExpense);
-                TotalPagadoText.Text = totalPagado.ToString("C2", culture);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error actualizando estadísticas: {ex.Message}");
-            }
-        }
 
         // === NUEVA FUNCIONALIDAD: CREAR GASTO INLINE ===
 
@@ -383,7 +213,7 @@ namespace SistemaGestionProyectos2.Views
                     ExpenseDate = _newExpenseRow.ExpenseDate,
                     TotalExpense = _newExpenseRow.TotalExpense,
                     Status = "PENDIENTE",
-                    ExpenseCategory = _newExpenseRow.ExpenseCategory,
+                    ExpenseCategory = null,
                     OrderId = _newExpenseRow.OrderId
                 };
 
@@ -457,19 +287,45 @@ namespace SistemaGestionProyectos2.Views
             var expense = e.Row.Item as ExpenseViewModel;
             if (expense == null) return;
 
-            // Si no es una fila nueva y la columna es de solo lectura, cancelar edición
+            // Para filas existentes, permitir edición de más campos
             if (!expense.IsNew)
             {
                 var column = e.Column;
-                if (column.Header.ToString() == "PROVEEDOR" || 
-                    column.Header.ToString() == "ORDEN" ||
-                    column.Header.ToString() == "F. PROG." ||
-                    column.Header.ToString() == "ESTADO" ||
-                    column.Header.ToString() == "F. PAGO" ||
-                    column.Header.ToString() == "MÉTODO")
+                var headerStr = column.Header?.ToString() ?? "";
+
+                // Campos que NO se pueden editar en filas existentes
+                var nonEditableFields = new[] { "PROVEEDOR", "ORDEN", "F. PROG.", "ESTADO", "ACCIONES" };
+
+                if (nonEditableFields.Contains(headerStr))
                 {
                     e.Cancel = true;
                 }
+                // Permitir edición de: DESCRIPCIÓN, F. COMPRA, TOTAL, F. PAGO, MÉTODO
+            }
+        }
+
+        
+        private async Task UpdatePaymentMethod(ExpenseViewModel expense)
+        {
+            try
+            {
+                var expenseDb = await _supabaseService.GetExpenseById(expense.ExpenseId);
+                if (expenseDb != null)
+                {
+                    expenseDb.PayMethod = expense.PayMethod;
+                    var success = await _supabaseService.UpdateExpense(expenseDb);
+
+                    if (success)
+                    {
+                        StatusText.Text = "Método de pago actualizado";
+                        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al actualizar método de pago: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -555,6 +411,9 @@ namespace SistemaGestionProyectos2.Views
                         e.Handled = true;
                     }
                 }
+
+                //Refrescar la vista para actualizar los bindings
+                grid.Items.Refresh();
             }
             // Escape para cancelar
             else if (e.Key == Key.Escape)
@@ -578,9 +437,24 @@ namespace SistemaGestionProyectos2.Views
             // Tab para navegar entre celdas
             else if (e.Key == Key.Tab)
             {
-                // El comportamiento por defecto del Tab funciona bien
-                // Solo asegurar que se confirmen los cambios
                 grid.CommitEdit(DataGridEditingUnit.Cell, true);
+
+                // Definir columnas editables por índice
+                var editableColumns = new List<int> { 1, 4, 5, 7, 8 }; // Descripción, F.Compra, Total, F.Pago, Método
+
+                var currentColumnIndex = grid.CurrentColumn?.DisplayIndex ?? -1;
+                var nextEditableIndex = editableColumns.FirstOrDefault(i => i > currentColumnIndex);
+
+                if (nextEditableIndex > 0 && nextEditableIndex < grid.Columns.Count)
+                {
+                    var nextColumn = grid.Columns.FirstOrDefault(c => c.DisplayIndex == nextEditableIndex);
+                    if (nextColumn != null)
+                    {
+                        grid.CurrentCell = new DataGridCellInfo(selectedExpense, nextColumn);
+                        grid.BeginEdit();
+                        e.Handled = true;
+                    }
+                }
             }
             // F2 para entrar en modo edición
             else if (e.Key == Key.F2)
@@ -695,11 +569,10 @@ namespace SistemaGestionProyectos2.Views
 
             SearchBox.Clear();
             SupplierFilterCombo.SelectedIndex = 0;
-            StatusFilterCombo.SelectedIndex = 0;
-            FromDatePicker.SelectedDate = DateTime.Now.AddMonths(-1);
-            ToDatePicker.SelectedDate = DateTime.Now;
+            StatusFilterCombo.SelectedIndex = 1; // PENDIENTE por defecto
 
-            _ = LoadDataAsync();
+            ApplyFilters();
+            UpdateStatistics();
         }
 
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -787,6 +660,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // Ya no abre la ventana, ahora hace la edición inline
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -794,39 +668,35 @@ namespace SistemaGestionProyectos2.Views
 
             if (expense == null || expense.IsNew) return;
 
-            // Por ahora mantener el diálogo para edición completa
-            // En el futuro se puede eliminar si toda la edición es inline
             try
             {
-                var dialog = new NewExpenseDialog(expense);
-                if (dialog.ShowDialog() == true && dialog.Result != null)
+                // Seleccionar la fila
+                ExpensesDataGrid.SelectedItem = expense;
+                ExpensesDataGrid.ScrollIntoView(expense);
+
+                // Enfocar en la primera columna editable (Descripción)
+                Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    var index = _expenses.IndexOf(expense);
-                    if (index >= 0)
+                    // La columna de Descripción es la segunda (índice 1)
+                    var descriptionColumn = ExpensesDataGrid.Columns[1]; // DESCRIPCIÓN
+
+                    if (descriptionColumn != null)
                     {
-                        _expenses[index] = dialog.Result;
+                        ExpensesDataGrid.CurrentCell = new DataGridCellInfo(expense, descriptionColumn);
+                        ExpensesDataGrid.Focus();
+                        ExpensesDataGrid.BeginEdit();
                     }
-
-                    ApplyFilters();
-                    UpdateStatistics();
-
-                    MessageBox.Show(
-                        "Gasto actualizado exitosamente",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-                }
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Error al editar gasto: {ex.Message}",
+                    $"Error al iniciar edición: {ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
         }
-
         private async void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -974,7 +844,238 @@ namespace SistemaGestionProyectos2.Views
         }
 
 
-        // Cargar órdenes recientes en el ComboBox
+        // Cargar órdenes recientes en el ComboBox - NUEVA VERSION
+        // Modificar LoadSuppliers para cargar también las órdenes
+        private async Task LoadSuppliers()
+        {
+            try
+            {
+                _suppliers = await _supabaseService.GetActiveSuppliers();
+
+                // Llenar combo de filtro de proveedores
+                SupplierFilterCombo.Items.Clear();
+                SupplierFilterCombo.Items.Add("Todos los proveedores");
+
+                foreach (var supplier in _suppliers.OrderBy(s => s.SupplierName))
+                {
+                    SupplierFilterCombo.Items.Add(supplier.SupplierName);
+                }
+
+                SupplierFilterCombo.SelectedIndex = 0;
+
+                // Cargar órdenes para el filtro
+                await LoadOrdersForFilter();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando proveedores: {ex.Message}");
+            }
+        }
+
+        // Nuevo método para cargar órdenes en el filtro
+        private async Task LoadOrdersForFilter()
+        {
+            try
+            {
+                var orders = await _supabaseService.GetRecentOrders(100); // Cargar más órdenes
+
+                var orderList = new List<dynamic> { new { Id = (int?)null, Display = "Todas las órdenes" } };
+
+                foreach (var order in orders)
+                {
+                    orderList.Add(new
+                    {
+                        Id = (int?)order.Id,
+                        Display = string.IsNullOrEmpty(order.Po) ? $"Sin PO - ID {order.Id}" : order.Po
+                    });
+                }
+
+                OrderFilterCombo.ItemsSource = orderList;
+                OrderFilterCombo.DisplayMemberPath = "Display";
+                OrderFilterCombo.SelectedValuePath = "Id";
+                OrderFilterCombo.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando órdenes para filtro: {ex.Message}");
+            }
+        }
+
+        // Modificar LoadExpenses para mostrar el nombre correcto de la orden
+        private async Task LoadExpenses()
+        {
+            try
+            {
+                var expensesDb = await _supabaseService.GetExpenses(
+                    fromDate: null,
+                    toDate: null,
+                    limit: 1000
+                );
+
+                // Cargar las órdenes para obtener los POs reales
+                var orders = await _supabaseService.GetRecentOrders(200);
+                var ordersDict = orders.ToDictionary(o => o.Id, o => o.Po);
+
+                _expenses.Clear();
+
+                foreach (var expense in expensesDb)
+                {
+                    var supplier = _suppliers?.FirstOrDefault(s => s.Id == expense.SupplierId);
+
+                    // Obtener el número de orden real
+                    string orderNumber = null;
+                    if (expense.OrderId.HasValue && ordersDict.ContainsKey(expense.OrderId.Value))
+                    {
+                        orderNumber = ordersDict[expense.OrderId.Value];
+                    }
+
+                    var expenseVm = new ExpenseViewModel
+                    {
+                        ExpenseId = expense.Id,
+                        SupplierId = expense.SupplierId,
+                        SupplierName = supplier?.SupplierName ?? "Proveedor Desconocido",
+                        Description = expense.Description,
+                        ExpenseDate = expense.ExpenseDate,
+                        TotalExpense = expense.TotalExpense,
+                        ScheduledDate = expense.ScheduledDate,
+                        Status = expense.Status,
+                        PaidDate = expense.PaidDate,
+                        PayMethod = expense.PayMethod,
+                        OrderId = expense.OrderId,
+                        OrderNumber = orderNumber, // Usar el PO real en OrderNumber
+                        ExpenseCategory = expense.ExpenseCategory,
+                        IsNew = false
+                    };
+
+                    _expenses.Add(expenseVm);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Gastos cargados: {_expenses.Count}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando gastos: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Modificar ApplyFilters
+        private void ApplyFilters()
+        {
+            _filteredExpenses.Clear();
+
+            var filtered = _expenses.AsEnumerable();
+
+            // No filtrar la fila nueva que se está creando
+            if (_newExpenseRow != null && _isCreatingNewExpense)
+            {
+                _filteredExpenses.Add(_newExpenseRow);
+            }
+
+            // Filtro por búsqueda de texto
+            var searchText = SearchBox?.Text?.Trim().ToLower();
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                filtered = filtered.Where(e =>
+                    e.Description?.ToLower().Contains(searchText) == true ||
+                    e.SupplierName?.ToLower().Contains(searchText) == true ||
+                    e.OrderNumber?.ToLower().Contains(searchText) == true);
+            }
+
+            // Filtro por proveedor
+            if (SupplierFilterCombo?.SelectedIndex > 0)
+            {
+                var selectedSupplier = SupplierFilterCombo.SelectedItem?.ToString();
+                if (!string.IsNullOrEmpty(selectedSupplier))
+                {
+                    filtered = filtered.Where(e => e.SupplierName == selectedSupplier);
+                }
+            }
+
+            // Filtro por orden - NUEVO
+            if (OrderFilterCombo != null && OrderFilterCombo.SelectedIndex > 0)
+            {
+                var selectedOrder = OrderFilterCombo.SelectedValue as int?;
+                if (selectedOrder.HasValue)
+                {
+                    filtered = filtered.Where(e => e.OrderId == selectedOrder.Value);
+                }
+            }
+
+            // Filtro por estado
+            if (StatusFilterCombo?.SelectedIndex > 0)
+            {
+                var selectedStatus = (StatusFilterCombo.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (!string.IsNullOrEmpty(selectedStatus))
+                {
+                    filtered = filtered.Where(e => e.Status == selectedStatus);
+                }
+            }
+
+            // Ordenar por fecha descendente
+            filtered = filtered.Where(e => !e.IsNew)
+                              .OrderByDescending(e => e.ExpenseDate)
+                              .ThenByDescending(e => e.ExpenseId);
+
+            foreach (var expense in filtered)
+            {
+                _filteredExpenses.Add(expense);
+            }
+
+            // Si el filtro es PENDIENTE y no hay resultados, mostrar todos
+            if (_filteredExpenses.Count == 0 && StatusFilterCombo?.SelectedIndex == 1)
+            {
+                StatusFilterCombo.SelectedIndex = 0; // Cambiar a "Todos"
+                ApplyFilters(); // Volver a aplicar filtros
+                return;
+            }
+
+            RecordCountText.Text = $"{_filteredExpenses.Count} registros";
+        }
+
+        // Agregar event handler para el filtro de orden
+        private void OrderFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_expenses != null && !_isCreatingNewExpense)
+            {
+                ApplyFilters();
+                UpdateStatistics();
+            }
+        }
+
+        // Modificar UpdateStatistics sin vencido
+        private void UpdateStatistics()
+        {
+            try
+            {
+                var culture = new CultureInfo("es-MX");
+
+                // Excluir filas nuevas no guardadas del cálculo
+                var validExpenses = _filteredExpenses.Where(e => !e.IsNew);
+
+                // Total General
+                decimal totalGeneral = validExpenses.Sum(e => e.TotalExpense);
+                TotalGeneralText.Text = totalGeneral.ToString("C2", culture);
+
+                // Total Pendiente
+                decimal totalPendiente = validExpenses
+                    .Where(e => e.Status == "PENDIENTE")
+                    .Sum(e => e.TotalExpense);
+                TotalPendienteText.Text = totalPendiente.ToString("C2", culture);
+
+                // Total Pagado
+                decimal totalPagado = validExpenses
+                    .Where(e => e.Status == "PAGADO")
+                    .Sum(e => e.TotalExpense);
+                TotalPagadoText.Text = totalPagado.ToString("C2", culture);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando estadísticas: {ex.Message}");
+            }
+        }
+
+        // Modificar el método OrderCombo_Loaded para mostrar el PO real
         private async void OrderCombo_Loaded(object sender, RoutedEventArgs e)
         {
             var combo = sender as ComboBox;
@@ -982,15 +1083,21 @@ namespace SistemaGestionProyectos2.Views
             {
                 try
                 {
-                    // Cargar las últimas 10 órdenes
-                    var orders = await _supabaseService.GetRecentOrders(10);
+                    var orders = await _supabaseService.GetRecentOrders(50);
 
-                    // Agregar opción vacía
-                    var orderList = new List<dynamic> { new { Id = (int?)null, Display = "Sin orden" } };
-                    orderList.AddRange(orders.Select(o => new {
-                        Id = (int?)o.Id,
-                        Display = $"{o.Po} - {o.Description?.Substring(0, Math.Min(30, o.Description?.Length ?? 0))}"
-                    }));
+                    var orderList = new List<dynamic>
+            {
+                new { Id = (int?)null, Display = "Sin orden" }
+            };
+
+                    foreach (var order in orders)
+                    {
+                        orderList.Add(new
+                        {
+                            Id = (int?)order.Id,
+                            Display = string.IsNullOrEmpty(order.Po) ? $"Sin PO - ID {order.Id}" : order.Po
+                        });
+                    }
 
                     combo.ItemsSource = orderList;
                     combo.DisplayMemberPath = "Display";
@@ -1003,6 +1110,7 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
         }
+
 
         private void SupplierCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -1046,21 +1154,186 @@ namespace SistemaGestionProyectos2.Views
             e.Handled = !decimal.TryParse(fullText, out value);
         }
 
-        // === WINDOW CONTROLS ===
+        // === MÉTODOS PARA EDICIÓN DE FECHA DE PAGO ===
 
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        private void PaidDate_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            WindowState = WindowState.Minimized;
+            if (e.ClickCount == 2)
+            {
+                var textBlock = sender as TextBlock;
+                var expense = textBlock?.DataContext as ExpenseViewModel;
+
+                if (expense != null && !expense.IsPaid && !expense.IsNew)
+                {
+                    // Activar modo de edición para esta celda
+                    var dataGridRow = FindParent<DataGridRow>(textBlock);
+                    if (dataGridRow != null)
+                    {
+                        var column = ExpensesDataGrid.Columns.FirstOrDefault(c => c.Header?.ToString() == "F. PAGO");
+                        if (column != null)
+                        {
+                            ExpensesDataGrid.CurrentCell = new DataGridCellInfo(expense, column);
+                            ExpensesDataGrid.BeginEdit();
+                        }
+                    }
+                }
+            }
         }
 
-        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        private async void PaidDatePicker_Changed(object sender, SelectionChangedEventArgs e)
         {
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
+            var datePicker = sender as DatePicker;
+            var expense = datePicker?.DataContext as ExpenseViewModel;
+
+            if (expense != null && datePicker?.SelectedDate != null)
+            {
+                expense.PaidDate = datePicker.SelectedDate;
+
+                // Solo cambiar a PAGADO si no lo está ya
+                if (expense.Status != "PAGADO")
+                {
+                    expense.Status = "PAGADO";
+
+                    // Solo mover el foco a método si NO tiene método de pago
+                    if (string.IsNullOrEmpty(expense.PayMethod))
+                    {
+                        expense.PayMethod = "TRANSFERENCIA"; // Por defecto
+
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            var methodColumn = ExpensesDataGrid.Columns.FirstOrDefault(c => c.Header?.ToString() == "MÉTODO");
+                            if (methodColumn != null)
+                            {
+                                ExpensesDataGrid.CurrentCell = new DataGridCellInfo(expense, methodColumn);
+                                ExpensesDataGrid.BeginEdit();
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Background);
+                    }
+                }
+
+                // Guardar el cambio de fecha
+                await SavePaymentInfo(expense);
+            }
         }
 
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        private async void PayMethodCombo_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var expense = combo?.DataContext as ExpenseViewModel;
+
+            if (expense != null && combo?.SelectedItem != null)
+            {
+                var selectedMethod = combo.SelectedItem as string;
+                if (!string.IsNullOrEmpty(selectedMethod))
+                {
+                    expense.PayMethod = selectedMethod;
+
+                    // NO mover el foco si ya tiene fecha de pago
+                    if (!expense.PaidDate.HasValue)
+                    {
+                        expense.PaidDate = DateTime.Now;
+                        expense.Status = "PAGADO";
+                    }
+
+                    await SavePaymentInfo(expense);
+                }
+            }
+        }
+        private async Task SavePaymentInfo(ExpenseViewModel expense)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(expense.PayMethod))
+                {
+                    expense.PayMethod = "TRANSFERENCIA"; // Por defecto
+                }
+
+                var success = await _supabaseService.MarkExpenseAsPaid(
+                    expense.ExpenseId,
+                    expense.PaidDate.Value,
+                    expense.PayMethod);
+
+                if (success)
+                {
+                    StatusText.Text = "Pago registrado";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                    UpdateStatistics();
+                }
+                else
+                {
+                    StatusText.Text = "Error al registrar pago";
+                    StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al guardar información de pago: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // === MÉTODO AUXILIAR PARA ENCONTRAR ELEMENTOS PADRE ===
+
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            DependencyObject parentObject = VisualTreeHelper.GetParent(child);
+
+            if (parentObject == null) return null;
+
+            T parent = parentObject as T;
+            if (parent != null)
+            {
+                return parent;
+            }
+            else
+            {
+                return FindParent<T>(parentObject);
+            }
+        }
+
+        // === MÉTODO PARA CARGAR MÁS ÓRDENES (SCROLL INFINITO) ===
+
+        private async Task LoadMoreOrders(ComboBox combo, int currentCount)
+        {
+            try
+            {
+                var orderList = combo.ItemsSource as ObservableCollection<dynamic>;
+                if (orderList == null) return;
+
+                // Cargar las siguientes 50 órdenes
+                var orders = await _supabaseService.GetRecentOrders(50, offset: currentCount);
+
+                foreach (var order in orders)
+                {
+                    orderList.Add(new
+                    {
+                        Id = (int?)order.Id,
+                        Display = $"{order.Po} - {order.Description?.Substring(0, Math.Min(30, order.Description?.Length ?? 0))}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error cargando más órdenes: {ex.Message}");
+            }
+        }
+
+        // === MÉTODO HELPER PARA OBTENER SCROLLVIEWER ===
+
+        private ScrollViewer GetScrollViewer(DependencyObject element)
+        {
+            if (element is ScrollViewer) return element as ScrollViewer;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+            {
+                var child = VisualTreeHelper.GetChild(element, i);
+                var result = GetScrollViewer(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             if (_hasUnsavedChanges || _isCreatingNewExpense)
             {
@@ -1074,7 +1347,9 @@ namespace SistemaGestionProyectos2.Views
                     return;
             }
 
-            Close();
+            this.Close();
         }
+
+        
     }
 }
