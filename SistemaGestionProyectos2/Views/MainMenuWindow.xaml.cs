@@ -240,5 +240,19 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Error al abrir portal";
             }
         }
+
+        // MÉTODO IMPORTANTE: Click en el botón de ingresos pendientes (solo admin)
+        private void PendingIncomesButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentUser.Role != "admin")
+            {
+                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+                    "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var pendingIncomesWindow = new PendingIncomesView(_currentUser);
+            pendingIncomesWindow.ShowDialog();
+        }
     }
 }

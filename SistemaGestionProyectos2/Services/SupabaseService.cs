@@ -1851,6 +1851,324 @@ namespace SistemaGestionProyectos2.Services
                 return false;
             }
         }
+
+        // PARA LOS INGRESOS PENDIENTES
+        // Clase auxiliar para los datos agregados de clientes con facturas pendientes
+        public class ClientPendingData
+        {
+            public int ClientId { get; set; }
+            public string ClientName { get; set; }
+            public decimal TotalPending { get; set; }
+        }
+
+        // Obtener clientes con facturas pendientes (datos agregados)
+        public async Task<List<ClientPendingData>> GetClientsPendingInvoices()
+        {
+            try
+            {
+                var result = new List<ClientPendingData>();
+
+                // Obtener todas las facturas que no estén pagadas
+                var invoicesResponse = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4) // No pagadas
+                    .Get();
+
+                if (invoicesResponse?.Models == null || !invoicesResponse.Models.Any())
+                    return result;
+
+                // Filtrar facturas sin fecha de pago en memoria
+                var pendingInvoices = invoicesResponse.Models
+                    .Where(i => i.PaymentDate == null || !i.PaymentDate.HasValue)
+                    .ToList();
+
+                if (!pendingInvoices.Any())
+                    return result;
+
+                // Obtener las órdenes relacionadas
+                var orderIds = pendingInvoices
+                    .Where(i => i.OrderId.HasValue)
+                    .Select(i => i.OrderId.Value)
+                    .Distinct()
+                    .ToList();
+
+                var ordersResponse = await _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Get();
+
+                var orders = ordersResponse?.Models?
+                    .Where(o => orderIds.Contains(o.Id))
+                    .ToDictionary(o => o.Id);
+
+                if (orders == null || !orders.Any())
+                    return result;
+
+                // Obtener los clientes
+                var clientIds = orders.Values
+                    .Where(o => o.ClientId.HasValue)
+                    .Select(o => o.ClientId.Value)
+                    .Distinct()
+                    .ToList();
+
+                var clientsResponse = await _supabaseClient
+                    .From<ClientDb>()
+                    .Select("*")
+                    .Get();
+
+                var clients = clientsResponse?.Models?
+                    .Where(c => clientIds.Contains(c.Id))
+                    .ToDictionary(c => c.Id);
+
+                if (clients == null || !clients.Any())
+                    return result;
+
+                // Agrupar por cliente
+                var groupedByClient = pendingInvoices
+                    .Where(i => i.OrderId.HasValue && orders.ContainsKey(i.OrderId.Value))
+                    .GroupBy(i => orders[i.OrderId.Value].ClientId)
+                    .Where(g => g.Key.HasValue && clients.ContainsKey(g.Key.Value))
+                    .Select(g => new ClientPendingData
+                    {
+                        ClientId = g.Key.Value,
+                        ClientName = clients[g.Key.Value].Name,
+                        TotalPending = g.Sum(i => i.Total ?? 0)
+                    })
+                    .OrderByDescending(c => c.TotalPending)
+                    .ToList();
+
+                return groupedByClient;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener clientes con facturas pendientes: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Obtener facturas pendientes de un cliente específico
+        public async Task<List<InvoiceDb>> GetPendingInvoicesByClient(int clientId)
+        {
+            try
+            {
+                // Primero obtener las órdenes del cliente
+                var ordersResponse = await _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Where(o => o.ClientId == clientId)
+                    .Get();
+
+                var orderIds = ordersResponse?.Models?.Select(o => o.Id).ToList() ?? new List<int>();
+
+                if (!orderIds.Any())
+                    return new List<InvoiceDb>();
+
+                // Obtener todas las facturas no pagadas
+                var invoicesResponse = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4) // No pagadas
+                    .Order("due_date", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                // Filtrar en memoria: por órdenes del cliente y sin fecha de pago
+                var pendingInvoices = invoicesResponse?.Models?
+                    .Where(i => i.OrderId.HasValue &&
+                               orderIds.Contains(i.OrderId.Value) &&
+                               i.PaymentDate == null)
+                    .ToList() ?? new List<InvoiceDb>();
+
+                return pendingInvoices;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener facturas pendientes del cliente {clientId}: {ex.Message}");
+                throw;
+            }
+        }
+        // Obtener todas las facturas pendientes con información completa
+        public async Task<List<PendingInvoiceDetail>> GetAllPendingInvoicesDetailed()
+        {
+            try
+            {
+                var result = new List<PendingInvoiceDetail>();
+
+                // Obtener todas las facturas no pagadas
+                var invoicesResponse = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4) // No pagadas
+                    .Order("due_date", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                if (invoicesResponse?.Models == null)
+                    return result;
+
+                // Filtrar facturas sin fecha de pago
+                var pendingInvoices = invoicesResponse.Models
+                    .Where(i => i.PaymentDate == null)
+                    .ToList();
+
+                if (!pendingInvoices.Any())
+                    return result;
+
+                // Obtener órdenes
+                var orderIds = pendingInvoices
+                    .Where(i => i.OrderId.HasValue)
+                    .Select(i => i.OrderId.Value)
+                    .Distinct()
+                    .ToList();
+
+                var ordersResponse = await _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Get();
+
+                var orders = ordersResponse?.Models?
+                    .Where(o => orderIds.Contains(o.Id))
+                    .ToDictionary(o => o.Id);
+
+                // Obtener clientes
+                var clientIds = orders?.Values
+                    .Where(o => o.ClientId.HasValue)
+                    .Select(o => o.ClientId.Value)
+                    .Distinct()
+                    .ToList() ?? new List<int>();
+
+                var clientsResponse = await _supabaseClient
+                    .From<ClientDb>()
+                    .Select("*")
+                    .Get();
+
+                var clients = clientsResponse?.Models?
+                    .Where(c => clientIds.Contains(c.Id))
+                    .ToDictionary(c => c.Id);
+
+                foreach (var invoice in pendingInvoices)
+                {
+                    if (!invoice.OrderId.HasValue || orders == null || !orders.ContainsKey(invoice.OrderId.Value))
+                        continue;
+
+                    var order = orders[invoice.OrderId.Value];
+                    if (!order.ClientId.HasValue || clients == null || !clients.ContainsKey(order.ClientId.Value))
+                        continue;
+
+                    var client = clients[order.ClientId.Value];
+
+                    var detail = new PendingInvoiceDetail
+                    {
+                        InvoiceId = invoice.Id,
+                        Folio = invoice.Folio,
+                        Total = invoice.Total ?? 0,
+                        InvoiceDate = invoice.InvoiceDate,
+                        ReceptionDate = invoice.ReceptionDate,
+                        DueDate = invoice.DueDate,
+                        ClientId = client.Id,
+                        ClientName = client.Name,
+                        ClientCredit = client.Credit,
+                        OrderPO = order.Po,
+                        OrderId = order.Id
+                    };
+
+                    // Calcular estado basado en fecha de vencimiento
+                    if (invoice.DueDate.HasValue)
+                    {
+                        var daysUntilDue = (invoice.DueDate.Value - DateTime.Today).Days;
+
+                        if (daysUntilDue < 0)
+                        {
+                            detail.Status = "VENCIDA";
+                            detail.DaysOverdue = Math.Abs(daysUntilDue);
+                        }
+                        else if (daysUntilDue <= 7)
+                        {
+                            detail.Status = "POR VENCER";
+                            detail.DaysUntilDue = daysUntilDue;
+                        }
+                        else
+                        {
+                            detail.Status = "AL CORRIENTE";
+                            detail.DaysUntilDue = daysUntilDue;
+                        }
+                    }
+                    else
+                    {
+                        detail.Status = "SIN FECHA";
+                    }
+
+                    result.Add(detail);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener facturas pendientes detalladas: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Clase auxiliar para el detalle completo de facturas pendientes
+        public class PendingInvoiceDetail
+        {
+            public int InvoiceId { get; set; }
+            public string Folio { get; set; }
+            public decimal Total { get; set; }
+            public DateTime? InvoiceDate { get; set; }
+            public DateTime? ReceptionDate { get; set; }
+            public DateTime? DueDate { get; set; }
+            public int ClientId { get; set; }
+            public string ClientName { get; set; }
+            public int ClientCredit { get; set; }
+            public string OrderPO { get; set; }
+            public int OrderId { get; set; }
+            public string Status { get; set; }
+            public int DaysOverdue { get; set; }
+            public int DaysUntilDue { get; set; }
+        }
+
+        // Actualizar el estado de las facturas vencidas automáticamente
+        public async Task UpdateOverdueInvoicesStatus()
+        {
+            try
+            {
+                // Obtener todas las facturas que no están pagadas ni ya marcadas como vencidas
+                var invoicesResponse = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4) // No pagadas
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 3) // No ya marcadas como vencidas
+                    .Get();
+
+                if (invoicesResponse?.Models == null || !invoicesResponse.Models.Any())
+                    return;
+
+                // Filtrar en memoria las que están vencidas
+                var overdueInvoices = invoicesResponse.Models
+                    .Where(i => i.DueDate.HasValue && i.DueDate.Value < DateTime.Today)
+                    .ToList();
+
+                if (overdueInvoices.Any())
+                {
+                    foreach (var invoice in overdueInvoices)
+                    {
+                        invoice.InvoiceStatus = 3; // Estado VENCIDA
+                        await _supabaseClient
+                            .From<InvoiceDb>()
+                            .Where(i => i.Id == invoice.Id)
+                            .Update(invoice);
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Se actualizaron {overdueInvoices.Count} facturas a estado VENCIDA");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al actualizar facturas vencidas: {ex.Message}");
+            }
+        }
+
     }
 
     }
@@ -2092,7 +2410,7 @@ namespace SistemaGestionProyectos2.Services
         public DateTime? UpdatedAt { get; set; }
     }
 
-    // NUEVOS CAMBIOS PARA FACTURAS
+    
     [Table("t_invoice")]
     public class InvoiceDb : BaseModel
     {
