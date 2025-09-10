@@ -221,8 +221,8 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="border"
-                    Background="#FFF3E0"
-                    BorderBrush="#FF9800"
+                    Background="#E3F2FD"
+                    BorderBrush="#1976D2"
                     BorderThickness="2"
                     CornerRadius="5">
                                         <Grid>
@@ -235,24 +235,24 @@
                               FontSize="36"
                               HorizontalAlignment="Center"
                               VerticalAlignment="Center"
-                              Foreground="#FF9800"/>
+                              Foreground="#1976D2"/>
 
                                             <TextBlock Grid.Row="1"
                               Text="PORTAL DEL VENDEDOR"
                               FontWeight="Bold"
                               FontSize="12"
                               HorizontalAlignment="Center"
-                              Foreground="#FF9800"
+                              Foreground="#1976D2"
                               Margin="0,5,0,10"/>
                                         </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="border" Property="Background" Value="#FFE0B2"/>
+                                            <Setter TargetName="border" Property="Background" Value="#BBDEFB"/>
                                             <Setter TargetName="border" Property="BorderThickness" Value="3"/>
                                         </Trigger>
                                         <Trigger Property="IsPressed" Value="True">
-                                            <Setter TargetName="border" Property="Background" Value="#FFCC80"/>
+                                            <Setter TargetName="border" Property="Background" Value="#90CAF9"/>
                                         </Trigger>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter TargetName="border" Property="Opacity" Value="0.5"/>
@@ -311,19 +311,20 @@
                             </Button.Template>
                         </Button>
 
-                        <!-- PORTAL DE PROVEEDORES -->
+                        <!-- PORTAL DE PROVEEDORES - Cambiar a estilo azul uniforme -->
                         <Button Click="OpenExpensePortal_Click"
-                            IsEnabled="True"
-                               Width="200"
-                               Height="120"
-                               Margin="15">
+        IsEnabled="True"
+        Width="200"
+        Height="120"
+        Margin="15"
+        Cursor="Hand">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
-                                    <Border Background="#F5F5F5"
-                                           BorderBrush="#999"
-                                           BorderThickness="2"
-                                           CornerRadius="5"
-                                           Opacity="1.0">
+                                    <Border x:Name="border"
+                   Background="#E3F2FD"
+                   BorderBrush="#1976D2"
+                   BorderThickness="2"
+                   CornerRadius="5">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*"/>
@@ -331,21 +332,29 @@
                                             </Grid.RowDefinitions>
 
                                             <TextBlock Text="🚚" 
-                                                     FontSize="36"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Foreground="#999"/>
+                             FontSize="36"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center"
+                             Foreground="#1976D2"/>
 
-                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
-                                                <TextBlock Text="PORTAL DE PROVEEDORES"
-                                                         FontWeight="Bold"
-                                                         FontSize="12"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="#999"/>
-                                                
-                                            </StackPanel>
+                                            <TextBlock Grid.Row="1"
+                             Text="PORTAL DE PROVEEDORES"
+                             FontWeight="Bold"
+                             FontSize="12"
+                             HorizontalAlignment="Center"
+                             Foreground="#1976D2"
+                             Margin="0,5,0,10"/>
                                         </Grid>
                                     </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#BBDEFB"/>
+                                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#90CAF9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>

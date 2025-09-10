@@ -1355,46 +1355,7 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
-        public async Task<SupplierDb> CreateSupplier(SupplierDb supplier)
-        {
-            try
-            {
-                supplier.CreatedAt = DateTime.Now;
-                supplier.UpdatedAt = DateTime.Now;
-                supplier.IsActive = true;
-
-                var response = await _supabaseClient
-                    .From<SupplierDb>()
-                    .Insert(supplier);
-
-                return response?.Models?.FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error creando proveedor: {ex.Message}");
-                throw;
-            }
-        }
-
-        public async Task<bool> UpdateSupplier(SupplierDb supplier)
-        {
-            try
-            {
-                supplier.UpdatedAt = DateTime.Now;
-
-                var response = await _supabaseClient
-                    .From<SupplierDb>()
-                    .Where(s => s.Id == supplier.Id)
-                    .Update(supplier);
-
-                return response?.Models?.Any() == true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error actualizando proveedor: {ex.Message}");
-                return false;
-            }
-        }
+        
 
         public async Task<List<ExpenseDb>> GetExpenses(
                     int? supplierId = null,
@@ -1809,6 +1770,87 @@ namespace SistemaGestionProyectos2.Services
             public decimal GrandTotal => TotalPending + TotalPaid;
         }
 
+
+
+        // Obtener todos los proveedores (activos e inactivos)
+        public async Task<List<SupplierDb>> GetAllSuppliers()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Order(s => s.SupplierName, Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<SupplierDb>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error al obtener proveedores: {ex.Message}");
+                return new List<SupplierDb>();
+            }
+        }
+
+        // Crear proveedor
+        public async Task<SupplierDb> CreateSupplier(SupplierDb supplier)
+        {
+            try
+            {
+                supplier.CreatedAt = DateTime.Now;
+                supplier.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Insert(supplier);
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error al crear proveedor: {ex.Message}");
+                return null;
+            }
+        }
+
+        // Actualizar proveedor
+        public async Task<bool> UpdateSupplier(SupplierDb supplier)
+        {
+            try
+            {
+                supplier.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<SupplierDb>()
+                    .Where(s => s.Id == supplier.Id)
+                    .Update(supplier);
+
+                return response?.Models?.Any() == true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error al actualizar proveedor: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Eliminar proveedor
+        public async Task<bool> DeleteSupplier(int supplierId)
+        {
+            try
+            {
+                await _supabaseClient
+                    .From<SupplierDb>()
+                    .Where(s => s.Id == supplierId)
+                    .Delete();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error al eliminar proveedor: {ex.Message}");
+                return false;
+            }
+        }
     }
 
     }

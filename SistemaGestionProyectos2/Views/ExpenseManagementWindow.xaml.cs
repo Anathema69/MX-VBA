@@ -48,8 +48,6 @@ namespace SistemaGestionProyectos2.Views
             CurrentUserText.Text = $"Usuario: {_currentUser.FullName} ({_currentUser.Role})";
             ExpensesDataGrid.ItemsSource = _filteredExpenses;
 
-            
-
             // Configurar eventos del DataGrid para edición
             ExpensesDataGrid.PreviewKeyDown += DataGrid_PreviewKeyDown;
             ExpensesDataGrid.CellEditEnding += DataGrid_CellEditEnding;
@@ -72,6 +70,26 @@ namespace SistemaGestionProyectos2.Views
 
                 // Cargar gastos
                 await LoadExpenses();
+
+                // Establecer filtros por defecto DESPUÉS de cargar datos
+                if (OrderFilterCombo != null && OrderFilterCombo.Items.Count > 0)
+                {
+                    OrderFilterCombo.SelectedIndex = 0; // "Todas las órdenes"
+                }
+
+                if (StatusFilterCombo != null)
+                {
+                    // Buscar el item "PENDIENTE"
+                    for (int i = 0; i < StatusFilterCombo.Items.Count; i++)
+                    {
+                        var item = StatusFilterCombo.Items[i] as ComboBoxItem;
+                        if (item?.Content?.ToString() == "PENDIENTE")
+                        {
+                            StatusFilterCombo.SelectedIndex = i;
+                            break;
+                        }
+                    }
+                }
 
                 // Aplicar filtros
                 ApplyFilters();
@@ -294,17 +312,78 @@ namespace SistemaGestionProyectos2.Views
                 var headerStr = column.Header?.ToString() ?? "";
 
                 // Campos que NO se pueden editar en filas existentes
-                var nonEditableFields = new[] { "PROVEEDOR", "ORDEN", "F. PROG.", "ESTADO", "ACCIONES" };
+                // QUITAR "ORDEN" de la lista de no editables
+                var nonEditableFields = new[] { "PROVEEDOR", "F. PROG.", "ESTADO", "ACCIONES" };
 
                 if (nonEditableFields.Contains(headerStr))
                 {
                     e.Cancel = true;
                 }
-                // Permitir edición de: DESCRIPCIÓN, F. COMPRA, TOTAL, F. PAGO, MÉTODO
             }
         }
 
-        
+        // Agregar método para manejar cambio de orden en registros existentes
+        private async void OrderCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var expense = combo?.DataContext as ExpenseViewModel;
+
+            if (expense != null && !expense.IsNew && combo?.SelectedValue != null)
+            {
+                var selectedOrderId = combo.SelectedValue as int?;
+
+                // Actualizar el OrderNumber basado en la selección
+                if (selectedOrderId.HasValue && selectedOrderId.Value > 0)
+                {
+                    var selectedItem = combo.SelectedItem as dynamic;
+                    expense.OrderNumber = selectedItem?.Display ?? "";
+                }
+                else
+                {
+                    expense.OrderNumber = "";
+                }
+
+                expense.OrderId = selectedOrderId;
+
+                // Guardar el cambio
+                await SaveOrderChange(expense);
+            }
+        }
+
+        // Nuevo método para guardar cambio de orden
+        private async Task SaveOrderChange(ExpenseViewModel expense)
+        {
+            try
+            {
+                StatusText.Text = "Guardando cambio de orden...";
+                StatusText.Foreground = new SolidColorBrush(Colors.Orange);
+
+                var expenseDb = await _supabaseService.GetExpenseById(expense.ExpenseId);
+                if (expenseDb != null)
+                {
+                    expenseDb.OrderId = expense.OrderId;
+                    var success = await _supabaseService.UpdateExpense(expenseDb);
+
+                    if (success)
+                    {
+                        StatusText.Text = "Orden actualizada";
+                        StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                    }
+                    else
+                    {
+                        StatusText.Text = "Error al actualizar orden";
+                        StatusText.Foreground = new SolidColorBrush(Colors.Red);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al actualizar orden: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
         private async Task UpdatePaymentMethod(ExpenseViewModel expense)
         {
             try
@@ -555,38 +634,10 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void ClearFiltersButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isCreatingNewExpense)
-            {
-                MessageBox.Show(
-                    "Complete o cancele el gasto actual antes de limpiar los filtros.",
-                    "Aviso",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
-            SearchBox.Clear();
-            SupplierFilterCombo.SelectedIndex = 0;
-            StatusFilterCombo.SelectedIndex = 1; // PENDIENTE por defecto
-
-            ApplyFilters();
-            UpdateStatistics();
-        }
-
+        
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_isCreatingNewExpense)
-            {
-                MessageBox.Show(
-                    "Complete o cancele el gasto actual antes de actualizar.",
-                    "Aviso",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
+            // restablecemos los filtros iniciales
             await LoadDataAsync();
         }
 
@@ -751,85 +802,13 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        private void SuppliersButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                var saveDialog = new Microsoft.Win32.SaveFileDialog
-                {
-                    Filter = "CSV Files|*.csv|Text Files|*.txt",
-                    Title = "Guardar reporte de gastos",
-                    FileName = $"Gastos_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
-                };
+            var suppliersWindow = new SupplierManagementWindow();
+            suppliersWindow.ShowDialog();
 
-                if (saveDialog.ShowDialog() == true)
-                {
-                    var culture = new CultureInfo("es-MX");
-                    var sb = new StringBuilder();
-
-                    sb.AppendLine("ID,Proveedor,Descripción,Categoría,Fecha Compra,Total,Fecha Programada,Estado,Fecha Pago,Método Pago");
-
-                    foreach (var expense in _filteredExpenses.Where(e => !e.IsNew))
-                    {
-                        var row = new[]
-                        {
-                            expense.ExpenseId.ToString(),
-                            $"\"{expense.SupplierName ?? ""}\"",
-                            $"\"{expense.Description?.Replace("\"", "\"\"") ?? ""}\"",
-                            $"\"{expense.ExpenseCategory ?? ""}\"",
-                            expense.ExpenseDate.ToString("dd/MM/yyyy"),
-                            expense.TotalExpense.ToString("F2", culture),
-                            expense.ScheduledDate?.ToString("dd/MM/yyyy") ?? "",
-                            expense.Status ?? "",
-                            expense.PaidDate?.ToString("dd/MM/yyyy") ?? "",
-                            expense.PayMethod ?? ""
-                        };
-
-                        sb.AppendLine(string.Join(",", row));
-                    }
-
-                    sb.AppendLine();
-                    sb.AppendLine("RESUMEN");
-                    
-                    var validExpenses = _filteredExpenses.Where(e => !e.IsNew);
-                    sb.AppendLine($"Total General,{validExpenses.Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Pendiente,{validExpenses.Where(e => e.Status == "PENDIENTE").Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Pagado,{validExpenses.Where(e => e.Status == "PAGADO").Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Total Vencido,{validExpenses.Where(e => e.IsOverdue).Sum(e => e.TotalExpense).ToString("F2", culture)}");
-                    sb.AppendLine($"Cantidad de Registros,{validExpenses.Count()}");
-
-                    File.WriteAllText(saveDialog.FileName, sb.ToString(), Encoding.UTF8);
-
-                    MessageBox.Show(
-                        "Reporte exportado exitosamente",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
-
-                    var openResult = MessageBox.Show(
-                        "¿Desea abrir el archivo exportado?",
-                        "Abrir archivo",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-
-                    if (openResult == MessageBoxResult.Yes)
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = saveDialog.FileName,
-                            UseShellExecute = true
-                        });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Error al exportar: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
-            }
+            // Recargar proveedores después de cerrar la ventana
+            _ = LoadSuppliers();
         }
 
         // === EVENTOS ADICIONALES PARA LA EDICIÓN INLINE ===
@@ -992,21 +971,26 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
 
-            // Filtro por orden - NUEVO
+            // Filtro por orden - CORREGIDO
             if (OrderFilterCombo != null && OrderFilterCombo.SelectedIndex > 0)
             {
-                var selectedOrder = OrderFilterCombo.SelectedValue as int?;
-                if (selectedOrder.HasValue)
+                var selectedItem = OrderFilterCombo.SelectedItem as dynamic;
+                if (selectedItem != null)
                 {
-                    filtered = filtered.Where(e => e.OrderId == selectedOrder.Value);
+                    var selectedOrderId = selectedItem.Id as int?;
+                    if (selectedOrderId.HasValue)
+                    {
+                        filtered = filtered.Where(e => e.OrderId == selectedOrderId.Value);
+                    }
                 }
             }
 
-            // Filtro por estado
-            if (StatusFilterCombo?.SelectedIndex > 0)
+            // Filtro por estado - CORREGIDO
+            var statusComboItem = StatusFilterCombo?.SelectedItem as ComboBoxItem;
+            if (statusComboItem != null)
             {
-                var selectedStatus = (StatusFilterCombo.SelectedItem as ComboBoxItem)?.Content?.ToString();
-                if (!string.IsNullOrEmpty(selectedStatus))
+                var selectedStatus = statusComboItem.Content?.ToString();
+                if (selectedStatus != "Todos" && !string.IsNullOrEmpty(selectedStatus))
                 {
                     filtered = filtered.Where(e => e.Status == selectedStatus);
                 }
@@ -1020,14 +1004,6 @@ namespace SistemaGestionProyectos2.Views
             foreach (var expense in filtered)
             {
                 _filteredExpenses.Add(expense);
-            }
-
-            // Si el filtro es PENDIENTE y no hay resultados, mostrar todos
-            if (_filteredExpenses.Count == 0 && StatusFilterCombo?.SelectedIndex == 1)
-            {
-                StatusFilterCombo.SelectedIndex = 0; // Cambiar a "Todos"
-                ApplyFilters(); // Volver a aplicar filtros
-                return;
             }
 
             RecordCountText.Text = $"{_filteredExpenses.Count} registros";

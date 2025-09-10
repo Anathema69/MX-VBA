@@ -148,7 +148,54 @@
 				</Trigger>
 			</Style.Triggers>
 		</Style>
-	</Window.Resources>
+
+        <!-- Estilo para botón de actualización (verde) -->
+        <Style x:Key="RefreshButton" TargetType="Button">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="5"
+                        Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#4CAF50" 
+                                        ShadowDepth="2" 
+                                        BlurRadius="8" 
+                                        Opacity="0.3"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#45a049"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#4CAF50" 
+                                                ShadowDepth="3" 
+                                                BlurRadius="12" 
+                                                Opacity="0.5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#388E3C"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
 	<Grid>
 		<Grid.RowDefinitions>
@@ -180,7 +227,7 @@
 						   Orientation="Horizontal" 
 						   VerticalAlignment="Center"
 						   Margin="25,0">
-					<TextBlock Text="💰" 
+                    <TextBlock Text="🚚" 
 							 Foreground="White"
 							 FontSize="28"
 							 Margin="0,0,15,0"
@@ -360,41 +407,41 @@
 					</ComboBox>
 
 					<!-- Filtro Estado (sin VENCIDO) -->
-					<ComboBox Name="StatusFilterCombo"
-			Width="150"
-			Height="38"
-			Margin="0,0,10,0"
-			FontSize="14"
-			SelectionChanged="StatusFilterCombo_SelectionChanged">
-						<ComboBoxItem>Todos</ComboBoxItem>
-						<ComboBoxItem IsSelected="True">PENDIENTE</ComboBoxItem>
-						<ComboBoxItem>PAGADO</ComboBoxItem>
-					</ComboBox>
+                    <!-- Filtro Estado (sin VENCIDO y sin default) -->
+                    <ComboBox Name="StatusFilterCombo"
+        Width="150"
+        Height="38"
+        Margin="0,0,10,0"
+        FontSize="14"
+        SelectionChanged="StatusFilterCombo_SelectionChanged">
+                        <ComboBoxItem>Todos</ComboBoxItem>
+                        <ComboBoxItem>PENDIENTE</ComboBoxItem>
+                        <ComboBoxItem>PAGADO</ComboBoxItem>
+                    </ComboBox>
 
-					<!-- Botón limpiar filtros -->
-					<Button Name="ClearFiltersButton"
-		   Content="🔄 Limpiar"
-		   Style="{StaticResource SecondaryButton}"
-		   Margin="15,0,0,0"
-		   Width="100"
-		   Click="ClearFiltersButton_Click"/>
+                    
 				</StackPanel>
 
 				<!-- Botones derecha -->
 				<StackPanel Grid.Column="1" Orientation="Horizontal">
-					<Button Name="RefreshButton"
-						   Content="🔄"
-						   Style="{StaticResource SecondaryButton}"
-						   Width="120"
-						   Margin="0,0,10,0"
-						   ToolTip="Actualizar"
-						   Click="RefreshButton_Click"
-						   
-							/>
-
-					
-
-					<Button Name="NewExpenseButton"
+                    <Button Name="RefreshButton"
+        Style="{StaticResource RefreshButton}"
+        Width="130"
+        Margin="0,0,10,0"
+        ToolTip="Actualizar datos"
+        Click="RefreshButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄 " FontSize="16" Margin="0,0,5,0"/>
+                            <TextBlock Text="ACTUALIZAR" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Name="SuppliersButton"
+            Content="👥 PROVEEDORES"
+            Style="{StaticResource SecondaryButton}"
+            Width="130"
+            Margin="0,0,10,0"
+            Click="SuppliersButton_Click"/>
+                    <Button Name="NewExpenseButton"
 						   Content="➕ NUEVO GASTO"
 						   Style="{StaticResource ModernButton}"
 						   Width="150"
@@ -405,22 +452,23 @@
 
 		<!-- DataGrid principal con edición inline -->
 		<Border Grid.Row="3" Background="White" Margin="20,0,20,20">
-			<DataGrid Name="ExpensesDataGrid"
-					AutoGenerateColumns="False"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					GridLinesVisibility="Horizontal"
-					BorderThickness="1"
-					BorderBrush="#E0E0E0"
-					HeadersVisibility="Column"
-					FontSize="13"
-					RowHeight="45"
-					AlternatingRowBackground="#FAFAFA"
-					SelectionMode="Single"
-					RowStyle="{StaticResource NewRowStyle}"
-					SelectionChanged="ExpensesDataGrid_SelectionChanged">
+            <DataGrid Name="ExpensesDataGrid"
+						AutoGenerateColumns="False"
+						CanUserAddRows="False"
+						CanUserDeleteRows="False"
+						CanUserSortColumns="True"
+						GridLinesVisibility="Horizontal"
+						BorderThickness="1"
+						BorderBrush="#E0E0E0"
+						HeadersVisibility="Column"
+						FontSize="13"
+						RowHeight="45"
+						AlternatingRowBackground="#FAFAFA"
+						SelectionMode="Single"
+						RowStyle="{StaticResource NewRowStyle}"
+						SelectionChanged="ExpensesDataGrid_SelectionChanged">
 
-				<DataGrid.Resources>
+                <DataGrid.Resources>
 					<!-- Estilo mejorado para filas pendientes -->
 					<Style TargetType="DataGridRow">
 						<Style.Triggers>
@@ -480,8 +528,11 @@
 
 				<DataGrid.Columns>
 					<!-- Proveedor - ComboBox para filas nuevas, solo lectura para existentes -->
-					<DataGridTemplateColumn Header="PROVEEDOR" Width="200">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="PROVEEDOR" 
+                              Width="1.5*"
+                              CanUserSort="True"
+                              SortMemberPath="SupplierName">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding SupplierName}"
 										 VerticalAlignment="Center"
@@ -501,10 +552,12 @@
 					</DataGridTemplateColumn>
 
 					<!-- Descripción - EDITABLE -->
-					<DataGridTextColumn Header="DESCRIPCIÓN" 
-									  Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-									  Width="*">
-						<DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn Header="DESCRIPCIÓN" 
+                          Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                          Width="2*"
+                          CanUserSort="True"
+                          SortMemberPath="Description">
+                        <DataGridTextColumn.ElementStyle>
 							<Style TargetType="TextBlock">
 								<Setter Property="VerticalAlignment" Value="Center"/>
 								<Setter Property="Padding" Value="5,0"/>
@@ -524,27 +577,47 @@
 					</DataGridTextColumn>
 
 
-					<!-- Orden - ComboBox para filas nuevas -->
-					<DataGridTemplateColumn Header="ORDEN" Width="150">
-						<DataGridTemplateColumn.CellTemplate>
-							<DataTemplate>
-								<TextBlock Text="{Binding OrderNumber}"
-					 VerticalAlignment="Center"
-					 HorizontalAlignment="Center"
-					 Padding="5,0"/>
-							</DataTemplate>
-						</DataGridTemplateColumn.CellTemplate>
-						<DataGridTemplateColumn.CellEditingTemplate>
-							<DataTemplate>
-								<ComboBox SelectedValue="{Binding OrderId, UpdateSourceTrigger=PropertyChanged}"
-					Loaded="OrderCombo_Loaded"/>
-							</DataTemplate>
-						</DataGridTemplateColumn.CellEditingTemplate>
-					</DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="ORDEN" 
+                              Width="140"
+                              CanUserSort="True"
+                              SortMemberPath="OrderNumber">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding OrderNumber}"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Padding="5,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Cursor" Value="Hand"/>
+                                            <Setter Property="ToolTip" Value="Clic para cambiar orden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding OrderNumber}" Value="">
+                                                    <Setter Property="Text" Value="Sin orden"/>
+                                                    <Setter Property="FontStyle" Value="Italic"/>
+                                                    <Setter Property="Foreground" Value="#999"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <ComboBox SelectedValue="{Binding OrderId, UpdateSourceTrigger=PropertyChanged}"
+                    Loaded="OrderCombo_Loaded"
+                    SelectionChanged="OrderCombo_SelectionChanged"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
 
-					<!-- Fecha Compra - EDITABLE -->
-					<DataGridTemplateColumn Header="F. COMPRA" Width="100">
-						<DataGridTemplateColumn.CellTemplate>
+                    <!-- Fecha Compra - EDITABLE -->
+                    <DataGridTemplateColumn Header="F. COMPRA" 
+                              Width="95"
+                              CanUserSort="True"
+                              SortMemberPath="ExpenseDate">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding ExpenseDateDisplay}"
 										 HorizontalAlignment="Center"
@@ -560,8 +633,11 @@
 					</DataGridTemplateColumn>
 
 					<!-- Total - EDITABLE -->
-					<DataGridTemplateColumn Header="TOTAL" Width="120">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="TOTAL" 
+                              Width="110"
+                              CanUserSort="True"
+                              SortMemberPath="TotalExpense">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding TotalExpenseDisplay}"
 										 FontWeight="SemiBold"
@@ -593,8 +669,12 @@
 					</DataGridTemplateColumn>
 
 					<!-- Fecha Programada - Solo lectura -->
-					<DataGridTemplateColumn Header="F. PROG." Width="100" IsReadOnly="True">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="F. PROG." 
+                              Width="95"
+                              IsReadOnly="True"
+                              CanUserSort="True"
+                              SortMemberPath="ScheduledDate">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding ScheduledDateDisplay}"
 										 HorizontalAlignment="Center"
@@ -615,8 +695,12 @@
 					</DataGridTemplateColumn>
 
 					<!-- Estado - Solo lectura -->
-					<DataGridTemplateColumn Header="ESTADO" Width="100" IsReadOnly="True">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="ESTADO" 
+                              Width="100"
+                              IsReadOnly="True"
+                              CanUserSort="True"
+                              SortMemberPath="Status">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<Border CornerRadius="12"
 									   HorizontalAlignment="Center"
@@ -656,8 +740,11 @@
 					</DataGridTemplateColumn>
 
 					<!-- Fecha Pago - EDITABLE siempre que no esté pagado -->
-					<DataGridTemplateColumn Header="F. PAGO" Width="100">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="F. PAGO" 
+                              Width="95"
+                              CanUserSort="True"
+                              SortMemberPath="PaidDate">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<TextBlock Text="{Binding PaidDateDisplay}"
 					 HorizontalAlignment="Center"
@@ -693,8 +780,11 @@
 					</DataGridTemplateColumn>
 
 					<!-- Método Pago - EDITABLE -->
-                    <!-- Método Pago - EDITABLE -->
-                    <DataGridTemplateColumn Header="MÉTODO" Width="120">
+                    
+                    <DataGridTemplateColumn Header="MÉTODO" 
+                              Width="120"
+                              CanUserSort="True"
+                              SortMemberPath="PayMethod">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding PayMethod}"
@@ -730,8 +820,10 @@
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
                     <!-- Acciones -->
-					<DataGridTemplateColumn Header="ACCIONES" Width="150">
-						<DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn Header="ACCIONES" 
+                              Width="140"
+                              CanUserSort="False">
+                        <DataGridTemplateColumn.CellTemplate>
 							<DataTemplate>
 								<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
 									<!-- Botón Guardar (solo para filas nuevas) -->
