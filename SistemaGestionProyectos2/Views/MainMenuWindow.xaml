@@ -318,6 +318,54 @@
 
                         <!-- PORTAL DE PROVEEDORES - Cambiar a estilo azul uniforme -->
                         <Button Click="OpenExpensePortal_Click"
+                                IsEnabled="True"
+                                Width="200"
+                                Height="120"
+                                Margin="15"
+                                Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border"
+                                           Background="#E3F2FD"
+                                           BorderBrush="#1976D2"
+                                           BorderThickness="2"
+                                           CornerRadius="5">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="🚚" 
+                                                         FontSize="36"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="#1976D2"/>
+
+                                            <TextBlock Grid.Row="1"
+                                                     Text="PORTAL DE PROVEEDORES"
+                                                     FontWeight="Bold"
+                                                     FontSize="12"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="#1976D2"
+                                                     Margin="0,5,0,10"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#BBDEFB"/>
+                                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#90CAF9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <!-- NÓMINA Y GASTOS FIJOS -->
+                        <Button Click="OpenPayroll_Click"
         IsEnabled="True"
         Width="200"
         Height="120"
@@ -336,14 +384,14 @@
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
-                                            <TextBlock Text="🚚" 
-                             FontSize="36"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"
-                             Foreground="#1976D2"/>
+                                            <TextBlock Text="💳" 
+                                 FontSize="36"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 Foreground="#1976D2"/>
 
                                             <TextBlock Grid.Row="1"
-                             Text="PORTAL DE PROVEEDORES"
+                             Text="NÓMINA Y GASTOS FIJOS"
                              FontWeight="Bold"
                              FontSize="12"
                              HorizontalAlignment="Center"
@@ -360,49 +408,6 @@
                                             <Setter TargetName="border" Property="Background" Value="#90CAF9"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
-
-                        <!-- NÓMINA Y GASTOS FIJOS -->
-                        <Button IsEnabled="False"
-                               Width="200"
-                               Height="120"
-                               Margin="15">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="#F5F5F5"
-                                           BorderBrush="#999"
-                                           BorderThickness="2"
-                                           CornerRadius="5"
-                                           Opacity="0.6">
-                                        <Grid>
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="*"/>
-                                                <RowDefinition Height="Auto"/>
-                                            </Grid.RowDefinitions>
-
-                                            <TextBlock Text="💳" 
-                                                     FontSize="36"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Foreground="#999"/>
-
-                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
-                                                <TextBlock Text="NÓMINA Y GASTOS FIJOS"
-                                                         FontWeight="Bold"
-                                                         FontSize="12"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="#999"/>
-                                                <TextBlock Text="(Próximamente)"
-                                                         FontSize="9"
-                                                         FontStyle="Italic"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="#999"
-                                                         Margin="0,0,0,10"/>
-                                            </StackPanel>
-                                        </Grid>
-                                    </Border>
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>

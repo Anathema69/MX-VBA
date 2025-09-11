@@ -254,5 +254,16 @@ namespace SistemaGestionProyectos2.Views
             var pendingIncomesWindow = new PendingIncomesView(_currentUser);
             pendingIncomesWindow.ShowDialog();
         }
+
+        private void OpenPayroll_Click(object sender, RoutedEventArgs e) {
+            // Verificar permisos de ser admin y abrir la ventana de nómina (payroll)
+            if (_currentUser.Role != "admin") {
+                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+                    "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var payrollWindow = new PayrollManagementView(_currentUser);
+            payrollWindow.ShowDialog();
+        }
     }
 }

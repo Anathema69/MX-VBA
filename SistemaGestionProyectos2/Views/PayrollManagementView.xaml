@@ -1,0 +1,570 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.PayrollManagementView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nómina y Gastos Fijos - Sistema de Gestión" 
+        Height="850" 
+        Width="1400"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Colores consistentes con el sistema -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#5B3FF9"/>
+        <SolidColorBrush x:Key="SuccessColor" Color="#48BB78"/>
+        <SolidColorBrush x:Key="DangerColor" Color="#EF4444"/>
+        <SolidColorBrush x:Key="WarningColor" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="InfoColor" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="BackgroundGray" Color="#F7FAFC"/>
+        <SolidColorBrush x:Key="BorderGray" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="TextGray" Color="#718096"/>
+        <SolidColorBrush x:Key="DarkText" Color="#2D3748"/>
+
+        <!-- Estilo para botones modernos -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Estilo para TabItem -->
+        <Style x:Key="ModernTabItem" TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border Name="Border" 
+                                Background="Transparent" 
+                                BorderBrush="Transparent" 
+                                BorderThickness="0,0,0,2"
+                                Padding="20,10"
+                                Margin="0,0,10,0">
+                            <ContentPresenter x:Name="ContentSite"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" 
+                                        Value="{StaticResource PrimaryColor}"/>
+                                <Setter Property="Foreground" 
+                                        Value="{StaticResource PrimaryColor}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" 
+                                        Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para celdas del DataGrid -->
+        <Style x:Key="ModernDataGridCell" TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#E0E7FF"/>
+                    <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource BackgroundGray}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderGray}" 
+                BorderThickness="0,0,0,1">
+            <Grid Margin="30,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Título y info de vigencia -->
+                <StackPanel Grid.Column="0" Orientation="Vertical">
+                    <TextBlock Text="NÓMINA Y GASTOS FIJOS" 
+                             FontSize="24" 
+                             FontWeight="Bold" 
+                             Foreground="{StaticResource DarkText}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <TextBlock Text="Vigente: " 
+                                 FontSize="13" 
+                                 Foreground="{StaticResource TextGray}"/>
+                        <TextBlock Name="CurrentMonthText" 
+                                 Text="Noviembre 2024" 
+                                 FontSize="13" 
+                                 FontWeight="SemiBold"
+                                 Foreground="{StaticResource DarkText}"/>
+                        <TextBlock Name="NextChangeText" 
+                                 Text=" • Próximo cambio: Dic 2024 (+$5,000)" 
+                                 FontSize="13" 
+                                 Foreground="{StaticResource WarningColor}"
+                                 Visibility="Collapsed"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Botones de acción -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BackButton"
+                            Click="BackButton_Click"
+                            Style="{StaticResource ModernButton}"
+                            Background="#37474F"
+                            Width="100"
+                            Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="← " FontSize="16" Margin="0,0,5,0"/>
+                            <TextBlock Text="Volver" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Name="CloseButton"
+                            Click="CloseButton_Click"
+                            Width="35" Height="35"
+                            Background="#EF4444"
+                            Style="{StaticResource ModernButton}">
+                        <TextBlock Text="✕" FontSize="16" FontWeight="Bold"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Contenido Principal con Tabs -->
+        <TabControl Grid.Row="1" Margin="30,20" Background="Transparent" BorderThickness="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource ModernTabItem}"/>
+            </TabControl.Resources>
+
+            <!-- Tab de Nómina -->
+            <TabItem Header="NÓMINA">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar de Nómina -->
+                    <Border Grid.Row="0" Background="White" CornerRadius="8" 
+                            Margin="0,10,0,15" Padding="20,15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Búsqueda -->
+                            <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
+                                    CornerRadius="6" Width="300" HorizontalAlignment="Left">
+                                <Grid>
+                                    <TextBox Name="SearchEmployeeBox"
+                                           BorderThickness="0"
+                                           Background="Transparent"
+                                           Padding="35,8,10,8"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"/>
+                                    <TextBlock Text="🔍" 
+                                             Margin="10,0,0,0" 
+                                             VerticalAlignment="Center"
+                                             Foreground="{StaticResource TextGray}"/>
+                                    <TextBlock Text="Buscar empleado..." 
+                                             Margin="35,0,0,0"
+                                             VerticalAlignment="Center"
+                                             Foreground="{StaticResource TextGray}"
+                                             IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Text.Length, ElementName=SearchEmployeeBox, UpdateSourceTrigger=PropertyChanged}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                                <Setter Property="Visibility" Value="Hidden"/>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Botones de acción -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Name="AddEmployeeButton"
+                                        Click="AddEmployeeButton_Click"
+                                        Style="{StaticResource ModernButton}"
+                                        Margin="0,0,10,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="➕ " FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Nuevo Empleado"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Name="ViewHistoryButton"
+                                        Click="ViewHistoryButton_Click"
+                                        Style="{StaticResource ModernButton}"
+                                        Background="{StaticResource InfoColor}"
+                                        Margin="0,0,10,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📋 " FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Historial"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Name="ExportPayrollButton"
+                                        Click="ExportPayrollButton_Click"
+                                        Style="{StaticResource ModernButton}"
+                                        Background="{StaticResource SuccessColor}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📥 " FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Exportar Excel"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- DataGrid de Empleados -->
+                    <Border Grid.Row="1" Background="White" CornerRadius="8">
+                        <DataGrid Name="PayrollDataGrid"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                GridLinesVisibility="None"
+                                BorderThickness="0"
+                                Background="White"
+                                RowHeight="45"
+                                HeadersVisibility="Column"
+                                SelectionMode="Single"
+                                CellStyle="{StaticResource ModernDataGridCell}"
+                                MouseDoubleClick="PayrollDataGrid_MouseDoubleClick">
+
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="12"/>
+                                    <Setter Property="Padding" Value="10,12"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+
+                            <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="" Width="40"/>
+
+                                <DataGridTextColumn Header="EMPLEADO" 
+                                                  Binding="{Binding Employee}" 
+                                                  Width="2*"/>
+
+                                <DataGridTextColumn Header="PUESTO" 
+                                                  Binding="{Binding Title}" 
+                                                  Width="2*"/>
+
+                                <DataGridTextColumn Header="RANGO" 
+                                                  Binding="{Binding Range}" 
+                                                  Width="100"/>
+
+                                <DataGridTextColumn Header="CONDICIÓN" 
+                                                  Binding="{Binding Condition}" 
+                                                  Width="120"/>
+
+                                <DataGridTextColumn Header="NÓMINA MENSUAL" 
+                                                  Binding="{Binding MonthlyPayroll, StringFormat=C}" 
+                                                  Width="150">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+                                            <Setter Property="TextAlignment" Value="Right"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <DataGridTemplateColumn Header="ACCIONES" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Name="EditButton"
+                                                        Click="EditEmployee_Click"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        Padding="5"
+                                                        ToolTip="Editar">
+                                                    <TextBlock Text="✏️" FontSize="16"/>
+                                                </Button>
+                                                <Button Name="HistoryButton"
+                                                        Click="ViewEmployeeHistory_Click"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        Padding="5"
+                                                        ToolTip="Ver historial">
+                                                    <TextBlock Text="📊" FontSize="16"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <!-- Total de Nómina -->
+                    <Border Grid.Row="2" Background="White" CornerRadius="8" 
+                            Margin="0,15,0,0" Padding="20,15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                <TextBlock Text="Empleados activos: " 
+                                         FontSize="14" 
+                                         Foreground="{StaticResource TextGray}"/>
+                                <TextBlock Name="ActiveEmployeesText" 
+                                         Text="6" 
+                                         FontSize="14" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource DarkText}"
+                                         Margin="5,0,20,0"/>
+
+                                <TextBlock Text="Última actualización: " 
+                                         FontSize="14" 
+                                         Foreground="{StaticResource TextGray}"/>
+                                <TextBlock Name="LastUpdateText" 
+                                         Text="11/09/2024 14:30" 
+                                         FontSize="14" 
+                                         Foreground="{StaticResource DarkText}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Text="TOTAL NÓMINA MENSUAL:" 
+                                         FontSize="16" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource TextGray}"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,15,0"/>
+                                <TextBlock Name="TotalPayrollText" 
+                                         Text="$119,220.00" 
+                                         FontSize="24" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource PrimaryColor}"
+                                         VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab de Gastos Fijos -->
+            <TabItem Header="GASTOS FIJOS">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar de Gastos -->
+                    <Border Grid.Row="0" Background="White" CornerRadius="8" 
+                            Margin="0,10,0,15" Padding="20,15">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" 
+                                     Text="Gestión de gastos fijos mensuales" 
+                                     FontSize="14" 
+                                     Foreground="{StaticResource TextGray}"
+                                     VerticalAlignment="Center"/>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Name="AddExpenseButton"
+                                        Click="AddExpenseButton_Click"
+                                        Style="{StaticResource ModernButton}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="➕ " FontSize="12" Margin="0,0,5,0"/>
+                                        <TextBlock Text="Nuevo Gasto"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- DataGrid de Gastos Fijos -->
+                    <Border Grid.Row="1" Background="White" CornerRadius="8">
+                        <DataGrid Name="ExpensesDataGrid"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                GridLinesVisibility="None"
+                                BorderThickness="0"
+                                Background="White"
+                                RowHeight="45"
+                                HeadersVisibility="Column"
+                                SelectionMode="Single"
+                                CellStyle="{StaticResource ModernDataGridCell}">
+
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="12"/>
+                                    <Setter Property="Padding" Value="10,12"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="TIPO" 
+                                                  Binding="{Binding ExpenseType}" 
+                                                  Width="150"/>
+
+                                <DataGridTextColumn Header="DESCRIPCIÓN" 
+                                                  Binding="{Binding Description}" 
+                                                  Width="*"/>
+
+                                <DataGridTextColumn Header="GASTO MENSUAL" 
+                                                  Binding="{Binding MonthlyAmount, StringFormat=C}" 
+                                                  Width="150">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="TextAlignment" Value="Right"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <DataGridTextColumn Header="VIGENTE DESDE" 
+                                                  Binding="{Binding EffectiveFrom, StringFormat={}{0:dd/MM/yyyy}}" 
+                                                  Width="120"/>
+
+                                <DataGridTemplateColumn Header="ACCIONES" Width="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Click="EditExpense_Click"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        Padding="5">
+                                                    <TextBlock Text="✏️" FontSize="16"/>
+                                                </Button>
+                                                <Button Click="DeleteExpense_Click"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Cursor="Hand"
+                                                        Padding="5">
+                                                    <TextBlock Text="🗑️" FontSize="16"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <!-- Total de Gastos Fijos -->
+                    <Border Grid.Row="2" Background="White" CornerRadius="8" 
+                            Margin="0,15,0,0" Padding="20,15">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="TOTAL GASTOS FIJOS:" 
+                                         FontSize="16" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource TextGray}"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,15,0"/>
+                                <TextBlock Name="TotalExpensesText" 
+                                         Text="$18,350.00" 
+                                         FontSize="24" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource DangerColor}"
+                                         VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Footer con resumen -->
+        <Border Grid.Row="2" Background="{StaticResource PrimaryColor}" Padding="30,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Text="📊 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
+                    <StackPanel>
+                        <TextBlock Text="NÓMINA MENSUAL" FontSize="11" Foreground="White" Opacity="0.8"/>
+                        <TextBlock Name="FooterPayrollText" Text="$119,220.00" FontSize="18" 
+                                 FontWeight="Bold" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <TextBlock Text="💰 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
+                    <StackPanel>
+                        <TextBlock Text="GASTOS FIJOS" FontSize="11" Foreground="White" Opacity="0.8"/>
+                        <TextBlock Name="FooterExpensesText" Text="$18,350.00" FontSize="18" 
+                                 FontWeight="Bold" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="💵 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
+                    <StackPanel>
+                        <TextBlock Text="TOTAL MENSUAL" FontSize="11" Foreground="White" Opacity="0.8"/>
+                        <TextBlock Name="FooterTotalText" Text="$137,570.00" FontSize="18" 
+                                 FontWeight="Bold" Foreground="White"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

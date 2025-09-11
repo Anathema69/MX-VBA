@@ -3,6 +3,7 @@ using Postgrest.Attributes;
 using Postgrest.Interfaces;
 using Postgrest.Models;
 using Postgrest.Responses;
+using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.ViewModels;
 using Supabase;
 using System;
@@ -2360,9 +2361,148 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
-    }
+        // ===============================================
+        // ========== MÉTODOS DE NÓMINA ==========
+
+        public async Task<List<PayrollTable>> GetActivePayroll()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(x => x.IsActive == true)
+                    .Order(x => x.Employee, Postgrest.Constants.Ordering.Ascending)  // Sin "Supabase."
+                    .Get();
+                return response?.Models ?? new List<PayrollTable>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting payroll: {ex.Message}");
+                throw;
+            }
+        }
+        public async Task<List<PayrollHistoryTable>> GetPayrollHistory(int? payrollId = null)
+        {
+            try
+            {
+                if (payrollId.HasValue)
+                {
+                    var response = await _supabaseClient
+                        .From<PayrollHistoryTable>()
+                        .Where(x => x.PayrollId == payrollId.Value)
+                        .Order(x => x.EffectiveDate, Postgrest.Constants.Ordering.Descending)  // Sin "Supabase."
+                        .Limit(100)
+                        .Get();
+
+                    return response?.Models ?? new List<PayrollHistoryTable>();
+                }
+                else
+                {
+                    var response = await _supabaseClient
+                        .From<PayrollHistoryTable>()
+                        .Order(x => x.EffectiveDate, Postgrest.Constants.Ordering.Descending)  // Sin "Supabase."
+                        .Limit(100)
+                        .Get();
+
+                    return response?.Models ?? new List<PayrollHistoryTable>();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting payroll history: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<PayrollTable> GetPayrollById(int id)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(x => x.Id == id)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting payroll by id: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<PayrollTable> CreatePayroll(PayrollTable payroll)
+        {
+            try
+            {
+                payroll.CreatedAt = DateTime.Now;
+                payroll.UpdatedAt = DateTime.Now;
+                payroll.IsActive = true;
+
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Insert(payroll);
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating payroll: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<PayrollTable> UpdatePayroll(PayrollTable payroll)
+        {
+            try
+            {
+                payroll.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(x => x.Id == payroll.Id)
+                    .Set(x => x.Employee, payroll.Employee)
+                    .Set(x => x.Title, payroll.Title)
+                    .Set(x => x.Range, payroll.Range)
+                    .Set(x => x.Condition, payroll.Condition)
+                    .Set(x => x.SSPayroll, payroll.SSPayroll)
+                    .Set(x => x.WeeklyPayroll, payroll.WeeklyPayroll)
+                    .Set(x => x.SocialSecurity, payroll.SocialSecurity)
+                    .Set(x => x.Benefits, payroll.Benefits)
+                    .Set(x => x.BenefitsAmount, payroll.BenefitsAmount)
+                    .Set(x => x.MonthlyPayroll, payroll.MonthlyPayroll)
+                    .Set(x => x.UpdatedBy, payroll.UpdatedBy)
+                    .Set(x => x.UpdatedAt, payroll.UpdatedAt)
+                    .Update();
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating payroll: {ex.Message}");
+                throw;
+            }
+        }
+
+        
+        public async Task<decimal> GetMonthlyPayrollTotal()
+        {
+            try
+            {
+                var payrolls = await GetActivePayroll();
+                return payrolls.Sum(p => p.MonthlyPayroll ?? 0);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error calculating payroll total: {ex.Message}");
+                throw;
+            }
+        }
 
     }
+
+}
 
     // ===============================================
     // MODELOS DE BASE DE DATOS
@@ -2834,4 +2974,99 @@ namespace SistemaGestionProyectos2.Services
         public string CreatedBy { get; set; }
 
     }
+
+    [Table("t_payroll")]
+    public class PayrollTable : BaseModel
+{
+    [PrimaryKey("f_payroll")]
+    public int Id { get; set; }
+
+    [Column("f_employee")]
+    public string Employee { get; set; }
+
+    [Column("f_title")]
+    public string Title { get; set; }
+
+    [Column("f_hireddate")]
+    public DateTime? HiredDate { get; set; }
+
+    [Column("f_range")]
+    public string Range { get; set; }
+
+    [Column("f_condition")]
+    public string Condition { get; set; }
+
+    [Column("f_lastraise")]
+    public DateTime? LastRaise { get; set; }
+
+    [Column("f_sspayroll")]
+    public decimal? SSPayroll { get; set; }
+
+    [Column("f_weeklypayroll")]
+    public decimal? WeeklyPayroll { get; set; }
+
+    [Column("f_socialsecurity")]
+    public decimal? SocialSecurity { get; set; }
+
+    [Column("f_benefits")]
+    public string Benefits { get; set; }
+
+    [Column("f_benefitsamount")]
+    public decimal? BenefitsAmount { get; set; }
+
+    [Column("f_monthlypayroll")]
+    public decimal? MonthlyPayroll { get; set; }
+
+    [Column("employee_code")]
+    public string EmployeeCode { get; set; }
+
+    [Column("is_active")]
+    public bool IsActive { get; set; }
+
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
+
+    [Column("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
+
+    [Column("created_by")]
+    public int? CreatedBy { get; set; }
+
+    [Column("updated_by")]
+    public int? UpdatedBy { get; set; }
+}
+
+    [Table("t_payroll_history")]
+    public class PayrollHistoryTable : BaseModel
+{
+    [PrimaryKey("id")]
+    public int Id { get; set; }
+
+    [Column("f_payroll")]
+    public int PayrollId { get; set; }
+
+    [Column("f_employee")]
+    public string Employee { get; set; }
+
+    [Column("f_title")]
+    public string Title { get; set; }
+
+    [Column("f_monthlypayroll")]
+    public decimal? MonthlyPayroll { get; set; }
+
+    [Column("changed_fields")]
+    public string ChangedFields { get; set; }
+
+    [Column("effective_date")]
+    public DateTime EffectiveDate { get; set; }
+
+    [Column("change_type")]
+    public string ChangeType { get; set; }
+
+    [Column("change_summary")]
+    public string ChangeSummary { get; set; }
+
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
+}
 
