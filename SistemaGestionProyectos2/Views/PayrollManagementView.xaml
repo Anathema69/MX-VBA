@@ -1,6 +1,7 @@
 ﻿<Window x:Class="SistemaGestionProyectos2.Views.PayrollManagementView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:System="clr-namespace:System;assembly=mscorlib"
         Title="Nómina y Gastos Fijos - Sistema de Gestión" 
         Height="850" 
         Width="1400"
@@ -20,6 +21,7 @@
         <SolidColorBrush x:Key="BorderGray" Color="#E2E8F0"/>
         <SolidColorBrush x:Key="TextGray" Color="#718096"/>
         <SolidColorBrush x:Key="DarkText" Color="#2D3748"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
 
         <!-- Estilo para botones modernos -->
         <Style x:Key="ModernButton" TargetType="Button">
@@ -423,14 +425,22 @@
 
                     <!-- Total de Nómina -->
                     <Border Grid.Row="2" Background="White" CornerRadius="8" 
-                            Margin="0,15,0,0" Padding="20,15">
+        Margin="0,15,0,0" Padding="20,15">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="TOTAL GASTOS FIJOS:" 
+                     FontSize="16" 
+                     FontWeight="Bold"
+                     Foreground="{StaticResource TextGray}"
+                     VerticalAlignment="Center"
+                     Margin="0,0,15,0"/>
+                                <TextBlock Name="TotalExpensesText"  
+                     Text="$0.00" 
+                     FontSize="24" 
+                     FontWeight="Bold"
+                     Foreground="{StaticResource DangerColor}"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>
@@ -462,8 +472,8 @@
 
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Button Name="AddExpenseButton"
-                                        Click="AddExpenseButton_Click"
-                                        Style="{StaticResource ModernButton}">
+            Click="AddExpenseButton_Click"
+            Style="{StaticResource ModernButton}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="➕ " FontSize="12" Margin="0,0,5,0"/>
                                         <TextBlock Text="Nuevo Gasto"/>
@@ -475,73 +485,121 @@
 
                     <!-- DataGrid de Gastos Fijos -->
                     <Border Grid.Row="1" Background="White" CornerRadius="8">
+                        <!-- Reemplazar la sección del DataGrid de GASTOS FIJOS -->
                         <DataGrid Name="ExpensesDataGrid"
-                                AutoGenerateColumns="False"
-                                CanUserAddRows="False"
-                                CanUserDeleteRows="False"
-                                GridLinesVisibility="None"
-                                BorderThickness="0"
-                                Background="White"
-                                RowHeight="45"
-                                HeadersVisibility="Column"
-                                SelectionMode="Single"
-                                CellStyle="{StaticResource ModernDataGridCell}">
+                                        AutoGenerateColumns="False"
+                                        CanUserAddRows="False"
+                                        CanUserDeleteRows="False"
+                                        GridLinesVisibility="None"
+                                        BorderThickness="0"
+                                        Background="White"
+                                        RowHeight="45"
+                                        HeadersVisibility="Column"
+                                        SelectionMode="Single"
+                                        CellStyle="{StaticResource ModernDataGridCell}"
+                                        CellEditEnding="ExpensesDataGrid_CellEditEnding"
+                                        PreviewKeyDown="ExpensesDataGrid_PreviewKeyDown">
 
-                            <DataGrid.ColumnHeaderStyle>
-                                <Style TargetType="DataGridColumnHeader">
-                                    <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
-                                    <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                    <Setter Property="FontSize" Value="12"/>
-                                    <Setter Property="Padding" Value="10,12"/>
-                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                    <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                            <Setter Property="Background" Value="#F0FDF4"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasChanges}" Value="True">
+                                            <Setter Property="Background" Value="#FEF3C7"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
                                 </Style>
-                            </DataGrid.ColumnHeaderStyle>
+                            </DataGrid.RowStyle>
 
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="TIPO" 
-                                                  Binding="{Binding ExpenseType}" 
-                                                  Width="150"/>
+                                <DataGridComboBoxColumn Header="TIPO" 
+                               SelectedItemBinding="{Binding ExpenseType}" 
+                               Width="150">
+                                    <DataGridComboBoxColumn.ElementStyle>
+                                        <Style TargetType="ComboBox">
+                                            <Setter Property="ItemsSource">
+                                                <Setter.Value>
+                                                    <x:Array Type="{x:Type sys:String}" 
+                                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                                        <sys:String>GASOLINA</sys:String>
+                                                        <sys:String>SEGURO</sys:String>
+                                                        <sys:String>SERVICIOS</sys:String>
+                                                        <sys:String>RENTA</sys:String>
+                                                        <sys:String>MANTENIMIENTO</sys:String>
+                                                        <sys:String>TELEFONO</sys:String>
+                                                        <sys:String>INTERNET</sys:String>
+                                                        <sys:String>LUZ</sys:String>
+                                                        <sys:String>AGUA</sys:String>
+                                                        <sys:String>OTROS</sys:String>
+                                                    </x:Array>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </DataGridComboBoxColumn.ElementStyle>
+                                    <DataGridComboBoxColumn.EditingElementStyle>
+                                        <Style TargetType="ComboBox">
+                                            <Setter Property="ItemsSource">
+                                                <Setter.Value>
+                                                    <x:Array Type="{x:Type sys:String}" 
+                                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+                                                        <sys:String>GASOLINA</sys:String>
+                                                        <sys:String>SEGURO</sys:String>
+                                                        <sys:String>SERVICIOS</sys:String>
+                                                        <sys:String>RENTA</sys:String>
+                                                        <sys:String>MANTENIMIENTO</sys:String>
+                                                        <sys:String>TELEFONO</sys:String>
+                                                        <sys:String>INTERNET</sys:String>
+                                                        <sys:String>LUZ</sys:String>
+                                                        <sys:String>AGUA</sys:String>
+                                                        <sys:String>OTROS</sys:String>
+                                                    </x:Array>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </DataGridComboBoxColumn.EditingElementStyle>
+                                </DataGridComboBoxColumn>
 
                                 <DataGridTextColumn Header="DESCRIPCIÓN" 
-                                                  Binding="{Binding Description}" 
-                                                  Width="*"/>
+                          Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
+                          Width="*"/>
 
-                                <DataGridTextColumn Header="GASTO MENSUAL" 
-                                                  Binding="{Binding MonthlyAmount, StringFormat=C}" 
-                                                  Width="150">
+                                <DataGridTextColumn Header="MONTO MENSUAL" 
+                          Binding="{Binding MonthlyAmount, StringFormat={}{0:C}, UpdateSourceTrigger=PropertyChanged}" 
+                          Width="150">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                             <Setter Property="TextAlignment" Value="Right"/>
+                                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="VIGENTE DESDE" 
-                                                  Binding="{Binding EffectiveFrom, StringFormat={}{0:dd/MM/yyyy}}" 
-                                                  Width="120"/>
-
-                                <DataGridTemplateColumn Header="ACCIONES" Width="100">
+                                <!--Columna de acciones para eliminar-->
+                                
+                                <DataGridTemplateColumn Header="" Width="50">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <Button Click="EditExpense_Click"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Cursor="Hand"
-                                                        Padding="5">
-                                                    <TextBlock Text="✏️" FontSize="16"/>
-                                                </Button>
-                                                <Button Click="DeleteExpense_Click"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Cursor="Hand"
-                                                        Padding="5">
-                                                    <TextBlock Text="🗑️" FontSize="16"/>
-                                                </Button>
-                                            </StackPanel>
+                                            <Button Click="DeleteExpense_Click"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    Padding="5"
+                    ToolTip="Eliminar">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                                <TextBlock Text="🗑️" FontSize="14"/>
+                                            </Button>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -549,38 +607,28 @@
                         </DataGrid>
                     </Border>
 
-                    <!-- Total de Gastos Fijos -->
-                    <Border Grid.Row="2" Background="White" CornerRadius="8" 
-                            Margin="0,15,0,0" Padding="20,15">
-                        <Grid>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <TextBlock Text="TOTAL GASTOS FIJOS:" 
-                                         FontSize="16" 
-                                         FontWeight="Bold"
-                                         Foreground="{StaticResource TextGray}"
-                                         VerticalAlignment="Center"
-                                         Margin="0,0,15,0"/>
-                                <TextBlock Name="TotalExpensesText" 
-                                         Text="$18,350.00" 
-                                         FontSize="24" 
-                                         FontWeight="Bold"
-                                         Foreground="{StaticResource DangerColor}"
-                                         VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                    
                 </Grid>
             </TabItem>
         </TabControl>
 
         <!-- Row 3: Footer -->
         <Border Grid.Row="3" Background="White" BorderThickness="0,1,0,0" 
-            BorderBrush="{StaticResource BorderGray}" Padding="30,15">
-            <TextBlock Name="LastUpdateText" 
+        BorderBrush="{StaticResource BorderGray}" Padding="30,15">
+            <Grid>
+                <TextBlock Name="StatusText"
+                 Text="" 
+                 FontSize="12" 
+                 FontWeight="SemiBold"
+                 Foreground="{StaticResource SuccessColor}"
+                 HorizontalAlignment="Left"/>
+        
+        <TextBlock Name="LastUpdateText" 
                  Text="Última actualización: 11/09/2024 14:30" 
                  FontSize="12" 
                  Foreground="{StaticResource TextGray}"
                  HorizontalAlignment="Right"/>
+    </Grid>
         </Border>
     </Grid>
 </Window>

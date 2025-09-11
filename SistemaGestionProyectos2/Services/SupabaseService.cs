@@ -2522,6 +2522,92 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // ========== MÉTODOS DE GASTOS FIJOS ==========
+
+        public async Task<List<FixedExpenseTable>> GetActiveFixedExpenses()
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(x => x.IsActive == true)
+                    .Order(x => x.ExpenseType, Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return response?.Models ?? new List<FixedExpenseTable>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting fixed expenses: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<FixedExpenseTable> CreateFixedExpense(FixedExpenseTable expense)
+        {
+            try
+            {
+                expense.CreatedAt = DateTime.Now;
+                expense.UpdatedAt = DateTime.Now;
+                expense.IsActive = true;
+
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Insert(expense);
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating fixed expense: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<FixedExpenseTable> UpdateFixedExpense(FixedExpenseTable expense)
+        {
+            try
+            {
+                expense.UpdatedAt = DateTime.Now;
+
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(x => x.Id == expense.Id)
+                    .Set(x => x.ExpenseType, expense.ExpenseType)
+                    .Set(x => x.Description, expense.Description)
+                    .Set(x => x.MonthlyAmount, expense.MonthlyAmount)
+                    .Set(x => x.UpdatedAt, expense.UpdatedAt)
+                    .Update();
+
+                return response?.Models?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating fixed expense: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<bool> DeleteFixedExpense(int expenseId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(x => x.Id == expenseId)
+                    .Set(x => x.IsActive, false)
+                    .Set(x => x.UpdatedAt, DateTime.Now)
+                    .Update();
+
+                return response?.Models?.Any() ?? false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deleting fixed expense: {ex.Message}");
+                throw;
+            }
+        }
+
     }
 
 }
@@ -3093,3 +3179,32 @@ namespace SistemaGestionProyectos2.Services
     public DateTime? CreatedAt { get; set; }
 }
 
+
+    // Tabla para gastos fijos
+    [Table("t_fixed_expenses")]
+    public class FixedExpenseTable : BaseModel
+{
+    [PrimaryKey("id")]
+    public int Id { get; set; }
+
+    [Column("expense_type")]
+    public string ExpenseType { get; set; }
+
+    [Column("description")]
+    public string Description { get; set; }
+
+    [Column("monthly_amount")]
+    public decimal? MonthlyAmount { get; set; }
+
+    [Column("is_active")]
+    public bool IsActive { get; set; }
+
+    [Column("created_by")]
+    public int? CreatedBy { get; set; }
+
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
+
+    [Column("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
+}
