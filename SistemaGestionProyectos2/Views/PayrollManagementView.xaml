@@ -188,32 +188,38 @@
                             </Grid.ColumnDefinitions>
 
                             <!-- Búsqueda -->
+                            <!-- Buscar esta sección en el XAML y reemplazarla -->
                             <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                    CornerRadius="6" Width="300" HorizontalAlignment="Left">
+        CornerRadius="6" Width="300" HorizontalAlignment="Left">
                                 <Grid>
                                     <TextBox Name="SearchEmployeeBox"
-                                           BorderThickness="0"
-                                           Background="Transparent"
-                                           Padding="35,8,10,8"
-                                           FontSize="13"
-                                           VerticalAlignment="Center"/>
+               BorderThickness="0"
+               Background="Transparent"
+               Padding="35,8,10,8"
+               FontSize="13"
+               VerticalAlignment="Center"
+               IsEnabled="True"
+               Focusable="True"/>
+                                    <!-- Búsqueda -->
                                     <TextBlock Text="🔍" 
-                                             Margin="10,0,0,0" 
-                                             VerticalAlignment="Center"
-                                             Foreground="{StaticResource TextGray}"/>
+                 Margin="10,0,0,0" 
+                 VerticalAlignment="Center"
+                 Foreground="{StaticResource TextGray}"
+                 IsHitTestVisible="False"/>
+                                    <!-- Importante: no debe interferir con clicks -->
                                     <TextBlock Text="Buscar empleado..." 
-                                             Margin="35,0,0,0"
-                                             VerticalAlignment="Center"
-                                             Foreground="{StaticResource TextGray}"
-                                             IsHitTestVisible="False">
+                 Margin="35,0,0,0"
+                 VerticalAlignment="Center"
+                 Foreground="{StaticResource TextGray}"
+                 IsHitTestVisible="False"> <!-- Importante: no debe interferir -->
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Hidden"/>
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Text.Length, ElementName=SearchEmployeeBox, UpdateSourceTrigger=PropertyChanged}" Value="0">
+                                                    <DataTrigger Binding="{Binding Text.Length, ElementName=SearchEmployeeBox}" Value="0">
                                                         <Setter Property="Visibility" Value="Visible"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
-                                                <Setter Property="Visibility" Value="Hidden"/>
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
@@ -335,6 +341,15 @@
                                                         Padding="5"
                                                         ToolTip="Ver historial">
                                                     <TextBlock Text="📊" FontSize="16"/>
+                                                </Button>
+                                                <Button Name="DeactivateButton"
+                                                            Click="DeactivateEmployee_Click"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Cursor="Hand"
+                                                            Padding="5"
+                                                            ToolTip="Desactivar">
+                                                    <TextBlock Text="🚫" FontSize="16"/>
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>

@@ -2500,6 +2500,28 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // Desactivar empleado (soft delete)
+        public async Task<bool> DeactivateEmployee(int employeeId, int userId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(x => x.Id == employeeId)
+                    .Set(x => x.IsActive, false)
+                    .Set(x => x.UpdatedBy, userId)
+                    .Set(x => x.UpdatedAt, DateTime.Now)
+                    .Update();
+
+                return response?.Models?.Any() ?? false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deactivating employee: {ex.Message}");
+                throw;
+            }
+        }
+
     }
 
 }
@@ -3054,8 +3076,9 @@ namespace SistemaGestionProyectos2.Services
     [Column("f_monthlypayroll")]
     public decimal? MonthlyPayroll { get; set; }
 
+
     [Column("changed_fields")]
-    public string ChangedFields { get; set; }
+    public object ChangedFields { get; set; } // Usar object para manejar JSONB
 
     [Column("effective_date")]
     public DateTime EffectiveDate { get; set; }

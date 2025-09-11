@@ -232,18 +232,29 @@ namespace SistemaGestionProyectos2.Views
                 if (_payroll == null)
                     _payroll = new PayrollTable();
 
-                _payroll.Employee = EmployeeNameBox.Text.Trim();
-                _payroll.Title = TitleBox.Text.Trim();
-                _payroll.EmployeeCode = string.IsNullOrWhiteSpace(EmployeeCodeBox.Text) ? null : EmployeeCodeBox.Text.Trim();
+                // Asegurar que los campos obligatorios no sean nulos
+                _payroll.Employee = EmployeeNameBox.Text?.Trim() ?? "";
+                _payroll.Title = TitleBox.Text?.Trim() ?? "";
+
+                // Para campos opcionales, usar string vacío si están vacíos
+                _payroll.EmployeeCode = string.IsNullOrWhiteSpace(EmployeeCodeBox.Text)
+                    ? "" : EmployeeCodeBox.Text.Trim();
+
                 _payroll.HiredDate = HiredDatePicker.SelectedDate;
                 _payroll.LastRaise = LastRaisePicker.SelectedDate;
-                _payroll.Range = (RangeCombo.SelectedItem as ComboBoxItem)?.Content.ToString();
-                _payroll.Condition = (ConditionCombo.SelectedItem as ComboBoxItem)?.Content.ToString();
+
+                // Asegurar que Range y Condition no sean nulos
+                _payroll.Range = (RangeCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+                _payroll.Condition = (ConditionCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "";
+
                 _payroll.SSPayroll = ParseDecimal(SSPayrollBox.Text);
                 _payroll.WeeklyPayroll = ParseDecimal(WeeklyPayrollBox.Text);
                 _payroll.SocialSecurity = ParseDecimal(SocialSecurityBox.Text);
                 _payroll.BenefitsAmount = ParseDecimal(BenefitsAmountBox.Text);
-                _payroll.Benefits = string.IsNullOrWhiteSpace(BenefitsBox.Text) ? null : BenefitsBox.Text.Trim();
+
+                // Para Benefits, usar string vacío si está vacío
+                _payroll.Benefits = string.IsNullOrWhiteSpace(BenefitsBox.Text)
+                    ? "" : BenefitsBox.Text.Trim();
 
                 // Calcular nómina mensual
                 decimal monthlyFromWeekly = (_payroll.WeeklyPayroll ?? 0) * 52 / 12;
@@ -251,6 +262,10 @@ namespace SistemaGestionProyectos2.Views
                     (_payroll.SSPayroll ?? 0) +
                     (_payroll.SocialSecurity ?? 0) +
                     (_payroll.BenefitsAmount ?? 0);
+
+                // Asegurar que IsActive tenga un valor
+                if (!_payroll.IsActive)
+                    _payroll.IsActive = true;
 
                 if (_isNewEmployee)
                 {

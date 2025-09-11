@@ -9,7 +9,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Data;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -19,6 +21,7 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<PayrollViewModel> _employees;
         private ObservableCollection<FixedExpenseViewModel> _expenses;
         private UserSession _currentUser;
+        private string _searchText = ""; // Variable para el texto de búsqueda
 
         public PayrollManagementView(UserSession currentUser)
         {
@@ -28,13 +31,19 @@ namespace SistemaGestionProyectos2.Views
             _employees = new ObservableCollection<PayrollViewModel>();
             _expenses = new ObservableCollection<FixedExpenseViewModel>();
 
+            // Conectar evento de búsqueda
+            SearchEmployeeBox.TextChanged += SearchEmployeeBox_TextChanged;
+
             PayrollDataGrid.ItemsSource = _employees;
             ExpensesDataGrid.ItemsSource = _expenses;
 
-            LoadData();
+            // Cargar datos de manera asíncrona
+            _ = LoadData(); // Usar discard para llamada asíncrona
+
+
         }
 
-        private async void LoadData()
+        private async Task LoadData()
         {
             try
             {
@@ -57,7 +66,81 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        
+        private void SearchEmployeeBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _searchText = SearchEmployeeBox.Text?.ToLower() ?? "";
+
+            // Obtener la vista de colección
+            var view = CollectionViewSource.GetDefaultView(PayrollDataGrid.ItemsSource);
+
+            if (view != null)
+            {
+                if (string.IsNullOrWhiteSpace(_searchText))
+                {
+                    // Quitar filtro
+                    view.Filter = null;
+                }
+                else
+                {
+                    // Aplicar filtro
+                    view.Filter = obj =>
+                    {
+                        var employee = obj as PayrollViewModel;
+                        if (employee == null) return false;
+
+                        return employee.Employee.ToLower().Contains(_searchText) ||
+                               employee.Title.ToLower().Contains(_searchText) ||
+                               employee.Range.ToLower().Contains(_searchText);
+                    };
+                }
+
+                view.Refresh();
+            }
+        }
+
+        private async void DeactivateEmployee_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var employee = button?.DataContext as PayrollViewModel;
+
+            if (employee != null)
+            {
+                var result = MessageBox.Show(
+                    $"¿Está seguro de desactivar a {employee.Employee}?\n\n" +
+                    "El empleado no aparecerá en la nómina activa pero se conservará su historial.",
+                    "Confirmar desactivación",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        // Usar el método específico de desactivación
+                        bool success = await _supabaseService.DeactivateEmployee(employee.Id, _currentUser.Id);
+
+                        if (success)
+                        {
+                            MessageBox.Show("Empleado desactivado correctamente",
+                                "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                            await LoadData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("No se pudo desactivar el empleado",
+                                "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error al desactivar: {ex.Message}",
+                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
 
         private async Task LoadFixedExpenses()
         {
@@ -131,17 +214,17 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Actualizar el método AddEmployeeButton_Click:
-        private void AddEmployeeButton_Click(object sender, RoutedEventArgs e)
+        
+        private async void AddEmployeeButton_Click(object sender, RoutedEventArgs e)
         {
             var editWindow = new EmployeeEditWindow(null, _currentUser);
             if (editWindow.ShowDialog() == true)
             {
-                LoadData(); // Recargar datos después de agregar
+                await LoadData(); // Ahora con await
             }
         }
 
-        private void EditEmployee_Click(object sender, RoutedEventArgs e)
+        private async void EditEmployee_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var employee = button?.DataContext as PayrollViewModel;
@@ -150,7 +233,7 @@ namespace SistemaGestionProyectos2.Views
                 var editWindow = new EmployeeEditWindow(employee, _currentUser);
                 if (editWindow.ShowDialog() == true)
                 {
-                    LoadData();
+                    await LoadData();
                 }
             }
         }
@@ -242,6 +325,7 @@ namespace SistemaGestionProyectos2.Views
         private string _range;
         private string _condition;
         private decimal _monthlyPayroll;
+        private bool _isVisible = true;
 
         public int Id
         {
@@ -277,6 +361,13 @@ namespace SistemaGestionProyectos2.Views
         {
             get => _monthlyPayroll;
             set { _monthlyPayroll = value; OnPropertyChanged(); }
+        }
+
+        // Propiedad para controlar visibilidad en la búsqueda
+        public bool IsVisible
+        {
+            get => _isVisible;
+            set { _isVisible = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
