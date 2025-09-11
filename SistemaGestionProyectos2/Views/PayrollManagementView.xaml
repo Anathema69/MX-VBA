@@ -102,13 +102,18 @@
     <Grid Background="{StaticResource BackgroundGray}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <!-- Header -->
             <RowDefinition Height="Auto"/>
+            <!-- Cards de resumen -->
+            <RowDefinition Height="*"/>
+            <!-- TabControl -->
+            <RowDefinition Height="Auto"/>
+            <!-- Footer -->
         </Grid.RowDefinitions>
 
         <!-- Header -->
         <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderGray}" 
-                BorderThickness="0,0,0,1">
+            BorderThickness="0,0,0,1">
             <Grid Margin="30,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -118,34 +123,29 @@
                 <!-- Título y info de vigencia -->
                 <StackPanel Grid.Column="0" Orientation="Vertical">
                     <TextBlock Text="NÓMINA Y GASTOS FIJOS" 
-                             FontSize="24" 
-                             FontWeight="Bold" 
-                             Foreground="{StaticResource DarkText}"/>
+                         FontSize="24" 
+                         FontWeight="Bold" 
+                         Foreground="{StaticResource DarkText}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                         <TextBlock Text="Vigente: " 
-                                 FontSize="13" 
-                                 Foreground="{StaticResource TextGray}"/>
+                             FontSize="13" 
+                             Foreground="{StaticResource TextGray}"/>
                         <TextBlock Name="CurrentMonthText" 
-                                 Text="Noviembre 2024" 
-                                 FontSize="13" 
-                                 FontWeight="SemiBold"
-                                 Foreground="{StaticResource DarkText}"/>
-                        <TextBlock Name="NextChangeText" 
-                                 Text=" • Próximo cambio: Dic 2024 (+$5,000)" 
-                                 FontSize="13" 
-                                 Foreground="{StaticResource WarningColor}"
-                                 Visibility="Collapsed"/>
+                             Text="Diciembre 2024" 
+                             FontSize="13" 
+                             FontWeight="SemiBold"
+                             Foreground="{StaticResource DarkText}"/>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Botones de acción -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Name="BackButton"
-                            Click="BackButton_Click"
-                            Style="{StaticResource ModernButton}"
-                            Background="#37474F"
-                            Width="100"
-                            Margin="0,0,10,0">
+                        Click="BackButton_Click"
+                        Style="{StaticResource ModernButton}"
+                        Background="#37474F"
+                        Width="100"
+                        Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="← " FontSize="16" Margin="0,0,5,0"/>
                             <TextBlock Text="Volver" FontSize="13"/>
@@ -153,18 +153,83 @@
                     </Button>
 
                     <Button Name="CloseButton"
-                            Click="CloseButton_Click"
-                            Width="35" Height="35"
-                            Background="#EF4444"
-                            Style="{StaticResource ModernButton}">
+                        Click="CloseButton_Click"
+                        Width="35" Height="35"
+                        Background="#EF4444"
+                        Style="{StaticResource ModernButton}">
                         <TextBlock Text="✕" FontSize="16" FontWeight="Bold"/>
                     </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Contenido Principal con Tabs -->
-        <TabControl Grid.Row="1" Margin="30,20" Background="Transparent" BorderThickness="0">
+
+        <!-- Row 1: Cards de resumen -->
+        <Grid Grid.Row="1" Margin="30,20,30,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Card Empleados Activos -->
+            <Border Grid.Column="0" Background="White" CornerRadius="8" 
+                Margin="0,0,10,0" Padding="20">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" Direction="270" 
+                                ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="👥" FontSize="24" Margin="0,0,0,10"/>
+                    <TextBlock Text="EMPLEADOS ACTIVOS" FontSize="11" 
+                         Foreground="{StaticResource TextGray}" 
+                         FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Name="ActiveEmployeesText" Text="6" 
+                         FontSize="28" FontWeight="Bold" 
+                         Foreground="{StaticResource DarkText}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Card Nómina Mensual -->
+            <Border Grid.Column="1" Background="White" CornerRadius="8" 
+                Margin="5,0,5,0" Padding="20">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" Direction="270" 
+                                ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="💰" FontSize="24" Margin="0,0,0,10"/>
+                    <TextBlock Text="NÓMINA MENSUAL" FontSize="11" 
+                         Foreground="{StaticResource TextGray}" 
+                         FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Name="TotalPayrollText" Text="$0.00" 
+                         FontSize="28" FontWeight="Bold" 
+                         Foreground="{StaticResource PrimaryColor}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Card Gastos Fijos -->
+            <Border Grid.Column="2" Background="White" CornerRadius="8" 
+                Margin="10,0,0,0" Padding="20">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="10" Direction="270" 
+                                ShadowDepth="2" Opacity="0.1"/>
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="📊" FontSize="24" Margin="0,0,0,10"/>
+                    <TextBlock Text="GASTOS FIJOS" FontSize="11" 
+                         Foreground="{StaticResource TextGray}" 
+                         FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Name="TotalExpensesCardText" Text="$0.00" 
+                         FontSize="28" FontWeight="Bold" 
+                         Foreground="{StaticResource DangerColor}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+
+        <!-- Row 2: TabControl -->
+        <TabControl Grid.Row="2" Margin="30,10,30,10" Background="Transparent" BorderThickness="0">
             <TabControl.Resources>
                 <Style TargetType="TabItem" BasedOn="{StaticResource ModernTabItem}"/>
             </TabControl.Resources>
@@ -249,15 +314,7 @@
                                     </StackPanel>
                                 </Button>
 
-                                <Button Name="ExportPayrollButton"
-                                        Click="ExportPayrollButton_Click"
-                                        Style="{StaticResource ModernButton}"
-                                        Background="{StaticResource SuccessColor}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📥 " FontSize="12" Margin="0,0,5,0"/>
-                                        <TextBlock Text="Exportar Excel"/>
-                                    </StackPanel>
-                                </Button>
+                                
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -290,65 +347,70 @@
                             </DataGrid.ColumnHeaderStyle>
 
                             <DataGrid.Columns>
-                                <DataGridCheckBoxColumn Header="" Width="40"/>
-
                                 <DataGridTextColumn Header="EMPLEADO" 
-                                                  Binding="{Binding Employee}" 
-                                                  Width="2*"/>
-
-                                <DataGridTextColumn Header="PUESTO" 
-                                                  Binding="{Binding Title}" 
-                                                  Width="2*"/>
-
-                                <DataGridTextColumn Header="RANGO" 
-                                                  Binding="{Binding Range}" 
-                                                  Width="100"/>
-
-                                <DataGridTextColumn Header="CONDICIÓN" 
-                                                  Binding="{Binding Condition}" 
-                                                  Width="120"/>
-
-                                <DataGridTextColumn Header="NÓMINA MENSUAL" 
-                                                  Binding="{Binding MonthlyPayroll, StringFormat=C}" 
-                                                  Width="150">
+                              Binding="{Binding Employee}" 
+                              Width="2*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+
+                                <DataGridTextColumn Header="PUESTO" 
+                              Binding="{Binding Title}" 
+                              Width="2*"/>
+
+                                <DataGridTextColumn Header="RANGO" 
+                              Binding="{Binding Range}" 
+                              Width="120"/>
+
+                                <DataGridTextColumn Header="CONDICIÓN" 
+                              Binding="{Binding Condition}" 
+                              Width="120"/>
+
+                                <DataGridTextColumn Header="NÓMINA MENSUAL" 
+                              Binding="{Binding MonthlyPayroll, StringFormat={}{0:C}}" 
+                              Width="150">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontWeight" Value="Bold"/>
                                             <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                                             <Setter Property="TextAlignment" Value="Right"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTemplateColumn Header="ACCIONES" Width="100">
+                                <DataGridTemplateColumn Header="ACCIONES" Width="120">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <Button Name="EditButton"
-                                                        Click="EditEmployee_Click"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Cursor="Hand"
-                                                        Padding="5"
-                                                        ToolTip="Editar">
+                                    Click="EditEmployee_Click"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Padding="5"
+                                    ToolTip="Editar">
                                                     <TextBlock Text="✏️" FontSize="16"/>
                                                 </Button>
                                                 <Button Name="HistoryButton"
-                                                        Click="ViewEmployeeHistory_Click"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Cursor="Hand"
-                                                        Padding="5"
-                                                        ToolTip="Ver historial">
+                                    Click="ViewEmployeeHistory_Click"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Padding="5"
+                                    ToolTip="Ver historial">
                                                     <TextBlock Text="📊" FontSize="16"/>
                                                 </Button>
                                                 <Button Name="DeactivateButton"
-                                                            Click="DeactivateEmployee_Click"
-                                                            Background="Transparent"
-                                                            BorderThickness="0"
-                                                            Cursor="Hand"
-                                                            Padding="5"
-                                                            ToolTip="Desactivar">
+                                    Click="DeactivateEmployee_Click"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Padding="5"
+                                    ToolTip="Desactivar">
                                                     <TextBlock Text="🚫" FontSize="16"/>
                                                 </Button>
                                             </StackPanel>
@@ -368,40 +430,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Orientation="Horizontal">
-                                <TextBlock Text="Empleados activos: " 
-                                         FontSize="14" 
-                                         Foreground="{StaticResource TextGray}"/>
-                                <TextBlock Name="ActiveEmployeesText" 
-                                         Text="6" 
-                                         FontSize="14" 
-                                         FontWeight="Bold"
-                                         Foreground="{StaticResource DarkText}"
-                                         Margin="5,0,20,0"/>
-
-                                <TextBlock Text="Última actualización: " 
-                                         FontSize="14" 
-                                         Foreground="{StaticResource TextGray}"/>
-                                <TextBlock Name="LastUpdateText" 
-                                         Text="11/09/2024 14:30" 
-                                         FontSize="14" 
-                                         Foreground="{StaticResource DarkText}"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <TextBlock Text="TOTAL NÓMINA MENSUAL:" 
-                                         FontSize="16" 
-                                         FontWeight="Bold"
-                                         Foreground="{StaticResource TextGray}"
-                                         VerticalAlignment="Center"
-                                         Margin="0,0,15,0"/>
-                                <TextBlock Name="TotalPayrollText" 
-                                         Text="$119,220.00" 
-                                         FontSize="24" 
-                                         FontWeight="Bold"
-                                         Foreground="{StaticResource PrimaryColor}"
-                                         VerticalAlignment="Center"/>
-                            </StackPanel>
+                            
                         </Grid>
                     </Border>
                 </Grid>
@@ -544,42 +573,14 @@
             </TabItem>
         </TabControl>
 
-        <!-- Footer con resumen -->
-        <Border Grid.Row="2" Background="{StaticResource PrimaryColor}" Padding="30,15">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Text="📊 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
-                    <StackPanel>
-                        <TextBlock Text="NÓMINA MENSUAL" FontSize="11" Foreground="White" Opacity="0.8"/>
-                        <TextBlock Name="FooterPayrollText" Text="$119,220.00" FontSize="18" 
-                                 FontWeight="Bold" Foreground="White"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                    <TextBlock Text="💰 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
-                    <StackPanel>
-                        <TextBlock Text="GASTOS FIJOS" FontSize="11" Foreground="White" Opacity="0.8"/>
-                        <TextBlock Name="FooterExpensesText" Text="$18,350.00" FontSize="18" 
-                                 FontWeight="Bold" Foreground="White"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="💵 " FontSize="20" Foreground="White" Margin="0,0,10,0"/>
-                    <StackPanel>
-                        <TextBlock Text="TOTAL MENSUAL" FontSize="11" Foreground="White" Opacity="0.8"/>
-                        <TextBlock Name="FooterTotalText" Text="$137,570.00" FontSize="18" 
-                                 FontWeight="Bold" Foreground="White"/>
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
+        <!-- Row 3: Footer -->
+        <Border Grid.Row="3" Background="White" BorderThickness="0,1,0,0" 
+            BorderBrush="{StaticResource BorderGray}" Padding="30,15">
+            <TextBlock Name="LastUpdateText" 
+                 Text="Última actualización: 11/09/2024 14:30" 
+                 FontSize="12" 
+                 Foreground="{StaticResource TextGray}"
+                 HorizontalAlignment="Right"/>
         </Border>
     </Grid>
 </Window>

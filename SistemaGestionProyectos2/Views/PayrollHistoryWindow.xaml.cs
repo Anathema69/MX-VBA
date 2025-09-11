@@ -1,12 +1,13 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
-using SistemaGestionProyectos2.Models;
-using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -15,6 +16,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly SupabaseService _supabaseService;
         private ObservableCollection<PayrollHistoryViewModel> _historyItems;
         private int? _employeeId;
+        private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX"); // Para el formato de moneda
 
         public PayrollHistoryWindow(int? employeeId, string employeeName)
         {

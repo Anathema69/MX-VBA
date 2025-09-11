@@ -100,15 +100,65 @@
                                       Binding="{Binding Employee}" 
                                       Width="200"/>
 
-                    <DataGridTemplateColumn Header="TIPO DE CAMBIO" Width="130">
+                    <!-- Reemplazar el DataGridTemplateColumn de TIPO DE CAMBIO con este -->
+                    <DataGridTemplateColumn Header="TIPO DE CAMBIO" Width="150">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Background="{Binding TypeColor}" 
-                                        CornerRadius="12" Padding="8,4">
-                                    <TextBlock Text="{Binding ChangeTypeDisplay}" 
-                                             Foreground="White" FontSize="11" 
-                                             FontWeight="SemiBold"
-                                             HorizontalAlignment="Center"/>
+                                <Border CornerRadius="4" Padding="8,4" Margin="2"
+                    HorizontalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ChangeType}" Value="SALARY_CHANGE">
+                                                    <Setter Property="Background" Value="#E0E7FF"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ChangeType}" Value="PROMOTION">
+                                                    <Setter Property="Background" Value="#D1FAE5"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ChangeType}" Value="BENEFIT_UPDATE">
+                                                    <Setter Property="Background" Value="#DBEAFE"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ChangeType}" Value="NEW_HIRE">
+                                                    <Setter Property="Background" Value="#D1FAE5"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ChangeType}" Value="TERMINATION">
+                                                    <Setter Property="Background" Value="#FEE2E2"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                            <Setter Property="Background" Value="#F3F4F6"/>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="11" FontWeight="SemiBold"
+                         HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ChangeType}" Value="SALARY_CHANGE">
+                                                        <Setter Property="Text" Value="SALARIO"/>
+                                                        <Setter Property="Foreground" Value="#5B3FF9"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ChangeType}" Value="PROMOTION">
+                                                        <Setter Property="Text" Value="PROMOCIÓN"/>
+                                                        <Setter Property="Foreground" Value="#10B981"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ChangeType}" Value="BENEFIT_UPDATE">
+                                                        <Setter Property="Text" Value="PRESTACIONES"/>
+                                                        <Setter Property="Foreground" Value="#3B82F6"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ChangeType}" Value="NEW_HIRE">
+                                                        <Setter Property="Text" Value="ALTA"/>
+                                                        <Setter Property="Foreground" Value="#10B981"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ChangeType}" Value="TERMINATION">
+                                                        <Setter Property="Text" Value="BAJA"/>
+                                                        <Setter Property="Foreground" Value="#EF4444"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                                <Setter Property="Text" Value="CAMBIO"/>
+                                                <Setter Property="Foreground" Value="#6B7280"/>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </Border>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -118,9 +168,11 @@
                                       Binding="{Binding ChangeSummary}" 
                                       Width="*"/>
 
+
+                    <!-- Columna de NÓMINA NUEVA -->
                     <DataGridTextColumn Header="NÓMINA NUEVA" 
-                                      Binding="{Binding MonthlyPayroll, StringFormat=C}" 
-                                      Width="120">
+                  Binding="{Binding MonthlyPayroll, StringFormat={}{0:C}, ConverterCulture=es-MX}" 
+                  Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="Bold"/>

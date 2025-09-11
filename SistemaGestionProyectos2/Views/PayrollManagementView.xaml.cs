@@ -5,13 +5,14 @@ using Supabase.Gotrue;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Data;
+using System.Windows.Input;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -22,6 +23,8 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<FixedExpenseViewModel> _expenses;
         private UserSession _currentUser;
         private string _searchText = ""; // Variable para el texto de búsqueda
+        private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX"); //Para el formato de moneda
+
 
         public PayrollManagementView(UserSession currentUser)
         {
@@ -171,15 +174,11 @@ namespace SistemaGestionProyectos2.Views
             // Calcular totales
             decimal totalPayroll = _employees.Sum(e => e.MonthlyPayroll);
             decimal totalExpenses = _expenses.Sum(e => e.MonthlyAmount);
-            decimal grandTotal = totalPayroll + totalExpenses;
 
-            // Actualizar UI
-            TotalPayrollText.Text = totalPayroll.ToString("C");
-            TotalExpensesText.Text = totalExpenses.ToString("C");
+            // Actualizar UI con formato de peso mexicano
+            TotalPayrollText.Text = totalPayroll.ToString("C", _mexicanCulture);
+            TotalExpensesCardText.Text = totalExpenses.ToString("C", _mexicanCulture);
 
-            FooterPayrollText.Text = totalPayroll.ToString("C");
-            FooterExpensesText.Text = totalExpenses.ToString("C");
-            FooterTotalText.Text = grandTotal.ToString("C");
         }
 
         // Reemplazar el método LoadEmployees con este:
