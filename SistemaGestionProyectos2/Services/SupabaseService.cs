@@ -2109,6 +2109,197 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        public async Task<PendingIncomesData> GetAllPendingIncomesData()
+        {
+            try
+            {
+                // Ejecutar todas las consultas en paralelo
+                var tasksDict = new Dictionary<string, Task>();
+
+                // Task 1: Obtener todas las facturas no pagadas
+                var invoicesTask = _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4)
+                    .Get();
+
+                // Task 2: Obtener todas las órdenes
+                var ordersTask = _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Get();
+
+                // Task 3: Obtener todos los clientes
+                var clientsTask = _supabaseClient
+                    .From<ClientDb>()
+                    .Select("*")
+                    .Get();
+
+                // Esperar todas las tareas
+                await Task.WhenAll(invoicesTask, ordersTask, clientsTask);
+
+                // Procesar resultados
+                var invoices = invoicesTask.Result?.Models ?? new List<InvoiceDb>();
+                var orders = ordersTask.Result?.Models ?? new List<OrderDb>();
+                var clients = clientsTask.Result?.Models ?? new List<ClientDb>();
+
+                // Filtrar facturas sin fecha de pago
+                var pendingInvoices = invoices.Where(i => i.PaymentDate == null).ToList();
+
+                // Crear diccionarios para búsqueda rápida
+                var ordersDict = orders.ToDictionary(o => o.Id);
+                var clientsDict = clients.ToDictionary(c => c.Id);
+
+                // Agrupar por cliente
+                var clientGroups = new Dictionary<int, List<InvoiceDb>>();
+
+                foreach (var invoice in pendingInvoices)
+                {
+                    if (invoice.OrderId.HasValue && ordersDict.ContainsKey(invoice.OrderId.Value))
+                    {
+                        var order = ordersDict[invoice.OrderId.Value];
+                        if (order.ClientId.HasValue && clientsDict.ContainsKey(order.ClientId.Value))
+                        {
+                            if (!clientGroups.ContainsKey(order.ClientId.Value))
+                                clientGroups[order.ClientId.Value] = new List<InvoiceDb>();
+
+                            clientGroups[order.ClientId.Value].Add(invoice);
+                        }
+                    }
+                }
+
+                // Construir resultado
+                var result = new PendingIncomesData
+                {
+                    ClientsWithPendingInvoices = new List<ClientPendingInfo>(),
+                    OrdersDictionary = ordersDict,
+                    ClientsDictionary = clientsDict
+                };
+
+                foreach (var kvp in clientGroups)
+                {
+                    var client = clientsDict[kvp.Key];
+                    var clientInvoices = kvp.Value;
+
+                    var clientInfo = new ClientPendingInfo
+                    {
+                        ClientId = client.Id,
+                        ClientName = client.Name,
+                        ClientCredit = client.Credit,
+                        Invoices = clientInvoices,
+                        TotalPending = clientInvoices.Sum(i => i.Total ?? 0)
+                    };
+
+                    result.ClientsWithPendingInvoices.Add(clientInfo);
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener datos: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<ClientInvoicesDetailData> GetClientInvoicesDetail(int clientId)
+        {
+            try
+            {
+                // Ejecutar consultas en paralelo
+                var clientTask = _supabaseClient
+                    .From<ClientDb>()
+                    .Select("*")
+                    .Where(c => c.Id == clientId)
+                    .Get(); // Cambiar Single() por Get()
+
+                var ordersTask = _supabaseClient
+                    .From<OrderDb>()
+                    .Select("*")
+                    .Where(o => o.ClientId == clientId)
+                    .Get();
+
+                var invoicesTask = _supabaseClient
+                    .From<InvoiceDb>()
+                    .Select("*")
+                    .Not("f_invoicestat", Postgrest.Constants.Operator.Equals, 4)
+                    .Get();
+
+                // Esperar todas las tareas
+                await Task.WhenAll(clientTask, ordersTask, invoicesTask);
+
+                // Corregir esta línea
+                var client = clientTask.Result?.Models?.FirstOrDefault();
+                var orders = ordersTask.Result?.Models ?? new List<OrderDb>();
+                var invoices = invoicesTask.Result?.Models ?? new List<InvoiceDb>();
+
+                // Crear diccionario de órdenes para búsqueda rápida
+                var ordersDict = orders.ToDictionary(o => o.Id);
+
+                // Filtrar facturas pendientes de este cliente
+                var clientInvoices = new List<InvoiceDetailInfo>();
+
+                foreach (var invoice in invoices.Where(i => i.PaymentDate == null))
+                {
+                    if (invoice.OrderId.HasValue && ordersDict.ContainsKey(invoice.OrderId.Value))
+                    {
+                        var order = ordersDict[invoice.OrderId.Value];
+
+                        var invoiceDetail = new InvoiceDetailInfo
+                        {
+                            Invoice = invoice,
+                            OrderPO = order.Po ?? $"ORD-{order.Id}",
+                            OrderId = order.Id
+                        };
+
+                        clientInvoices.Add(invoiceDetail);
+                    }
+                }
+
+                return new ClientInvoicesDetailData
+                {
+                    Client = client,
+                    Invoices = clientInvoices.OrderBy(i => i.Invoice.DueDate).ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener detalle del cliente: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Clases auxiliares
+        public class ClientInvoicesDetailData
+        {
+            public ClientDb Client { get; set; }
+            public List<InvoiceDetailInfo> Invoices { get; set; }
+        }
+
+        public class InvoiceDetailInfo
+        {
+            public InvoiceDb Invoice { get; set; }
+            public string OrderPO { get; set; }
+            public int OrderId { get; set; }
+        }
+
+        // Clases auxiliares
+        public class PendingIncomesData
+        {
+            public List<ClientPendingInfo> ClientsWithPendingInvoices { get; set; }
+            public Dictionary<int, OrderDb> OrdersDictionary { get; set; }
+            public Dictionary<int, ClientDb> ClientsDictionary { get; set; }
+        }
+
+        public class ClientPendingInfo
+        {
+            public int ClientId { get; set; }
+            public string ClientName { get; set; }
+            public int ClientCredit { get; set; }
+            public List<InvoiceDb> Invoices { get; set; }
+            public decimal TotalPending { get; set; }
+        }
+
         // Clase auxiliar para el detalle completo de facturas pendientes
         public class PendingInvoiceDetail
         {

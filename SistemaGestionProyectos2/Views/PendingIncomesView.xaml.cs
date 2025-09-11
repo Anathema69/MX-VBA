@@ -1,4 +1,6 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Services;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -8,10 +10,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
-
-using SistemaGestionProyectos2.Models;
-using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -26,38 +26,41 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<ClientPendingViewModel> _displayedClients;
         private string _currentSearchText = "";
         private string _currentStatusFilter = "Todos";
-        private string _currentSortFilter = "Mayor deuda";
+        
 
         public PendingIncomesView(UserSession currentUser)
         {
-            // PRIMERO: InitializeComponent para crear los controles
             InitializeComponent();
 
-            // SEGUNDO: Inicializar las colecciones
             _allClients = new ObservableCollection<ClientPendingViewModel>();
             _displayedClients = new ObservableCollection<ClientPendingViewModel>();
 
-            // TERCERO: Asignar las variables
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
 
-            // CUARTO: Asignar el ItemsSource
             ClientsItemsControl.ItemsSource = _displayedClients;
 
-            // QUINTO: Inicializar los textos de los contadores (ahora los controles existen)
-            if (ResultCountText != null)
-                ResultCountText.Text = "0 clientes";
-            if (TotalPendingText != null)
-                TotalPendingText.Text = "$0.00";
-            if (TotalOverdueText != null)
-                TotalOverdueText.Text = "$0.00";
-            if (TotalDueSoonText != null)
-                TotalDueSoonText.Text = "$0.00";
-            if (ClientCountText != null)
-                ClientCountText.Text = "0";
+            // Mostrar estado de carga
+            ShowLoadingState();
 
-            // SEXTO: Cargar los datos
+            // Cargar datos de manera asíncrona
             _ = LoadPendingIncomesAsync();
+        }
+
+        private void ShowLoadingState()
+        {
+            // Ocultar el mensaje de "no hay datos"
+            NoDataMessage.Visibility = Visibility.Collapsed;
+
+            // Mostrar indicador de carga (puedes agregar un ProgressBar en el XAML)
+            StatusText.Text = "Cargando ingresos pendientes...";
+
+            // Valores iniciales mientras carga
+            TotalPendingText.Text = "---";
+            TotalOverdueText.Text = "---";
+            TotalDueSoonText.Text = "---";
+            ClientCountText.Text = "---";
+            ResultCountText.Text = "Cargando...";
         }
 
         private async Task LoadPendingIncomesAsync()
@@ -66,8 +69,8 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusText.Text = "Cargando información...";
 
-                // Obtener datos agregados por cliente
-                var clientsPending = await _supabaseService.GetClientsPendingInvoices();
+                // Una sola llamada optimizada
+                var data = await _supabaseService.GetAllPendingIncomesData();
 
                 _allClients.Clear();
 
@@ -75,24 +78,21 @@ namespace SistemaGestionProyectos2.Views
                 decimal totalOverdue = 0;
                 decimal totalDueSoon = 0;
 
-                foreach (var clientData in clientsPending)
-                {
-                    // Obtener facturas detalladas del cliente
-                    var invoices = await _supabaseService.GetPendingInvoicesByClient(clientData.ClientId);
+                DateTime today = DateTime.Today;
+                DateTime dueSoonDate = today.AddDays(7);
 
+                foreach (var clientData in data.ClientsWithPendingInvoices)
+                {
                     var viewModel = new ClientPendingViewModel
                     {
                         ClientId = clientData.ClientId,
                         ClientName = clientData.ClientName,
                         TotalPending = clientData.TotalPending,
-                        InvoiceCount = invoices.Count
+                        InvoiceCount = clientData.Invoices.Count
                     };
 
                     // Calcular vencimientos
-                    DateTime today = DateTime.Today;
-                    DateTime dueSoonDate = today.AddDays(7);
-
-                    foreach (var invoice in invoices)
+                    foreach (var invoice in clientData.Invoices)
                     {
                         if (invoice.DueDate.HasValue)
                         {
@@ -112,7 +112,15 @@ namespace SistemaGestionProyectos2.Views
                     viewModel.HasOverdue = viewModel.OverdueCount > 0;
                     viewModel.HasDueSoon = viewModel.DueSoonCount > 0;
 
-                    // Generar iniciales del cliente
+                    // Asignar color
+                    if (viewModel.HasOverdue)
+                        viewModel.StatusColor = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+                    else if (viewModel.HasDueSoon)
+                        viewModel.StatusColor = new SolidColorBrush(Color.FromRgb(245, 158, 11));
+                    else
+                        viewModel.StatusColor = new SolidColorBrush(Color.FromRgb(72, 187, 120));
+
+                    // Generar iniciales
                     var words = viewModel.ClientName.Split(' ');
                     if (words.Length >= 2)
                         viewModel.ClientInitials = $"{words[0][0]}{words[1][0]}".ToUpper();
@@ -121,13 +129,12 @@ namespace SistemaGestionProyectos2.Views
 
                     _allClients.Add(viewModel);
 
-                    // Acumular totales
                     totalPending += viewModel.TotalPending;
                     totalOverdue += viewModel.OverdueAmount;
                     totalDueSoon += viewModel.DueSoonAmount;
                 }
 
-                // Actualizar estadísticas
+                // Actualizar UI
                 var culture = new CultureInfo("es-MX");
                 TotalPendingText.Text = totalPending.ToString("C", culture);
                 TotalOverdueText.Text = totalOverdue.ToString("C", culture);
@@ -153,8 +160,7 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar los ingresos pendientes: {ex.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error al cargar: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusText.Text = "Error al cargar datos";
             }
         }
@@ -200,25 +206,13 @@ namespace SistemaGestionProyectos2.Views
                     // "Todos" no necesita filtro adicional
             }
 
-            // Aplicar ordenamiento
-            switch (_currentSortFilter)
-            {
-                case "Mayor deuda":
-                    filtered = filtered.OrderByDescending(c => c.TotalPending);
-                    break;
-                case "Menor deuda":
-                    filtered = filtered.OrderBy(c => c.TotalPending);
-                    break;
-                case "Más facturas":
-                    filtered = filtered.OrderByDescending(c => c.InvoiceCount);
-                    break;
-                case "Nombre A-Z":
-                    filtered = filtered.OrderBy(c => c.ClientName ?? "");
-                    break;
-                default:
-                    filtered = filtered.OrderByDescending(c => c.TotalPending);
-                    break;
-            }
+            // Aplicar ordenamiento PRIMERO LOS VENCIDOS, LUEGO POR VENCER, LUEGO AL CORRIENTE EN ORDEN ALFABÉTICO 
+            filtered = filtered
+                .OrderByDescending(c => c.HasOverdue)
+                .ThenByDescending(c => c.HasDueSoon)
+                .ThenBy(c => c.ClientName);
+
+
 
             // Limpiar la colección mostrada y agregar los elementos filtrados
             if (_displayedClients != null)
@@ -248,24 +242,17 @@ namespace SistemaGestionProyectos2.Views
             if (StatusFilter.SelectedItem is ComboBoxItem item)
             {
                 _currentStatusFilter = item.Content.ToString();
+                
                 ApplyFilters();
             }
         }
 
-        private void SortFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (SortFilter.SelectedItem is ComboBoxItem item)
-            {
-                _currentSortFilter = item.Content.ToString();
-                ApplyFilters();
-            }
-        }
-
+        
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            RefreshButton.IsEnabled = false;
+            RefreshDetailButton.IsEnabled = false;
             await LoadPendingIncomesAsync();
-            RefreshButton.IsEnabled = true;
+            RefreshDetailButton.IsEnabled = true;
         }
 
         private void ViewDetailButton_Click(object sender, RoutedEventArgs e)
@@ -284,10 +271,37 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        // Manejo de clic en el botón de regresar
+        private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        // Manejo de clic en las tarjetas de resumen para el caso de facturas VENCIDAS
+        private void OverdueCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            // Cambiar el filtro a "Con vencidas"
+            StatusFilter.SelectedIndex = 1; // Index de "Con vencidas"
+            _currentStatusFilter = "Con vencidas";
+            ApplyFilters();
+        }
+
+        // Manejo de clic en las tarjetas de resumen para el caso de facturas por vencer
+        private void DueSoonCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            // Cambiar el filtro a "Por vencer"
+            StatusFilter.SelectedIndex = 2; // Index de "Por vencer"
+            _currentStatusFilter = "Por vencer";
+            ApplyFilters();
+        }
+
+        // Manejo de clic en las tarjetas de resumen para el caso de facturas (TODAS)
+        private void TotalPendingCard_Click(object sender, MouseButtonEventArgs e)
+        {
+            // Cambiar el filtro a "Todos"
+            StatusFilter.SelectedIndex = 0; // Index de "Todos"
+            _currentStatusFilter = "Todos";
+            ApplyFilters();
         }
     }
 
@@ -305,6 +319,18 @@ namespace SistemaGestionProyectos2.Views
         private decimal _dueSoonAmount;
         private bool _hasOverdue;
         private bool _hasDueSoon;
+
+        private SolidColorBrush _statusColor;
+
+        public SolidColorBrush StatusColor
+        {
+            get => _statusColor;
+            set
+            {
+                _statusColor = value;
+                OnPropertyChanged();
+            }
+        }
 
         public int ClientId
         {

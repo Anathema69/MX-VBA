@@ -4,7 +4,10 @@
         Title="Detalle de Facturas Pendientes" 
         Height="700" 
         Width="1200"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize">
 
     <Window.Resources>
         <!-- Colores y estilos base -->
@@ -92,13 +95,7 @@
 
                 <!-- Información del Cliente -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button x:Name="BackButton" Click="BackButton_Click"
-                            Width="40" Height="40" Margin="0,0,16,0"
-                            Background="Transparent" BorderThickness="0"
-                            Cursor="Hand">
-                        <TextBlock Text="←" FontSize="24" 
-                                 Foreground="{StaticResource DarkText}"/>
-                    </Button>
+                    
 
                     <Border Width="56" Height="56" CornerRadius="12" Margin="0,0,16,0">
                         <Border.Background>
@@ -130,9 +127,32 @@
                     </StackPanel>
                 </StackPanel>
 
+                
                 <!-- Acciones -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <!-- Botón Actualizar -->
                     <Button x:Name="RefreshDetailButton" Click="RefreshDetailButton_Click"
+                            Width="100" Height="36"
+                            Background="White" BorderBrush="{StaticResource BorderGray}"
+                            BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="8">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄" Margin="0,0,5,0"/>
+                            <TextBlock Text="Actualizar"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Botón Retroceder -->
+                    <Button x:Name="BackDetailButton" Click="BackButton_Click"
                             Width="100" Height="36" Margin="0,0,10,0"
                             Background="White" BorderBrush="{StaticResource BorderGray}"
                             BorderThickness="1" Cursor="Hand">
@@ -143,17 +163,16 @@
                                         BorderThickness="{TemplateBinding BorderThickness}"
                                         CornerRadius="8">
                                     <ContentPresenter HorizontalAlignment="Center"
-                                                    VerticalAlignment="Center"/>
+                                    VerticalAlignment="Center"/>
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="🔄" Margin="0,0,5,0"/>
-                            <TextBlock Text="Actualizar"/>
+                            <TextBlock Text="←" FontSize="16" Margin="0,0,5,0"/>
+                            <TextBlock Text="Regresar"/>
                         </StackPanel>
                     </Button>
 
-                   
                 </StackPanel>
             </Grid>
         </Border>
@@ -268,7 +287,8 @@
                           Background="White"
                           RowStyle="{StaticResource InvoiceRowStyle}"
                           HeadersVisibility="Column"
-                          Margin="0,0,0,10">
+                          Margin="0,0,0,10"
+                          ColumnWidth="*">
 
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader">
@@ -287,7 +307,7 @@
                         <!-- Folio -->
                         <DataGridTextColumn Header="FOLIO" 
                                           Binding="{Binding Folio}" 
-                                          Width="120">
+                                          Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>
@@ -300,7 +320,7 @@
                         <!-- Orden -->
                         <DataGridTextColumn Header="ORDEN" 
                                           Binding="{Binding OrderPO}" 
-                                          Width="120">
+                                          Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>
@@ -312,7 +332,7 @@
                         <!-- Total -->
                         <DataGridTextColumn Header="TOTAL" 
                                           Binding="{Binding Total, StringFormat='{}{0:C}'}" 
-                                          Width="150">
+                                          Width="130">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>
@@ -326,7 +346,7 @@
                         <!-- Fecha Factura -->
                         <DataGridTextColumn Header="FECHA FACTURA" 
                                           Binding="{Binding InvoiceDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                          Width="120">
+                                          Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>
@@ -338,7 +358,7 @@
                         <!-- Fecha Recepción -->
                         <DataGridTextColumn Header="RECEPCIÓN" 
                                           Binding="{Binding ReceptionDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                          Width="120">
+                                          Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>
@@ -350,7 +370,7 @@
                         <!-- Fecha Vencimiento -->
                         <DataGridTextColumn Header="VENCIMIENTO" 
                                           Binding="{Binding DueDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                          Width="120">
+                                          Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Margin" Value="20,0"/>

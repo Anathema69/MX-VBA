@@ -47,26 +47,37 @@ namespace SistemaGestionProyectos2.Views
             else
                 ClientInitialsText.Text = _clientName.Substring(0, Math.Min(2, _clientName.Length)).ToUpper();
 
+            // Mostrar estado de carga inicial
+            ShowLoadingState();
+
+            // Cargar datos
             _ = LoadClientInvoicesAsync();
+        }
+
+        private void ShowLoadingState()
+        {
+            DetailStatusText.Text = "Cargando información...";
+            DetailTotalPendingText.Text = "---";
+            DetailTotalOverdueText.Text = "---";
+            DetailTotalDueSoonText.Text = "---";
+            DetailInvoiceCountText.Text = "---";
         }
 
         private async Task LoadClientInvoicesAsync()
         {
             try
             {
+                // Mostrar estado de carga
                 DetailStatusText.Text = "Cargando facturas...";
 
-                // Obtener información del cliente
-                var clients = await _supabaseService.GetClients();
-                _client = clients?.FirstOrDefault(c => c.Id == _clientId);
+                // Llamada optimizada
+                var data = await _supabaseService.GetClientInvoicesDetail(_clientId);
 
-                if (_client != null)
+                if (data.Client != null)
                 {
+                    _client = data.Client;
                     CreditDaysText.Text = _client.Credit.ToString();
                 }
-
-                // Obtener facturas pendientes del cliente
-                var invoices = await _supabaseService.GetPendingInvoicesByClient(_clientId);
 
                 _invoices.Clear();
 
@@ -79,13 +90,15 @@ namespace SistemaGestionProyectos2.Views
                 DateTime today = DateTime.Today;
                 DateTime dueSoonDate = today.AddDays(7);
 
-                foreach (var invoice in invoices)
+                foreach (var invoiceInfo in data.Invoices)
                 {
+                    var invoice = invoiceInfo.Invoice;
+
                     var viewModel = new InvoiceDetailViewModel
                     {
                         InvoiceId = invoice.Id,
                         Folio = invoice.Folio,
-                        OrderPO = "N/A", // Se asignará después de obtener las órdenes
+                        OrderPO = invoiceInfo.OrderPO, // Ahora sí tenemos el PO correcto
                         Total = invoice.Total ?? 0,
                         InvoiceDate = invoice.InvoiceDate,
                         ReceptionDate = invoice.ReceptionDate,
@@ -101,7 +114,7 @@ namespace SistemaGestionProyectos2.Views
                         {
                             viewModel.Status = "VENCIDA";
                             viewModel.DaysOverdue = Math.Abs(days);
-                            viewModel.DaysText = $"{Math.Abs(days)}↓"; // Días vencidos
+                            viewModel.DaysText = $"{Math.Abs(days)}↓";
                             totalOverdue += viewModel.Total;
                             overdueCount++;
                         }
@@ -109,7 +122,7 @@ namespace SistemaGestionProyectos2.Views
                         {
                             viewModel.Status = "POR VENCER";
                             viewModel.DaysUntilDue = days;
-                            viewModel.DaysText = $"{days}↑"; // Días para vencer
+                            viewModel.DaysText = $"{days}↑";
                             totalDueSoon += viewModel.Total;
                             dueSoonCount++;
                         }
@@ -117,7 +130,7 @@ namespace SistemaGestionProyectos2.Views
                         {
                             viewModel.Status = "AL CORRIENTE";
                             viewModel.DaysUntilDue = days;
-                            viewModel.DaysText = $"{days}↑"; // Días para vencer
+                            viewModel.DaysText = $"{days}↑";
                         }
                     }
                     else
@@ -130,13 +143,7 @@ namespace SistemaGestionProyectos2.Views
                     _invoices.Add(viewModel);
                 }
 
-                // Ordenar por fecha de vencimiento (más urgentes primero)
-                var sortedInvoices = _invoices.OrderBy(i => i.DueDate ?? DateTime.MaxValue).ToList();
-                _invoices.Clear();
-                foreach (var invoice in sortedInvoices)
-                {
-                    _invoices.Add(invoice);
-                }
+                // Ya están ordenadas desde el servicio, no necesitamos ordenar de nuevo
 
                 // Actualizar totales
                 var culture = new CultureInfo("es-MX");
