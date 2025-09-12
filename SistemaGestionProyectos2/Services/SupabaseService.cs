@@ -326,23 +326,33 @@ namespace SistemaGestionProyectos2.Services
         // MÉTODOS PARA CONTACTOS
         // ===============================================
 
-        public async Task<List<ContactDb>> GetContactsByClientId(int clientId)
+        public async Task<List<ContactDb>> GetContactsByClient(int clientId)
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"📞 [GetContactsByClient] Buscando contactos para cliente ID: {clientId}");
+
                 var response = await _supabaseClient
                     .From<ContactDb>()
-                    .Where(c => c.ClientId == clientId)
-                    .Where(c => c.IsActive == true)  // Agregar este filtro
-                    .Order("is_primary", Postgrest.Constants.Ordering.Descending)
-                    .Order("f_contactname", Postgrest.Constants.Ordering.Ascending)
+                    .Where(x => x.ClientId == clientId)
+                    .Where(x => x.IsActive == true)  // Solo contactos activos
                     .Get();
 
-                return response?.Models ?? new List<ContactDb>();
+                var contacts = response?.Models ?? new List<ContactDb>();
+
+                System.Diagnostics.Debug.WriteLine($"✅ [GetContactsByClient] Encontrados {contacts.Count} contactos");
+
+                foreach (var contact in contacts)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   - ID: {contact.Id}, Nombre: {contact.ContactName}, Email: {contact.Email}");
+                }
+
+                return contacts;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ [GetContactsByClient] Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"❌ [GetContactsByClient] StackTrace: {ex.StackTrace}");
                 return new List<ContactDb>();
             }
         }
@@ -379,7 +389,7 @@ namespace SistemaGestionProyectos2.Services
                 // Si el contacto se marca como principal, desmarcar otros
                 if (contact.IsPrimary)
                 {
-                    var allContacts = await GetContactsByClientId(contact.ClientId);
+                    var allContacts = await GetContactsByClient(contact.ClientId);
                     foreach (var c in allContacts.Where(c => c.Id != contact.Id && c.IsPrimary))
                     {
                         c.IsPrimary = false;
@@ -435,23 +445,7 @@ namespace SistemaGestionProyectos2.Services
 
 
 
-        public async Task<List<ContactDb>> GetContactsByClient(int clientId)
-        {
-            try
-            {
-                var response = await _supabaseClient
-                    .From<ContactDb>()
-                    .Where(x => x.ClientId == clientId)
-                    .Get();
-
-                return response?.Models ?? new List<ContactDb>();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo contactos: {ex.Message}");
-                throw;
-            }
-        }
+        
 
         // ===============================================
         // MÉTODOS PARA USUARIOS
@@ -2933,7 +2927,7 @@ namespace SistemaGestionProyectos2.Services
         [Column("f_podate")]
         public DateTime? PoDate { get; set; }
 
-        [Column("f_supabaseClient")]
+        [Column("f_client")]
         public int? ClientId { get; set; }
 
         [Column("f_contact")]
@@ -2987,10 +2981,11 @@ namespace SistemaGestionProyectos2.Services
         public decimal? CommissionRate { get; set; }
     }
 
-    [Table("t_supabaseClient")]
+    [Table("t_client")]
     public class ClientDb : BaseModel
     {
-        [PrimaryKey("f_supabaseClient")]
+        [PrimaryKey("f_client")]
+        [Column("f_client")]
         public int Id { get; set; }
 
         [Column("f_name")]
@@ -3030,33 +3025,33 @@ namespace SistemaGestionProyectos2.Services
         public int? UpdatedBy { get; set; }
     }
 
-    [Table("t_contact")]
+    [Table("t_contact")]  
     public class ContactDb : BaseModel
-    {
-        [PrimaryKey("f_contact")]
-        public int Id { get; set; }
+{
+    [PrimaryKey("f_contact")]
+    public int Id { get; set; }
 
-        [Column("f_supabaseClient")]
-        public int ClientId { get; set; }
+    [Column("f_client")]
+    public int ClientId { get; set; }
 
-        [Column("f_contactname")]
-        public string ContactName { get; set; }
+    [Column("f_contactname")]
+    public string ContactName { get; set; }
 
-        [Column("f_email")]
-        public string Email { get; set; }
+    [Column("f_email")]
+    public string Email { get; set; }
 
-        [Column("f_phone")]
-        public string Phone { get; set; }
+    [Column("f_phone")]
+    public string Phone { get; set; }
 
-        [Column("position")]
-        public string Position { get; set; }
+    [Column("position")]
+    public string Position { get; set; }
 
-        [Column("is_primary")]
-        public bool IsPrimary { get; set; }
+    [Column("is_primary")]
+    public bool IsPrimary { get; set; }
 
-        [Column("is_active")]
-        public bool IsActive { get; set; }
-    }
+    [Column("is_active")]
+    public bool IsActive { get; set; }
+}
 
     [Table("users")]
     public class UserDb : BaseModel
@@ -3514,7 +3509,7 @@ namespace SistemaGestionProyectos2.Services
 } // fin de la calse FixedExpenseTable
 
 
-[Table("t_payrollovertime")]
+    [Table("t_payrollovertime")]
     public class PayrollOvertimeTable : BaseModel
     {
         [PrimaryKey("f_payrollovertime")]

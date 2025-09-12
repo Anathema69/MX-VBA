@@ -685,7 +685,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 // Actualizar en la base de datos
                 // Primero desmarcar todos los contactos del cliente
-                var allContacts = await _supabaseService.GetContactsByClientId(contact.ClientId);
+                var allContacts = await _supabaseService.GetContactsByClient(contact.ClientId);
                 foreach (var c in allContacts)
                 {
                     if (c.IsPrimary && c.Id != contact.Id)
