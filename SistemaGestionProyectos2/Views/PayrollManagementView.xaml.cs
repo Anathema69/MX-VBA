@@ -313,7 +313,8 @@ namespace SistemaGestionProyectos2.Views
                 // Usar dispatcher para guardar después de que termine la edición
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
-                    await SaveExpenseIfValid(_currentEditingExpense);
+                    // usamos el método existente para guardar: SaveExpense_Click
+                    await SaveExpense(expense);
                 }), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
@@ -378,21 +379,22 @@ namespace SistemaGestionProyectos2.Views
 
                 foreach (var expense in expensesList)
                 {
-                    _expenses.Add(new FixedExpenseViewModel
+                    var vm = new FixedExpenseViewModel
                     {
                         Id = expense.Id,
                         ExpenseType = expense.ExpenseType ?? "OTROS",
                         Description = expense.Description ?? "",
                         MonthlyAmount = expense.MonthlyAmount ?? 0,
+                        OriginalAmount = expense.MonthlyAmount ?? 0, // Guardar el monto original
                         IsNew = false,
                         HasChanges = false
-                    });
+                    };
+
+                    _expenses.Add(vm);
                 }
 
-                // NO agregar fila vacía automáticamente
-                // AddEmptyExpenseRow(); // Comentar o eliminar esta línea
-
-                UpdateTotals();
+                // Agregar fila vacía para nuevo gasto
+                AddNewExpenseRow();
             }
             catch (Exception ex)
             {
@@ -401,27 +403,41 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Modificar SaveExpenseIfValid para limpiar filas vacías después de guardar
-        private async Task SaveExpenseIfValid(FixedExpenseViewModel expense)
+        private void AddNewExpenseRow()
         {
+            var newExpense = new FixedExpenseViewModel
+            {
+                Id = 0,
+                ExpenseType = "OTROS",
+                Description = "",
+                MonthlyAmount = 0,
+                OriginalAmount = 0,
+                IsNew = true,
+                HasChanges = false
+            };
+
+            _expenses.Add(newExpense);
+        }
+
+        // Modificar SaveExpenseIfValid para limpiar filas vacías después de guardar
+        private async void SaveExpense_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var expense = button?.DataContext as FixedExpenseViewModel;
+
             if (expense == null) return;
 
-            // Validar que tenga descripción
+            // Validaciones
             if (string.IsNullOrWhiteSpace(expense.Description))
             {
-                // Si es una fila nueva vacía, simplemente removerla
-                if (expense.IsNew && expense.MonthlyAmount == 0)
-                {
-                    _expenses.Remove(expense);
-                    UpdateTotals();
-                }
+                MessageBox.Show("La descripción es obligatoria",
+                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            // Validar monto
             if (expense.MonthlyAmount <= 0)
             {
-                MessageBox.Show("El monto debe ser mayor a cero",
+                MessageBox.Show("El monto debe ser mayor a 0",
                     "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -432,44 +448,80 @@ namespace SistemaGestionProyectos2.Views
                 {
                     Id = expense.Id,
                     ExpenseType = expense.ExpenseType,
-                    Description = expense.Description.Trim(),
+                    Description = expense.Description,
                     MonthlyAmount = expense.MonthlyAmount,
+                    IsActive = true,
                     CreatedBy = _currentUser.Id
                 };
 
-                if (expense.IsNew)
+                bool success = false;
+
+                // Si es un gasto existente y el monto cambió significativamente
+                if (!expense.IsNew && expense.HasChanges &&
+                    Math.Abs(expense.MonthlyAmount - expense.OriginalAmount) > 0.01m)
                 {
-                    // Crear nuevo
+                    // Mostrar diálogo de fecha efectiva
+                    var dialog = new EffectiveDateDialog(
+                        expense.Description,
+                        expense.OriginalAmount,
+                        expense.MonthlyAmount
+                    );
+
+                    if (dialog.ShowDialog() == true && dialog.IsConfirmed)
+                    {
+                        success = await _supabaseService.SaveFixedExpenseWithEffectiveDate(
+                            expenseTable,
+                            dialog.SelectedEffectiveDate,
+                            _currentUser.Id);
+
+                        if (success)
+                        {
+                            expense.OriginalAmount = expense.MonthlyAmount; // Actualizar el monto original
+                            expense.HasChanges = false;
+
+                            MessageBox.Show(
+                                $"Gasto actualizado. Cambios aplicados desde {dialog.SelectedEffectiveDate:dd/MM/yyyy}",
+                                "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                    }
+                    else
+                    {
+                        return; // Usuario canceló
+                    }
+                }
+                else if (expense.IsNew)
+                {
+                    // Nuevo gasto
                     var created = await _supabaseService.CreateFixedExpense(expenseTable);
                     if (created != null)
                     {
                         expense.Id = created.Id;
                         expense.IsNew = false;
+                        expense.OriginalAmount = expense.MonthlyAmount;
+                        expense.HasChanges = false;
+                        success = true;
 
-                        // NO agregar nueva fila automáticamente
-                        // El usuario debe hacer click en "Nuevo Gasto" si quiere agregar otro
+                        // Agregar nueva fila vacía
+                        AddNewExpenseRow();
 
-                        if (StatusText != null)
-                            StatusText.Text = "✅ Gasto agregado correctamente";
+                        MessageBox.Show("Gasto creado exitosamente",
+                            "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }
-                else if (expense.HasChanges)
+                else
                 {
-                    // Actualizar existente
+                    // Actualización sin cambio de monto
                     await _supabaseService.UpdateFixedExpense(expenseTable);
                     expense.HasChanges = false;
+                    success = true;
 
-                    if (StatusText != null)
-                        StatusText.Text = "✅ Gasto actualizado";
+                    MessageBox.Show("Gasto actualizado exitosamente",
+                        "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
 
-                UpdateTotals();
-
-                // Limpiar mensaje después de 3 segundos
-                if (StatusText != null)
+                if (success)
                 {
-                    await Task.Delay(3000);
-                    StatusText.Text = "";
+                    UpdateTotals();
                 }
             }
             catch (Exception ex)
@@ -478,47 +530,44 @@ namespace SistemaGestionProyectos2.Views
                     "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         private async void DeleteExpense_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var expense = button?.DataContext as FixedExpenseViewModel;
 
-            if (expense != null && !expense.IsNew)
+            if (expense == null || expense.IsNew) return;
+
+            var result = MessageBox.Show(
+                $"¿Está seguro de eliminar el gasto '{expense.Description}'?",
+                "Confirmar eliminación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
             {
-                var result = MessageBox.Show(
-                    $"¿Está seguro de eliminar el gasto '{expense.Description}'?\n" +
-                    $"Tipo: {expense.ExpenseType}\n" +
-                    $"Monto: {expense.MonthlyAmount:C}",
-                    "Confirmar eliminación",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result == MessageBoxResult.Yes)
+                try
                 {
-                    try
+                    var success = await _supabaseService.DeactivateFixedExpense(expense.Id);
+
+                    if (success)
                     {
-                        bool success = await _supabaseService.DeleteFixedExpense(expense.Id);
+                        _expenses.Remove(expense);
+                        UpdateTotals();
 
-                        if (success)
-                        {
-                            _expenses.Remove(expense);
-                            UpdateTotals();
-
-                            StatusText.Text = "✅ Gasto eliminado";
-
-                            // Limpiar mensaje
-                            await Task.Delay(3000);
-                            StatusText.Text = "";
-                        }
+                        MessageBox.Show("Gasto eliminado correctamente",
+                            "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error al eliminar: {ex.Message}",
-                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al eliminar: {ex.Message}",
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
+
+        
 
         private void ExpensesDataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -710,6 +759,7 @@ namespace SistemaGestionProyectos2.Views
         private string _expenseType = "OTROS";
         private string _description = "";
         private decimal _monthlyAmount;
+        private decimal _originalAmount;
         private bool _isNew;
         private bool _hasChanges;
         
@@ -748,6 +798,24 @@ namespace SistemaGestionProyectos2.Views
         {
             get => _hasChanges;
             set { _hasChanges = value; OnPropertyChanged(); }
+        }
+
+        public decimal OriginalAmount
+        {
+            get => _originalAmount;
+            set
+            {
+                _originalAmount = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private void CheckForChanges()
+        {
+            if (!IsNew)
+            {
+                HasChanges = Math.Abs(MonthlyAmount - OriginalAmount) > 0.01m;
+            }
         }
 
 

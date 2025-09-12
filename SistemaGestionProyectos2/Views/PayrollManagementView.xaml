@@ -486,124 +486,179 @@
                     <!-- DataGrid de Gastos Fijos -->
                     <Border Grid.Row="1" Background="White" CornerRadius="8">
                         <!-- Reemplazar la sección del DataGrid de GASTOS FIJOS -->
-                        <DataGrid Name="ExpensesDataGrid"
-                                        AutoGenerateColumns="False"
-                                        CanUserAddRows="False"
-                                        CanUserDeleteRows="False"
-                                        GridLinesVisibility="None"
-                                        BorderThickness="0"
-                                        Background="White"
-                                        RowHeight="45"
-                                        HeadersVisibility="Column"
-                                        SelectionMode="Single"
-                                        CellStyle="{StaticResource ModernDataGridCell}"
-                                        CellEditEnding="ExpensesDataGrid_CellEditEnding"
-                                        PreviewKeyDown="ExpensesDataGrid_PreviewKeyDown">
+                        <!-- En PayrollManagementView.xaml, reemplazar el DataGrid de gastos (ExpensesDataGrid) con esta versión -->
 
-                            <DataGrid.RowStyle>
-                                <Style TargetType="DataGridRow">
+                        <DataGrid Name="ExpensesDataGrid" 
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          CanUserDeleteRows="False"
+          GridLinesVisibility="None"
+          BorderThickness="0"
+          Background="White"
+          RowHeight="45"
+          HeadersVisibility="Column"
+          VerticalScrollBarVisibility="Auto">
+
+                            <DataGrid.Resources>
+                                <!-- Estilo para celdas editables -->
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                            <Setter Property="Background" Value="#F0FDF4"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding HasChanges}" Value="True">
-                                            <Setter Property="Background" Value="#FEF3C7"/>
-                                        </DataTrigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#F0F4FF"/>
+                                        </Trigger>
                                     </Style.Triggers>
                                 </Style>
-                            </DataGrid.RowStyle>
+
+                                <!-- Estilo para header -->
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#F7FAFC"/>
+                                    <Setter Property="Foreground" Value="#718096"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="12"/>
+                                    <Setter Property="Height" Value="40"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                                    <Setter Property="Padding" Value="10,0"/>
+                                </Style>
+                            </DataGrid.Resources>
 
                             <DataGrid.Columns>
-                                <DataGridComboBoxColumn Header="TIPO" 
-                               SelectedItemBinding="{Binding ExpenseType}" 
-                               Width="150">
-                                    <DataGridComboBoxColumn.ElementStyle>
-                                        <Style TargetType="ComboBox">
-                                            <Setter Property="ItemsSource">
-                                                <Setter.Value>
-                                                    <x:Array Type="{x:Type sys:String}" 
-                                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                                                        <sys:String>GASOLINA</sys:String>
-                                                        <sys:String>SEGURO</sys:String>
-                                                        <sys:String>SERVICIOS</sys:String>
-                                                        <sys:String>RENTA</sys:String>
-                                                        <sys:String>MANTENIMIENTO</sys:String>
-                                                        <sys:String>TELEFONO</sys:String>
-                                                        <sys:String>INTERNET</sys:String>
-                                                        <sys:String>LUZ</sys:String>
-                                                        <sys:String>AGUA</sys:String>
-                                                        <sys:String>OTROS</sys:String>
-                                                    </x:Array>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </DataGridComboBoxColumn.ElementStyle>
-                                    <DataGridComboBoxColumn.EditingElementStyle>
-                                        <Style TargetType="ComboBox">
-                                            <Setter Property="ItemsSource">
-                                                <Setter.Value>
-                                                    <x:Array Type="{x:Type sys:String}" 
-                                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
-                                                        <sys:String>GASOLINA</sys:String>
-                                                        <sys:String>SEGURO</sys:String>
-                                                        <sys:String>SERVICIOS</sys:String>
-                                                        <sys:String>RENTA</sys:String>
-                                                        <sys:String>MANTENIMIENTO</sys:String>
-                                                        <sys:String>TELEFONO</sys:String>
-                                                        <sys:String>INTERNET</sys:String>
-                                                        <sys:String>LUZ</sys:String>
-                                                        <sys:String>AGUA</sys:String>
-                                                        <sys:String>OTROS</sys:String>
-                                                    </x:Array>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </DataGridComboBoxColumn.EditingElementStyle>
-                                </DataGridComboBoxColumn>
-
-                                <DataGridTextColumn Header="DESCRIPCIÓN" 
-                          Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
-                          Width="*"/>
-
-                                <DataGridTextColumn Header="MONTO MENSUAL" 
-                          Binding="{Binding MonthlyAmount, StringFormat={}{0:C}, UpdateSourceTrigger=PropertyChanged}" 
-                          Width="150">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                            <Setter Property="TextAlignment" Value="Right"/>
-                                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-
-                                <!--Columna de acciones para eliminar-->
-                                
-                                <DataGridTemplateColumn Header="" Width="50">
+                                <!-- Tipo -->
+                                <DataGridTemplateColumn Header="TIPO" Width="120">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Click="DeleteExpense_Click"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Cursor="Hand"
-                    Padding="5"
-                    ToolTip="Eliminar">
-                                                <Button.Style>
-                                                    <Style TargetType="Button">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                                <TextBlock Text="🗑️" FontSize="14"/>
-                                            </Button>
+                                            <ComboBox Text="{Binding ExpenseType, UpdateSourceTrigger=PropertyChanged}"
+                              IsEditable="True"
+                              BorderThickness="0"
+                              Background="Transparent"
+                              Margin="5,0">
+                                                <ComboBoxItem>RENTA</ComboBoxItem>
+                                                <ComboBoxItem>SERVICIOS</ComboBoxItem>
+                                                <ComboBoxItem>SEGURO</ComboBoxItem>
+                                                <ComboBoxItem>OTROS</ComboBoxItem>
+                                            </ComboBox>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Descripción -->
+                                <DataGridTemplateColumn Header="DESCRIPCIÓN" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             VerticalAlignment="Center"
+                             Margin="5,0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Monto -->
+                                <DataGridTemplateColumn Header="MONTO MENSUAL" Width="150">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding MonthlyAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             TextAlignment="Right"
+                             VerticalAlignment="Center"
+                             Margin="5,0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Acciones -->
+                                <DataGridTemplateColumn Header="" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <!-- Botón Guardar (visible cuando hay cambios) -->
+                                                <Button Name="SaveExpenseButton"
+                                Click="SaveExpense_Click"
+                                Background="#48BB78"
+                                BorderThickness="0"
+                                Padding="8,4"
+                                Margin="0,0,5,0"
+                                Cursor="Hand"
+                                ToolTip="Guardar cambios">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="4"
+                                                        Padding="{TemplateBinding Padding}">
+                                                                            <TextBlock Text="💾" FontSize="16" Foreground="White"/>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasChanges}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+
+                                                <!-- Botón Eliminar -->
+                                                <Button Click="DeleteExpense_Click"
+                                Background="#EF4444"
+                                BorderThickness="0"
+                                Padding="8,4"
+                                Cursor="Hand"
+                                ToolTip="Eliminar gasto">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border Background="{TemplateBinding Background}"
+                                                        CornerRadius="4"
+                                                        Padding="{TemplateBinding Padding}">
+                                                                            <TextBlock Text="🗑️" FontSize="16" Foreground="White"/>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
+
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <!-- Resaltar filas nuevas -->
+                                        <DataTrigger Binding="{Binding IsNew}" Value="True">
+                                            <Setter Property="Background" Value="#F0FDF4"/>
+                                        </DataTrigger>
+                                        <!-- Resaltar filas con cambios -->
+                                        <DataTrigger Binding="{Binding HasChanges}" Value="True">
+                                            <Setter Property="Background" Value="#FFF7ED"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
                         </DataGrid>
                     </Border>
 

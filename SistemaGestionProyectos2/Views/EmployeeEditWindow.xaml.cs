@@ -1,10 +1,11 @@
-﻿using System;
-using System.Globalization;
-using System.Windows;
-using System.Windows.Controls;
-using SistemaGestionProyectos2.Models;
+﻿using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.ViewModels;
+using System;
+using System.Globalization;
+using System.Reflection.Emit;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -15,6 +16,8 @@ namespace SistemaGestionProyectos2.Views
         private PayrollTable _payroll;
         private bool _isNewEmployee;
         private bool _isInitialized = false; // Bandera para controlar la inicialización
+        private bool _isEdit = false;
+        private decimal _originalSalary = 0;
 
         public EmployeeEditWindow(PayrollViewModel employee, UserSession currentUser)
         {
@@ -22,26 +25,30 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _currentUser = currentUser;
 
-            // Inicializar los controles después de InitializeComponent
             InitializeControls();
 
             if (employee == null)
             {
                 _isNewEmployee = true;
+                _isEdit = false;
                 HeaderTitle.Text = "NUEVO EMPLEADO";
                 _payroll = new PayrollTable();
-                EffectiveDatePicker.SelectedDate = DateTime.Today;
                 SetDefaultValues();
+
+                // Ocultar sección de fecha efectiva para nuevo empleado
+                EffectiveDateBorder.Visibility = Visibility.Collapsed;
             }
             else
             {
                 _isNewEmployee = false;
+                _isEdit = true;
                 HeaderTitle.Text = "EDITAR EMPLEADO";
                 LoadEmployeeData(employee.Id);
             }
 
-            _isInitialized = true; // Marcar como inicializado
+            _isInitialized = true;
         }
+
 
         private void InitializeControls()
         {
@@ -87,6 +94,9 @@ namespace SistemaGestionProyectos2.Views
 
                 if (_payroll != null)
                 {
+                    // Guardar salario original
+                    _originalSalary = _payroll.MonthlyPayroll ?? 0;
+
                     // Cargar datos en los controles
                     EmployeeNameBox.Text = _payroll.Employee ?? "";
                     TitleBox.Text = _payroll.Title ?? "";
@@ -106,6 +116,9 @@ namespace SistemaGestionProyectos2.Views
                     SocialSecurityBox.Text = (_payroll.SocialSecurity ?? 0).ToString("F2");
                     BenefitsAmountBox.Text = (_payroll.BenefitsAmount ?? 0).ToString("F2");
                     BenefitsBox.Text = _payroll.Benefits ?? "";
+
+                    // Guardar el salario original
+                    _originalSalary = _payroll.MonthlyPayroll ?? 0;
 
                     CalculateMonthlyTotal();
                     StatusText.Text = "";
@@ -146,7 +159,6 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Verificar que los controles no sean null
                 if (SSPayrollBox == null || WeeklyPayrollBox == null ||
                     SocialSecurityBox == null || BenefitsAmountBox == null)
                 {
@@ -158,7 +170,6 @@ namespace SistemaGestionProyectos2.Views
                 decimal socialSecurity = ParseDecimal(SocialSecurityBox.Text);
                 decimal benefitsAmount = ParseDecimal(BenefitsAmountBox.Text);
 
-                // Fórmula: (Semanal * 52 / 12) + SS + Seguro Social + Prestaciones
                 decimal monthlyFromWeekly = (weeklyPayroll * 52) / 12;
                 decimal total = monthlyFromWeekly + ssPayroll + socialSecurity + benefitsAmount;
 
@@ -166,6 +177,31 @@ namespace SistemaGestionProyectos2.Views
                 if (MonthlyTotalText != null)
                 {
                     MonthlyTotalText.Text = total.ToString("C", culture);
+                }
+
+                // Mostrar/ocultar sección de fecha efectiva si el salario cambió
+                if (_isEdit && _originalSalary > 0 && Math.Abs(total - _originalSalary) > 0.01m)
+                {
+                    EffectiveDateBorder.Visibility = Visibility.Visible;
+
+                    var currentMonth = DateTime.Now;
+                    var nextMonth = currentMonth.AddMonths(1);
+
+                    CurrentMonthText.Text = $"Este mes ({currentMonth.ToString("MMMM yyyy", culture)})";
+                    NextMonthText.Text = $"Próximo mes ({nextMonth.ToString("MMMM yyyy", culture)})";
+
+                    var difference = total - _originalSalary;
+                    var percentage = _originalSalary > 0 ? (difference / _originalSalary * 100) : 0;
+
+                    var impact = difference > 0 ?
+                        $"↑ Aumento de {difference:C} ({percentage:F1}%)" :
+                        $"↓ Reducción de {Math.Abs(difference):C} ({Math.Abs(percentage):F1}%)";
+
+                    ImpactText.Text = $"Impacto mensual: {impact}";
+                }
+                else if (!_isNewEmployee)
+                {
+                    EffectiveDateBorder.Visibility = Visibility.Collapsed;
                 }
             }
             catch (Exception ex)
@@ -228,6 +264,28 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 StatusText.Text = "Guardando...";
 
+                // Determinar fecha efectiva
+                DateTime effectiveDate = DateTime.Now;
+
+                if (EffectiveDateBorder.Visibility == Visibility.Visible)
+                {
+                    if (NextMonthRadio.IsChecked == true)
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.AddMonths(1).Year,
+                            DateTime.Now.AddMonths(1).Month,
+                            1); // Primer día del próximo mes
+                    }
+                    else
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.Year,
+                            DateTime.Now.Month,
+                            1); // Primer día del mes actual
+                    }
+                }
+
+
                 // Preparar el objeto
                 if (_payroll == null)
                     _payroll = new PayrollTable();
@@ -281,6 +339,64 @@ namespace SistemaGestionProyectos2.Views
                     MessageBox.Show("Empleado actualizado exitosamente",
                         "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+
+                // Guardar con fecha efectiva
+                bool success;
+
+                string successMessage;
+
+                // Si es edición y hay cambio de salario con fecha efectiva
+                if (_isEdit && EffectiveDateBorder.Visibility == Visibility.Visible)
+                {
+                    
+                    if (NextMonthRadio.IsChecked == true)
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.AddMonths(1).Year,
+                            DateTime.Now.AddMonths(1).Month, 1);
+                    }
+                    else
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.Year,
+                            DateTime.Now.Month, 1);
+                    }
+
+                    success = await _supabaseService.SavePayrollWithEffectiveDate(
+                        _payroll, effectiveDate, _currentUser.Id);
+
+                    successMessage = $"Empleado actualizado. Cambios aplicados desde {effectiveDate:dd/MM/yyyy}";
+                }
+                else if (_isNewEmployee)
+                {
+                    // Para nuevo empleado, usar el método existente
+                    _payroll.CreatedBy = _currentUser.Id;
+                    await _supabaseService.CreatePayroll(_payroll);
+                    success = true;
+                    successMessage = "Empleado creado exitosamente";
+                }
+                else
+                {
+                    // Para actualización sin cambio de salario
+                    _payroll.UpdatedBy = _currentUser.Id;
+                    await _supabaseService.UpdatePayroll(_payroll);
+                    success = true;
+                    successMessage = "Empleado actualizado exitosamente";
+                }
+
+                if (success)
+                {
+                    MessageBox.Show(successMessage, "Éxito",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    DialogResult = true;
+                    Close();
+                }
+                else
+                {
+                    MessageBox.Show("Error al guardar", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
 
                 DialogResult = true;
                 Close();

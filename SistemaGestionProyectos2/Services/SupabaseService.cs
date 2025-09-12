@@ -12,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using static Postgrest.Constants;
 
 namespace SistemaGestionProyectos2.Services
 {
@@ -2522,6 +2523,155 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+
+        // Para obtener el salario vigente en una fecha específica
+
+        public async Task<List<PayrollTable>> GetEffectivePayroll(DateTime effectiveDate)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(p => p.IsActive == true)
+                    .Get();
+
+                var payrollList = response.Models;
+
+                // Para cada empleado, verificar si hay cambios en el historial
+                foreach (var payroll in payrollList)
+                {
+                    var historyResponse = await _supabaseClient
+                        .From<PayrollHistoryTable>()
+                        .Filter("f_payroll", Postgrest.Constants.Operator.Equals, payroll.Id)
+                        .Filter("effective_date", Postgrest.Constants.Operator.LessThanOrEqual, effectiveDate.ToString("yyyy-MM-dd"))
+                        .Order("effective_date", Postgrest.Constants.Ordering.Descending)
+                        .Limit(1)
+                        .Get();
+
+                    if (historyResponse.Models.Any())
+                    {
+                        var latestChange = historyResponse.Models.First();
+                        payroll.MonthlyPayroll = latestChange.MonthlyPayroll;
+                    }
+                }
+
+                return payrollList;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting effective payroll: {ex.Message}");
+                throw;
+            }
+        }
+
+        // Para guardar un cambio con fecha efectiva
+        public async Task<bool> SavePayrollWithEffectiveDate(
+    PayrollTable payroll,
+    DateTime effectiveDate,
+    int userId)
+        {
+            try
+            {
+                // 1. Actualizar el registro actual
+                payroll.UpdatedAt = DateTime.Now;
+                payroll.UpdatedBy = userId;
+
+                var updateResponse = await _supabaseClient
+                    .From<PayrollTable>()
+                    .Where(p => p.Id == payroll.Id)
+                    .Update(payroll);
+
+                // 2. Crear registro en historial
+                var history = new PayrollHistoryTable
+                {
+                    PayrollId = payroll.Id,
+                    Employee = payroll.Employee,
+                    Title = payroll.Title,
+                    MonthlyPayroll = payroll.MonthlyPayroll,
+                    EffectiveDate = effectiveDate,
+                    ChangeType = "SALARY_CHANGE",
+                    ChangeSummary = $"Cambio de salario efectivo desde {effectiveDate:dd/MM/yyyy}",
+                    CreatedBy = userId
+                };
+
+                await _supabaseClient.From<PayrollHistoryTable>().Insert(history);
+
+                // 3. Actualizar balances futuros
+                await UpdateFutureBalances(effectiveDate, userId);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving with effective date: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Actualizar balances futuros
+        private async Task UpdateFutureBalances(DateTime fromDate, int userId)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                var monthDate = new DateTime(fromDate.Year, fromDate.Month, 1).AddMonths(i);
+
+                // Obtener totales vigentes
+                var payrollList = await GetEffectivePayroll(monthDate);
+                var totalPayroll = payrollList.Sum(p => p.MonthlyPayroll ?? 0);
+
+                var expenses = await GetEffectiveFixedExpenses(monthDate);
+                var totalExpenses = expenses.Sum(e => e.MonthlyAmount ?? 0);
+
+                // Buscar registro existente
+                var existingResponse = await _supabaseClient
+                    .From<PayrollOvertimeTable>()
+                    .Filter("f_date", Postgrest.Constants.Operator.Equals, monthDate.ToString("yyyy-MM-dd"))
+                    .Get();
+
+                if (existingResponse.Models.Any())
+                {
+                    var existing = existingResponse.Models.First();
+                    existing.Payroll = totalPayroll;
+                    existing.FixedExpense = totalExpenses;
+
+                    await _supabaseClient
+                        .From<PayrollOvertimeTable>()
+                        .Where(po => po.Id == existing.Id)
+                        .Update(existing);
+                }
+                else
+                {
+                    var newRecord = new PayrollOvertimeTable
+                    {
+                        Date = monthDate,
+                        Payroll = totalPayroll,
+                        FixedExpense = totalExpenses,
+                        Overtime = 0,
+                        CreatedBy = userId
+                    };
+                    await _supabaseClient.From<PayrollOvertimeTable>().Insert(newRecord);
+                }
+            }
+        }
+
+        public async Task<List<FixedExpenseTable>> GetEffectiveFixedExpenses(DateTime effectiveDate)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(e => e.IsActive == true)
+                    .Get();
+
+                return response.Models;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting effective expenses: {ex.Message}");
+                return new List<FixedExpenseTable>();
+            }
+        }
+
         // ========== MÉTODOS DE GASTOS FIJOS ==========
 
         public async Task<List<FixedExpenseTable>> GetActiveFixedExpenses()
@@ -2608,6 +2758,90 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        public async Task<bool> DeactivateFixedExpense(int expenseId)
+        {
+            try
+            {
+                var expense = await GetFixedExpenseById(expenseId);
+                if (expense != null)
+                {
+                    expense.IsActive = false;
+                    expense.UpdatedAt = DateTime.Now;
+
+                    await _supabaseClient
+                        .From<FixedExpenseTable>()
+                        .Where(e => e.Id == expenseId)
+                        .Update(expense);
+
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error deactivating expense: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> SaveFixedExpenseWithEffectiveDate(FixedExpenseTable expense,DateTime effectiveDate,int userId)
+        {
+            try
+            {
+                // 1. Actualizar el registro actual
+                expense.UpdatedAt = DateTime.Now;
+                expense.EffectiveDate = effectiveDate;
+
+                var updateResponse = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(e => e.Id == expense.Id)
+                    .Update(expense);
+
+                // 2. Crear registro en historial
+                var history = new FixedExpenseHistoryTable
+                {
+                    ExpenseId = expense.Id,
+                    Description = expense.Description,
+                    MonthlyAmount = expense.MonthlyAmount,
+                    EffectiveDate = effectiveDate,
+                    ChangeType = "AMOUNT_CHANGE",
+                    ChangeSummary = $"Cambio de monto efectivo desde {effectiveDate:dd/MM/yyyy}",
+                    CreatedBy = userId
+                };
+
+                await _supabaseClient.From<FixedExpenseHistoryTable>().Insert(history);
+
+                // 3. Actualizar balances futuros
+                await UpdateFutureBalances(effectiveDate, userId);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error saving expense with effective date: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Para obtener un gasto fijo por ID
+        public async Task<FixedExpenseTable> GetFixedExpenseById(int id)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<FixedExpenseTable>()
+                    .Where(e => e.Id == id)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting expense by id: {ex.Message}");
+                return null;
+            }
+        }
+
     }
 
 }
@@ -2631,7 +2865,7 @@ namespace SistemaGestionProyectos2.Services
         [Column("f_podate")]
         public DateTime? PoDate { get; set; }
 
-        [Column("f_client")]
+        [Column("f_supabaseClient")]
         public int? ClientId { get; set; }
 
         [Column("f_contact")]
@@ -2685,10 +2919,10 @@ namespace SistemaGestionProyectos2.Services
         public decimal? CommissionRate { get; set; }
     }
 
-    [Table("t_client")]
+    [Table("t_supabaseClient")]
     public class ClientDb : BaseModel
     {
-        [PrimaryKey("f_client")]
+        [PrimaryKey("f_supabaseClient")]
         public int Id { get; set; }
 
         [Column("f_name")]
@@ -2734,7 +2968,7 @@ namespace SistemaGestionProyectos2.Services
         [PrimaryKey("f_contact")]
         public int Id { get; set; }
 
-        [Column("f_client")]
+        [Column("f_supabaseClient")]
         public int ClientId { get; set; }
 
         [Column("f_contactname")]
@@ -3162,10 +3396,6 @@ namespace SistemaGestionProyectos2.Services
     [Column("f_monthlypayroll")]
     public decimal? MonthlyPayroll { get; set; }
 
-
-    [Column("changed_fields")]
-    public object ChangedFields { get; set; } // Usar object para manejar JSONB
-
     [Column("effective_date")]
     public DateTime EffectiveDate { get; set; }
 
@@ -3174,6 +3404,9 @@ namespace SistemaGestionProyectos2.Services
 
     [Column("change_summary")]
     public string ChangeSummary { get; set; }
+
+    [Column("created_by")]
+    public int? CreatedBy { get; set; }
 
     [Column("created_at")]
     public DateTime? CreatedAt { get; set; }
@@ -3207,4 +3440,64 @@ namespace SistemaGestionProyectos2.Services
 
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
-}
+
+    [Column("effective_date")]
+    public DateTime? EffectiveDate { get; set; } // Fecha en que el gasto fijo entra en vigor
+} // fin de la calse FixedExpenseTable
+
+
+[Table("t_payrollovertime")]
+    public class PayrollOvertimeTable : BaseModel
+    {
+        [PrimaryKey("f_payrollovertime")]
+        public int Id { get; set; }
+
+        [Column("f_date")]
+        public DateTime Date { get; set; }
+
+        [Column("f_payroll")]
+        public decimal? Payroll { get; set; }
+
+        [Column("f_overtime")]
+        public decimal? Overtime { get; set; }
+
+        [Column("f_fixedexpense")]
+        public decimal? FixedExpense { get; set; }
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+    }
+
+    [Table("t_fixed_expenses_history")]
+    public class FixedExpenseHistoryTable : BaseModel
+    {
+        [PrimaryKey("id")]
+        public int Id { get; set; }
+
+        [Column("expense_id")]
+        public int ExpenseId { get; set; }
+
+        [Column("description")]
+        public string Description { get; set; }
+
+        [Column("monthly_amount")]
+        public decimal? MonthlyAmount { get; set; }
+
+        [Column("effective_date")]
+        public DateTime EffectiveDate { get; set; }
+
+        [Column("change_type")]
+        public string ChangeType { get; set; }
+
+        [Column("change_summary")]
+        public string ChangeSummary { get; set; }
+
+        [Column("created_by")]
+        public int? CreatedBy { get; set; }
+
+        [Column("created_at")]
+        public DateTime? CreatedAt { get; set; }
+    }

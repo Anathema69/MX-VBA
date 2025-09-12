@@ -283,31 +283,43 @@
                     </Border>
 
                     <!-- Vigencia del cambio -->
+                    
                     <Border Background="#FFF7ED" CornerRadius="8" 
-                          Padding="15" Margin="0,15,0,0">
+                              Padding="15" Margin="0,15,0,0"
+                              Name="EffectiveDateBorder" Visibility="Collapsed">
                         <StackPanel>
-                            <TextBlock Text="⚠️ VIGENCIA DEL CAMBIO" 
+                            <TextBlock Text="📅 APLICAR CAMBIO DESDE" 
                                      FontWeight="Bold" FontSize="12"
                                      Foreground="#EA580C" Margin="0,0,0,10"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="15"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
 
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Aplicar cambios desde:" FontSize="13" 
-                                             Foreground="{StaticResource DarkText}" 
-                                             Margin="0,0,0,5"/>
-                                    <DatePicker Name="EffectiveDatePicker" Style="{StaticResource ModernDatePicker}"/>
+                            <RadioButton Name="CurrentMonthRadio" 
+                                        GroupName="EffectiveDate"
+                                        IsChecked="True"
+                                        Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Name="CurrentMonthText" 
+                         Text="Este mes (Septiembre 2025)"
+                         FontSize="14"/>
                                 </StackPanel>
+                            </RadioButton>
 
-                                <CheckBox Grid.Column="2" Name="RetroactiveCheck"
-                                        Content="Aplicar retroactivo"
-                                        VerticalAlignment="Center"
-                                        FontSize="13"/>
-                            </Grid>
+                            <RadioButton Name="NextMonthRadio" 
+                    GroupName="EffectiveDate"
+                    Margin="0,0,0,5">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Name="NextMonthText" 
+                         Text="Próximo mes (Octubre 2025)"
+                         FontSize="14"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <!-- Mostrar impacto del cambio -->
+                            <Border Background="White" CornerRadius="4" 
+               Padding="10" Margin="0,10,0,0"
+               BorderBrush="#FED7AA" BorderThickness="1">
+                                <TextBlock Name="ImpactText" FontSize="12"
+                     Foreground="#92400E"/>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>
