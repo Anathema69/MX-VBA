@@ -2784,44 +2784,112 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+
+        // En SupabaseService.cs, simplifica SaveFixedExpenseWithEffectiveDate:
+
         public async Task<bool> SaveFixedExpenseWithEffectiveDate(FixedExpenseTable expense,DateTime effectiveDate,int userId)
         {
             try
             {
-                // 1. Actualizar el registro actual
+                // Solo actualizar el registro principal
+                // El trigger se encargará del historial
                 expense.UpdatedAt = DateTime.Now;
                 expense.EffectiveDate = effectiveDate;
 
-                var updateResponse = await _supabaseClient
+                await _supabaseClient
                     .From<FixedExpenseTable>()
                     .Where(e => e.Id == expense.Id)
                     .Update(expense);
 
-                // 2. Crear registro en historial
-                var history = new FixedExpenseHistoryTable
-                {
-                    ExpenseId = expense.Id,
-                    Description = expense.Description,
-                    MonthlyAmount = expense.MonthlyAmount,
-                    EffectiveDate = effectiveDate,
-                    ChangeType = "AMOUNT_CHANGE",
-                    ChangeSummary = $"Cambio de monto efectivo desde {effectiveDate:dd/MM/yyyy}",
-                    CreatedBy = userId
-                };
-
-                await _supabaseClient.From<FixedExpenseHistoryTable>().Insert(history);
-
-                // 3. Actualizar balances futuros
+                // Actualizar balances futuros (opcional)
                 await UpdateFutureBalances(effectiveDate, userId);
 
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error saving expense with effective date: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error: {ex.Message}");
                 return false;
             }
         }
+
+
+        // Versión optimizada que no recalcula todo
+        private async Task UpdateFutureBalancesOptimized(DateTime fromDate, int userId)
+        {
+            try
+            {
+                // Solo actualizar los próximos 3 meses desde la fecha efectiva
+                var monthsToUpdate = new List<DateTime>();
+                for (int i = 0; i < 3; i++)
+                {
+                    monthsToUpdate.Add(new DateTime(fromDate.Year, fromDate.Month, 1).AddMonths(i));
+                }
+
+                // Obtener todos los registros existentes de una vez
+                var existingRecords = await _supabaseClient
+                    .From<PayrollOvertimeTable>()
+                    .Filter("f_date", Postgrest.Constants.Operator.GreaterThanOrEqual, fromDate.ToString("yyyy-MM-dd"))
+                    .Filter("f_date", Postgrest.Constants.Operator.LessThanOrEqual, fromDate.AddMonths(3).ToString("yyyy-MM-dd"))
+                    .Get();
+
+                foreach (var monthDate in monthsToUpdate)
+                {
+                    // Calcular totales para ese mes específico
+                    var payrollTotal = await GetMonthlyPayrollTotal(monthDate);
+                    var expensesTotal = await GetMonthlyExpensesTotal(monthDate);
+
+                    var existing = existingRecords.Models.FirstOrDefault(r => r.Date.Date == monthDate.Date);
+
+                    if (existing != null)
+                    {
+                        // Solo actualizar si cambió
+                        if (Math.Abs((existing.Payroll ?? 0) - payrollTotal) > 0.01m ||
+                            Math.Abs((existing.FixedExpense ?? 0) - expensesTotal) > 0.01m)
+                        {
+                            existing.Payroll = payrollTotal;
+                            existing.FixedExpense = expensesTotal;
+
+                            await _supabaseClient
+                                .From<PayrollOvertimeTable>()
+                                .Where(po => po.Id == existing.Id)
+                                .Update(existing);
+                        }
+                    }
+                    else
+                    {
+                        // Crear nuevo solo si no existe
+                        var newRecord = new PayrollOvertimeTable
+                        {
+                            Date = monthDate,
+                            Payroll = payrollTotal,
+                            FixedExpense = expensesTotal,
+                            Overtime = 0,
+                            CreatedBy = userId
+                        };
+                        await _supabaseClient.From<PayrollOvertimeTable>().Insert(newRecord);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating future balances: {ex.Message}");
+            }
+        }
+
+        // Métodos auxiliares para cálculos específicos
+        private async Task<decimal> GetMonthlyPayrollTotal(DateTime monthDate)
+        {
+            var payrollList = await GetEffectivePayroll(monthDate);
+            return payrollList.Sum(p => p.MonthlyPayroll ?? 0);
+        }
+
+        private async Task<decimal> GetMonthlyExpensesTotal(DateTime monthDate)
+        {
+            var expenses = await GetEffectiveFixedExpenses(monthDate);
+            return expenses.Sum(e => e.MonthlyAmount ?? 0);
+        }
+
 
         // Para obtener un gasto fijo por ID
         public async Task<FixedExpenseTable> GetFixedExpenseById(int id)
