@@ -577,6 +577,9 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 // NUEVO: Verificar y actualizar estado de la orden después de guardar facturas
+                // VAMOS A QUITAR ESTO PARA QUE NO HAGA NADA AUTOMATICAMENTE, EN LA BD HAREMOS UN TRIGGER
+                
+                /*
                 if (savedCount > 0)
                 {
                     StatusMessage.Text = "Verificando estado de la orden...";
@@ -590,6 +593,7 @@ namespace SistemaGestionProyectos2.Views
                         
                     }
                 }
+                */
 
                 
 

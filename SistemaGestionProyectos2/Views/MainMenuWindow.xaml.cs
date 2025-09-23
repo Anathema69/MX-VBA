@@ -166,8 +166,8 @@ namespace SistemaGestionProyectos2.Views
                     //adminPortal.Show();
 
                     // abrimeremos temporalmente la ventana de demo
-                    var demoWindow = new VendorCardsDemo(_currentUser);
-                    demoWindow.Show();
+                    var vendorWindow = new VendorCommissionsWindow(_currentUser);
+                    vendorWindow.Show();
 
 
 
