@@ -14,6 +14,8 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Text.RegularExpressions;
+using System.Windows.Threading;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -26,6 +28,7 @@ namespace SistemaGestionProyectos2.Views
         private UserSession _currentUser;
         private string _searchText = "";
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
+        private bool _isAddingOrEditingExpense = false;
 
         // Para edición de gastos
         private FixedExpenseViewModel _currentEditingExpense = null;
@@ -196,6 +199,7 @@ namespace SistemaGestionProyectos2.Views
                     if (!expense.IsNew)
                     {
                         expense.HasChanges = true;
+                        _isAddingOrEditingExpense = true;
                     }
                     UpdateTotals();
                 }
@@ -204,6 +208,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void UpdateTotals()
         {
+            var culture = new CultureInfo("es-MX");
+
             decimal totalPayroll = _employees.Sum(e => e.MonthlyPayroll);
             decimal totalExpenses = _expenses
                 .Where(e => !e.IsNew || !string.IsNullOrWhiteSpace(e.Description))
@@ -212,12 +218,12 @@ namespace SistemaGestionProyectos2.Views
             decimal grandTotal = totalPayroll + totalExpenses;
 
             // Actualizar las cards superiores
-            TotalPayrollText.Text = totalPayroll.ToString("C", _mexicanCulture);
-            TotalExpensesCardText.Text = totalExpenses.ToString("C", _mexicanCulture);
+            TotalPayrollText.Text = totalPayroll.ToString("C", culture);
+            TotalExpensesCardText.Text = totalExpenses.ToString("C", culture);
 
             // Actualizar el total general en el footer
             if (TotalExpensesText != null)
-                TotalExpensesText.Text = grandTotal.ToString("C", _mexicanCulture);
+                TotalExpensesText.Text = grandTotal.ToString("C", culture);
         }
 
         // Eventos de Empleados
@@ -305,6 +311,35 @@ namespace SistemaGestionProyectos2.Views
         // Eventos de Gastos
         private void AddExpenseButton_Click(object sender, RoutedEventArgs e)
         {
+            // Verificar si ya estamos agregando o editando un gasto
+            if (_isAddingOrEditingExpense)
+            {
+                // Buscar si hay un gasto nuevo sin guardar
+                var newUnsaved = _expenses.FirstOrDefault(x => x.IsNew);
+                if (newUnsaved != null)
+                {
+                    
+
+                    // Enfocar el gasto pendiente
+                    FocusExpenseField(newUnsaved, "DescriptionTextBox");
+                    return;
+                }
+
+                // Buscar si hay un gasto con cambios
+                var withChanges = _expenses.FirstOrDefault(x => x.HasChanges);
+                if (withChanges != null)
+                {
+                   
+
+                    // Enfocar el gasto con cambios
+                    FocusExpenseField(withChanges, "DescriptionTextBox");
+                    return;
+                }
+            }
+
+            // Marcar que estamos agregando
+            _isAddingOrEditingExpense = true;
+
             var newExpense = new FixedExpenseViewModel
             {
                 Id = 0,
@@ -318,18 +353,51 @@ namespace SistemaGestionProyectos2.Views
 
             newExpense.PropertyChanged += OnExpensePropertyChanged;
 
-            // Insertar al principio en lugar de al final
+            // Insertar al principio
             _expenses.Insert(0, newExpense);
 
-            // Hacer scroll al principio automáticamente
+            // Hacer scroll al principio
             if (ExpensesItemsControl != null)
             {
                 var scrollViewer = FindScrollViewer(ExpensesItemsControl);
                 scrollViewer?.ScrollToTop();
+
+                // Enfocar el campo de descripción del nuevo gasto
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    FocusExpenseField(newExpense, "DescriptionTextBox");
+                }), DispatcherPriority.Render);
             }
 
-            ShowStatus("Complete los datos del nuevo gasto", true);
+            ShowStatus("Complete los datos del nuevo gasto (ESC cancelar, ENTER guardar)", true);
         }
+
+
+
+        // Método auxiliar para encontrar el primer TextBox en un contenedor
+        private TextBox FindFirstTextBox(DependencyObject parent)
+        {
+            if (parent == null) return null;
+
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+
+                if (child is TextBox textBox && textBox.IsEnabled)
+                {
+                    return textBox;
+                }
+
+                var result = FindFirstTextBox(child);
+                if (result != null)
+                    return result;
+            }
+
+            return null;
+        }
+
+
+
         // Método auxiliar para encontrar el ScrollViewer
         private ScrollViewer FindScrollViewer(DependencyObject obj)
         {
@@ -353,11 +421,19 @@ namespace SistemaGestionProyectos2.Views
 
             if (expense == null) return;
 
-            // Validaciones
+            // Validaciones mejoradas
             if (string.IsNullOrWhiteSpace(expense.Description))
             {
                 MessageBox.Show("La descripción es obligatoria",
                     "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                // Enfocar el campo de descripción
+                var container = GetItemContainer(expense);
+                if (container != null)
+                {
+                    var descriptionBox = FindVisualChild<TextBox>(container, "DescriptionTextBox");
+                    descriptionBox?.Focus();
+                }
                 return;
             }
 
@@ -365,20 +441,26 @@ namespace SistemaGestionProyectos2.Views
             {
                 MessageBox.Show("El monto debe ser mayor a 0",
                     "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                // Enfocar el campo de monto
+                var container = GetItemContainer(expense);
+                if (container != null)
+                {
+                    var amountBox = FindVisualChild<TextBox>(container, "AmountTextBox");
+                    amountBox?.Focus();
+                    amountBox?.SelectAll();
+                }
                 return;
             }
 
-
             // Deshabilitar el botón mientras se guarda
             button.IsEnabled = false;
+
             try
             {
-                // Mostrar indicador de carga
                 ShowStatus("Guardando cambios...", true);
 
                 DateTime effectiveDate;
-
-                // Determinar si es corrección o cambio futuro
                 bool isCorrection = false;
 
                 var container = GetItemContainer(expense);
@@ -388,14 +470,12 @@ namespace SistemaGestionProyectos2.Views
 
                     if (nextMonthRadio?.IsChecked == true)
                     {
-                        // Cambio futuro
                         effectiveDate = new DateTime(
                             DateTime.Now.AddMonths(1).Year,
                             DateTime.Now.AddMonths(1).Month, 1);
                     }
                     else
                     {
-                        // Corrección o aplicación inmediata
                         effectiveDate = new DateTime(
                             DateTime.Now.Year,
                             DateTime.Now.Month, 1);
@@ -424,7 +504,6 @@ namespace SistemaGestionProyectos2.Views
 
                 if (expense.IsNew)
                 {
-                    // Nuevo gasto
                     var created = await _supabaseService.CreateFixedExpense(expenseTable);
                     if (created != null)
                     {
@@ -433,25 +512,25 @@ namespace SistemaGestionProyectos2.Views
                         expense.OriginalAmount = expense.MonthlyAmount;
                         expense.HasChanges = false;
                         success = true;
-                        successMessage = $"Gasto creado: {expense.MonthlyAmount:C}/mes desde {effectiveDate:MMMM yyyy}";
+                        successMessage = $"Gasto creado: {expense.Description} - {expense.MonthlyAmount:C}/mes";
+
+                        // Quitar el foco después de guardar exitosamente
+                        Keyboard.ClearFocus();
                     }
                 }
                 else if (expense.HasChanges)
                 {
-                    // Verificar si es un cambio significativo
                     var difference = Math.Abs(expense.MonthlyAmount - expense.OriginalAmount);
 
                     if (difference > 0.01m)
                     {
                         if (isCorrection)
                         {
-                            // Corrección inmediata - actualizar el registro principal
                             await _supabaseService.UpdateFixedExpense(expenseTable);
                             successMessage = $"Monto corregido a {expense.MonthlyAmount:C}";
                         }
                         else
                         {
-                            // Cambio programado - crear entrada en historial
                             success = await _supabaseService.SaveFixedExpenseWithEffectiveDate(
                                 expenseTable,
                                 effectiveDate,
@@ -465,12 +544,14 @@ namespace SistemaGestionProyectos2.Views
                     }
                     else
                     {
-                        // Solo cambió descripción o tipo
                         await _supabaseService.UpdateFixedExpense(expenseTable);
                         expense.HasChanges = false;
                         success = true;
                         successMessage = "Detalles actualizados";
                     }
+
+                    // Quitar el foco después de guardar
+                    Keyboard.ClearFocus();
                 }
 
                 if (success)
@@ -485,7 +566,6 @@ namespace SistemaGestionProyectos2.Views
             }
             finally
             {
-                // Rehabilitar el botón
                 button.IsEnabled = true;
             }
         }
@@ -543,7 +623,7 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Método genérico para buscar un control hijo por tipo y nombre
-        private T FindVisualChild<T>(DependencyObject parent, string childName = null) where T : DependencyObject
+        private T FindVisualChild<T>(DependencyObject parent, string childName = null) where T : FrameworkElement
         {
             if (parent == null) return null;
 
@@ -551,21 +631,14 @@ namespace SistemaGestionProyectos2.Views
             {
                 var child = VisualTreeHelper.GetChild(parent, i);
 
-                // Si es del tipo correcto
                 if (child is T typedChild)
                 {
-                    // Si no especificamos nombre o coincide el nombre
-                    if (string.IsNullOrEmpty(childName))
-                    {
-                        return typedChild;
-                    }
-                    else if (child is FrameworkElement fe && fe.Name == childName)
+                    if (string.IsNullOrEmpty(childName) || typedChild.Name == childName)
                     {
                         return typedChild;
                     }
                 }
 
-                // Buscar recursivamente en los hijos
                 var foundChild = FindVisualChild<T>(child, childName);
                 if (foundChild != null)
                     return foundChild;
@@ -636,25 +709,395 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Método para manejar el evento KeyDown en los campos de gastos
-        private void ExpenseField_KeyDown(object sender, KeyEventArgs e)
+        private async void ExpenseField_KeyDown(object sender, KeyEventArgs e)
         {
+            var element = sender as FrameworkElement;
+            var expense = element?.DataContext as FixedExpenseViewModel;
+
+            if (expense == null) return;
+
             if (e.Key == Key.Enter)
             {
-                var textBox = sender as TextBox;
-                var expense = textBox?.DataContext as FixedExpenseViewModel;
+                e.Handled = true;
 
-                if (expense != null && (expense.IsNew || expense.HasChanges))
+                // Validaciones antes de guardar
+                if (string.IsNullOrWhiteSpace(expense.Description))
+                {
+                    MessageBox.Show("La descripción es obligatoria",
+                        "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                    // Enfocar campo de descripción
+                    FocusExpenseField(expense, "DescriptionTextBox");
+                    return;
+                }
+
+                if (expense.MonthlyAmount <= 0)
+                {
+                    MessageBox.Show("El monto debe ser mayor a 0",
+                        "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                    // Enfocar campo de monto
+                    FocusExpenseField(expense, "AmountTextBox");
+                    return;
+                }
+
+                // Guardar el gasto
+                await SaveExpenseDirectly(expense);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+
+                if (expense.IsNew)
+                {
+                    // Cancelar nuevo gasto sin preguntar
+                    _expenses.Remove(expense);
+                    UpdateTotals();
+                    ShowStatus("Nuevo gasto cancelado", false);
+                    _isAddingOrEditingExpense = false;
+                }
+                else if (expense.HasChanges)
+                {
+                    // Revertir cambios
+                    await RevertExpenseChanges(expense);
+                    ShowStatus("Cambios revertidos", false);
+                    _isAddingOrEditingExpense = false;
+                }
+
+                // Quitar el foco del campo actual
+                Keyboard.ClearFocus();
+            }
+            else if (e.Key == Key.Tab)
+            {
+                // Manejar navegación con Tab
+                var control = sender as Control;
+                if (control != null)
                 {
                     e.Handled = true;
-                    SaveExpense_Click(textBox, null);
+
+                    // Determinar dirección (Shift+Tab va hacia atrás)
+                    bool goBack = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+
+                    NavigateToNextExpenseField(expense, control, goBack);
                 }
             }
-            else if (e.Key == Key.Escape && _isEditingExpense)
+        }
+
+        private async Task SaveExpenseDirectly(FixedExpenseViewModel expense)
+        {
+            if (expense == null) return;
+
+            try
             {
-                // Cancelar edición
-                CancelExpenseEdit();
+                ShowStatus("Guardando gasto...", true);
+
+                DateTime effectiveDate = DateTime.Now;
+                bool isCorrection = false;
+
+                // Buscar las opciones de fecha
+                var container = GetItemContainer(expense);
+                if (container != null)
+                {
+                    var nextMonthRadio = FindNextMonthRadio(container);
+                    if (nextMonthRadio?.IsChecked == true)
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.AddMonths(1).Year,
+                            DateTime.Now.AddMonths(1).Month, 1);
+                    }
+                    else
+                    {
+                        effectiveDate = new DateTime(
+                            DateTime.Now.Year,
+                            DateTime.Now.Month, 1);
+                        isCorrection = true;
+                    }
+                }
+
+                var expenseTable = new FixedExpenseTable
+                {
+                    Id = expense.Id,
+                    ExpenseType = expense.ExpenseType,
+                    Description = expense.Description,
+                    MonthlyAmount = expense.MonthlyAmount,
+                    IsActive = true,
+                    CreatedBy = _currentUser.Id,
+                    EffectiveDate = effectiveDate
+                };
+
+                bool success = false;
+                string successMessage = "";
+                var culture = new CultureInfo("es-MX");
+
+                if (expense.IsNew)
+                {
+                    var created = await _supabaseService.CreateFixedExpense(expenseTable);
+                    if (created != null)
+                    {
+                        expense.Id = created.Id;
+                        expense.IsNew = false;
+                        expense.OriginalAmount = expense.MonthlyAmount;
+                        expense.HasChanges = false;
+                        success = true;
+                        successMessage = $"✓ Gasto creado: {expense.Description} - {expense.MonthlyAmount.ToString("C", culture)}";
+                        _isAddingOrEditingExpense = false;
+                    }
+                }
+                else if (expense.HasChanges)
+                {
+                    var difference = Math.Abs(expense.MonthlyAmount - expense.OriginalAmount);
+
+                    if (difference > 0.01m)
+                    {
+                        if (isCorrection)
+                        {
+                            await _supabaseService.UpdateFixedExpense(expenseTable);
+                            successMessage = $"✓ Monto actualizado: {expense.MonthlyAmount.ToString("C", culture)}";
+                        }
+                        else
+                        {
+                            success = await _supabaseService.SaveFixedExpenseWithEffectiveDate(
+                                expenseTable, effectiveDate, _currentUser.Id);
+                            successMessage = $"✓ Cambio programado: {expense.MonthlyAmount.ToString("C", culture)} desde {effectiveDate.ToString("MMMM yyyy", culture)}";
+                        }
+                    }
+                    else
+                    {
+                        await _supabaseService.UpdateFixedExpense(expenseTable);
+                        successMessage = "✓ Detalles actualizados";
+                    }
+
+                    expense.OriginalAmount = expense.MonthlyAmount;
+                    expense.HasChanges = false;
+                    success = true;
+                    _isAddingOrEditingExpense = false;
+                }
+
+                if (success)
+                {
+                    UpdateTotals();
+                    ShowStatus(successMessage, true);
+                    Keyboard.ClearFocus();
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowStatus($"Error al guardar: {ex.Message}", false);
             }
         }
+
+        // Método para revertir cambios de un gasto
+        private async Task RevertExpenseChanges(FixedExpenseViewModel expense)
+        {
+            if (expense == null || expense.IsNew) return;
+
+            try
+            {
+                // Recargar valores originales desde la base de datos
+                var originalExpense = await _supabaseService.GetFixedExpenseById(expense.Id);
+                if (originalExpense != null)
+                {
+                    expense.ExpenseType = originalExpense.ExpenseType ?? "OTROS";
+                    expense.Description = originalExpense.Description ?? "";
+                    expense.MonthlyAmount = originalExpense.MonthlyAmount ?? 0;
+                    expense.OriginalAmount = originalExpense.MonthlyAmount ?? 0;
+                    expense.HasChanges = false;
+                }
+
+                UpdateTotals();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error revirtiendo cambios: {ex.Message}");
+            }
+        }
+
+
+        // Método para navegar entre campos del gasto
+        private void NavigateToNextExpenseField(FixedExpenseViewModel expense, Control currentControl, bool goBack = false)
+        {
+            var container = GetItemContainer(expense);
+            if (container == null) return;
+
+            string currentName = currentControl.Name;
+            string nextFieldName = "";
+
+            if (!goBack)
+            {
+                // Navegación hacia adelante
+                switch (currentName)
+                {
+                    case "ExpenseTypeCombo":
+                        nextFieldName = "DescriptionTextBox";
+                        break;
+                    case "DescriptionTextBox":
+                        nextFieldName = "AmountTextBox";
+                        break;
+                    case "AmountTextBox":
+                        // Último campo, mantener foco o guardar
+                        return;
+                }
+            }
+            else
+            {
+                // Navegación hacia atrás
+                switch (currentName)
+                {
+                    case "AmountTextBox":
+                        nextFieldName = "DescriptionTextBox";
+                        break;
+                    case "DescriptionTextBox":
+                        nextFieldName = "ExpenseTypeCombo";
+                        break;
+                    case "ExpenseTypeCombo":
+                        // Primer campo, mantener foco
+                        return;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(nextFieldName))
+            {
+                FocusExpenseField(expense, nextFieldName);
+            }
+        }
+
+        // Método auxiliar para enfocar un campo específico
+        private void FocusExpenseField(FixedExpenseViewModel expense, string fieldName)
+        {
+            var container = GetItemContainer(expense);
+            if (container == null) return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var field = FindVisualChild<FrameworkElement>(container, fieldName);
+                if (field != null)
+                {
+                    if (field is TextBox textBox)
+                    {
+                        textBox.Focus();
+                        textBox.SelectAll();
+                    }
+                    else if (field is ComboBox comboBox)
+                    {
+                        comboBox.Focus();
+                    }
+                }
+            }), DispatcherPriority.Render);
+        }
+
+        // Método para manejar el formato decimal del monto - CORREGIDO
+        private void AmountTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Permitir solo números y punto decimal
+            if (e.Text == ".")
+            {
+                // Permitir punto si no existe ya uno
+                e.Handled = textBox.Text.Contains(".");
+            }
+            else
+            {
+                // Solo permitir dígitos
+                e.Handled = !char.IsDigit(e.Text[0]);
+            }
+
+            // Verificar límite de decimales
+            if (!e.Handled && textBox.Text.Contains("."))
+            {
+                var parts = textBox.Text.Split('.');
+                if (parts.Length > 1 && parts[1].Length >= 2)
+                {
+                    // Si ya hay 2 decimales y el cursor está después del punto
+                    var caretIndex = textBox.CaretIndex;
+                    var dotIndex = textBox.Text.IndexOf('.');
+                    if (caretIndex > dotIndex)
+                    {
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
+
+        // Método para manejar teclas especiales en el campo de monto
+        private void AmountTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Permitir el punto del teclado numérico
+            if (e.Key == Key.Decimal || e.Key == Key.OemPeriod)
+            {
+                // Si ya hay un punto, no permitir otro
+                if (textBox.Text.Contains("."))
+                {
+                    e.Handled = true;
+                }
+            }
+            // Permitir teclas de navegación y edición
+            else if (e.Key == Key.Back || e.Key == Key.Delete ||
+                     e.Key == Key.Left || e.Key == Key.Right ||
+                     e.Key == Key.Home || e.Key == Key.End)
+            {
+                // Permitir estas teclas
+                return;
+            }
+        }
+
+        // Método para cuando el campo de monto obtiene el foco
+        private void AmountTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            var expense = textBox.DataContext as FixedExpenseViewModel;
+            if (expense == null) return;
+
+            // Marcar que estamos editando
+            _isAddingOrEditingExpense = true;
+
+            // Si el monto es 0, limpiar el campo
+            if (expense.MonthlyAmount == 0)
+            {
+                textBox.Text = "";
+            }
+            else
+            {
+                // Formatear sin símbolo de moneda para edición
+                textBox.Text = expense.MonthlyAmount.ToString("0.00");
+            }
+
+            // Seleccionar todo el texto para facilitar el reemplazo
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                textBox.SelectAll();
+            }), DispatcherPriority.Render);
+        }
+
+        // Método para cuando el campo de monto pierde el foco
+        private void AmountTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            var expense = textBox.DataContext as FixedExpenseViewModel;
+            if (expense == null) return;
+
+            // Parsear el valor ingresado
+            if (decimal.TryParse(textBox.Text, out decimal value))
+            {
+                expense.MonthlyAmount = value;
+                // Formatear con 2 decimales
+                textBox.Text = value.ToString("0.00");
+            }
+            else if (string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                expense.MonthlyAmount = 0;
+                textBox.Text = "0.00";
+            }
+        }
+
 
         // Método para establecer el modo de edición
         private void BeginExpenseEdit(FixedExpenseViewModel expense)

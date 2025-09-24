@@ -171,10 +171,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header mejorado -->
+        <!-- Header mejorado - REDUCIDO -->
         <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderGray}" 
                 BorderThickness="0,0,0,1">
-            <Grid Margin="40,24">
+            <Grid Margin="30,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -182,15 +182,15 @@
 
                 <StackPanel Grid.Column="0" Orientation="Vertical">
                     <TextBlock Text="NÓMINA Y GASTOS FIJOS" 
-                             FontSize="28" 
+                             FontSize="22" 
                              FontWeight="Bold" 
                              Foreground="{StaticResource DarkText}"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <Border Background="{StaticResource InfoLight}" 
-                                CornerRadius="6" Padding="8,4">
+                                CornerRadius="4" Padding="6,2">
                             <TextBlock Name="CurrentMonthText" 
                                      Text="Diciembre 2024" 
-                                     FontSize="14" 
+                                     FontSize="12" 
                                      FontWeight="Medium"
                                      Foreground="{StaticResource InfoColor}"/>
                         </Border>
@@ -203,18 +203,16 @@
                             Style="{StaticResource SecondaryButton}"
                             Margin="0,0,12,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="←" FontSize="18" Margin="0,0,8,0"/>
-                            <TextBlock Text="Volver" FontSize="14"/>
+                            <TextBlock Text="←" FontSize="16" Margin="0,0,6,0"/>
+                            <TextBlock Text="Volver" FontSize="13"/>
                         </StackPanel>
                     </Button>
-
-                    
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Cards de resumen mejoradas -->
-        <Grid Grid.Row="1" Margin="40,24,40,16">
+        <!-- Cards de resumen mejoradas - TAMAÑO REDUCIDO -->
+        <Grid Grid.Row="1" Margin="30,12,30,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -223,7 +221,7 @@
 
             <!-- Card Empleados Activos -->
             <Border Grid.Column="0" Style="{StaticResource TableCard}" 
-                    Margin="0,0,12,0" Padding="24">
+                    Margin="0,0,8,0" Padding="16,12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -232,26 +230,26 @@
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="{StaticResource PrimaryLight}" 
-                            Width="40" Height="40" CornerRadius="10" 
-                            HorizontalAlignment="Left" Margin="0,0,0,12">
-                        <TextBlock Text="👥" FontSize="20" 
+                            Width="32" Height="32" CornerRadius="8" 
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="👥" FontSize="16" 
                                  HorizontalAlignment="Center" 
                                  VerticalAlignment="Center"/>
                     </Border>
 
-                    <TextBlock Grid.Row="1" Text="Empleados Activos" FontSize="13" 
+                    <TextBlock Grid.Row="1" Text="Empleados Activos" FontSize="11" 
                              Foreground="{StaticResource TextGray}" 
-                             FontWeight="Medium" Margin="0,0,0,6"/>
+                             FontWeight="Medium" Margin="0,0,0,4"/>
 
                     <TextBlock Grid.Row="2" Name="ActiveEmployeesText" Text="6" 
-                             FontSize="28" FontWeight="Bold" 
+                             FontSize="20" FontWeight="Bold" 
                              Foreground="{StaticResource DarkText}"/>
                 </Grid>
             </Border>
 
             <!-- Card Nómina Mensual -->
             <Border Grid.Column="1" Style="{StaticResource TableCard}" 
-                    Margin="6,0" Padding="24">
+                    Margin="4,0" Padding="16,12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -260,26 +258,26 @@
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="{StaticResource SuccessLight}" 
-                            Width="48" Height="48" CornerRadius="12" 
-                            HorizontalAlignment="Left" Margin="0,0,0,16">
-                        <TextBlock Text="💰" FontSize="24" 
+                            Width="32" Height="32" CornerRadius="8" 
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="💰" FontSize="16" 
                                  HorizontalAlignment="Center" 
                                  VerticalAlignment="Center"/>
                     </Border>
 
-                    <TextBlock Grid.Row="1" Text="Nómina Mensual" FontSize="14" 
+                    <TextBlock Grid.Row="1" Text="Nómina Mensual" FontSize="11" 
                              Foreground="{StaticResource TextGray}" 
-                             FontWeight="Medium" Margin="0,0,0,8"/>
+                             FontWeight="Medium" Margin="0,0,0,4"/>
 
                     <TextBlock Grid.Row="2" Name="TotalPayrollText" Text="$0.00" 
-                             FontSize="32" FontWeight="Bold" 
+                             FontSize="20" FontWeight="Bold" 
                              Foreground="{StaticResource SuccessColor}"/>
                 </Grid>
             </Border>
 
             <!-- Card Gastos Fijos -->
             <Border Grid.Column="2" Style="{StaticResource TableCard}" 
-                    Margin="12,0,0,0" Padding="24">
+                    Margin="8,0,0,0" Padding="16,12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -288,26 +286,26 @@
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="{StaticResource DangerLight}" 
-                            Width="48" Height="48" CornerRadius="12" 
-                            HorizontalAlignment="Left" Margin="0,0,0,16">
-                        <TextBlock Text="📊" FontSize="24" 
+                            Width="32" Height="32" CornerRadius="8" 
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="📊" FontSize="16" 
                                  HorizontalAlignment="Center" 
                                  VerticalAlignment="Center"/>
                     </Border>
 
-                    <TextBlock Grid.Row="1" Text="Gastos Fijos" FontSize="14" 
+                    <TextBlock Grid.Row="1" Text="Gastos Fijos" FontSize="11" 
                              Foreground="{StaticResource TextGray}" 
-                             FontWeight="Medium" Margin="0,0,0,8"/>
+                             FontWeight="Medium" Margin="0,0,0,4"/>
 
                     <TextBlock Grid.Row="2" Name="TotalExpensesCardText" Text="$0.00" 
-                             FontSize="32" FontWeight="Bold" 
+                             FontSize="20" FontWeight="Bold" 
                              Foreground="{StaticResource DangerColor}"/>
                 </Grid>
             </Border>
         </Grid>
 
         <!-- TabControl mejorado -->
-        <TabControl Grid.Row="2" Margin="40,0,40,16" Background="Transparent" BorderThickness="0">
+        <TabControl Grid.Row="2" Margin="30,0,30,12" Background="Transparent" BorderThickness="0">
             <TabControl.Resources>
                 <Style TargetType="TabItem" BasedOn="{StaticResource ModernTabItem}"/>
             </TabControl.Resources>
@@ -320,9 +318,9 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Toolbar de Nómina -->
+                    <!-- Toolbar de Nómina - REDUCIDO -->
                     <Border Grid.Row="0" Style="{StaticResource TableCard}" 
-                            Margin="0,10,0,16" Padding="24,20">
+                            Margin="0,8,0,12" Padding="20,16">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -331,21 +329,21 @@
 
                             <!-- Búsqueda mejorada -->
                             <Border Grid.Column="0" Background="{StaticResource BackgroundGray}" 
-                                    CornerRadius="8" Width="320" HorizontalAlignment="Left">
+                                    CornerRadius="6" Width="280" HorizontalAlignment="Left">
                                 <Grid>
                                     <TextBox Name="SearchEmployeeBox"
                                            BorderThickness="0"
                                            Background="Transparent"
-                                           Padding="40,12,12,12"
-                                           FontSize="14"
+                                           Padding="36,10,10,10"
+                                           FontSize="13"
                                            VerticalAlignment="Center"/>
                                     <TextBlock Text="🔍" 
-                                             Margin="12,0,0,0" 
+                                             Margin="10,0,0,0" 
                                              VerticalAlignment="Center"
                                              Foreground="{StaticResource TextGray}"
                                              IsHitTestVisible="False"/>
                                     <TextBlock Text="Buscar empleado..." 
-                                             Margin="40,0,0,0"
+                                             Margin="36,0,0,0"
                                              VerticalAlignment="Center"
                                              Foreground="{StaticResource TextGray}"
                                              IsHitTestVisible="False">
@@ -368,28 +366,30 @@
                                 <Button Name="AddEmployeeButton"
                                         Click="AddEmployeeButton_Click"
                                         Style="{StaticResource ModernButton}"
-                                        Margin="0,0,12,0">
+                                        Padding="14,8"
+                                        Margin="0,0,10,0">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="➕" FontSize="14" Margin="0,0,8,0"/>
-                                        <TextBlock Text="Nuevo Empleado"/>
+                                        <TextBlock Text="➕" FontSize="13" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Nuevo Empleado" FontSize="13"/>
                                     </StackPanel>
                                 </Button>
 
                                 <Button Name="ViewHistoryButton"
                                         Click="ViewHistoryButton_Click"
-                                        Style="{StaticResource SecondaryButton}">
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="14,8">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="📋" FontSize="14" Margin="0,0,8,0"/>
-                                        <TextBlock Text="Historial"/>
+                                        <TextBlock Text="📋" FontSize="13" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Historial" FontSize="13"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <!-- Lista de empleados con diseño de tarjetas -->
+                    <!-- Lista de empleados con diseño de tarjetas - REDUCIDO -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl Name="PayrollItemsControl" Margin="0,0,0,16">
+                        <ItemsControl Name="PayrollItemsControl" Margin="0,0,0,12">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel/>
@@ -398,7 +398,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Style="{StaticResource TableCard}" 
-                                            Margin="0,0,0,12" Padding="24">
+                                            Margin="0,0,0,8" Padding="16,12">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -410,11 +410,11 @@
                                             </Grid.ColumnDefinitions>
 
                                             <!-- Avatar placeholder -->
-                                            <Border Grid.Column="0" Width="48" Height="48" 
-                                                    CornerRadius="24" Background="{StaticResource PrimaryLight}"
-                                                    Margin="0,0,16,0">
+                                            <Border Grid.Column="0" Width="36" Height="36" 
+                                                    CornerRadius="18" Background="{StaticResource PrimaryLight}"
+                                                    Margin="0,0,12,0">
                                                 <TextBlock Text="{Binding EmployeeInitials}" 
-                                                         FontSize="18" FontWeight="Bold"
+                                                         FontSize="14" FontWeight="Bold"
                                                          Foreground="{StaticResource PrimaryColor}"
                                                          HorizontalAlignment="Center" 
                                                          VerticalAlignment="Center"/>
@@ -423,27 +423,29 @@
                                             <!-- Info del empleado -->
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Employee}" 
-                                                         FontSize="16" FontWeight="SemiBold"
+                                                         FontSize="14" FontWeight="SemiBold"
                                                          Foreground="{StaticResource DarkText}"/>
                                                 <TextBlock Text="{Binding Title}" 
-                                                         FontSize="14" 
+                                                         FontSize="12" 
                                                          Foreground="{StaticResource TextGray}"
-                                                         Margin="0,2,0,0"/>
+                                                         Margin="0,1,0,0"/>
                                             </StackPanel>
 
                                             <!-- Badges -->
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" 
-                                                      VerticalAlignment="Center" Margin="16,0">
+                                                      VerticalAlignment="Center" Margin="12,0">
                                                 <Border Style="{StaticResource StatusBadge}"
                                                         Background="{StaticResource InfoLight}"
-                                                        Margin="0,0,8,0">
-                                                    <TextBlock Text="{Binding Range}" FontSize="12"
+                                                        Margin="0,0,6,0"
+                                                        Padding="8,4">
+                                                    <TextBlock Text="{Binding Range}" FontSize="11"
                                                              FontWeight="Medium"
                                                              Foreground="{StaticResource InfoColor}"/>
                                                 </Border>
                                                 <Border Style="{StaticResource StatusBadge}"
-                                                        Background="{StaticResource SuccessLight}">
-                                                    <TextBlock Text="{Binding Condition}" FontSize="12"
+                                                        Background="{StaticResource SuccessLight}"
+                                                        Padding="8,4">
+                                                    <TextBlock Text="{Binding Condition}" FontSize="11"
                                                              FontWeight="Medium"
                                                              Foreground="{StaticResource SuccessColor}"/>
                                                 </Border>
@@ -452,10 +454,10 @@
                                             <!-- Monto -->
                                             <TextBlock Grid.Column="3" 
                                                      Text="{Binding MonthlyPayroll, StringFormat={}{0:C}}" 
-                                                     FontSize="18" FontWeight="Bold"
+                                                     FontSize="15" FontWeight="Bold"
                                                      Foreground="{StaticResource DarkText}"
                                                      VerticalAlignment="Center"
-                                                     Margin="16,0"/>
+                                                     Margin="12,0"/>
 
                                             <!-- Acciones -->
                                             <StackPanel Grid.Column="4" Orientation="Horizontal" 
@@ -464,25 +466,25 @@
                                                         Background="Transparent"
                                                         BorderThickness="0"
                                                         Cursor="Hand"
-                                                        Padding="8"
+                                                        Padding="6"
                                                         ToolTip="Editar">
-                                                    <TextBlock Text="✏️" FontSize="18"/>
+                                                    <TextBlock Text="✏️" FontSize="14"/>
                                                 </Button>
                                                 <Button Click="ViewEmployeeHistory_Click"
                                                         Background="Transparent"
                                                         BorderThickness="0"
                                                         Cursor="Hand"
-                                                        Padding="8"
+                                                        Padding="6"
                                                         ToolTip="Ver historial">
-                                                    <TextBlock Text="📊" FontSize="18"/>
+                                                    <TextBlock Text="📊" FontSize="14"/>
                                                 </Button>
                                                 <Button Click="DeactivateEmployee_Click"
                                                         Background="Transparent"
                                                         BorderThickness="0"
                                                         Cursor="Hand"
-                                                        Padding="8"
+                                                        Padding="6"
                                                         ToolTip="Desactivar">
-                                                    <TextBlock Text="🚫" FontSize="18"/>
+                                                    <TextBlock Text="🚫" FontSize="14"/>
                                                 </Button>
                                             </StackPanel>
                                         </Grid>
@@ -502,9 +504,9 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Toolbar de Gastos -->
+                    <!-- Toolbar de Gastos - REDUCIDO -->
                     <Border Grid.Row="0" Style="{StaticResource TableCard}" 
-                            Margin="0,10,0,16" Padding="24,20">
+                            Margin="0,8,0,12" Padding="20,16">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -513,24 +515,25 @@
 
                             <TextBlock Grid.Column="0" 
                                      Text="Gestión de gastos fijos mensuales" 
-                                     FontSize="15" 
+                                     FontSize="13" 
                                      Foreground="{StaticResource TextGray}"
                                      VerticalAlignment="Center"/>
 
                             <Button Grid.Column="1" Name="AddExpenseButton"
                                     Click="AddExpenseButton_Click"
-                                    Style="{StaticResource ModernButton}">
+                                    Style="{StaticResource ModernButton}"
+                                    Padding="14,8">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="➕" FontSize="14" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Nuevo Gasto"/>
+                                    <TextBlock Text="➕" FontSize="13" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Nuevo Gasto" FontSize="13"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
                     </Border>
 
-                    <!-- Lista de gastos con diseño de tarjetas -->
+                    <!-- Lista de gastos con diseño de tarjetas - REDUCIDO -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl Name="ExpensesItemsControl" Margin="0,0,0,16">
+                        <ItemsControl Name="ExpensesItemsControl" Margin="0,0,0,12">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <StackPanel/>
@@ -538,7 +541,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,0,12" Padding="24">
+                                    <Border Margin="0,0,0,8" Padding="16,12">
                                         <Border.Style>
                                             <Style TargetType="Border" BasedOn="{StaticResource TableCard}">
                                                 <Style.Triggers>
@@ -556,22 +559,24 @@
 
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="140"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="200"/>
+                                                <ColumnDefinition Width="180"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
                                             <!-- Tipo de gasto -->
                                             <ComboBox Grid.Column="0" 
+                                                    Name="ExpenseTypeCombo"
                                                     Text="{Binding ExpenseType, UpdateSourceTrigger=PropertyChanged}"
                                                     IsEditable="True"
                                                     BorderThickness="1"
                                                     BorderBrush="{StaticResource BorderGray}"
                                                     Background="White"
-                                                    Padding="12,8"
-                                                    FontSize="14"
-                                                    Margin="0,0,16,0">
+                                                    Padding="10,6"
+                                                    FontSize="13"
+                                                    Margin="0,0,12,0"
+                                                    KeyDown="ExpenseField_KeyDown">
                                                 <ComboBoxItem>RENTA</ComboBoxItem>
                                                 <ComboBoxItem>SERVICIOS</ComboBoxItem>
                                                 <ComboBoxItem>SEGURO</ComboBoxItem>
@@ -580,34 +585,56 @@
 
                                             <!-- Descripción -->
                                             <TextBox Grid.Column="1" 
+                                                   Name="DescriptionTextBox"
                                                    Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                    BorderThickness="1"
                                                    BorderBrush="{StaticResource BorderGray}"
                                                    Background="White"
-                                                   Padding="12,8"
-                                                   FontSize="14"
+                                                   Padding="10,6"
+                                                   FontSize="13"
                                                    VerticalAlignment="Center"
-                                                   Margin="0,0,16,0"/>
+                                                   Margin="0,0,12,0"
+                                                   KeyDown="ExpenseField_KeyDown"/>
 
                                             <!-- Monto -->
-                                            <Grid Grid.Column="2" Margin="0,0,16,0">
-                                                <TextBox Text="{Binding MonthlyAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
-                                                       BorderThickness="1"
-                                                       BorderBrush="{StaticResource BorderGray}"
-                                                       Background="White"
+                                            <Grid Grid.Column="2" Margin="0,0,12,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="$" 
+                                                         FontSize="14" FontWeight="SemiBold"
+                                                         VerticalAlignment="Center"
+                                                         Margin="10,0,2,0"
+                                                         Foreground="{StaticResource TextGray}"/>
+                                                <TextBox Grid.Column="1"
+                                                       Name="AmountTextBox"
+                                                       Text="{Binding MonthlyAmount, UpdateSourceTrigger=PropertyChanged, StringFormat={}{0:0.00}}"
+                                                       BorderThickness="0"
+                                                       Background="Transparent"
                                                        TextAlignment="Right"
-                                                       Padding="12,8"
-                                                       FontSize="16"
+                                                       Padding="2,6,10,6"
+                                                       FontSize="14"
                                                        FontWeight="SemiBold"
-                                                       VerticalAlignment="Center"/>
+                                                       VerticalAlignment="Center"
+                                                       GotFocus="AmountTextBox_GotFocus"
+                                                       LostFocus="AmountTextBox_LostFocus"
+                                                       PreviewTextInput="AmountTextBox_PreviewTextInput"
+                                                       PreviewKeyDown="AmountTextBox_PreviewKeyDown"
+                                                       KeyDown="ExpenseField_KeyDown"/>
+                                                <Border Grid.ColumnSpan="2"
+                                                      BorderThickness="1"
+                                                      BorderBrush="{StaticResource BorderGray}"
+                                                      CornerRadius="4"
+                                                      IsHitTestVisible="False"/>
                                             </Grid>
 
                                             <!-- Acciones -->
                                             <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                <!-- Opciones de fecha efectiva (visible solo cuando hay cambios) -->
-                                                <Border Margin="0,0,8,0" Padding="8,4" 
-        Background="{StaticResource BackgroundGray}"
-        CornerRadius="6">
+                                                <!-- Opciones de fecha efectiva -->
+                                                <Border Margin="0,0,6,0" Padding="6,3" 
+                                                        Background="{StaticResource BackgroundGray}"
+                                                        CornerRadius="4">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -619,7 +646,6 @@
                                                                     </MultiDataTrigger.Conditions>
                                                                     <Setter Property="Visibility" Value="Visible"/>
                                                                 </MultiDataTrigger>
-                                                                <!-- También mostrar para gastos nuevos -->
                                                                 <DataTrigger Binding="{Binding IsNew}" Value="True">
                                                                     <Setter Property="Visibility" Value="Visible"/>
                                                                 </DataTrigger>
@@ -628,23 +654,23 @@
                                                     </Border.Style>
                                                     <StackPanel Orientation="Horizontal">
                                                         <RadioButton x:Name="CurrentMonthRadio" 
-                    GroupName="{Binding Path=Id, StringFormat=ExpenseGroup_{0}}"
-                    IsChecked="True"
-                    VerticalAlignment="Center">
-                                                            <TextBlock Text="Este mes" FontSize="12"/>
+                                                                   GroupName="{Binding Path=Id, StringFormat=ExpenseGroup_{0}}"
+                                                                   IsChecked="True"
+                                                                   VerticalAlignment="Center">
+                                                            <TextBlock Text="Este mes" FontSize="11"/>
                                                         </RadioButton>
                                                         <RadioButton x:Name="NextMonthRadio" 
-                    GroupName="{Binding Path=Id, StringFormat=ExpenseGroup_{0}}"
-                    Margin="8,0,0,0"
-                    VerticalAlignment="Center">
-                                                            <TextBlock Text="Próximo" FontSize="12"/>
+                                                                   GroupName="{Binding Path=Id, StringFormat=ExpenseGroup_{0}}"
+                                                                   Margin="6,0,0,0"
+                                                                   VerticalAlignment="Center">
+                                                            <TextBlock Text="Próximo" FontSize="11"/>
                                                         </RadioButton>
                                                     </StackPanel>
                                                 </Border>
 
                                                 <!-- Botón Guardar -->
                                                 <Button Click="SaveExpense_Click"
-                                                        Margin="0,0,8,0"
+                                                        Margin="0,0,6,0"
                                                         Cursor="Hand"
                                                         ToolTip="Guardar cambios">
                                                     <Button.Style>
@@ -652,14 +678,14 @@
                                                             <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Setter Property="Background" Value="{StaticResource SuccessColor}"/>
                                                             <Setter Property="BorderThickness" Value="0"/>
-                                                            <Setter Property="Padding" Value="10,8"/>
+                                                            <Setter Property="Padding" Value="8,6"/>
                                                             <Setter Property="Template">
                                                                 <Setter.Value>
                                                                     <ControlTemplate TargetType="Button">
                                                                         <Border Background="{TemplateBinding Background}"
-                                                                              CornerRadius="6"
+                                                                              CornerRadius="4"
                                                                               Padding="{TemplateBinding Padding}">
-                                                                            <TextBlock Text="💾" FontSize="18" Foreground="White"/>
+                                                                            <TextBlock Text="💾" FontSize="14" Foreground="White"/>
                                                                         </Border>
                                                                     </ControlTemplate>
                                                                 </Setter.Value>
@@ -685,14 +711,14 @@
                                                             <Setter Property="Visibility" Value="Visible"/>
                                                             <Setter Property="Background" Value="{StaticResource DangerColor}"/>
                                                             <Setter Property="BorderThickness" Value="0"/>
-                                                            <Setter Property="Padding" Value="10,8"/>
+                                                            <Setter Property="Padding" Value="8,6"/>
                                                             <Setter Property="Template">
                                                                 <Setter.Value>
                                                                     <ControlTemplate TargetType="Button">
                                                                         <Border Background="{TemplateBinding Background}"
-                                                                              CornerRadius="6"
+                                                                              CornerRadius="4"
                                                                               Padding="{TemplateBinding Padding}">
-                                                                            <TextBlock Text="🗑️" FontSize="18" Foreground="White"/>
+                                                                            <TextBlock Text="🗑️" FontSize="14" Foreground="White"/>
                                                                         </Border>
                                                                     </ControlTemplate>
                                                                 </Setter.Value>
@@ -716,9 +742,9 @@
             </TabItem>
         </TabControl>
 
-        <!-- Footer con totales -->
+        <!-- Footer con totales - REDUCIDO -->
         <Border Grid.Row="3" Background="White" BorderThickness="0,1,0,0" 
-                BorderBrush="{StaticResource BorderGray}" Padding="40,20">
+                BorderBrush="{StaticResource BorderGray}" Padding="30,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -728,31 +754,31 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <TextBlock Name="StatusText"
                              Text="" 
-                             FontSize="14" 
+                             FontSize="12" 
                              FontWeight="Medium"
                              Foreground="{StaticResource SuccessColor}"
                              VerticalAlignment="Center"/>
 
                     <TextBlock Name="LastUpdateText" 
                              Text="Última actualización: 11/09/2024 14:30" 
-                             FontSize="13" 
+                             FontSize="11" 
                              Foreground="{StaticResource TextGray}"
                              VerticalAlignment="Center"
-                             Margin="20,0,0,0"/>
+                             Margin="16,0,0,0"/>
                 </StackPanel>
 
                 <Border Grid.Column="1" Background="{StaticResource BackgroundGray}" 
-                        CornerRadius="8" Padding="20,12">
+                        CornerRadius="6" Padding="16,10">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="TOTAL GASTOS MENSUALES:" 
-                                 FontSize="14" 
+                                 FontSize="12" 
                                  FontWeight="SemiBold"
                                  Foreground="{StaticResource TextGray}"
                                  VerticalAlignment="Center"
-                                 Margin="0,0,16,0"/>
+                                 Margin="0,0,12,0"/>
                         <TextBlock Name="TotalExpensesText"  
                                  Text="$0.00" 
-                                 FontSize="24" 
+                                 FontSize="18" 
                                  FontWeight="Bold"
                                  Foreground="{StaticResource DangerColor}"
                                  VerticalAlignment="Center"/>

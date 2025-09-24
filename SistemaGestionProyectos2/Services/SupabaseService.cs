@@ -2899,7 +2899,7 @@ namespace SistemaGestionProyectos2.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error getting expense by id: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo gasto por ID: {ex.Message}");
                 return null;
             }
         }
