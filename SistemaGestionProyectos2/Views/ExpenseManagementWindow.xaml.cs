@@ -45,7 +45,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void InitializeUI()
         {
-            CurrentUserText.Text = $"Usuario: {_currentUser.FullName} ({_currentUser.Role})";
+            CurrentUserText.Text = $"{_currentUser.FullName} ({_currentUser.Role})";
             ExpensesDataGrid.ItemsSource = _filteredExpenses;
 
             // Configurar eventos del DataGrid para edición
@@ -199,21 +199,21 @@ namespace SistemaGestionProyectos2.Views
             // Validar campos obligatorios
             if (_newExpenseRow.SupplierId <= 0)
             {
-                MessageBox.Show("Debe seleccionar un proveedor", "Validación", 
+                MessageBox.Show("Debe seleccionar un proveedor", "Validación",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(_newExpenseRow.Description))
             {
-                MessageBox.Show("La descripción es obligatoria", "Validación", 
+                MessageBox.Show("La descripción es obligatoria", "Validación",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
             if (_newExpenseRow.TotalExpense <= 0)
             {
-                MessageBox.Show("El monto debe ser mayor a cero", "Validación", 
+                MessageBox.Show("El monto debe ser mayor a cero", "Validación",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
@@ -223,6 +223,10 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Guardando nuevo gasto...";
                 StatusText.Foreground = new SolidColorBrush(Colors.Orange);
 
+                // Verificar si el proveedor tiene crédito
+                var supplier = _suppliers?.FirstOrDefault(s => s.Id == _newExpenseRow.SupplierId);
+                bool hasCredit = supplier?.CreditDays > 0;
+
                 // Crear el objeto para guardar en la base de datos
                 var newExpenseDb = new ExpenseDb
                 {
@@ -230,21 +234,24 @@ namespace SistemaGestionProyectos2.Views
                     Description = _newExpenseRow.Description,
                     ExpenseDate = _newExpenseRow.ExpenseDate,
                     TotalExpense = _newExpenseRow.TotalExpense,
-                    Status = "PENDIENTE",
+                    Status = hasCredit ? "PENDIENTE" : "PAGADO", // Si no tiene crédito, va directo a PAGADO
+                    PaidDate = hasCredit ? null : _newExpenseRow.ExpenseDate,
+                    PayMethod = hasCredit ? null : "EFECTIVO",
                     ExpenseCategory = null,
                     OrderId = _newExpenseRow.OrderId
                 };
 
                 // Guardar en la base de datos
                 var createdExpense = await _supabaseService.CreateExpense(newExpenseDb);
-                
-
 
                 if (createdExpense != null)
                 {
                     // Actualizar el ViewModel con los datos guardados
                     _newExpenseRow.ExpenseId = createdExpense.Id;
                     _newExpenseRow.ScheduledDate = createdExpense.ScheduledDate;
+                    _newExpenseRow.Status = createdExpense.Status;
+                    _newExpenseRow.PaidDate = createdExpense.PaidDate;
+                    _newExpenseRow.PayMethod = createdExpense.PayMethod;
                     _newExpenseRow.IsNew = false;
                     _newExpenseRow.IsEditing = false;
 
@@ -256,7 +263,14 @@ namespace SistemaGestionProyectos2.Views
                     _isCreatingNewExpense = false;
                     NewExpenseButton.IsEnabled = true;
 
-                    StatusText.Text = "Gasto guardado exitosamente";
+                    if (!hasCredit)
+                    {
+                        StatusText.Text = "Gasto guardado y pagado (sin crédito)";
+                    }
+                    else
+                    {
+                        StatusText.Text = "Gasto guardado exitosamente";
+                    }
                     StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
 
                     // Actualizar estadísticas
@@ -612,6 +626,7 @@ namespace SistemaGestionProyectos2.Views
         {
             if (_expenses != null && !_isCreatingNewExpense)
             {
+                UpdateSupplierFilterDisplay(); // Agregar esta línea
                 ApplyFilters();
                 UpdateStatistics();
             }
@@ -938,7 +953,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Modificar ApplyFilters
+        // ApplyFilters modificado para filtrar por orden correctamente
         private void ApplyFilters()
         {
             _filteredExpenses.Clear();
@@ -1009,7 +1024,7 @@ namespace SistemaGestionProyectos2.Views
             RecordCountText.Text = $"{_filteredExpenses.Count} registros";
         }
 
-        // Agregar event handler para el filtro de orden
+        // Nuevo evento para cambio de orden en el filtro
         private void OrderFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_expenses != null && !_isCreatingNewExpense)
@@ -1019,7 +1034,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Modificar UpdateStatistics sin vencido
+        //  UpdateStatistics modificado para excluir filas nuevas no guardadas
         private void UpdateStatistics()
         {
             try
@@ -1044,6 +1059,9 @@ namespace SistemaGestionProyectos2.Views
                     .Where(e => e.Status == "PAGADO")
                     .Sum(e => e.TotalExpense);
                 TotalPagadoText.Text = totalPagado.ToString("C2", culture);
+
+                // Actualizar contador de registros en la tarjeta
+                RecordCountText.Text = validExpenses.Count().ToString();
             }
             catch (Exception ex)
             {
@@ -1326,6 +1344,67 @@ namespace SistemaGestionProyectos2.Views
             this.Close();
         }
 
+        // ========== NUEVOS MÉTODOS PARA EL DISEÑO MEJORADO ==========
+
+        // Método para mostrar/ocultar el panel del proveedor filtrado
+        private void UpdateSupplierFilterDisplay()
+        {
+            if (SupplierFilterCombo?.SelectedIndex > 0)
+            {
+                var selectedSupplier = SupplierFilterCombo.SelectedItem?.ToString();
+                if (!string.IsNullOrEmpty(selectedSupplier))
+                {
+                    FilteredSupplierPanel.Visibility = Visibility.Visible;
+                    FilteredSupplierNameText.Text = selectedSupplier;
+                }
+            }
+            else
+            {
+                FilteredSupplierPanel.Visibility = Visibility.Collapsed;
+            }
+        }
         
+        // Botón para limpiar el filtro de proveedor
+        private void ClearSupplierFilter_Click(object sender, RoutedEventArgs e)
+        {
+            SupplierFilterCombo.SelectedIndex = 0;
+            FilteredSupplierPanel.Visibility = Visibility.Collapsed;
+            ApplyFilters();
+            UpdateStatistics();
+        }
+
+        // AGREGAR este método para manejar automáticamente gastos sin crédito
+        private async Task ProcessAutomaticPayment(ExpenseViewModel expense)
+        {
+            try
+            {
+                // Verificar si el proveedor tiene crédito
+                var supplier = _suppliers?.FirstOrDefault(s => s.Id == expense.SupplierId);
+
+                if (supplier != null && (supplier.CreditDays == null || supplier.CreditDays == 0))
+                {
+                    // Si no tiene crédito, marcar como pagado automáticamente
+                    expense.Status = "PAGADO";
+                    expense.PaidDate = expense.ExpenseDate; // Misma fecha de compra
+                    expense.PayMethod = "EFECTIVO"; // Asumir efectivo para compras sin crédito
+
+                    // Guardar en la base de datos
+                    await _supabaseService.MarkExpenseAsPaid(
+                        expense.ExpenseId,
+                        expense.PaidDate.Value,
+                        expense.PayMethod);
+
+                    StatusText.Text = "Gasto marcado como pagado (sin crédito)";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error procesando pago automático: {ex.Message}");
+            }
+        }
+
+
+
     }
 }

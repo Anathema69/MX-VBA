@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -8,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Text.RegularExpressions;
+using System.Windows.Threading;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 
@@ -21,6 +23,7 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<VendorViewModel> _filteredVendors;
         private TextBox _currentEditingTextBox;
         private VendorViewModel _selectedVendor;
+        private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
 
         public VendorManagementWindow(UserSession user)
         {
@@ -37,7 +40,7 @@ namespace SistemaGestionProyectos2.Views
         private void InitializeUI()
         {
             Title = $"Gestión de Vendedores - {_currentUser.FullName}";
-            VendorsDataGrid.ItemsSource = _filteredVendors;
+            VendorsItemsControl.ItemsSource = _filteredVendors;
         }
 
         private async Task LoadActiveVendorsAsync()
@@ -92,11 +95,35 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 ApplyFilter();
+                UpdateStatistics();
             }
             catch (Exception ex)
             {
                 ShowToast("❌", $"Error al cargar vendedores", true);
             }
+        }
+
+        private void UpdateStatistics()
+        {
+            // Actualizar contador
+            VendorCountBadge.Text = $"{_filteredVendors.Count} activos";
+
+            // Calcular comisión promedio
+            if (_filteredVendors.Any())
+            {
+                var avgCommission = _filteredVendors.Average(v => v.CommissionRate);
+                CommissionAvgBadge.Text = $"Comisión promedio: {avgCommission:F1}%";
+            }
+            else
+            {
+                CommissionAvgBadge.Text = "Comisión promedio: 0%";
+            }
+
+            // Actualizar último update
+            LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm}";
+
+            // Mostrar/ocultar panel vacío
+            EmptyStatePanel.Visibility = _filteredVendors.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void ApplyFilter()
@@ -111,7 +138,8 @@ namespace SistemaGestionProyectos2.Views
                 filtered = filtered.Where(v =>
                     v.VendorName.ToLower().Contains(searchText) ||
                     v.Email.ToLower().Contains(searchText) ||
-                    v.Username.ToLower().Contains(searchText));
+                    v.Username.ToLower().Contains(searchText) ||
+                    v.Phone.ToLower().Contains(searchText));
             }
 
             foreach (var vendor in filtered)
@@ -119,11 +147,10 @@ namespace SistemaGestionProyectos2.Views
                 _filteredVendors.Add(vendor);
             }
 
-            // Actualizar contador
-            VendorCountText.Text = $"Total: {_filteredVendors.Count} vendedores";
+            UpdateStatistics();
         }
 
-        // Evento para edición de comisión
+        // Evento para edición de comisión con mejor UX
         private void CommissionTextBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             var textBox = sender as TextBox;
@@ -132,20 +159,26 @@ namespace SistemaGestionProyectos2.Views
                 // Si hay otro TextBox en edición, guardarlo primero
                 if (_currentEditingTextBox != null && _currentEditingTextBox != textBox)
                 {
-                    SaveCommissionRate(_currentEditingTextBox);
+                    _ = SaveCommissionRate(_currentEditingTextBox);
                 }
 
                 // Habilitar edición
                 textBox.IsReadOnly = false;
-                textBox.SelectAll();
-                textBox.Focus();
-                _currentEditingTextBox = textBox;
+                textBox.Background = new SolidColorBrush(Color.FromRgb(254, 249, 195)); // Amarillo claro
 
-                // Quitar el formato de porcentaje para edición
+                // Quitar el formato para edición
                 if (textBox.Tag is VendorViewModel vm)
                 {
                     textBox.Text = vm.CommissionRate.ToString("F1");
                 }
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    textBox.SelectAll();
+                    textBox.Focus();
+                }), DispatcherPriority.Render);
+
+                _currentEditingTextBox = textBox;
             }
         }
 
@@ -156,7 +189,7 @@ namespace SistemaGestionProyectos2.Views
 
             if (e.Key == Key.Enter)
             {
-                SaveCommissionRate(textBox);
+                _ = SaveCommissionRate(textBox);
                 e.Handled = true;
             }
             else if (e.Key == Key.Escape)
@@ -164,11 +197,18 @@ namespace SistemaGestionProyectos2.Views
                 // Cancelar edición
                 if (textBox.Tag is VendorViewModel vm)
                 {
-                    textBox.Text = $"{vm.CommissionRate:F1}%";
+                    textBox.Text = vm.CommissionRate.ToString("F1");
                 }
                 textBox.IsReadOnly = true;
+                textBox.Background = Brushes.Transparent;
                 _currentEditingTextBox = null;
+                Keyboard.ClearFocus();
                 e.Handled = true;
+            }
+            else if (e.Key == Key.Tab)
+            {
+                // Guardar y pasar al siguiente
+                _ = SaveCommissionRate(textBox);
             }
         }
 
@@ -177,11 +217,43 @@ namespace SistemaGestionProyectos2.Views
             var textBox = sender as TextBox;
             if (textBox != null && !textBox.IsReadOnly)
             {
-                SaveCommissionRate(textBox);
+                _ = SaveCommissionRate(textBox);
             }
         }
 
-        private async void SaveCommissionRate(TextBox textBox)
+        // Validación de entrada para comisión
+        private void CommissionTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Permitir solo números y punto decimal
+            if (e.Text == ".")
+            {
+                e.Handled = textBox.Text.Contains(".");
+            }
+            else
+            {
+                e.Handled = !char.IsDigit(e.Text[0]);
+            }
+
+            // Verificar límite de decimales
+            if (!e.Handled && textBox.Text.Contains("."))
+            {
+                var parts = textBox.Text.Split('.');
+                if (parts.Length > 1 && parts[1].Length >= 1)
+                {
+                    var caretIndex = textBox.CaretIndex;
+                    var dotIndex = textBox.Text.IndexOf('.');
+                    if (caretIndex > dotIndex)
+                    {
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
+
+        private async Task SaveCommissionRate(TextBox textBox)
         {
             if (textBox == null || textBox.Tag is not VendorViewModel vendor) return;
 
@@ -213,24 +285,30 @@ namespace SistemaGestionProyectos2.Views
                                 .From<VendorTableDb>()
                                 .Update(vendorToUpdate);
 
+                            var oldRate = vendor.CommissionRate;
                             vendor.CommissionRate = newRate;
-                            ShowToast("✓", "Comisión actualizada");
+
+                            // Actualizar estadísticas
+                            UpdateStatistics();
+
+                            ShowToast("✓", $"Comisión actualizada: {oldRate:F1}% → {newRate:F1}%");
                         }
                     }
                 }
 
                 // Restaurar formato
-                textBox.Text = $"{vendor.CommissionRate:F1}%";
+                textBox.Text = vendor.CommissionRate.ToString("F1");
             }
             catch (Exception ex)
             {
                 ShowToast("❌", "Error al actualizar", true);
                 // Restaurar valor original
-                textBox.Text = $"{vendor.CommissionRate:F1}%";
+                textBox.Text = vendor.CommissionRate.ToString("F1");
             }
             finally
             {
                 textBox.IsReadOnly = true;
+                textBox.Background = Brushes.Transparent;
                 _currentEditingTextBox = null;
             }
         }
@@ -244,11 +322,10 @@ namespace SistemaGestionProyectos2.Views
             if (dialog.ShowDialog() == true)
             {
                 _ = LoadActiveVendorsAsync();
-                ShowToast("✓", "Vendedor agregado");
+                ShowToast("✓", "Vendedor agregado exitosamente");
             }
         }
 
-        // Eventos de botones en DataGrid
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -265,68 +342,89 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        private void ViewDetailsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.Tag is VendorViewModel vendor)
+            {
+                // Aquí podrías abrir una ventana de detalles o mostrar un panel lateral
+                ShowToast("ℹ️", $"Detalles de {vendor.VendorName}");
+            }
+        }
+
         private async void DeactivateButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             if (button?.Tag is not VendorViewModel vendor) return;
 
-            try
+            var result = MessageBox.Show(
+                $"¿Está seguro de desactivar a {vendor.VendorName}?\n\n" +
+                "El vendedor no aparecerá en la lista activa pero se conservará su historial.",
+                "Confirmar desactivación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
             {
-                var supabaseClient = _supabaseService.GetClient();
-
-                // Actualizar estado del vendedor
-                var vendorToUpdate = await supabaseClient
-                    .From<VendorTableDb>()
-                    .Where(v => v.Id == vendor.Id)
-                    .Single();
-
-                if (vendorToUpdate != null)
+                try
                 {
-                    vendorToUpdate.IsActive = false;
-                    await supabaseClient
+                    var supabaseClient = _supabaseService.GetClient();
+
+                    // Actualizar estado del vendedor
+                    var vendorToUpdate = await supabaseClient
                         .From<VendorTableDb>()
-                        .Update(vendorToUpdate);
-                }
-
-                // Actualizar estado del usuario si existe
-                if (vendor.UserId.HasValue)
-                {
-                    var userToUpdate = await supabaseClient
-                        .From<UserDb>()
-                        .Where(u => u.Id == vendor.UserId.Value)
+                        .Where(v => v.Id == vendor.Id)
                         .Single();
 
-                    if (userToUpdate != null)
+                    if (vendorToUpdate != null)
                     {
-                        userToUpdate.IsActive = false;
+                        vendorToUpdate.IsActive = false;
                         await supabaseClient
-                            .From<UserDb>()
-                            .Update(userToUpdate);
+                            .From<VendorTableDb>()
+                            .Update(vendorToUpdate);
                     }
+
+                    // Actualizar estado del usuario si existe
+                    if (vendor.UserId.HasValue)
+                    {
+                        var userToUpdate = await supabaseClient
+                            .From<UserDb>()
+                            .Where(u => u.Id == vendor.UserId.Value)
+                            .Single();
+
+                        if (userToUpdate != null)
+                        {
+                            userToUpdate.IsActive = false;
+                            await supabaseClient
+                                .From<UserDb>()
+                                .Update(userToUpdate);
+                        }
+                    }
+
+                    // Remover de las colecciones con animación suave
+                    _vendors.Remove(vendor);
+                    _filteredVendors.Remove(vendor);
+
+                    UpdateStatistics();
+                    ShowToast("✓", $"{vendor.VendorName} desactivado correctamente");
                 }
-
-                // Remover de la colección
-                _vendors.Remove(vendor);
-                _filteredVendors.Remove(vendor);
-
-                ShowToast("✓", "Vendedor desactivado");
-                VendorCountText.Text = $"Total: {_filteredVendors.Count} vendedores";
+                catch (Exception ex)
+                {
+                    ShowToast("❌", "Error al desactivar", true);
+                }
             }
-            catch (Exception ex)
-            {
-                ShowToast("❌", "Error al desactivar", true);
-            }
-        }
-
-        // Evento de selección en DataGrid
-        private void VendorsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            _selectedVendor = VendorsDataGrid.SelectedItem as VendorViewModel;
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            ApplyFilter();
+            // Aplicar filtro con un pequeño delay para mejor rendimiento
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            timer.Tick += (s, args) =>
+            {
+                timer.Stop();
+                ApplyFilter();
+            };
+            timer.Start();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -334,7 +432,7 @@ namespace SistemaGestionProyectos2.Views
             this.Close();
         }
 
-        // Sistema de notificaciones Toast
+        // Sistema de notificaciones Toast mejorado
         private async void ShowToast(string icon, string message, bool isError = false)
         {
             ToastIcon.Text = icon;
@@ -362,8 +460,8 @@ namespace SistemaGestionProyectos2.Views
 
             ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
 
-            // Ocultar después de 2 segundos
-            await Task.Delay(2000);
+            // Ocultar después de 3 segundos
+            await Task.Delay(3000);
 
             var fadeOut = new DoubleAnimation
             {
@@ -381,7 +479,7 @@ namespace SistemaGestionProyectos2.Views
         }
     }
 
-    // ViewModel simplificado para mostrar en el DataGrid
+    // ViewModel para mostrar vendedores
     public class VendorViewModel
     {
         public int Id { get; set; }
@@ -415,4 +513,4 @@ namespace SistemaGestionProyectos2.Views
             }
         }
     }
-}           
+}
