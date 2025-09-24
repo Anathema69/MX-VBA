@@ -45,7 +45,8 @@ namespace SistemaGestionProyectos2.Views
                 IsActiveCheckBox.IsChecked = _vendor.IsActive;
 
                 // Cargar tasa de comisión
-                CommissionRateTextBox.Text = (_vendor.CommissionRate ?? 10m).ToString("F2");
+                CommissionRateTextBox.Text = (_vendor.CommissionRate == 0 ? 10m : _vendor.CommissionRate).ToString("F2");
+
 
                 // Configurar campos de contraseña para edición
                 PasswordLabel.Text = "Nueva Contraseña (opcional)";

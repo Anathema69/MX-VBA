@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Text.RegularExpressions;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 
@@ -17,6 +19,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly SupabaseService _supabaseService;
         private ObservableCollection<VendorViewModel> _vendors;
         private ObservableCollection<VendorViewModel> _filteredVendors;
+        private TextBox _currentEditingTextBox;
         private VendorViewModel _selectedVendor;
 
         public VendorManagementWindow(UserSession user)
@@ -28,39 +31,36 @@ namespace SistemaGestionProyectos2.Views
             _filteredVendors = new ObservableCollection<VendorViewModel>();
 
             InitializeUI();
-            _ = LoadVendorsAsync();
+            _ = LoadActiveVendorsAsync();
         }
 
         private void InitializeUI()
         {
             Title = $"Gestión de Vendedores - {_currentUser.FullName}";
-
-            // Usar ItemsControl en lugar de DataGrid
-            VendorsItemsControl.ItemsSource = _filteredVendors;
-
-            EditVendorButton.IsEnabled = false;
-            DeleteVendorButton.IsEnabled = false;
+            VendorsDataGrid.ItemsSource = _filteredVendors;
         }
 
-        private async Task LoadVendorsAsync()
+        private async Task LoadActiveVendorsAsync()
         {
             try
             {
                 var supabaseClient = _supabaseService.GetClient();
 
-                // Cargar vendedores
+                // Cargar SOLO vendedores activos
                 var vendorsResponse = await supabaseClient
                     .From<VendorTableDb>()
                     .Select("*")
+                    .Where(v => v.IsActive == true)
                     .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
                 var vendors = vendorsResponse?.Models ?? new System.Collections.Generic.List<VendorTableDb>();
 
-                // Cargar usuarios asociados
+                // Cargar usuarios asociados activos
                 var usersResponse = await supabaseClient
                     .From<UserDb>()
                     .Where(u => u.Role == "salesperson")
+                    .Where(u => u.IsActive == true)
                     .Get();
 
                 var users = usersResponse?.Models?.ToDictionary(u => u.Id, u => u)
@@ -85,20 +85,17 @@ namespace SistemaGestionProyectos2.Views
                         IsActive = vendor.IsActive,
                         UserId = vendor.UserId,
                         Username = user?.Username ?? "Sin usuario",
-                        UserIsActive = user?.IsActive ?? false,
-                        CommissionRate = vendor.CommissionRate
+                        CommissionRate = vendor.CommissionRate ?? 10m
                     };
 
                     _vendors.Add(vendorVm);
                 }
 
                 ApplyFilter();
-                UpdateStatusBar();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar vendedores: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowToast("❌", $"Error al cargar vendedores", true);
             }
         }
 
@@ -114,8 +111,7 @@ namespace SistemaGestionProyectos2.Views
                 filtered = filtered.Where(v =>
                     v.VendorName.ToLower().Contains(searchText) ||
                     v.Email.ToLower().Contains(searchText) ||
-                    v.Username.ToLower().Contains(searchText) ||
-                    v.Phone.ToLower().Contains(searchText));
+                    v.Username.ToLower().Contains(searchText));
             }
 
             foreach (var vendor in filtered)
@@ -123,33 +119,123 @@ namespace SistemaGestionProyectos2.Views
                 _filteredVendors.Add(vendor);
             }
 
-            UpdateStatusBar();
+            // Actualizar contador
+            VendorCountText.Text = $"Total: {_filteredVendors.Count} vendedores";
         }
 
-        private void UpdateStatusBar()
+        // Evento para edición de comisión
+        private void CommissionTextBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            var totalCount = _filteredVendors.Count;
-            var activeCount = _filteredVendors.Count(v => v.IsActive);
-            var inactiveCount = totalCount - activeCount;
-
-            // Actualizar los TextBlocks de estadísticas
-            TotalVendorsText.Text = totalCount.ToString();
-            ActiveVendorsText.Text = activeCount.ToString();
-            InactiveVendorsText.Text = inactiveCount.ToString();
-
-            // Calcular comisión promedio
-            if (_filteredVendors.Any())
+            var textBox = sender as TextBox;
+            if (textBox != null && textBox.IsReadOnly)
             {
-                var avgCommission = _filteredVendors.Average(v => v.CommissionRate.HasValue ? v.CommissionRate.Value : 10);
-                AvgCommissionText.Text = $"{avgCommission:F1}%";
-            }
-            else
-            {
-                AvgCommissionText.Text = "0%";
+                // Si hay otro TextBox en edición, guardarlo primero
+                if (_currentEditingTextBox != null && _currentEditingTextBox != textBox)
+                {
+                    SaveCommissionRate(_currentEditingTextBox);
+                }
+
+                // Habilitar edición
+                textBox.IsReadOnly = false;
+                textBox.SelectAll();
+                textBox.Focus();
+                _currentEditingTextBox = textBox;
+
+                // Quitar el formato de porcentaje para edición
+                if (textBox.Tag is VendorViewModel vm)
+                {
+                    textBox.Text = vm.CommissionRate.ToString("F1");
+                }
             }
         }
 
-        // Eventos de botones principales
+        private void CommissionTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            if (e.Key == Key.Enter)
+            {
+                SaveCommissionRate(textBox);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                // Cancelar edición
+                if (textBox.Tag is VendorViewModel vm)
+                {
+                    textBox.Text = $"{vm.CommissionRate:F1}%";
+                }
+                textBox.IsReadOnly = true;
+                _currentEditingTextBox = null;
+                e.Handled = true;
+            }
+        }
+
+        private void CommissionTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox != null && !textBox.IsReadOnly)
+            {
+                SaveCommissionRate(textBox);
+            }
+        }
+
+        private async void SaveCommissionRate(TextBox textBox)
+        {
+            if (textBox == null || textBox.Tag is not VendorViewModel vendor) return;
+
+            try
+            {
+                // Limpiar el texto de entrada
+                var cleanText = textBox.Text.Replace("%", "").Trim();
+
+                if (decimal.TryParse(cleanText, out decimal newRate))
+                {
+                    // Validar rango
+                    if (newRate < 0) newRate = 0;
+                    if (newRate > 100) newRate = 100;
+
+                    // Solo actualizar si cambió
+                    if (Math.Abs(newRate - vendor.CommissionRate) > 0.01m)
+                    {
+                        var supabaseClient = _supabaseService.GetClient();
+
+                        var vendorToUpdate = await supabaseClient
+                            .From<VendorTableDb>()
+                            .Where(v => v.Id == vendor.Id)
+                            .Single();
+
+                        if (vendorToUpdate != null)
+                        {
+                            vendorToUpdate.CommissionRate = newRate;
+                            await supabaseClient
+                                .From<VendorTableDb>()
+                                .Update(vendorToUpdate);
+
+                            vendor.CommissionRate = newRate;
+                            ShowToast("✓", "Comisión actualizada");
+                        }
+                    }
+                }
+
+                // Restaurar formato
+                textBox.Text = $"{vendor.CommissionRate:F1}%";
+            }
+            catch (Exception ex)
+            {
+                ShowToast("❌", "Error al actualizar", true);
+                // Restaurar valor original
+                textBox.Text = $"{vendor.CommissionRate:F1}%";
+            }
+            finally
+            {
+                textBox.IsReadOnly = true;
+                _currentEditingTextBox = null;
+            }
+        }
+
+        // Eventos de botones
         private void AddVendor_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new VendorEditDialog(null);
@@ -157,109 +243,13 @@ namespace SistemaGestionProyectos2.Views
 
             if (dialog.ShowDialog() == true)
             {
-                _ = LoadVendorsAsync();
+                _ = LoadActiveVendorsAsync();
+                ShowToast("✓", "Vendedor agregado");
             }
         }
 
-        private void EditVendor_Click(object sender, RoutedEventArgs e)
-        {
-            if (_selectedVendor == null) return;
-
-            var dialog = new VendorEditDialog(_selectedVendor);
-            dialog.Owner = this;
-
-            if (dialog.ShowDialog() == true)
-            {
-                _ = LoadVendorsAsync();
-            }
-        }
-
-        private async void DeleteVendor_Click(object sender, RoutedEventArgs e)
-        {
-            if (_selectedVendor == null) return;
-
-            var action = _selectedVendor.IsActive ? "desactivar" : "activar";
-            var result = MessageBox.Show(
-                $"¿Está seguro de {action} al vendedor {_selectedVendor.VendorName}?\n\n" +
-                $"Esto también {action}á su acceso al sistema.",
-                $"Confirmar {action}",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes) return;
-
-            try
-            {
-                var supabaseClient = _supabaseService.GetClient();
-
-                // Actualizar estado del vendedor
-                var vendorToUpdate = await supabaseClient
-                    .From<VendorTableDb>()
-                    .Where(v => v.Id == _selectedVendor.Id)
-                    .Single();
-
-                if (vendorToUpdate != null)
-                {
-                    vendorToUpdate.IsActive = !_selectedVendor.IsActive;
-                    await supabaseClient
-                        .From<VendorTableDb>()
-                        .Update(vendorToUpdate);
-                }
-
-                // Actualizar estado del usuario si existe
-                if (_selectedVendor.UserId.HasValue)
-                {
-                    var userToUpdate = await supabaseClient
-                        .From<UserDb>()
-                        .Where(u => u.Id == _selectedVendor.UserId.Value)
-                        .Single();
-
-                    if (userToUpdate != null)
-                    {
-                        userToUpdate.IsActive = !_selectedVendor.IsActive;
-                        await supabaseClient
-                            .From<UserDb>()
-                            .Update(userToUpdate);
-                    }
-                }
-
-                await LoadVendorsAsync();
-                MessageBox.Show($"Vendedor {action}do correctamente", "Éxito",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al actualizar estado: {ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        // Eventos de las cards
-        private void VendorCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            var border = sender as Border;
-            if (border?.Tag is VendorViewModel vendor)
-            {
-                // Seleccionar este vendedor
-                _selectedVendor = vendor;
-
-                // Habilitar botones de acción
-                EditVendorButton.IsEnabled = true;
-                DeleteVendorButton.IsEnabled = true;
-
-                // Actualizar el texto del botón de desactivar/activar
-                DeleteVendorButton.Content = vendor.IsActive ? "🗑️ Desactivar" : "✅ Activar";
-
-                // Si fue doble clic, abrir el diálogo de edición
-                if (e.ClickCount == 2)
-                {
-                    EditVendor_Click(null, null);
-                }
-            }
-        }
-
-        // Edición rápida desde el botón en la card
-        private void QuickEdit_Click(object sender, RoutedEventArgs e)
+        // Eventos de botones en DataGrid
+        private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             if (button?.Tag is VendorViewModel vendor)
@@ -269,93 +259,129 @@ namespace SistemaGestionProyectos2.Views
 
                 if (dialog.ShowDialog() == true)
                 {
-                    _ = LoadVendorsAsync();
+                    _ = LoadActiveVendorsAsync();
+                    ShowToast("✓", "Vendedor actualizado");
                 }
             }
-
-            // Prevenir que el evento suba al Border padre
-            e.Handled = true;
         }
 
-        // Cambio rápido de estado desde el botón en la card
-        private async void QuickToggle_Click(object sender, RoutedEventArgs e)
+        private async void DeactivateButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            if (button?.Tag is VendorViewModel vendor)
+            if (button?.Tag is not VendorViewModel vendor) return;
+
+            try
             {
-                var action = vendor.IsActive ? "desactivar" : "activar";
-                var result = MessageBox.Show(
-                    $"¿Está seguro de {action} al vendedor {vendor.VendorName}?",
-                    $"Confirmar {action}",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                var supabaseClient = _supabaseService.GetClient();
 
-                if (result != MessageBoxResult.Yes) return;
+                // Actualizar estado del vendedor
+                var vendorToUpdate = await supabaseClient
+                    .From<VendorTableDb>()
+                    .Where(v => v.Id == vendor.Id)
+                    .Single();
 
-                try
+                if (vendorToUpdate != null)
                 {
-                    var supabaseClient = _supabaseService.GetClient();
-
-                    // Actualizar estado del vendedor
-                    var vendorToUpdate = await supabaseClient
+                    vendorToUpdate.IsActive = false;
+                    await supabaseClient
                         .From<VendorTableDb>()
-                        .Where(v => v.Id == vendor.Id)
+                        .Update(vendorToUpdate);
+                }
+
+                // Actualizar estado del usuario si existe
+                if (vendor.UserId.HasValue)
+                {
+                    var userToUpdate = await supabaseClient
+                        .From<UserDb>()
+                        .Where(u => u.Id == vendor.UserId.Value)
                         .Single();
 
-                    if (vendorToUpdate != null)
+                    if (userToUpdate != null)
                     {
-                        vendorToUpdate.IsActive = !vendor.IsActive;
+                        userToUpdate.IsActive = false;
                         await supabaseClient
-                            .From<VendorTableDb>()
-                            .Update(vendorToUpdate);
-                    }
-
-                    // Actualizar estado del usuario si existe
-                    if (vendor.UserId.HasValue)
-                    {
-                        var userToUpdate = await supabaseClient
                             .From<UserDb>()
-                            .Where(u => u.Id == vendor.UserId.Value)
-                            .Single();
-
-                        if (userToUpdate != null)
-                        {
-                            userToUpdate.IsActive = !vendor.IsActive;
-                            await supabaseClient
-                                .From<UserDb>()
-                                .Update(userToUpdate);
-                        }
+                            .Update(userToUpdate);
                     }
+                }
 
-                    await LoadVendorsAsync();
-                    MessageBox.Show($"Vendedor {action}do correctamente", "Éxito",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error al actualizar estado: {ex.Message}", "Error",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                // Remover de la colección
+                _vendors.Remove(vendor);
+                _filteredVendors.Remove(vendor);
+
+                ShowToast("✓", "Vendedor desactivado");
+                VendorCountText.Text = $"Total: {_filteredVendors.Count} vendedores";
             }
-
-            // Prevenir que el evento suba al Border padre
-            e.Handled = true;
+            catch (Exception ex)
+            {
+                ShowToast("❌", "Error al desactivar", true);
+            }
         }
 
-        // Búsqueda
+        // Evento de selección en DataGrid
+        private void VendorsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _selectedVendor = VendorsDataGrid.SelectedItem as VendorViewModel;
+        }
+
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             ApplyFilter();
         }
 
-        // Cerrar ventana
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
         }
+
+        // Sistema de notificaciones Toast
+        private async void ShowToast(string icon, string message, bool isError = false)
+        {
+            ToastIcon.Text = icon;
+            ToastMessage.Text = message;
+
+            if (isError)
+            {
+                ToastNotification.Background = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+            }
+            else
+            {
+                ToastNotification.Background = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+            }
+
+            // Mostrar con animación
+            ToastNotification.Visibility = Visibility.Visible;
+            ToastNotification.Opacity = 0;
+
+            var fadeIn = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromMilliseconds(200)
+            };
+
+            ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            // Ocultar después de 2 segundos
+            await Task.Delay(2000);
+
+            var fadeOut = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(200)
+            };
+
+            fadeOut.Completed += (s, e) =>
+            {
+                ToastNotification.Visibility = Visibility.Collapsed;
+            };
+
+            ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
     }
 
-    // ViewModel para mostrar en las cards
+    // ViewModel simplificado para mostrar en el DataGrid
     public class VendorViewModel
     {
         public int Id { get; set; }
@@ -365,15 +391,7 @@ namespace SistemaGestionProyectos2.Views
         public string Username { get; set; }
         public bool IsActive { get; set; }
         public int? UserId { get; set; }
-        public bool UserIsActive { get; set; }
-        public decimal? CommissionRate { get; set; }
-
-        // Propiedades calculadas para el binding
-        public string StatusText => IsActive ? "ACTIVO" : "INACTIVO";
-
-        public Brush StatusColor => IsActive
-            ? new SolidColorBrush(Color.FromRgb(76, 175, 80))  // Verde
-            : new SolidColorBrush(Color.FromRgb(244, 67, 54)); // Rojo
+        public decimal CommissionRate { get; set; }
 
         // Propiedad para el avatar
         public string AvatarInitial
@@ -386,12 +404,10 @@ namespace SistemaGestionProyectos2.Views
                 var parts = VendorName.Trim().Split(' ');
                 if (parts.Length >= 2)
                 {
-                    // Tomar primera letra del nombre y apellido
                     return $"{parts[0][0]}{parts[1][0]}".ToUpper();
                 }
                 else
                 {
-                    // Tomar las primeras dos letras del nombre
                     return VendorName.Length >= 2
                         ? VendorName.Substring(0, 2).ToUpper()
                         : VendorName.ToUpper();

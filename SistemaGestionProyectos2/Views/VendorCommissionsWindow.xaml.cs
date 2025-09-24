@@ -470,6 +470,10 @@ namespace SistemaGestionProyectos2.Views
                 {
                     commission.IsEditingRate = true;
                     textBox.IsReadOnly = false;
+
+                    // IMPORTANTE: Quitar el símbolo % para la edición
+                    textBox.Text = commission.CommissionRate.ToString("F2");
+
                     textBox.SelectAll();
                     textBox.Focus();
                 }
@@ -495,6 +499,7 @@ namespace SistemaGestionProyectos2.Views
                     var commission = textBox.Tag as CommissionDetailViewModel;
                     if (commission != null)
                     {
+                        // Restaurar el valor original con formato
                         textBox.Text = $"{commission.CommissionRate:F2}%";
                         commission.IsEditingRate = false;
                         textBox.IsReadOnly = true;
@@ -526,6 +531,8 @@ namespace SistemaGestionProyectos2.Views
             var commission = textBox.Tag as CommissionDetailViewModel;
             if (commission != null)
             {
+                // Limpiar el texto de % si existe
+                string cleanText = textBox.Text.Replace("%", "").Trim();
                 if (decimal.TryParse(textBox.Text, out decimal newRate) && newRate >= 0 && newRate <= 100)
                 {
                     if (newRate != commission.CommissionRate)
@@ -579,6 +586,8 @@ namespace SistemaGestionProyectos2.Views
                     textBox.Text = $"{commission.CommissionRate:F2}%";
                 }
 
+                // Al finalizar, restaurar el formato con %
+                textBox.Text = $"{commission.CommissionRate:F2}%";
                 commission.IsEditingRate = false;
                 textBox.IsReadOnly = true;
             }

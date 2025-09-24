@@ -426,7 +426,7 @@
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="3">
-                                                    <TextBlock Text="FECHA CIERRE" FontSize="11" Foreground="{StaticResource TextGray}" 
+                                                    <TextBlock Text="FECHA ORDEN DE COMPRA" FontSize="11" Foreground="{StaticResource TextGray}" 
                                                                FontWeight="Medium"/>
                                                     <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" FontSize="16" 
                                                                FontWeight="SemiBold" Foreground="{StaticResource DarkText}" Margin="0,5,0,0"/>
