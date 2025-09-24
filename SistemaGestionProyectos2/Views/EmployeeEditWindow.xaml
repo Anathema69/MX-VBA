@@ -182,8 +182,10 @@
                             <ComboBox Name="RangeCombo" 
                                     Style="{StaticResource ModernComboBox}">
                                 <ComboBoxItem>JUNIOR</ComboBoxItem>
+                                <ComboBoxItem>MID</ComboBoxItem>
                                 <ComboBoxItem>SENIOR</ComboBoxItem>
                                 <ComboBoxItem>SENIOR+</ComboBoxItem>
+                                <ComboBoxItem>GERENTE</ComboBoxItem>
                             </ComboBox>
                         </StackPanel>
 
@@ -194,8 +196,10 @@
                             <ComboBox Name="ConditionCombo" 
                                     Style="{StaticResource ModernComboBox}">
                                 <ComboBoxItem>PLANTA</ComboBoxItem>
-                                <ComboBoxItem>N/A</ComboBoxItem>
-                                <ComboBoxItem>TEMPORAL</ComboBoxItem>
+                                <ComboBoxItem>CONTRATO</ComboBoxItem>
+                                <ComboBoxItem>FREELANCE</ComboBoxItem>
+                                <ComboBoxItem>OTRO</ComboBoxItem>
+                                
                             </ComboBox>
                         </StackPanel>
                     </Grid>

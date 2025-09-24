@@ -230,35 +230,6 @@ namespace SistemaGestionProyectos2.Views
 
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            // Validaciones
-            if (string.IsNullOrWhiteSpace(EmployeeNameBox.Text))
-            {
-                MessageBox.Show("El nombre del empleado es obligatorio",
-                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(TitleBox.Text))
-            {
-                MessageBox.Show("El puesto es obligatorio",
-                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (RangeCombo.SelectedItem == null)
-            {
-                MessageBox.Show("Debe seleccionar un rango",
-                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (ConditionCombo.SelectedItem == null)
-            {
-                MessageBox.Show("Debe seleccionar una condición",
-                    "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             try
             {
                 SaveButton.IsEnabled = false;
@@ -284,7 +255,6 @@ namespace SistemaGestionProyectos2.Views
                             1); // Primer día del mes actual
                     }
                 }
-
 
                 // Preparar el objeto
                 if (_payroll == null)
@@ -325,46 +295,15 @@ namespace SistemaGestionProyectos2.Views
                 if (!_payroll.IsActive)
                     _payroll.IsActive = true;
 
-                if (_isNewEmployee)
-                {
-                    _payroll.CreatedBy = _currentUser.Id;
-                    await _supabaseService.CreatePayroll(_payroll);
-                    MessageBox.Show("Empleado creado exitosamente",
-                        "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    _payroll.UpdatedBy = _currentUser.Id;
-                    await _supabaseService.UpdatePayroll(_payroll);
-                    MessageBox.Show("Empleado actualizado exitosamente",
-                        "Éxito", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-
                 // Guardar con fecha efectiva
-                bool success;
-
-                string successMessage;
+                bool success = false;
+                string successMessage = "";
 
                 // Si es edición y hay cambio de salario con fecha efectiva
                 if (_isEdit && EffectiveDateBorder.Visibility == Visibility.Visible)
                 {
-                    
-                    if (NextMonthRadio.IsChecked == true)
-                    {
-                        effectiveDate = new DateTime(
-                            DateTime.Now.AddMonths(1).Year,
-                            DateTime.Now.AddMonths(1).Month, 1);
-                    }
-                    else
-                    {
-                        effectiveDate = new DateTime(
-                            DateTime.Now.Year,
-                            DateTime.Now.Month, 1);
-                    }
-
                     success = await _supabaseService.SavePayrollWithEffectiveDate(
                         _payroll, effectiveDate, _currentUser.Id);
-
                     successMessage = $"Empleado actualizado. Cambios aplicados desde {effectiveDate:dd/MM/yyyy}";
                 }
                 else if (_isNewEmployee)
@@ -386,8 +325,7 @@ namespace SistemaGestionProyectos2.Views
 
                 if (success)
                 {
-                    MessageBox.Show(successMessage, "Éxito",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    
                     DialogResult = true;
                     Close();
                 }
@@ -397,9 +335,7 @@ namespace SistemaGestionProyectos2.Views
                         MessageBoxButton.OK, MessageBoxImage.Error);
                 }
 
-
-                DialogResult = true;
-                Close();
+                
             }
             catch (Exception ex)
             {
