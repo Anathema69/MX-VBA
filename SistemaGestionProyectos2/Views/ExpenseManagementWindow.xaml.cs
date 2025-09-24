@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -29,6 +30,8 @@ namespace SistemaGestionProyectos2.Views
         private bool _hasUnsavedChanges = false;
         private bool _isCreatingNewExpense = false;
         private ExpenseViewModel _newExpenseRow = null;
+        private DateTime _lastSupplierClick = DateTime.MinValue;
+        private string _lastSupplierClicked = "";
 
 
         public ExpenseManagementWindow(UserSession user)
@@ -41,6 +44,9 @@ namespace SistemaGestionProyectos2.Views
 
             InitializeUI();
             _ = LoadDataAsync();
+
+            
+
         }
 
         private void InitializeUI()
@@ -53,6 +59,9 @@ namespace SistemaGestionProyectos2.Views
             ExpensesDataGrid.CellEditEnding += DataGrid_CellEditEnding;
             ExpensesDataGrid.CurrentCellChanged += DataGrid_CurrentCellChanged;
             ExpensesDataGrid.BeginningEdit += DataGrid_BeginningEdit;
+
+            // En el método InitializeUI, agregar AddSupplierTooltips
+            AddSupplierTooltips();
         }
 
         private async Task LoadDataAsync()
@@ -223,9 +232,6 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Guardando nuevo gasto...";
                 StatusText.Foreground = new SolidColorBrush(Colors.Orange);
 
-                // Verificar si el proveedor tiene crédito
-                var supplier = _suppliers?.FirstOrDefault(s => s.Id == _newExpenseRow.SupplierId);
-                bool hasCredit = supplier?.CreditDays > 0;
 
                 // Crear el objeto para guardar en la base de datos
                 var newExpenseDb = new ExpenseDb
@@ -234,9 +240,9 @@ namespace SistemaGestionProyectos2.Views
                     Description = _newExpenseRow.Description,
                     ExpenseDate = _newExpenseRow.ExpenseDate,
                     TotalExpense = _newExpenseRow.TotalExpense,
-                    Status = hasCredit ? "PENDIENTE" : "PAGADO", // Si no tiene crédito, va directo a PAGADO
-                    PaidDate = hasCredit ? null : _newExpenseRow.ExpenseDate,
-                    PayMethod = hasCredit ? null : "EFECTIVO",
+                    Status = null, // Dejar NULL para que el trigger decida
+                    PaidDate = null, // El trigger lo establecerá si es necesario
+                    PayMethod = null, // El trigger lo establecerá si es necesario
                     ExpenseCategory = null,
                     OrderId = _newExpenseRow.OrderId
                 };
@@ -249,9 +255,9 @@ namespace SistemaGestionProyectos2.Views
                     // Actualizar el ViewModel con los datos guardados
                     _newExpenseRow.ExpenseId = createdExpense.Id;
                     _newExpenseRow.ScheduledDate = createdExpense.ScheduledDate;
-                    _newExpenseRow.Status = createdExpense.Status;
-                    _newExpenseRow.PaidDate = createdExpense.PaidDate;
-                    _newExpenseRow.PayMethod = createdExpense.PayMethod;
+                    _newExpenseRow.Status = createdExpense.Status; // Esto vendrá del trigger
+                    _newExpenseRow.PaidDate = createdExpense.PaidDate; // Esto vendrá del trigger
+                    _newExpenseRow.PayMethod = createdExpense.PayMethod; // Esto vendrá del trigger
                     _newExpenseRow.IsNew = false;
                     _newExpenseRow.IsEditing = false;
 
@@ -263,9 +269,9 @@ namespace SistemaGestionProyectos2.Views
                     _isCreatingNewExpense = false;
                     NewExpenseButton.IsEnabled = true;
 
-                    if (!hasCredit)
+                    if (createdExpense.Status == "PAGADO")
                     {
-                        StatusText.Text = "Gasto guardado y pagado (sin crédito)";
+                        StatusText.Text = "Gasto guardado y pagado automáticamente (proveedor sin crédito)";
                     }
                     else
                     {
@@ -1021,7 +1027,7 @@ namespace SistemaGestionProyectos2.Views
                 _filteredExpenses.Add(expense);
             }
 
-            RecordCountText.Text = $"{_filteredExpenses.Count} registros";
+            
         }
 
         // Nuevo evento para cambio de orden en el filtro
@@ -1060,8 +1066,7 @@ namespace SistemaGestionProyectos2.Views
                     .Sum(e => e.TotalExpense);
                 TotalPagadoText.Text = totalPagado.ToString("C2", culture);
 
-                // Actualizar contador de registros en la tarjeta
-                RecordCountText.Text = validExpenses.Count().ToString();
+                
             }
             catch (Exception ex)
             {
@@ -1346,7 +1351,6 @@ namespace SistemaGestionProyectos2.Views
 
         // ========== NUEVOS MÉTODOS PARA EL DISEÑO MEJORADO ==========
 
-        // Método para mostrar/ocultar el panel del proveedor filtrado
         private void UpdateSupplierFilterDisplay()
         {
             if (SupplierFilterCombo?.SelectedIndex > 0)
@@ -1355,7 +1359,7 @@ namespace SistemaGestionProyectos2.Views
                 if (!string.IsNullOrEmpty(selectedSupplier))
                 {
                     FilteredSupplierPanel.Visibility = Visibility.Visible;
-                    FilteredSupplierNameText.Text = selectedSupplier;
+                    FilteredSupplierNameText.Text = selectedSupplier.ToUpper();
                 }
             }
             else
@@ -1363,7 +1367,7 @@ namespace SistemaGestionProyectos2.Views
                 FilteredSupplierPanel.Visibility = Visibility.Collapsed;
             }
         }
-        
+
         // Botón para limpiar el filtro de proveedor
         private void ClearSupplierFilter_Click(object sender, RoutedEventArgs e)
         {
@@ -1371,6 +1375,10 @@ namespace SistemaGestionProyectos2.Views
             FilteredSupplierPanel.Visibility = Visibility.Collapsed;
             ApplyFilters();
             UpdateStatistics();
+
+            // Limpiar las variables de doble clic
+            _lastSupplierClick = DateTime.MinValue;
+            _lastSupplierClicked = "";
         }
 
         // AGREGAR este método para manejar automáticamente gastos sin crédito
@@ -1403,6 +1411,173 @@ namespace SistemaGestionProyectos2.Views
                 System.Diagnostics.Debug.WriteLine($"Error procesando pago automático: {ex.Message}");
             }
         }
+
+        // Método para manejar el clic en el nombre del proveedor
+        private void SupplierName_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            var textBlock = sender as TextBlock;
+            var expense = textBlock?.DataContext as ExpenseViewModel;
+
+            if (expense == null) return;
+
+            var currentTime = DateTime.Now;
+            var timeSinceLastClick = currentTime - _lastSupplierClick;
+
+            // Detectar doble clic (menos de 500ms entre clics)
+            if (timeSinceLastClick.TotalMilliseconds < 500 &&
+                _lastSupplierClicked == expense.SupplierName)
+            {
+                // Es un doble clic - aplicar filtro
+                ApplySupplierFilter(expense.SupplierName);
+                _lastSupplierClick = DateTime.MinValue;
+                _lastSupplierClicked = "";
+            }
+            else
+            {
+                // Primer clic - guardar tiempo y proveedor
+                _lastSupplierClick = currentTime;
+                _lastSupplierClicked = expense.SupplierName;
+            }
+        }
+
+        // Método para aplicar el filtro de proveedor
+        private void ApplySupplierFilter(string supplierName)
+        {
+            if (string.IsNullOrEmpty(supplierName)) return;
+
+            // Buscar el índice del proveedor en el ComboBox
+            for (int i = 0; i < SupplierFilterCombo.Items.Count; i++)
+            {
+                if (SupplierFilterCombo.Items[i]?.ToString() == supplierName)
+                {
+                    SupplierFilterCombo.SelectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        private void AnimateSupplierPanel(bool show)
+        {
+            if (show)
+            {
+                FilteredSupplierPanel.Visibility = Visibility.Visible;
+
+                // Animación de entrada
+                var storyboard = new System.Windows.Media.Animation.Storyboard();
+
+                var fadeIn = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(200)
+                };
+
+                var slideIn = new System.Windows.Media.Animation.ThicknessAnimation
+                {
+                    From = new Thickness(0, -20, 0, 0),
+                    To = new Thickness(0, 0, 0, 0),
+                    Duration = TimeSpan.FromMilliseconds(200)
+                };
+
+                System.Windows.Media.Animation.Storyboard.SetTarget(fadeIn, FilteredSupplierPanel);
+                System.Windows.Media.Animation.Storyboard.SetTargetProperty(fadeIn,
+                    new PropertyPath(UIElement.OpacityProperty));
+
+                System.Windows.Media.Animation.Storyboard.SetTarget(slideIn, FilteredSupplierPanel);
+                System.Windows.Media.Animation.Storyboard.SetTargetProperty(slideIn,
+                    new PropertyPath(FrameworkElement.MarginProperty));
+
+                storyboard.Children.Add(fadeIn);
+                storyboard.Children.Add(slideIn);
+                storyboard.Begin();
+            }
+            else
+            {
+                // Animación de salida
+                var storyboard = new System.Windows.Media.Animation.Storyboard();
+
+                var fadeOut = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 1,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(150)
+                };
+
+                System.Windows.Media.Animation.Storyboard.SetTarget(fadeOut, FilteredSupplierPanel);
+                System.Windows.Media.Animation.Storyboard.SetTargetProperty(fadeOut,
+                    new PropertyPath(UIElement.OpacityProperty));
+
+                storyboard.Children.Add(fadeOut);
+                storyboard.Completed += (s, e) => FilteredSupplierPanel.Visibility = Visibility.Collapsed;
+                storyboard.Begin();
+            }
+        }
+
+        private void AddSupplierTooltips()
+        {
+            // Esta función se puede llamar después de cargar los datos
+            // para agregar tooltips dinámicamente si lo deseas
+            foreach (var item in ExpensesDataGrid.Items)
+            {
+                var row = ExpensesDataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+                if (row != null)
+                {
+                    var cell = GetCell(ExpensesDataGrid, row, 0); // Primera columna (Proveedor)
+                    if (cell != null)
+                    {
+                        var textBlock = FindVisualChild<TextBlock>(cell);
+                        if (textBlock != null)
+                        {
+                            textBlock.ToolTip = "Doble clic para filtrar por este proveedor";
+                        }
+                    }
+                }
+            }
+        }
+
+        // Método auxiliar para obtener una celda específica
+        private DataGridCell GetCell(DataGrid dataGrid, DataGridRow row, int column)
+        {
+            if (row != null)
+            {
+                var presenter = FindVisualChild<DataGridCellsPresenter>(row);
+                if (presenter != null)
+                {
+                    var cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;
+                    if (cell == null)
+                    {
+                        dataGrid.ScrollIntoView(row, dataGrid.Columns[column]);
+                        cell = presenter.ItemContainerGenerator.ContainerFromIndex(column) as DataGridCell;
+                    }
+                    return cell;
+                }
+            }
+            return null;
+        }
+
+
+        // Método auxiliar para buscar un hijo visual
+        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+                {
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    if (child is T typedChild)
+                    {
+                        return typedChild;
+                    }
+                    var result = FindVisualChild<T>(child);
+                    if (result != null)
+                    {
+                        return result;
+                    }
+                }
+            }
+            return null;
+        }
+
 
 
 

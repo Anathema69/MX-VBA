@@ -212,26 +212,27 @@
         <!-- Proveedor filtrado destacado (oculto por defecto) -->
         <Border Grid.Row="1" Name="FilteredSupplierPanel"
                 Background="{StaticResource InfoLight}"
-                Padding="24,12"
+                Padding="24,16"
                 Visibility="Collapsed">
             <Grid>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🏢" FontSize="20" Margin="0,0,10,0"
-                             Foreground="{StaticResource InfoColor}"/>
-                    <TextBlock Text="Filtrando por: " FontSize="14"
-                             Foreground="{StaticResource InfoColor}"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🏢" FontSize="28" Margin="0,0,12,0"
+                             Foreground="{StaticResource InfoColor}"
+                             VerticalAlignment="Center"/>
                     <TextBlock Name="FilteredSupplierNameText" 
                              Text="[Nombre del Proveedor]" 
-                             FontSize="16" FontWeight="Bold"
-                             Foreground="{StaticResource InfoColor}"/>
+                             FontSize="24" FontWeight="Bold"
+                             Foreground="{StaticResource InfoColor}"
+                             VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button Content="✕ Quitar filtro"
                         HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
                         Background="{StaticResource InfoColor}"
                         Foreground="White"
                         BorderThickness="0"
-                        Padding="10,4"
-                        FontSize="12"
+                        Padding="12,6"
+                        FontSize="13"
                         Cursor="Hand"
                         Click="ClearSupplierFilter_Click"/>
             </Grid>
@@ -288,7 +289,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Registros -->
+            <!-- Registros
             <Border Margin="6,0,0,0" Background="White" CornerRadius="8" Padding="16,12">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="8" Direction="270" ShadowDepth="1" Opacity="0.05"/>
@@ -301,6 +302,7 @@
                              HorizontalAlignment="Right"/>
                 </StackPanel>
             </Border>
+            -->
         </Grid>
 
         <!-- Barra de herramientas -->
@@ -406,7 +408,9 @@
                             <DataTemplate>
                                 <TextBlock Text="{Binding SupplierName}"
                                          VerticalAlignment="Center" Padding="12,0"
-                                         FontSize="14"/>
+                                         FontSize="14"
+                                         Cursor="Hand"
+                                         MouseLeftButtonDown="SupplierName_MouseDown"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
