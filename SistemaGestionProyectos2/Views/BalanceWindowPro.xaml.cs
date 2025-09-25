@@ -24,14 +24,15 @@ namespace SistemaGestionProyectos2.Views
         private readonly UserSession _currentUser;
         private int _currentYear;
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
-        private List<BalanceGastosDb> _balanceData;
+        private List<BalanceCompletoDb> _balanceData;
 
         // Colores para las secciones
         private readonly Dictionary<string, Color[]> _sectionColors = new Dictionary<string, Color[]>
         {
             { "GASTOS", new[] { Color.FromRgb(254, 226, 226), Color.FromRgb(252, 165, 165) } },
             { "INGRESOS", new[] { Color.FromRgb(209, 250, 229), Color.FromRgb(110, 231, 183) } },
-            { "UTILIDAD", new[] { Color.FromRgb(219, 234, 254), Color.FromRgb(96, 165, 250) } }
+            { "UTILIDAD", new[] { Color.FromRgb(219, 234, 254), Color.FromRgb(96, 165, 250) } },
+            { "VENTAS", new[] { Color.FromRgb(255, 237, 213), Color.FromRgb(251, 191, 36) } }
         };
 
         private int _selectedRowIndex = -1;
@@ -60,15 +61,15 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Obtener datos de la vista
+                // Obtener datos de la vista v_balance_completo
                 var supabaseClient = _supabaseService.GetClient();
                 var response = await supabaseClient
-                    .From<BalanceGastosDb>()
+                    .From<BalanceCompletoDb>()
                     .Where(b => b.Año == _currentYear)
                     .Order("mes_numero", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
-                _balanceData = response?.Models ?? new List<BalanceGastosDb>();
+                _balanceData = response?.Models ?? new List<BalanceCompletoDb>();
 
                 if (!_balanceData.Any())
                 {
@@ -97,12 +98,11 @@ namespace SistemaGestionProyectos2.Views
             gridBalance.RowDefinitions.Clear();
             gridBalance.ColumnDefinitions.Clear();
 
-            // Crear columnas (Concepto + 12 meses + Total) - Tamaños ajustados para evitar scroll
+            // Crear columnas (Concepto + 12 meses + Total)
             gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
-            string[] nombresMeses = { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
             for (int i = 1; i <= 12; i++)
             {
-                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(85) });
             }
             gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
 
@@ -113,16 +113,16 @@ namespace SistemaGestionProyectos2.Views
             AddMonthHeaders(currentRow);
             currentRow++;
 
-            // SECCIÓN GASTOS
-            AddSectionHeader("💸 GASTOS", Color.FromRgb(254, 226, 226), currentRow);
-            currentRow++;
-
-            // Preparar datos
+            // Preparar arrays de datos
             var nomina = new decimal[12];
             var horasExtra = new decimal[12];
             var gastosFijos = new decimal[12];
             var gastosVariables = new decimal[12];
-            var totalGastos = new decimal[12];
+            var ingresosEsperados = new decimal[12];
+            var ingresosPercibidos = new decimal[12];
+            var diferencia = new decimal[12];
+            var ventasTotales = new decimal[12];
+            var utilidadAproximada = new decimal[12];
 
             foreach (var dato in _balanceData)
             {
@@ -130,66 +130,72 @@ namespace SistemaGestionProyectos2.Views
                 if (mesIndex >= 0 && mesIndex < 12)
                 {
                     nomina[mesIndex] = dato.Nomina;
-                    horasExtra[mesIndex] = dato.HorasExtra * 100; // Asumiendo un valor por hora
+                    horasExtra[mesIndex] = dato.HorasExtra;
                     gastosFijos[mesIndex] = dato.GastosFijos;
                     gastosVariables[mesIndex] = dato.GastosVariables;
-                    totalGastos[mesIndex] = dato.TotalGastos;
+                    ingresosEsperados[mesIndex] = dato.IngresosEsperados;
+                    ingresosPercibidos[mesIndex] = dato.IngresosPercibidos;
+                    diferencia[mesIndex] = dato.Diferencia;
+                    ventasTotales[mesIndex] = dato.VentasTotales;
+                    utilidadAproximada[mesIndex] = dato.UtilidadAproximada;
                 }
             }
 
-            // Filas de gastos - Pasamos true para isHorasExtra en la fila correspondiente
+            // SECCIÓN GASTOS
+            AddSectionHeader("GASTOS", _sectionColors["GASTOS"][0], currentRow);
+            currentRow++;
+
             AddDataRow("Nómina", nomina, currentRow, false);
             currentRow++;
-            AddDataRow("Horas Extra", horasExtra, currentRow, false, null, true); // true para editable
+
+            AddDataRow("Horas Extra", horasExtra, currentRow, false);
             currentRow++;
+
             AddDataRow("Gastos Fijos", gastosFijos, currentRow, false);
             currentRow++;
+
             AddDataRow("Gastos Variables", gastosVariables, currentRow, false);
-            currentRow++;
-            AddDataRow("Subtotal Gastos", totalGastos, currentRow, true, Color.FromRgb(254, 226, 226));
             currentRow++;
 
             // Espacio
-            gridBalance.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+            gridBalance.RowDefinitions.Add(new RowDefinition { Height = new GridLength(10) });
             currentRow++;
 
-            // SECCIÓN INGRESOS (placeholder por ahora)
-            AddSectionHeader("💰 INGRESOS", Color.FromRgb(209, 250, 229), currentRow);
+            // SECCIÓN INGRESOS
+            AddSectionHeader("INGRESOS", _sectionColors["INGRESOS"][0], currentRow);
             currentRow++;
-
-            var ingresosEsperados = new decimal[12];
-            var ingresosReales = new decimal[12];
-            // Por ahora con datos demo, en el futuro se cargarán de la BD
-            for (int i = 0; i < 12; i++)
-            {
-                ingresosEsperados[i] = 0; // Se llenará cuando se implemente
-                ingresosReales[i] = 0;
-            }
 
             AddDataRow("Ingresos Esperados", ingresosEsperados, currentRow, false);
             currentRow++;
-            AddDataRow("Ingresos Percibidos", ingresosReales, currentRow, false);
+
+            AddDataRow("Ingresos Percibidos", ingresosPercibidos, currentRow, false);
             currentRow++;
-            AddDataRow("Subtotal Ingresos", ingresosReales, currentRow, true, Color.FromRgb(209, 250, 229));
+
+            AddDataRow("Diferencia", diferencia, currentRow, false, null, false, true); // true para mostrar negativos
             currentRow++;
 
             // Espacio
-            gridBalance.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+            gridBalance.RowDefinitions.Add(new RowDefinition { Height = new GridLength(10) });
             currentRow++;
 
             // SECCIÓN UTILIDAD
-            AddSectionHeader("📊 UTILIDAD", Color.FromRgb(219, 234, 254), currentRow);
+            AddSectionHeader("UTILIDAD APROXIMADA", _sectionColors["UTILIDAD"][0], currentRow);
             currentRow++;
 
-            var utilidad = new decimal[12];
-            for (int i = 0; i < 12; i++)
-            {
-                utilidad[i] = ingresosReales[i] - totalGastos[i];
-            }
-
-            AddDataRow("Utilidad Bruta", utilidad, currentRow, false);
+            AddDataRow("Utilidad Aproximada", utilidadAproximada, currentRow, true,
+                _sectionColors["UTILIDAD"][0], false, true);
             currentRow++;
-            AddDataRow("UTILIDAD NETA", utilidad, currentRow, true, Color.FromRgb(219, 234, 254));
+
+            // Espacio
+            gridBalance.RowDefinitions.Add(new RowDefinition { Height = new GridLength(10) });
+            currentRow++;
+
+            // SECCIÓN VENTAS
+            AddSectionHeader("VENTAS TOTALES", _sectionColors["VENTAS"][0], currentRow);
+            currentRow++;
+
+            AddDataRow("Ventas Totales", ventasTotales, currentRow, true,
+                _sectionColors["VENTAS"][0]);
         }
 
         private void AddMonthHeaders(int row)
@@ -299,11 +305,12 @@ namespace SistemaGestionProyectos2.Views
             gridBalance.Children.Add(headerBorder);
         }
 
-        private void AddDataRow(string concepto, decimal[] valores, int row, bool isTotal, Color? backgroundColor = null, bool isHorasExtra = false)
+        private void AddDataRow(string concepto, decimal[] valores, int row, bool isTotal,
+            Color? backgroundColor = null, bool isEditable = false, bool showNegative = false)
         {
             gridBalance.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Celda de concepto con capacidad de resaltar fila
+            // Celda de concepto
             var conceptBorder = new Border
             {
                 Background = isTotal ?
@@ -311,13 +318,8 @@ namespace SistemaGestionProyectos2.Views
                     Brushes.White,
                 BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                 BorderThickness = new Thickness(0, 0, 1, 1),
-                Height = isTotal ? 42 : 38,
-                Tag = $"row_{row}",
-                Cursor = System.Windows.Input.Cursors.Hand
+                Height = isTotal ? 42 : 38
             };
-
-            // Evento para resaltar fila al hacer clic en el concepto
-            conceptBorder.MouseLeftButtonDown += (s, e) => HighlightRow(row);
 
             var conceptText = new TextBlock
             {
@@ -345,73 +347,26 @@ namespace SistemaGestionProyectos2.Views
                         Brushes.White,
                     BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    Height = isTotal ? 42 : 38,
-                    Tag = $"cell_{row}_{i + 1}",
-                    Cursor = isHorasExtra ? System.Windows.Input.Cursors.IBeam : System.Windows.Input.Cursors.Hand
+                    Height = isTotal ? 42 : 38
                 };
 
                 var value = valores[i];
                 total += value;
 
-                // Para Horas Extra, usar TextBox editable
-                if (isHorasExtra)
+                var valueText = new TextBlock
                 {
-                    var valueTextBox = new TextBox
-                    {
-                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "$0",
-                        FontWeight = FontWeights.Normal,
-                        FontSize = 11,
-                        Foreground = new SolidColorBrush(Color.FromRgb(55, 65, 81)),
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        TextAlignment = TextAlignment.Right,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Background = Brushes.Transparent,
-                        BorderThickness = new Thickness(0),
-                        Padding = new Thickness(0, 0, 10, 0),
-                        Tag = i // Guardar índice del mes
-                    };
-
-                    // Eventos para edición
-                    valueTextBox.GotFocus += (s, e) =>
-                    {
-                        var tb = s as TextBox;
-                        tb.Background = new SolidColorBrush(Color.FromRgb(254, 249, 195));
-                        tb.SelectAll();
-                    };
-
-                    valueTextBox.LostFocus += (s, e) =>
-                    {
-                        var tb = s as TextBox;
-                        tb.Background = Brushes.Transparent;
-                    };
-
-                    valueBorder.Child = valueTextBox;
-                }
-                else
-                {
-                    var valueText = new TextBlock
-                    {
-                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
-                        FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
-                        FontSize = isTotal ? 11 : 10,
-                        Foreground = value < 0 ?
-                            new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
-                            new SolidColorBrush(Color.FromRgb(55, 65, 81)),
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Margin = new Thickness(0, 0, 10, 0)
-                    };
-
-                    valueBorder.Child = valueText;
-                }
-
-                // Evento para resaltar celda
-                valueBorder.MouseLeftButtonDown += (s, e) =>
-                {
-                    if (!isHorasExtra)
-                        HighlightCell(row, i + 1);
+                    Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
+                    FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
+                    FontSize = isTotal ? 11 : 10,
+                    Foreground = (showNegative && value < 0) ?
+                        new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
+                        new SolidColorBrush(Color.FromRgb(55, 65, 81)),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, 0, 10, 0)
                 };
 
+                valueBorder.Child = valueText;
                 Grid.SetRow(valueBorder, row);
                 Grid.SetColumn(valueBorder, i + 1);
                 gridBalance.Children.Add(valueBorder);
@@ -431,7 +386,9 @@ namespace SistemaGestionProyectos2.Views
                 Text = total.ToString("C0", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
                 FontSize = isTotal ? 12 : 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(146, 64, 14)),
+                Foreground = (showNegative && total < 0) ?
+                    new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
+                    new SolidColorBrush(Color.FromRgb(146, 64, 14)),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(0, 0, 10, 0)
@@ -445,15 +402,9 @@ namespace SistemaGestionProyectos2.Views
 
         private void UpdateKPIs()
         {
-            decimal totalGastos = 0;
-            decimal totalIngresos = 0;
-
-            foreach (var dato in _balanceData)
-            {
-                totalGastos += dato.TotalGastos;
-            }
-
-            decimal utilidad = totalIngresos - totalGastos;
+            decimal totalGastos = _balanceData.Sum(d => d.TotalGastos);
+            decimal totalIngresos = _balanceData.Sum(d => d.IngresosPercibidos);
+            decimal utilidad = _balanceData.Sum(d => d.UtilidadAproximada);
             decimal promedio = totalGastos / 12;
             decimal margen = totalIngresos > 0 ? (utilidad / totalIngresos) * 100 : 0;
 
@@ -464,7 +415,7 @@ namespace SistemaGestionProyectos2.Views
             txtPromedio.Text = promedio.ToString("C", _mexicanCulture);
             txtMargen.Text = $"{margen:F1}%";
 
-            // Cambiar color de utilidad según sea positiva o negativa
+            // Cambiar color de utilidad
             txtUtilidad.Foreground = utilidad >= 0 ?
                 new SolidColorBrush(Color.FromRgb(16, 185, 129)) :
                 new SolidColorBrush(Color.FromRgb(239, 68, 68));
@@ -656,8 +607,8 @@ namespace SistemaGestionProyectos2.Views
     }
 
     // Modelo para la vista de la base de datos
-    [Table("v_balance_gastos")]
-    public class BalanceGastosDb : BaseModel
+    [Table("v_balance_completo")]
+    public class BalanceCompletoDb : BaseModel
     {
         [Column("fecha")]
         public DateTime? Fecha { get; set; }
@@ -674,11 +625,12 @@ namespace SistemaGestionProyectos2.Views
         [Column("mes_corto")]
         public string MesCorto { get; set; }
 
+        // Gastos
         [Column("nomina")]
         public decimal Nomina { get; set; }
 
         [Column("horas_extra")]
-        public int HorasExtra { get; set; }
+        public decimal HorasExtra { get; set; }
 
         [Column("gastos_fijos")]
         public decimal GastosFijos { get; set; }
@@ -688,5 +640,21 @@ namespace SistemaGestionProyectos2.Views
 
         [Column("total_gastos")]
         public decimal TotalGastos { get; set; }
+
+        // Ingresos
+        [Column("ingresos_esperados")]
+        public decimal IngresosEsperados { get; set; }
+
+        [Column("ingresos_percibidos")]
+        public decimal IngresosPercibidos { get; set; }
+
+        [Column("diferencia")]
+        public decimal Diferencia { get; set; }
+
+        [Column("ventas_totales")]
+        public decimal VentasTotales { get; set; }
+
+        [Column("utilidad_aproximada")]
+        public decimal UtilidadAproximada { get; set; }
     }
 }
