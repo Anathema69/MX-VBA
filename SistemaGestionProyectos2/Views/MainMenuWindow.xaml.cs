@@ -265,5 +265,18 @@ namespace SistemaGestionProyectos2.Views
             var payrollWindow = new PayrollManagementView(_currentUser);
             payrollWindow.ShowDialog();
         }
+
+        // función para abrir la ventana de balance 'BalanceWindow.xaml' con 'Balance_Click'
+        private void Balance_Click(object sender, RoutedEventArgs e) {
+            // Verificar permisos de ser admin y abrir la ventana de balance
+            if (_currentUser.Role != "admin") {
+                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+                    "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            var balanceWindow = new BalanceWindow(_currentUser);
+            balanceWindow.ShowDialog();
+        }
+
     }
 }
