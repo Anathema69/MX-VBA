@@ -1,0 +1,431 @@
+﻿<Window x:Class="SistemaGestionProyectos2.Views.BalanceWindowV2"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Balance Anual - Sistema de Gestión Empresarial" 
+        Height="950" 
+        Width="1700"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- Definir estilos para reutilizar -->
+        <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="MonthHeaderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#EDF2F7"/>
+            <Setter Property="Height" Value="45"/>
+            <Setter Property="BorderBrush" Value="#CBD5E0"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        </Style>
+
+        <Style x:Key="DataCellStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        </Style>
+
+        <Style x:Key="TotalCellStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FEF3C7"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="BorderBrush" Value="#F59E0B"/>
+            <Setter Property="BorderThickness" Value="0,0,2,2"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="#F7FAFC">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="70"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="35"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header Principal con Gradiente -->
+        <Border Grid.Row="0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#667EEA" Offset="0"/>
+                    <GradientStop Color="#764BA2" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo y Título -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="25,0">
+                    <Border Background="White" CornerRadius="10" Width="40" Height="40" 
+                            VerticalAlignment="Center">
+                        <TextBlock Text="📊" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Margin="15,0,0,0">
+                        <TextBlock Text="BALANCE ANUAL" 
+                                  Foreground="White" 
+                                  FontSize="24" 
+                                  FontWeight="Bold"/>
+                        <TextBlock Text="Sistema de Gestión Integral" 
+                                  Foreground="#E0E7FF" 
+                                  FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Selector de Año Mejorado -->
+                <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Background="White" CornerRadius="25" Padding="5">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="btnPrevYear" 
+                               Width="45" Height="45"
+                               Background="Transparent"
+                               BorderThickness="0"
+                               Cursor="Hand"
+                               Click="BtnPrevYear_Click">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Name="border" Background="{TemplateBinding Background}" 
+                                           CornerRadius="20">
+                                        <TextBlock Text="◀" FontSize="18" 
+                                                  Foreground="#667EEA"
+                                                  HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#F7FAFC"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Border Background="#667EEA" CornerRadius="20" 
+                               Padding="35,10" Margin="5,0">
+                            <TextBlock Name="txtYear" 
+                                      Text="2025" 
+                                      FontSize="24" 
+                                      FontWeight="Bold"
+                                      Foreground="White"/>
+                        </Border>
+
+                        <Button Name="btnNextYear" 
+                               Width="45" Height="45"
+                               Background="Transparent"
+                               BorderThickness="0"
+                               Cursor="Hand"
+                               Click="BtnNextYear_Click">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Name="border" Background="{TemplateBinding Background}" 
+                                           CornerRadius="20">
+                                        <TextBlock Text="▶" FontSize="18" 
+                                                  Foreground="#667EEA"
+                                                  HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#F7FAFC"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- Controles de Ventana -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" 
+                           VerticalAlignment="Center" Margin="0,0,20,0">
+                    <Button Name="btnExport" 
+                           Background="White"
+                           Foreground="#667EEA"
+                           Content="📥 Exportar"
+                           Padding="15,8"
+                           Margin="0,0,10,0"
+                           BorderThickness="0"
+                           FontWeight="SemiBold"
+                           Cursor="Hand"
+                           Click="BtnExport_Click"/>
+                    <Button Name="btnClose" 
+                           Content="✕" 
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Foreground="White"
+                           FontSize="24"
+                           Width="45"
+                           Height="45"
+                           Cursor="Hand"
+                           Click="BtnClose_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Panel de KPIs -->
+        <Grid Grid.Row="1" Margin="20,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- KPI Gastos -->
+            <Border Grid.Column="0" Background="White" CornerRadius="12" Margin="5" 
+                    BorderBrush="#FEE2E2" BorderThickness="2">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#FEE2E2" CornerRadius="10" 
+                           Width="45" Height="45" HorizontalAlignment="Left">
+                        <TextBlock Text="💸" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="GASTOS TOTALES" 
+                              FontSize="11" Foreground="#9CA3AF" 
+                              FontWeight="SemiBold" Margin="0,10,0,5"/>
+                    <TextBlock Grid.Row="2" Name="txtTotalGastos" 
+                              Text="$0.00" FontSize="26" 
+                              FontWeight="Bold" Foreground="#DC2626"/>
+                </Grid>
+            </Border>
+
+            <!-- KPI Ingresos -->
+            <Border Grid.Column="1" Background="White" CornerRadius="12" Margin="5"
+                    BorderBrush="#D1FAE5" BorderThickness="2">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#D1FAE5" CornerRadius="10" 
+                           Width="45" Height="45" HorizontalAlignment="Left">
+                        <TextBlock Text="💰" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="INGRESOS TOTALES" 
+                              FontSize="11" Foreground="#9CA3AF" 
+                              FontWeight="SemiBold" Margin="0,10,0,5"/>
+                    <TextBlock Grid.Row="2" Name="txtTotalIngresos" 
+                              Text="$0.00" FontSize="26" 
+                              FontWeight="Bold" Foreground="#10B981"/>
+                </Grid>
+            </Border>
+
+            <!-- KPI Utilidad -->
+            <Border Grid.Column="2" Background="White" CornerRadius="12" Margin="5"
+                    BorderBrush="#DBEAFE" BorderThickness="2">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#DBEAFE" CornerRadius="10" 
+                           Width="45" Height="45" HorizontalAlignment="Left">
+                        <TextBlock Text="📈" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="UTILIDAD NETA" 
+                              FontSize="11" Foreground="#9CA3AF" 
+                              FontWeight="SemiBold" Margin="0,10,0,5"/>
+                    <TextBlock Grid.Row="2" Name="txtUtilidad" 
+                              Text="$0.00" FontSize="26" 
+                              FontWeight="Bold" Foreground="#3B82F6"/>
+                </Grid>
+            </Border>
+
+            <!-- KPI Promedio -->
+            <Border Grid.Column="3" Background="White" CornerRadius="12" Margin="5"
+                    BorderBrush="#FEF3C7" BorderThickness="2">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#FEF3C7" CornerRadius="10" 
+                           Width="45" Height="45" HorizontalAlignment="Left">
+                        <TextBlock Text="📅" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="PROMEDIO MENSUAL" 
+                              FontSize="11" Foreground="#9CA3AF" 
+                              FontWeight="SemiBold" Margin="0,10,0,5"/>
+                    <TextBlock Grid.Row="2" Name="txtPromedio" 
+                              Text="$0.00" FontSize="26" 
+                              FontWeight="Bold" Foreground="#F59E0B"/>
+                </Grid>
+            </Border>
+
+            <!-- KPI Margen -->
+            <Border Grid.Column="4" Background="White" CornerRadius="12" Margin="5"
+                    BorderBrush="#E9D5FF" BorderThickness="2">
+                <Grid Margin="20,15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#E9D5FF" CornerRadius="10" 
+                           Width="45" Height="45" HorizontalAlignment="Left">
+                        <TextBlock Text="📊" FontSize="22" 
+                                  HorizontalAlignment="Center" 
+                                  VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Grid.Row="1" Text="MARGEN" 
+                              FontSize="11" Foreground="#9CA3AF" 
+                              FontWeight="SemiBold" Margin="0,10,0,5"/>
+                    <TextBlock Grid.Row="2" Name="txtMargen" 
+                              Text="0%" FontSize="26" 
+                              FontWeight="Bold" Foreground="#8B5CF6"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Área de Contenido Principal con TabControl -->
+        <TabControl Grid.Row="2" Margin="20,0,20,10" 
+                   Background="Transparent" BorderThickness="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TabItem">
+                                <Border Name="Border" Background="White" 
+                                       CornerRadius="10,10,0,0" 
+                                       Margin="0,0,2,0"
+                                       MinWidth="150">
+                                    <ContentPresenter x:Name="ContentSite"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center"
+                                                    ContentSource="Header"
+                                                    Margin="15,10"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Border" Property="Background">
+                                            <Setter.Value>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                    <GradientStop Color="#667EEA" Offset="0"/>
+                                                    <GradientStop Color="#764BA2" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="False">
+                                        <Setter Property="Foreground" Value="#4A5568"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- Pestaña de Balance General -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📊" FontSize="16" Margin="0,0,8,0"/>
+                        <TextBlock Text="Balance General" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Background="White" CornerRadius="0,10,10,10" Padding="20">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" 
+                                 VerticalScrollBarVisibility="Auto">
+                        <Grid Name="gridBalance">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Se llenará dinámicamente -->
+                        </Grid>
+                    </ScrollViewer>
+                </Border>
+            </TabItem>
+
+            <!-- Pestaña de Gráficos -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📈" FontSize="16" Margin="0,0,8,0"/>
+                        <TextBlock Text="Análisis Gráfico" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Background="White" CornerRadius="0,10,10,10" Padding="20">
+                    <TextBlock Text="Gráficos disponibles próximamente" 
+                              FontSize="16" Foreground="#9CA3AF"
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"/>
+                </Border>
+            </TabItem>
+
+            <!-- Pestaña de Comparativo -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔄" FontSize="16" Margin="0,0,8,0"/>
+                        <TextBlock Text="Comparativo Anual" FontWeight="SemiBold"/>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Border Background="White" CornerRadius="0,10,10,10" Padding="20">
+                    <TextBlock Text="Comparativo disponible próximamente" 
+                              FontSize="16" Foreground="#9CA3AF"
+                              HorizontalAlignment="Center" 
+                              VerticalAlignment="Center"/>
+                </Border>
+            </TabItem>
+        </TabControl>
+
+        <!-- Footer -->
+        <Border Grid.Row="3">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#667EEA" Offset="0"/>
+                    <GradientStop Color="#764BA2" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <TextBlock Text="Sistema de Gestión Empresarial v2.0 | Balance generado desde vistas SQL" 
+                          Foreground="White" 
+                          FontSize="11"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                <TextBlock Name="txtLastUpdate" 
+                          Text="Última actualización: --" 
+                          Foreground="#E0E7FF" 
+                          FontSize="11"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          Margin="0,0,20,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
