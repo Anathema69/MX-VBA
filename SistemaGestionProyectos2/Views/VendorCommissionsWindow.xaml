@@ -5,7 +5,7 @@
         Height="700" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
-        WindowState="Normal">
+        WindowState="Maximized">
 
     <Window.Resources>
         <!-- Colores del tema -->
@@ -51,7 +51,7 @@
                         <!-- Botón Gestionar Vendedores -->
                         <Button Grid.Column="1" Name="ManageVendorsButton"
                                 Background="{StaticResource PrimaryColor}" Foreground="White"
-                                BorderThickness="0" Padding="12,8" Cursor="Hand"
+                                BorderThickness="0" Padding="10," Cursor="Hand"
                                 Click="ManageVendorsButton_Click">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">

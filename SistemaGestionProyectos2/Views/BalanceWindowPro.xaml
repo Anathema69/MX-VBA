@@ -149,7 +149,7 @@
                 <!-- Controles de Ventana -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" 
                            VerticalAlignment="Center" Margin="0,0,20,0">
-                    <Button Name="btnExport" 
+                    <!-- <Button Name="btnExport" 
                            Background="White"
                            Foreground="#667EEA"
                            Content="📥 Exportar"
@@ -158,9 +158,9 @@
                            BorderThickness="0"
                            FontWeight="SemiBold"
                            Cursor="Hand"
-                           Click="BtnExport_Click"/>
+                           Click="BtnExport_Click"/> -->
                     <Button Name="btnClose" 
-                           Content="✕" 
+                           Content="← Volver" 
                            Background="Transparent"
                            BorderThickness="0"
                            Foreground="White"
@@ -258,7 +258,7 @@
                 </Grid>
             </Border>
 
-            <!-- KPI Promedio -->
+            <!-- KPI Promedio, SE HABILITARÁ A FUTURO 
             <Border Grid.Column="3" Background="White" CornerRadius="10" Margin="5"
                     BorderBrush="#FEF3C7" BorderThickness="1">
                 <Grid Margin="15,10">
@@ -282,8 +282,9 @@
                     </StackPanel>
                 </Grid>
             </Border>
+            -->
 
-            <!-- KPI Margen -->
+            <!-- KPI Margen, SE HABILITARÁ A FUTURO 
             <Border Grid.Column="4" Background="White" CornerRadius="10" Margin="5"
                     BorderBrush="#E9D5FF" BorderThickness="1">
                 <Grid Margin="15,10">
@@ -307,6 +308,7 @@
                     </StackPanel>
                 </Grid>
             </Border>
+            -->
         </Grid>
 
         <!-- Área de Contenido Principal con TabControl -->
@@ -373,40 +375,10 @@
                     </ScrollViewer>
                 </Border>
             </TabItem>
+            
+            
+            
 
-            <!-- Pestaña de Gráficos -->
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="📈" FontSize="16" Margin="0,0,8,0"/>
-                        <TextBlock Text="Análisis Gráfico" FontWeight="SemiBold"/>
-                    </StackPanel>
-                </TabItem.Header>
-
-                <Border Background="White" CornerRadius="0,10,10,10" Padding="20">
-                    <TextBlock Text="Gráficos disponibles próximamente" 
-                              FontSize="16" Foreground="#9CA3AF"
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center"/>
-                </Border>
-            </TabItem>
-
-            <!-- Pestaña de Comparativo -->
-            <TabItem>
-                <TabItem.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔄" FontSize="16" Margin="0,0,8,0"/>
-                        <TextBlock Text="Comparativo Anual" FontWeight="SemiBold"/>
-                    </StackPanel>
-                </TabItem.Header>
-
-                <Border Background="White" CornerRadius="0,10,10,10" Padding="20">
-                    <TextBlock Text="Comparativo disponible próximamente" 
-                              FontSize="16" Foreground="#9CA3AF"
-                              HorizontalAlignment="Center" 
-                              VerticalAlignment="Center"/>
-                </Border>
-            </TabItem>
         </TabControl>
 
         <!-- Footer -->

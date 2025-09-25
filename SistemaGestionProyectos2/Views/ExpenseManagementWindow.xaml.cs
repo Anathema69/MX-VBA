@@ -676,16 +676,6 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                var result = MessageBox.Show(
-                    $"¿Confirmar pago de ${expense.TotalExpense:N2} a {expense.SupplierName}?\n\n" +
-                    $"Descripción: {expense.Description}\n" +
-                    $"Se registrará con fecha de hoy.",
-                    "Confirmar Pago",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes) return;
-
                 string payMethod = "TRANSFERENCIA"; // Por defecto
 
                 var success = await _supabaseService.MarkExpenseAsPaid(
@@ -707,11 +697,7 @@ namespace SistemaGestionProyectos2.Views
 
                     UpdateStatistics();
 
-                    MessageBox.Show(
-                        "Pago registrado exitosamente",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    
                 }
                 else
                 {

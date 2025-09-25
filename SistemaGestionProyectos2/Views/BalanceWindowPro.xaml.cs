@@ -412,8 +412,7 @@ namespace SistemaGestionProyectos2.Views
             txtTotalGastos.Text = totalGastos.ToString("C", _mexicanCulture);
             txtTotalIngresos.Text = totalIngresos.ToString("C", _mexicanCulture);
             txtUtilidad.Text = utilidad.ToString("C", _mexicanCulture);
-            txtPromedio.Text = promedio.ToString("C", _mexicanCulture);
-            txtMargen.Text = $"{margen:F1}%";
+            
 
             // Cambiar color de utilidad
             txtUtilidad.Foreground = utilidad >= 0 ?
@@ -426,8 +425,7 @@ namespace SistemaGestionProyectos2.Views
             txtTotalGastos.Text = "$0.00";
             txtTotalIngresos.Text = "$0.00";
             txtUtilidad.Text = "$0.00";
-            txtPromedio.Text = "$0.00";
-            txtMargen.Text = "0%";
+            
 
             // Limpiar grid
             gridBalance.Children.Clear();
@@ -452,24 +450,18 @@ namespace SistemaGestionProyectos2.Views
 
         private async void BtnNextYear_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentYear < DateTime.Now.Year)
-            {
-                _currentYear++;
-                txtYear.Text = _currentYear.ToString();
-                await LoadBalanceData();
-            }
-            else
-            {
-                MessageBox.Show("No se puede mostrar balance de años futuros",
-                    "Información", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            _currentYear++;
+            txtYear.Text = _currentYear.ToString();
+            await LoadBalanceData();
         }
 
+        /* Exportación deshabilitada en esta versión
         private void BtnExport_Click(object sender, RoutedEventArgs e)
         {
             MessageBox.Show("Función de exportación disponible en la versión completa",
                 "Exportar", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+        */
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
