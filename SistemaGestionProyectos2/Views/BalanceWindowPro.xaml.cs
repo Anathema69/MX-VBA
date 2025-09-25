@@ -18,7 +18,7 @@ namespace SistemaGestionProyectos2.Views
     /// <summary>
     /// Ventana de Balance Profesional con diseño mejorado
     /// </summary>
-    public partial class BalanceWindowV2 : Window
+    public partial class BalanceWindowPro : Window
     {
         private readonly SupabaseService _supabaseService;
         private readonly UserSession _currentUser;
@@ -34,7 +34,11 @@ namespace SistemaGestionProyectos2.Views
             { "UTILIDAD", new[] { Color.FromRgb(219, 234, 254), Color.FromRgb(96, 165, 250) } }
         };
 
-        public BalanceWindowV2(UserSession currentUser)
+        private int _selectedRowIndex = -1;
+        private int _selectedColumnIndex = -1;
+        private List<Border> _highlightedCells = new List<Border>();
+
+        public BalanceWindowPro(UserSession currentUser)
         {
             InitializeComponent();
 
@@ -93,13 +97,14 @@ namespace SistemaGestionProyectos2.Views
             gridBalance.RowDefinitions.Clear();
             gridBalance.ColumnDefinitions.Clear();
 
-            // Crear columnas (Concepto + 12 meses + Total)
-            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+            // Crear columnas (Concepto + 12 meses + Total) - Tamaños ajustados para evitar scroll
+            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+            string[] nombresMeses = { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
             for (int i = 1; i <= 12; i++)
             {
-                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(95) });
+                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
             }
-            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
 
             int currentRow = 0;
 
@@ -132,10 +137,10 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
 
-            // Filas de gastos
+            // Filas de gastos - Pasamos true para isHorasExtra en la fila correspondiente
             AddDataRow("Nómina", nomina, currentRow, false);
             currentRow++;
-            AddDataRow("Horas Extra", horasExtra, currentRow, false);
+            AddDataRow("Horas Extra", horasExtra, currentRow, false, null, true); // true para editable
             currentRow++;
             AddDataRow("Gastos Fijos", gastosFijos, currentRow, false);
             currentRow++;
@@ -200,9 +205,9 @@ namespace SistemaGestionProyectos2.Views
             Grid.SetColumn(emptyBorder, 0);
             gridBalance.Children.Add(emptyBorder);
 
-            // Headers de meses
-            string[] meses = { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-                              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+            // Headers de meses - versiones cortas para ahorrar espacio
+            string[] meses = { "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                              "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
 
             for (int i = 0; i < 12; i++)
             {
@@ -211,17 +216,28 @@ namespace SistemaGestionProyectos2.Views
                     Background = new SolidColorBrush(Color.FromRgb(237, 242, 247)),
                     BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 224)),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    Height = 45
+                    Height = 40,
+                    Tag = $"header_col_{i + 1}",
+                    Cursor = System.Windows.Input.Cursors.Hand
                 };
 
                 var headerText = new TextBlock
                 {
                     Text = meses[i],
                     FontWeight = FontWeights.Bold,
-                    FontSize = 12,
+                    FontSize = 11,
                     Foreground = new SolidColorBrush(Color.FromRgb(45, 55, 72)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
+                };
+
+                // Evento para resaltar columna
+                headerBorder.MouseLeftButtonDown += (s, e) => HighlightColumn(i + 1);
+                headerBorder.MouseEnter += (s, e) => headerBorder.Background = new SolidColorBrush(Color.FromRgb(226, 232, 240));
+                headerBorder.MouseLeave += (s, e) =>
+                {
+                    if (_selectedColumnIndex != i + 1)
+                        headerBorder.Background = new SolidColorBrush(Color.FromRgb(237, 242, 247));
                 };
 
                 headerBorder.Child = headerText;
@@ -236,14 +252,14 @@ namespace SistemaGestionProyectos2.Views
                 Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(0, 0, 2, 2),
-                Height = 45
+                Height = 40
             };
 
             var totalHeaderText = new TextBlock
             {
                 Text = "TOTAL",
                 FontWeight = FontWeights.Bold,
-                FontSize = 13,
+                FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromRgb(146, 64, 14)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
@@ -283,11 +299,11 @@ namespace SistemaGestionProyectos2.Views
             gridBalance.Children.Add(headerBorder);
         }
 
-        private void AddDataRow(string concepto, decimal[] valores, int row, bool isTotal, Color? backgroundColor = null)
+        private void AddDataRow(string concepto, decimal[] valores, int row, bool isTotal, Color? backgroundColor = null, bool isHorasExtra = false)
         {
             gridBalance.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-            // Celda de concepto
+            // Celda de concepto con capacidad de resaltar fila
             var conceptBorder = new Border
             {
                 Background = isTotal ?
@@ -295,14 +311,19 @@ namespace SistemaGestionProyectos2.Views
                     Brushes.White,
                 BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                 BorderThickness = new Thickness(0, 0, 1, 1),
-                Height = isTotal ? 42 : 40
+                Height = isTotal ? 42 : 38,
+                Tag = $"row_{row}",
+                Cursor = System.Windows.Input.Cursors.Hand
             };
+
+            // Evento para resaltar fila al hacer clic en el concepto
+            conceptBorder.MouseLeftButtonDown += (s, e) => HighlightRow(row);
 
             var conceptText = new TextBlock
             {
                 Text = concepto,
                 FontWeight = isTotal ? FontWeights.Bold : FontWeights.SemiBold,
-                FontSize = isTotal ? 13 : 12,
+                FontSize = isTotal ? 12 : 11,
                 Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(15, 0, 0, 0)
@@ -324,26 +345,73 @@ namespace SistemaGestionProyectos2.Views
                         Brushes.White,
                     BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    Height = isTotal ? 42 : 40
+                    Height = isTotal ? 42 : 38,
+                    Tag = $"cell_{row}_{i + 1}",
+                    Cursor = isHorasExtra ? System.Windows.Input.Cursors.IBeam : System.Windows.Input.Cursors.Hand
                 };
 
                 var value = valores[i];
                 total += value;
 
-                var valueText = new TextBlock
+                // Para Horas Extra, usar TextBox editable
+                if (isHorasExtra)
                 {
-                    Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
-                    FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
-                    FontSize = isTotal ? 12 : 11,
-                    Foreground = value < 0 ?
-                        new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
-                        new SolidColorBrush(Color.FromRgb(55, 65, 81)),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 10, 0)
+                    var valueTextBox = new TextBox
+                    {
+                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "$0",
+                        FontWeight = FontWeights.Normal,
+                        FontSize = 11,
+                        Foreground = new SolidColorBrush(Color.FromRgb(55, 65, 81)),
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        TextAlignment = TextAlignment.Right,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Background = Brushes.Transparent,
+                        BorderThickness = new Thickness(0),
+                        Padding = new Thickness(0, 0, 10, 0),
+                        Tag = i // Guardar índice del mes
+                    };
+
+                    // Eventos para edición
+                    valueTextBox.GotFocus += (s, e) =>
+                    {
+                        var tb = s as TextBox;
+                        tb.Background = new SolidColorBrush(Color.FromRgb(254, 249, 195));
+                        tb.SelectAll();
+                    };
+
+                    valueTextBox.LostFocus += (s, e) =>
+                    {
+                        var tb = s as TextBox;
+                        tb.Background = Brushes.Transparent;
+                    };
+
+                    valueBorder.Child = valueTextBox;
+                }
+                else
+                {
+                    var valueText = new TextBlock
+                    {
+                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
+                        FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
+                        FontSize = isTotal ? 11 : 10,
+                        Foreground = value < 0 ?
+                            new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
+                            new SolidColorBrush(Color.FromRgb(55, 65, 81)),
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 10, 0)
+                    };
+
+                    valueBorder.Child = valueText;
+                }
+
+                // Evento para resaltar celda
+                valueBorder.MouseLeftButtonDown += (s, e) =>
+                {
+                    if (!isHorasExtra)
+                        HighlightCell(row, i + 1);
                 };
 
-                valueBorder.Child = valueText;
                 Grid.SetRow(valueBorder, row);
                 Grid.SetColumn(valueBorder, i + 1);
                 gridBalance.Children.Add(valueBorder);
@@ -355,14 +423,14 @@ namespace SistemaGestionProyectos2.Views
                 Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(0, 0, 2, 2),
-                Height = isTotal ? 42 : 40
+                Height = isTotal ? 42 : 38
             };
 
             var totalText = new TextBlock
             {
                 Text = total.ToString("C0", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
-                FontSize = isTotal ? 13 : 12,
+                FontSize = isTotal ? 12 : 11,
                 Foreground = new SolidColorBrush(Color.FromRgb(146, 64, 14)),
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -455,6 +523,135 @@ namespace SistemaGestionProyectos2.Views
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        // Métodos para resaltado de filas y columnas
+        private void HighlightColumn(int columnIndex)
+        {
+            ClearHighlights();
+            _selectedColumnIndex = columnIndex;
+
+            foreach (var child in gridBalance.Children)
+            {
+                if (child is Border border)
+                {
+                    var col = Grid.GetColumn(border);
+                    if (col == columnIndex)
+                    {
+                        // Guardar color original
+                        _highlightedCells.Add(border);
+
+                        // Aplicar resaltado suave
+                        if (border.Background != null && border.Background is SolidColorBrush)
+                        {
+                            var originalBrush = border.Background as SolidColorBrush;
+                            border.Background = new SolidColorBrush(Color.FromArgb(40, 102, 126, 234)); // Azul suave con transparencia
+                            border.Tag = border.Tag + "_highlighted";
+                        }
+                    }
+                }
+            }
+        }
+
+        private void HighlightRow(int rowIndex)
+        {
+            ClearHighlights();
+            _selectedRowIndex = rowIndex;
+
+            foreach (var child in gridBalance.Children)
+            {
+                if (child is Border border)
+                {
+                    var row = Grid.GetRow(border);
+                    if (row == rowIndex)
+                    {
+                        _highlightedCells.Add(border);
+
+                        // Aplicar resaltado suave
+                        if (border.Background != null && border.Background is SolidColorBrush)
+                        {
+                            border.Background = new SolidColorBrush(Color.FromArgb(40, 102, 126, 234)); // Azul suave con transparencia
+                            border.Tag = border.Tag + "_highlighted";
+                        }
+                    }
+                }
+            }
+        }
+
+        private void HighlightCell(int rowIndex, int columnIndex)
+        {
+            ClearHighlights();
+            _selectedRowIndex = rowIndex;
+            _selectedColumnIndex = columnIndex;
+
+            foreach (var child in gridBalance.Children)
+            {
+                if (child is Border border)
+                {
+                    var row = Grid.GetRow(border);
+                    var col = Grid.GetColumn(border);
+
+                    // Resaltar fila
+                    if (row == rowIndex)
+                    {
+                        _highlightedCells.Add(border);
+                        border.Background = new SolidColorBrush(Color.FromArgb(30, 102, 126, 234));
+                    }
+
+                    // Resaltar columna
+                    if (col == columnIndex)
+                    {
+                        if (!_highlightedCells.Contains(border))
+                            _highlightedCells.Add(border);
+
+                        if (row == rowIndex)
+                        {
+                            // Intersección - resaltado más fuerte
+                            border.Background = new SolidColorBrush(Color.FromArgb(60, 102, 126, 234));
+                        }
+                        else
+                        {
+                            border.Background = new SolidColorBrush(Color.FromArgb(30, 102, 126, 234));
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ClearHighlights()
+        {
+            foreach (var border in _highlightedCells)
+            {
+                // Restaurar color original basado en el tipo de celda
+                var tag = border.Tag?.ToString() ?? "";
+
+                if (tag.Contains("_highlighted"))
+                {
+                    tag = tag.Replace("_highlighted", "");
+                    border.Tag = tag;
+                }
+
+                // Determinar el color original basado en la posición y tipo
+                var row = Grid.GetRow(border);
+                var col = Grid.GetColumn(border);
+
+                if (col == 13) // Columna de totales
+                {
+                    border.Background = new SolidColorBrush(Color.FromRgb(254, 243, 199));
+                }
+                else if (col == 0 || row == 0) // Headers
+                {
+                    border.Background = new SolidColorBrush(Color.FromRgb(237, 242, 247));
+                }
+                else
+                {
+                    border.Background = Brushes.White;
+                }
+            }
+
+            _highlightedCells.Clear();
+            _selectedRowIndex = -1;
+            _selectedColumnIndex = -1;
         }
     }
 

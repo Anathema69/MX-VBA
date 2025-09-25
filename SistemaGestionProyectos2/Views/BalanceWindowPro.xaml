@@ -1,4 +1,4 @@
-﻿<Window x:Class="SistemaGestionProyectos2.Views.BalanceWindowV2"
+﻿<Window x:Class="SistemaGestionProyectos2.Views.BalanceWindowPro"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Balance Anual - Sistema de Gestión Empresarial" 
@@ -173,8 +173,8 @@
             </Grid>
         </Border>
 
-        <!-- Panel de KPIs -->
-        <Grid Grid.Row="1" Margin="20,15">
+        <!-- Panel de KPIs más compacto -->
+        <Grid Grid.Row="1" Margin="20,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -184,122 +184,127 @@
             </Grid.ColumnDefinitions>
 
             <!-- KPI Gastos -->
-            <Border Grid.Column="0" Background="White" CornerRadius="12" Margin="5" 
-                    BorderBrush="#FEE2E2" BorderThickness="2">
-                <Grid Margin="20,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="#FEE2E2" CornerRadius="10" 
-                           Width="45" Height="45" HorizontalAlignment="Left">
-                        <TextBlock Text="💸" FontSize="22" 
+            <Border Grid.Column="0" Background="White" CornerRadius="10" Margin="5" 
+                    BorderBrush="#FEE2E2" BorderThickness="1">
+                <Grid Margin="15,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#FEE2E2" CornerRadius="8" 
+                           Width="35" Height="35" HorizontalAlignment="Left" Margin="0,0,10,0">
+                        <TextBlock Text="💸" FontSize="18" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Grid.Row="1" Text="GASTOS TOTALES" 
-                              FontSize="11" Foreground="#9CA3AF" 
-                              FontWeight="SemiBold" Margin="0,10,0,5"/>
-                    <TextBlock Grid.Row="2" Name="txtTotalGastos" 
-                              Text="$0.00" FontSize="26" 
-                              FontWeight="Bold" Foreground="#DC2626"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="GASTOS" 
+                                  FontSize="10" Foreground="#9CA3AF" 
+                                  FontWeight="Medium"/>
+                        <TextBlock Name="txtTotalGastos" 
+                                  Text="$0.00" FontSize="18" 
+                                  FontWeight="Bold" Foreground="#DC2626"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
             <!-- KPI Ingresos -->
-            <Border Grid.Column="1" Background="White" CornerRadius="12" Margin="5"
-                    BorderBrush="#D1FAE5" BorderThickness="2">
-                <Grid Margin="20,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="#D1FAE5" CornerRadius="10" 
-                           Width="45" Height="45" HorizontalAlignment="Left">
-                        <TextBlock Text="💰" FontSize="22" 
+            <Border Grid.Column="1" Background="White" CornerRadius="10" Margin="5"
+                    BorderBrush="#D1FAE5" BorderThickness="1">
+                <Grid Margin="15,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#D1FAE5" CornerRadius="8" 
+                           Width="35" Height="35" HorizontalAlignment="Left" Margin="0,0,10,0">
+                        <TextBlock Text="💰" FontSize="18" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Grid.Row="1" Text="INGRESOS TOTALES" 
-                              FontSize="11" Foreground="#9CA3AF" 
-                              FontWeight="SemiBold" Margin="0,10,0,5"/>
-                    <TextBlock Grid.Row="2" Name="txtTotalIngresos" 
-                              Text="$0.00" FontSize="26" 
-                              FontWeight="Bold" Foreground="#10B981"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="INGRESOS" 
+                                  FontSize="10" Foreground="#9CA3AF" 
+                                  FontWeight="Medium"/>
+                        <TextBlock Name="txtTotalIngresos" 
+                                  Text="$0.00" FontSize="18" 
+                                  FontWeight="Bold" Foreground="#10B981"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
             <!-- KPI Utilidad -->
-            <Border Grid.Column="2" Background="White" CornerRadius="12" Margin="5"
-                    BorderBrush="#DBEAFE" BorderThickness="2">
-                <Grid Margin="20,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="#DBEAFE" CornerRadius="10" 
-                           Width="45" Height="45" HorizontalAlignment="Left">
-                        <TextBlock Text="📈" FontSize="22" 
+            <Border Grid.Column="2" Background="White" CornerRadius="10" Margin="5"
+                    BorderBrush="#DBEAFE" BorderThickness="1">
+                <Grid Margin="15,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#DBEAFE" CornerRadius="8" 
+                           Width="35" Height="35" HorizontalAlignment="Left" Margin="0,0,10,0">
+                        <TextBlock Text="📈" FontSize="18" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Grid.Row="1" Text="UTILIDAD NETA" 
-                              FontSize="11" Foreground="#9CA3AF" 
-                              FontWeight="SemiBold" Margin="0,10,0,5"/>
-                    <TextBlock Grid.Row="2" Name="txtUtilidad" 
-                              Text="$0.00" FontSize="26" 
-                              FontWeight="Bold" Foreground="#3B82F6"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="UTILIDAD" 
+                                  FontSize="10" Foreground="#9CA3AF" 
+                                  FontWeight="Medium"/>
+                        <TextBlock Name="txtUtilidad" 
+                                  Text="$0.00" FontSize="18" 
+                                  FontWeight="Bold" Foreground="#3B82F6"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
             <!-- KPI Promedio -->
-            <Border Grid.Column="3" Background="White" CornerRadius="12" Margin="5"
-                    BorderBrush="#FEF3C7" BorderThickness="2">
-                <Grid Margin="20,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="#FEF3C7" CornerRadius="10" 
-                           Width="45" Height="45" HorizontalAlignment="Left">
-                        <TextBlock Text="📅" FontSize="22" 
+            <Border Grid.Column="3" Background="White" CornerRadius="10" Margin="5"
+                    BorderBrush="#FEF3C7" BorderThickness="1">
+                <Grid Margin="15,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#FEF3C7" CornerRadius="8" 
+                           Width="35" Height="35" HorizontalAlignment="Left" Margin="0,0,10,0">
+                        <TextBlock Text="📅" FontSize="18" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Grid.Row="1" Text="PROMEDIO MENSUAL" 
-                              FontSize="11" Foreground="#9CA3AF" 
-                              FontWeight="SemiBold" Margin="0,10,0,5"/>
-                    <TextBlock Grid.Row="2" Name="txtPromedio" 
-                              Text="$0.00" FontSize="26" 
-                              FontWeight="Bold" Foreground="#F59E0B"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="PROMEDIO" 
+                                  FontSize="10" Foreground="#9CA3AF" 
+                                  FontWeight="Medium"/>
+                        <TextBlock Name="txtPromedio" 
+                                  Text="$0.00" FontSize="18" 
+                                  FontWeight="Bold" Foreground="#F59E0B"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
             <!-- KPI Margen -->
-            <Border Grid.Column="4" Background="White" CornerRadius="12" Margin="5"
-                    BorderBrush="#E9D5FF" BorderThickness="2">
-                <Grid Margin="20,15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Border Grid.Row="0" Background="#E9D5FF" CornerRadius="10" 
-                           Width="45" Height="45" HorizontalAlignment="Left">
-                        <TextBlock Text="📊" FontSize="22" 
+            <Border Grid.Column="4" Background="White" CornerRadius="10" Margin="5"
+                    BorderBrush="#E9D5FF" BorderThickness="1">
+                <Grid Margin="15,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#E9D5FF" CornerRadius="8" 
+                           Width="35" Height="35" HorizontalAlignment="Left" Margin="0,0,10,0">
+                        <TextBlock Text="📊" FontSize="18" 
                                   HorizontalAlignment="Center" 
                                   VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Grid.Row="1" Text="MARGEN" 
-                              FontSize="11" Foreground="#9CA3AF" 
-                              FontWeight="SemiBold" Margin="0,10,0,5"/>
-                    <TextBlock Grid.Row="2" Name="txtMargen" 
-                              Text="0%" FontSize="26" 
-                              FontWeight="Bold" Foreground="#8B5CF6"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="MARGEN" 
+                                  FontSize="10" Foreground="#9CA3AF" 
+                                  FontWeight="Medium"/>
+                        <TextBlock Name="txtMargen" 
+                                  Text="0%" FontSize="18" 
+                                  FontWeight="Bold" Foreground="#8B5CF6"/>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

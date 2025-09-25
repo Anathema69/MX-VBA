@@ -274,7 +274,7 @@ namespace SistemaGestionProyectos2.Views
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            var balanceWindow = new BalanceWindowV2(_currentUser);
+            var balanceWindow = new BalanceWindowPro(_currentUser);
             balanceWindow.ShowDialog();
         }
 
