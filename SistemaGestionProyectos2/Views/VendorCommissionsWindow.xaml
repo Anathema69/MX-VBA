@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="PrimaryColor" Color="#5B3FF9"/>
         <SolidColorBrush x:Key="SuccessColor" Color="#48BB78"/>
         <SolidColorBrush x:Key="DangerColor" Color="#e84118"/>
+        <SolidColorBrush x:Key="DraftColor" Color="#95a5a6"/>
         <SolidColorBrush x:Key="BackgroundGray" Color="#F7FAFC"/>
         <SolidColorBrush x:Key="BorderGray" Color="#E2E8F0"/>
         <SolidColorBrush x:Key="TextGray" Color="#718096"/>
@@ -138,7 +139,8 @@
                                         <TextBlock Text="{Binding VendorName}" FontWeight="SemiBold" 
                                                    FontSize="14" Foreground="{StaticResource DarkText}"/>
                                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <Border Background="#fee2e2" CornerRadius="12" Padding="6,2" Margin="0,0,8,0">
+                                            <!-- Badge para pendientes de pago (rojo) -->
+                                            <Border Background="#fee2e2" CornerRadius="12" Padding="6,2" Margin="0,0,4,0">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
                                                         <Setter Property="Visibility" Value="Visible"/>
@@ -151,12 +153,32 @@
                                                 </Border.Style>
                                                 <TextBlock FontSize="11" FontWeight="Medium" Foreground="{StaticResource DangerColor}">
                                                     <Run Text="{Binding PendingCount}"/> 
-                                                    <Run Text="pendientes"/>
+                                                    <Run Text="por pagar"/>
                                                 </TextBlock>
                                             </Border>
-                                            <TextBlock Text="{Binding TotalPending, StringFormat='{}{0:C}'}" 
-                                                       FontSize="12" Foreground="{StaticResource TextGray}" 
-                                                       FontWeight="Medium"/>
+
+                                            <!-- Badge para drafts (gris) -->
+                                            <Border Background="#e2e8f0" CornerRadius="12" Padding="6,2" Margin="0,0,8,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DraftCount}" Value="0">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock FontSize="11" FontWeight="Medium" Foreground="{StaticResource DraftColor}">
+                                                    <Run Text="{Binding DraftCount}"/> 
+                                                    <Run Text="futuras"/>
+                                                </TextBlock>
+                                            </Border>
+
+                                            <!-- Total (verde) -->
+                                            <TextBlock Text="{Binding TotalAll, StringFormat='{}{0:C}'}" 
+                                                       FontSize="12" Foreground="{StaticResource SuccessColor}" 
+                                                       FontWeight="Bold"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
@@ -194,7 +216,7 @@
                     <TextBlock Text="💰" FontSize="48" HorizontalAlignment="Center" Opacity="0.3"/>
                     <TextBlock Text="Seleccione un vendedor" FontSize="18" Foreground="{StaticResource TextGray}" 
                                HorizontalAlignment="Center" Margin="0,20,0,5"/>
-                    <TextBlock Text="Elija un vendedor de la lista para ver sus comisiones pendientes" 
+                    <TextBlock Text="Elija un vendedor de la lista para ver sus comisiones" 
                                FontSize="13" Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Grid>
@@ -233,7 +255,7 @@
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Name="SelectedVendorName" Text="Seleccione un vendedor" FontSize="20" 
                                            FontWeight="SemiBold" Foreground="{StaticResource DarkText}"/>
-                                <TextBlock Text="Comisiones pendientes de pago" FontSize="13" 
+                                <TextBlock Text="Comisiones del vendedor" FontSize="13" 
                                            Foreground="{StaticResource TextGray}"/>
                             </StackPanel>
 
@@ -314,10 +336,10 @@
                             <Border Grid.Column="2" Background="White" BorderBrush="{StaticResource BorderGray}" 
                                     BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="10,0,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="TASA PROMEDIO" FontSize="11" Foreground="{StaticResource TextGray}" 
+                                    <TextBlock Text="TOTAL COMISIONES" FontSize="11" Foreground="{StaticResource TextGray}" 
                                                FontWeight="Medium"/>
-                                    <TextBlock Name="VendorAverageRateText" Text="0%" FontSize="20" FontWeight="Bold" 
-                                               Foreground="{StaticResource DarkText}" Margin="0,5,0,0"/>
+                                    <TextBlock Name="VendorTotalAllText" Text="$0.00" FontSize="20" FontWeight="Bold" 
+                                               Foreground="{StaticResource SuccessColor}" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -341,7 +363,7 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
 
-                                        <!-- Header de la Comisión -->
+                                        <!-- Header de la Comisión con Badge de Estado -->
                                         <Grid Grid.Row="0" Margin="0,0,0,15">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -349,10 +371,44 @@
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0">
-                                                <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource DarkText}">
-                                                    <Run Text="Orden:"/>
-                                                    <Run Text="{Binding OrderNumber}"/>
-                                                </TextBlock>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource DarkText}">
+                                                        <Run Text="Orden:"/>
+                                                        <Run Text="{Binding OrderNumber}"/>
+                                                    </TextBlock>
+
+                                                    <!-- Badge de estado -->
+                                                    <Border Margin="10,0,0,0" CornerRadius="12" Padding="8,3">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding PaymentStatus}" Value="draft">
+                                                                        <Setter Property="Background" Value="#e2e8f0"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding PaymentStatus}" Value="pending">
+                                                                        <Setter Property="Background" Value="#fee2e2"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock FontSize="11" FontWeight="Medium">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding PaymentStatus}" Value="draft">
+                                                                            <Setter Property="Text" Value="FUTURA"/>
+                                                                            <Setter Property="Foreground" Value="{StaticResource DraftColor}"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding PaymentStatus}" Value="pending">
+                                                                            <Setter Property="Text" Value="PENDIENTE"/>
+                                                                            <Setter Property="Foreground" Value="{StaticResource DangerColor}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                </StackPanel>
                                                 <TextBlock FontSize="14" Foreground="{StaticResource TextGray}" Margin="0,3,0,0">
                                                     <Run Text="Cliente:"/>
                                                     <Run Text="{Binding ClientName}"/>
@@ -434,8 +490,19 @@
                                             </Grid>
                                         </Border>
 
-                                        <!-- Botones de Acción -->
+                                        <!-- Botones de Acción (solo para pending) -->
                                         <Grid Grid.Row="2">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding PaymentStatus}" Value="draft">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
                                             <Button Tag="{Binding}" Click="PayCommission_Click"
                                                     Background="{StaticResource SuccessColor}" Foreground="White"
                                                     BorderThickness="0" Padding="12,10" Cursor="Hand">

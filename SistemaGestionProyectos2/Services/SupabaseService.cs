@@ -2904,6 +2904,24 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        public async Task<VendorTableDb> GetVendorById(int vendorId)
+        {
+            try
+            {
+                var response = await _supabaseClient
+                    .From<VendorTableDb>()
+                    .Where(v => v.Id == vendorId)
+                    .Single();
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo vendedor: {ex.Message}");
+                return null;
+            }
+        }
+
     }
 
 }

@@ -464,8 +464,9 @@ namespace SistemaGestionProyectos2.Views
                 if (VendorComboBox.SelectedItem is VendorDb selectedVendor && selectedVendor.Id > 0)
                 {
                     vendorId = selectedVendor.Id;
-                    commissionRate = 10; // Si hay vendedor, asignar comisión
-                    System.Diagnostics.Debug.WriteLine($"✅ Vendedor seleccionado: {selectedVendor.VendorName} (ID: {vendorId})");
+                    var vendorFromDb = await _supabaseService.GetVendorById(selectedVendor.Id);
+                    commissionRate = vendorFromDb?.CommissionRate ?? 10; // ✅ Usar tasa del vendedor o 10% por defecto
+                    System.Diagnostics.Debug.WriteLine($"✅ Vendedor: {selectedVendor.VendorName} - Comisión: {commissionRate}%");
                 }
                 else
                 {
@@ -545,6 +546,7 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.Content = "GUARDAR";
             }
         }
+
 
 
 

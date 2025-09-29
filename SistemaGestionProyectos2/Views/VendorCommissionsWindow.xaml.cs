@@ -17,9 +17,6 @@ using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
 {
-    /// <summary>
-    /// Ventana simplificada para gestión de comisiones de vendedores
-    /// </summary>
     public partial class VendorCommissionsWindow : Window
     {
         private readonly SupabaseService _supabaseService;
@@ -39,7 +36,7 @@ namespace SistemaGestionProyectos2.Views
             _vendorCommissions = new ObservableCollection<CommissionDetailViewModel>();
 
             InitializeUI();
-            _ = LoadVendorsWithPendingCommissions();
+            _ = LoadVendorsWithCommissions();
         }
 
         private void InitializeUI()
@@ -49,49 +46,46 @@ namespace SistemaGestionProyectos2.Views
             CommissionsItemsControl.ItemsSource = _vendorCommissions;
         }
 
-        private async Task LoadVendorsWithPendingCommissions()
+        private async Task LoadVendorsWithCommissions()
         {
             try
             {
                 var supabaseClient = _supabaseService.GetClient();
 
-                // 1. Cargar SOLO comisiones pendientes
+                // 1. Cargar TODAS las comisiones (draft y pending)
                 var commissionsResponse = await supabaseClient
                     .From<VendorCommissionPaymentDb>()
-                    .Where(c => c.PaymentStatus == "pending")
+                    .Where(c => c.PaymentStatus == "draft" || c.PaymentStatus == "pending")
                     .Select("*")
                     .Order("f_vendor", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
-                var pendingCommissions = commissionsResponse?.Models ?? new List<VendorCommissionPaymentDb>();
+                var allCommissions = commissionsResponse?.Models ?? new List<VendorCommissionPaymentDb>();
 
-                if (pendingCommissions.Count == 0)
+                if (allCommissions.Count == 0)
                 {
-                    // Limpiar la UI cuando no hay comisiones pendientes
                     _vendors.Clear();
                     _vendorCommissions.Clear();
                     UpdateTotalPending(0);
 
-                    // Mostrar estado vacío
                     EmptyStatePanel.Visibility = Visibility.Visible;
                     CommissionsDetailPanel.Visibility = Visibility.Collapsed;
 
-                    // Actualizar el mensaje del estado vacío
                     var emptyPanel = EmptyStatePanel.Children[0] as StackPanel;
                     if (emptyPanel != null)
                     {
                         var textBlocks = emptyPanel.Children.OfType<TextBlock>().ToList();
                         if (textBlocks.Count >= 2)
                         {
-                            textBlocks[1].Text = "No hay comisiones pendientes";
-                            textBlocks[2].Text = "Todas las comisiones han sido pagadas";
+                            textBlocks[1].Text = "No hay comisiones";
+                            textBlocks[2].Text = "No se encontraron comisiones para ningún vendedor";
                         }
                     }
                     return;
                 }
 
                 // 2. Agrupar por vendedor
-                var vendorGroups = pendingCommissions.GroupBy(c => c.VendorId);
+                var vendorGroups = allCommissions.GroupBy(c => c.VendorId);
 
                 // 3. Cargar información de vendedores
                 var vendorIds = vendorGroups.Select(g => g.Key).ToList();
@@ -104,7 +98,7 @@ namespace SistemaGestionProyectos2.Views
 
                 // 4. Construir ViewModels de vendedores
                 _vendors.Clear();
-                decimal totalPending = 0;
+                decimal totalPendingGlobal = 0;
 
                 foreach (var group in vendorGroups)
                 {
@@ -112,33 +106,53 @@ namespace SistemaGestionProyectos2.Views
                     if (vendor == null) continue;
 
                     var vendorCommissions = group.ToList();
-                    var vendorTotal = vendorCommissions.Sum(c => c.CommissionAmount);
-                    totalPending += vendorTotal;
+
+                    // Separar por estado
+                    var pendingCommissions = vendorCommissions.Where(c => c.PaymentStatus == "pending").ToList();
+                    var draftCommissions = vendorCommissions.Where(c => c.PaymentStatus == "draft").ToList();
+
+                    // Calcular totales
+                    decimal totalPending = pendingCommissions.Sum(c => c.CommissionAmount);
+                    decimal totalDraft = draftCommissions.Sum(c => c.CommissionAmount);
+                    decimal totalAll = totalPending + totalDraft;
+
+                    totalPendingGlobal += totalPending;
 
                     var vendorVm = new VendorSummaryViewModel
                     {
                         VendorId = vendor.Id,
                         VendorName = vendor.VendorName ?? "Sin nombre",
                         Initials = GetInitials(vendor.VendorName),
-                        PendingCount = vendorCommissions.Count,
-                        TotalPending = vendorTotal,
-                        TotalPendingFormatted = vendorTotal.ToString("C", _cultureMX),
+                        PendingCount = pendingCommissions.Count,
+                        DraftCount = draftCommissions.Count,
+                        TotalPending = totalPending,
+                        TotalDraft = totalDraft,
+                        TotalAll = totalAll,
+                        TotalPendingFormatted = totalPending.ToString("C", _cultureMX),
+                        TotalDraftFormatted = totalDraft.ToString("C", _cultureMX),
+                        TotalAllFormatted = totalAll.ToString("C", _cultureMX),
                         AvatarColor1 = GetRandomColor(vendor.Id),
-                        AvatarColor2 = GetRandomColor(vendor.Id + 100)
+                        AvatarColor2 = GetRandomColor(vendor.Id + 100),
+                        HasPendingPayments = pendingCommissions.Count > 0
                     };
 
                     _vendors.Add(vendorVm);
                 }
 
-                // 5. Ordenar por monto pendiente (mayor a menor)
-                var sortedVendors = _vendors.OrderByDescending(v => v.TotalPending).ToList();
+                // 5. Ordenar: primero los que tienen comisiones pendientes, luego por monto total
+                var sortedVendors = _vendors
+                    .OrderByDescending(v => v.HasPendingPayments)
+                    .ThenByDescending(v => v.TotalPending)
+                    .ThenByDescending(v => v.TotalAll)
+                    .ToList();
+
                 _vendors.Clear();
                 foreach (var vendor in sortedVendors)
                 {
                     _vendors.Add(vendor);
                 }
 
-                UpdateTotalPending(totalPending);
+                UpdateTotalPending(totalPendingGlobal);
 
                 // Seleccionar el primer vendedor automáticamente
                 if (_vendors.Count > 0)
@@ -160,15 +174,12 @@ namespace SistemaGestionProyectos2.Views
                 _selectedVendor = vendor;
                 await LoadVendorCommissions(vendor.VendorId);
 
-                // Mostrar panel de comisiones
                 EmptyStatePanel.Visibility = Visibility.Collapsed;
                 CommissionsDetailPanel.Visibility = Visibility.Visible;
 
-                // Actualizar información del vendedor seleccionado
                 SelectedVendorInitials.Text = vendor.Initials;
                 SelectedVendorName.Text = vendor.VendorName;
 
-                // Actualizar avatar con colores del vendedor
                 var gradientBrush = new LinearGradientBrush();
                 gradientBrush.StartPoint = new Point(0, 0);
                 gradientBrush.EndPoint = new Point(1, 1);
@@ -184,11 +195,11 @@ namespace SistemaGestionProyectos2.Views
             {
                 var supabaseClient = _supabaseService.GetClient();
 
-                // 1. Cargar comisiones pendientes del vendedor
+                // 1. Cargar TODAS las comisiones del vendedor (draft y pending)
                 var commissionsResponse = await supabaseClient
                     .From<VendorCommissionPaymentDb>()
                     .Where(c => c.VendorId == vendorId)
-                    .Where(c => c.PaymentStatus == "pending")
+                    .Where(c => c.PaymentStatus == "draft" || c.PaymentStatus == "pending")
                     .Select("*")
                     .Order("f_order", Postgrest.Constants.Ordering.Descending)
                     .Get();
@@ -229,8 +240,12 @@ namespace SistemaGestionProyectos2.Views
                 // 4. Construir ViewModels de comisiones
                 _vendorCommissions.Clear();
                 decimal totalPending = 0;
-                decimal totalRate = 0;
-                int count = 0;
+                decimal totalDraft = 0;
+                decimal totalAll = 0;
+                int pendingCount = 0;
+                int draftCount = 0;
+
+                var commissionViewModels = new List<CommissionDetailViewModel>();
 
                 foreach (var commission in commissions)
                 {
@@ -254,21 +269,44 @@ namespace SistemaGestionProyectos2.Views
                         SubtotalFormatted = (order?.SaleSubtotal ?? 0).ToString("C", _cultureMX),
                         CommissionRate = commission.CommissionRate,
                         CommissionAmount = commission.CommissionAmount,
-                        CommissionAmountFormatted = commission.CommissionAmount.ToString("C", _cultureMX)
+                        CommissionAmountFormatted = commission.CommissionAmount.ToString("C", _cultureMX),
+                        PaymentStatus = commission.PaymentStatus
                     };
 
-                    _vendorCommissions.Add(commissionVm);
-                    totalPending += commission.CommissionAmount;
-                    totalRate += commission.CommissionRate;
-                    count++;
+                    commissionViewModels.Add(commissionVm);
+
+                    if (commission.PaymentStatus == "pending")
+                    {
+                        totalPending += commission.CommissionAmount;
+                        pendingCount++;
+                    }
+                    else if (commission.PaymentStatus == "draft")
+                    {
+                        totalDraft += commission.CommissionAmount;
+                        draftCount++;
+                    }
                 }
 
-                // 5. Actualizar resumen
-                decimal averageRate = count > 0 ? totalRate / count : 0;
-                UpdateVendorSummary(totalPending, count, averageRate);
+                // 5. Ordenar: primero las pending, luego las draft, y dentro de cada grupo por fecha
+                var sortedCommissions = commissionViewModels
+                    .OrderBy(c => c.PaymentStatus == "pending" ? 0 : 1)
+                    .ThenByDescending(c => c.OrderDate)
+                    .ToList();
 
-                // Mostrar/ocultar botón de pagar todas
-                PayAllButton.Visibility = count > 1 ? Visibility.Visible : Visibility.Collapsed;
+                foreach (var commission in sortedCommissions)
+                {
+                    _vendorCommissions.Add(commission);
+                }
+
+                totalAll = totalPending + totalDraft;
+
+                // 6. Actualizar resúmenes
+                VendorTotalPendingText.Text = totalPending.ToString("C", _cultureMX);
+                VendorCommissionsCountText.Text = $"{pendingCount + draftCount}";
+                VendorTotalAllText.Text = totalAll.ToString("C", _cultureMX);
+
+                // Mostrar/ocultar botón de pagar todas (solo si hay pendientes)
+                PayAllButton.Visibility = pendingCount > 1 ? Visibility.Visible : Visibility.Collapsed;
             }
             catch (Exception ex)
             {
@@ -277,11 +315,11 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void UpdateVendorSummary(decimal totalPending, int count, decimal averageRate)
+        private void UpdateVendorSummary(decimal totalPending, int count, decimal totalAll)
         {
             VendorTotalPendingText.Text = totalPending.ToString("C", _cultureMX);
             VendorCommissionsCountText.Text = count.ToString();
-            VendorAverageRateText.Text = $"{averageRate:F2}%";
+            VendorTotalAllText.Text = totalAll.ToString("C", _cultureMX);
         }
 
         private void UpdateTotalPending(decimal total)
@@ -289,12 +327,13 @@ namespace SistemaGestionProyectos2.Views
             TotalPendingText.Text = total.ToString("C", _cultureMX);
         }
 
+        // Resto de métodos sin cambios (PayCommission_Click, MarkCommissionAsPaid, etc.)
         private async void PayCommission_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var commission = button?.Tag as CommissionDetailViewModel;
 
-            if (commission != null)
+            if (commission != null && commission.PaymentStatus == "pending")
             {
                 await MarkCommissionAsPaid(commission.CommissionPaymentId, button);
             }
@@ -303,7 +342,13 @@ namespace SistemaGestionProyectos2.Views
         private async void PayAllButton_Click(object sender, RoutedEventArgs e)
         {
             if (_selectedVendor == null || _vendorCommissions.Count == 0) return;
-            await MarkAllCommissionsAsPaid();
+
+            // Solo pagar las que están en pending
+            var pendingCommissions = _vendorCommissions.Where(c => c.PaymentStatus == "pending").ToList();
+            if (pendingCommissions.Count > 0)
+            {
+                await MarkAllCommissionsAsPaid(pendingCommissions);
+            }
         }
 
         private async Task MarkCommissionAsPaid(int commissionPaymentId, Button button = null)
@@ -323,23 +368,19 @@ namespace SistemaGestionProyectos2.Views
 
                 if (update != null)
                 {
-                    // Animación de éxito en el botón
                     if (button != null)
                     {
                         ShowSuccessAnimation(button);
                     }
 
-                    // Esperar un poco para que se vea la animación
                     await Task.Delay(1500);
 
-                    // Recargar comisiones del vendedor
                     if (_selectedVendor != null)
                     {
                         await LoadVendorCommissions(_selectedVendor.VendorId);
                     }
 
-                    // Recargar lista de vendedores
-                    await LoadVendorsWithPendingCommissions();
+                    await LoadVendorsWithCommissions();
                 }
             }
             catch (Exception ex)
@@ -349,7 +390,7 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async Task MarkAllCommissionsAsPaid()
+        private async Task MarkAllCommissionsAsPaid(List<CommissionDetailViewModel> pendingCommissions)
         {
             try
             {
@@ -357,7 +398,7 @@ namespace SistemaGestionProyectos2.Views
                 var paymentDate = DateTime.Now;
                 int successCount = 0;
 
-                foreach (var commission in _vendorCommissions)
+                foreach (var commission in pendingCommissions)
                 {
                     var update = await supabaseClient
                         .From<VendorCommissionPaymentDb>()
@@ -371,13 +412,10 @@ namespace SistemaGestionProyectos2.Views
                     if (update != null) successCount++;
                 }
 
-                // Mostrar notificación temporal
                 ShowTemporaryNotification($"✓ Se pagaron {successCount} comisiones correctamente");
 
                 await Task.Delay(1500);
-
-                // Recargar todo
-                await LoadVendorsWithPendingCommissions();
+                await LoadVendorsWithCommissions();
             }
             catch (Exception ex)
             {
@@ -386,9 +424,9 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // Métodos de utilidad sin cambios
         private void ShowSuccessAnimation(Button button)
         {
-            // Cambiar el contenido del botón a un check
             button.IsEnabled = false;
             button.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#48BB78"));
             button.Content = new StackPanel
@@ -402,7 +440,6 @@ namespace SistemaGestionProyectos2.Views
                 }
             };
 
-            // Animación de desvanecimiento
             var fadeAnimation = new DoubleAnimation
             {
                 From = 1.0,
@@ -415,7 +452,6 @@ namespace SistemaGestionProyectos2.Views
 
         private void ShowTemporaryNotification(string message)
         {
-            // Crear un popup temporal con el mensaje
             var notification = new Border
             {
                 Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#48BB78")),
@@ -433,17 +469,14 @@ namespace SistemaGestionProyectos2.Views
                 }
             };
 
-            // Agregar al Grid principal
             if (this.Content is Grid mainGrid)
             {
                 mainGrid.Children.Add(notification);
                 Grid.SetColumnSpan(notification, 2);
 
-                // Animación de entrada
                 var fadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(300)));
                 notification.BeginAnimation(OpacityProperty, fadeIn);
 
-                // Remover después de 2 segundos
                 var timer = new System.Windows.Threading.DispatcherTimer
                 {
                     Interval = TimeSpan.FromSeconds(2)
@@ -459,27 +492,25 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Eventos para edición de tasa de comisión
+        // Eventos para edición de tasa - sin cambios
         private void CommissionRate_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             var textBox = sender as TextBox;
             if (textBox != null)
             {
                 var commission = textBox.Tag as CommissionDetailViewModel;
-                if (commission != null)
+                if (commission != null && commission.PaymentStatus == "pending")
                 {
                     commission.IsEditingRate = true;
                     textBox.IsReadOnly = false;
-
-                    // IMPORTANTE: Quitar el símbolo % para la edición
                     textBox.Text = commission.CommissionRate.ToString("F2");
-
                     textBox.SelectAll();
                     textBox.Focus();
                 }
             }
         }
 
+        // Resto de eventos sin cambios...
         private async void CommissionRate_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
@@ -499,7 +530,6 @@ namespace SistemaGestionProyectos2.Views
                     var commission = textBox.Tag as CommissionDetailViewModel;
                     if (commission != null)
                     {
-                        // Restaurar el valor original con formato
                         textBox.Text = $"{commission.CommissionRate:F2}%";
                         commission.IsEditingRate = false;
                         textBox.IsReadOnly = true;
@@ -529,22 +559,18 @@ namespace SistemaGestionProyectos2.Views
         private async Task SaveCommissionRate(TextBox textBox)
         {
             var commission = textBox.Tag as CommissionDetailViewModel;
-            if (commission != null)
+            if (commission != null && commission.PaymentStatus == "pending")
             {
-                // Limpiar el texto de % si existe
                 string cleanText = textBox.Text.Replace("%", "").Trim();
-                if (decimal.TryParse(textBox.Text, out decimal newRate) && newRate >= 0 && newRate <= 100)
+                if (decimal.TryParse(cleanText, out decimal newRate) && newRate >= 0 && newRate <= 100)
                 {
                     if (newRate != commission.CommissionRate)
                     {
                         try
                         {
                             var supabaseClient = _supabaseService.GetClient();
-
-                            // Calcular nueva comisión
                             decimal newCommissionAmount = (commission.Subtotal * newRate) / 100;
 
-                            // Actualizar en la BD
                             var update = await supabaseClient
                                 .From<VendorCommissionPaymentDb>()
                                 .Where(x => x.Id == commission.CommissionPaymentId)
@@ -556,17 +582,14 @@ namespace SistemaGestionProyectos2.Views
 
                             if (update != null)
                             {
-                                // Actualizar el ViewModel
                                 commission.CommissionRate = newRate;
                                 commission.CommissionAmount = newCommissionAmount;
                                 commission.CommissionAmountFormatted = newCommissionAmount.ToString("C", _cultureMX);
 
-                                // Mostrar indicador de éxito
                                 textBox.Background = new SolidColorBrush(Color.FromArgb(50, 76, 175, 80));
                                 await Task.Delay(500);
                                 textBox.Background = Brushes.Transparent;
 
-                                // Actualizar resumen
                                 if (_selectedVendor != null)
                                 {
                                     await LoadVendorCommissions(_selectedVendor.VendorId);
@@ -577,7 +600,7 @@ namespace SistemaGestionProyectos2.Views
                         {
                             MessageBox.Show($"Error al actualizar tasa: {ex.Message}", "Error",
                                 MessageBoxButton.OK, MessageBoxImage.Error);
-                            textBox.Text = commission.CommissionRate.ToString("F2");
+                            textBox.Text = $"{commission.CommissionRate:F2}%";
                         }
                     }
                 }
@@ -586,7 +609,6 @@ namespace SistemaGestionProyectos2.Views
                     textBox.Text = $"{commission.CommissionRate:F2}%";
                 }
 
-                // Al finalizar, restaurar el formato con %
                 textBox.Text = $"{commission.CommissionRate:F2}%";
                 commission.IsEditingRate = false;
                 textBox.IsReadOnly = true;
@@ -604,9 +626,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 var vendorManagementWindow = new VendorManagementWindow(_currentUser);
                 vendorManagementWindow.ShowDialog();
-
-                // Recargar datos después de cerrar la ventana
-                _ = LoadVendorsWithPendingCommissions();
+                _ = LoadVendorsWithCommissions();
             }
             catch (Exception ex)
             {
@@ -645,10 +665,16 @@ namespace SistemaGestionProyectos2.Views
         public string VendorName { get; set; }
         public string Initials { get; set; }
         public int PendingCount { get; set; }
+        public int DraftCount { get; set; }
         public decimal TotalPending { get; set; }
+        public decimal TotalDraft { get; set; }
+        public decimal TotalAll { get; set; }
         public string TotalPendingFormatted { get; set; }
+        public string TotalDraftFormatted { get; set; }
+        public string TotalAllFormatted { get; set; }
         public string AvatarColor1 { get; set; }
         public string AvatarColor2 { get; set; }
+        public bool HasPendingPayments { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -663,6 +689,7 @@ namespace SistemaGestionProyectos2.Views
         private decimal _commissionRate;
         private decimal _commissionAmount;
         private string _commissionAmountFormatted;
+        private string _paymentStatus;
 
         public int CommissionPaymentId { get; set; }
         public int OrderId { get; set; }
@@ -672,6 +699,16 @@ namespace SistemaGestionProyectos2.Views
         public string ClientName { get; set; }
         public decimal Subtotal { get; set; }
         public string SubtotalFormatted { get; set; }
+
+        public string PaymentStatus
+        {
+            get => _paymentStatus;
+            set
+            {
+                _paymentStatus = value;
+                OnPropertyChanged();
+            }
+        }
 
         public decimal CommissionRate
         {
