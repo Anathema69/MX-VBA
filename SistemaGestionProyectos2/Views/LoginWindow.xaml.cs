@@ -146,7 +146,7 @@ namespace SistemaGestionProyectos2.Views
                     else if (user.Role == "salesperson")
                     {
                         // Vendedor abre el portal del vendedor
-                        VendorPortalWindow vendorPortal = new VendorPortalWindow(currentUser);
+                        VendorDashboard vendorPortal = new VendorDashboard(currentUser);
                         vendorPortal.Show();
 
                     }

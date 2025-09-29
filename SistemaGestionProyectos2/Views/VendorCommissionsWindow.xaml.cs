@@ -123,8 +123,9 @@ namespace SistemaGestionProyectos2.Views
                         VendorId = vendor.Id,
                         VendorName = vendor.VendorName ?? "Sin nombre",
                         Initials = GetInitials(vendor.VendorName),
-                        PendingCount = pendingCommissions.Count,
-                        DraftCount = draftCommissions.Count,
+                        TotalCount = vendorCommissions.Count,  // Total de comisiones
+                        PendingCount = pendingCommissions.Count,  // Mantener para lógica interna
+                        DraftCount = draftCommissions.Count,  // Mantener para lógica interna
                         TotalPending = totalPending,
                         TotalDraft = totalDraft,
                         TotalAll = totalAll,
@@ -357,6 +358,9 @@ namespace SistemaGestionProyectos2.Views
             {
                 var supabaseClient = _supabaseService.GetClient();
 
+                // Guardar el vendedor actual
+                var currentVendorId = _selectedVendor?.VendorId;
+
                 var update = await supabaseClient
                     .From<VendorCommissionPaymentDb>()
                     .Where(x => x.Id == commissionPaymentId)
@@ -375,12 +379,14 @@ namespace SistemaGestionProyectos2.Views
 
                     await Task.Delay(1500);
 
+                    // Recargar solo las comisiones del vendedor actual
                     if (_selectedVendor != null)
                     {
                         await LoadVendorCommissions(_selectedVendor.VendorId);
                     }
 
-                    await LoadVendorsWithCommissions();
+                    // Recargar la lista pero mantener la selección
+                    await LoadVendorsWithCommissionsKeepingSelection(currentVendorId);
                 }
             }
             catch (Exception ex)
@@ -390,12 +396,30 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // Nuevo método para recargar vendedores manteniendo la selección sin salir del vendedor actual
+        private async Task LoadVendorsWithCommissionsKeepingSelection(int? vendorIdToSelect)
+        {
+            // Llamar al método original de carga
+            await LoadVendorsWithCommissions();
+
+            // Restaurar la selección si había un vendedor seleccionado
+            if (vendorIdToSelect.HasValue)
+            {
+                var vendorToSelect = _vendors.FirstOrDefault(v => v.VendorId == vendorIdToSelect.Value);
+                if (vendorToSelect != null)
+                {
+                    VendorsListBox.SelectedItem = vendorToSelect;
+                }
+            }
+        }
+
         private async Task MarkAllCommissionsAsPaid(List<CommissionDetailViewModel> pendingCommissions)
         {
             try
             {
                 var supabaseClient = _supabaseService.GetClient();
                 var paymentDate = DateTime.Now;
+                var currentVendorId = _selectedVendor?.VendorId;  // Guardar vendedor actual
                 int successCount = 0;
 
                 foreach (var commission in pendingCommissions)
@@ -415,7 +439,7 @@ namespace SistemaGestionProyectos2.Views
                 ShowTemporaryNotification($"✓ Se pagaron {successCount} comisiones correctamente");
 
                 await Task.Delay(1500);
-                await LoadVendorsWithCommissions();
+                await LoadVendorsWithCommissionsKeepingSelection(currentVendorId);  // Mantener selección
             }
             catch (Exception ex)
             {
@@ -664,6 +688,7 @@ namespace SistemaGestionProyectos2.Views
         public int VendorId { get; set; }
         public string VendorName { get; set; }
         public string Initials { get; set; }
+        public int TotalCount { get; set; }
         public int PendingCount { get; set; }
         public int DraftCount { get; set; }
         public decimal TotalPending { get; set; }
