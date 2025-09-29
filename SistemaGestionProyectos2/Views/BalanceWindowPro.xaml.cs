@@ -306,7 +306,7 @@ namespace SistemaGestionProyectos2.Views
         }
 
         private void AddDataRow(string concepto, decimal[] valores, int row, bool isTotal,
-            Color? backgroundColor = null, bool isEditable = false, bool showNegative = false)
+    Color? backgroundColor = null, bool isEditable = false, bool showNegative = false)
         {
             gridBalance.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -353,20 +353,108 @@ namespace SistemaGestionProyectos2.Views
                 var value = valores[i];
                 total += value;
 
-                var valueText = new TextBlock
+                // Para Horas Extra, hacer las celdas editables
+                // En el método AddDataRow, mejorar la lógica de horas extras:
+                if (concepto == "Horas Extra" && !isTotal)
                 {
-                    Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
-                    FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
-                    FontSize = isTotal ? 11 : 10,
-                    Foreground = (showNegative && value < 0) ?
-                        new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
-                        new SolidColorBrush(Color.FromRgb(55, 65, 81)),
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 10, 0)
-                };
+                    var monthIndex = i;
+                    var valueTextBox = new TextBox
+                    {
+                        Text = value > 0 ? value.ToString("C0", _mexicanCulture) : "$0",
+                        FontSize = 10,
+                        TextAlignment = TextAlignment.Right,
+                        BorderThickness = new Thickness(0),
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(0, 0, 10, 0),
+                        Tag = new { Month = i + 1, Year = _currentYear, OriginalValue = value }
+                    };
 
-                valueBorder.Child = valueText;
+                    valueTextBox.GotFocus += (s, e) =>
+                    {
+                        var tb = s as TextBox;
+                        tb.Background = new SolidColorBrush(Color.FromRgb(254, 249, 195));
+                        // Limpiar el formato para edición
+                        if (tb.Text == "$0")
+                        {
+                            tb.Text = "";
+                        }
+                        else
+                        {
+                            tb.SelectAll();
+                        }
+                    };
+
+                    
+                    valueTextBox.LostFocus += async (s, e) =>
+                    {
+                        var tb = s as TextBox;
+                        tb.Background = Brushes.Transparent;
+                        var tag = (dynamic)tb.Tag;
+
+                        string cleanValue = tb.Text.Replace("$", "").Replace(",", "").Trim();
+
+                        if (string.IsNullOrWhiteSpace(cleanValue))
+                        {
+                            cleanValue = "0";
+                        }
+
+                        if (decimal.TryParse(cleanValue, out decimal newAmount))
+                        {
+                            if (newAmount != tag.OriginalValue)
+                            {
+                                if (newAmount > 0 || tag.OriginalValue > 0)
+                                {
+                                    bool success = await _supabaseService.UpdateOvertimeHours(
+                                        tag.Year, tag.Month, newAmount,
+                                        $"Actualizado desde balance", _currentUser.Id);
+
+                                    if (success)
+                                    {
+                                        // Mostrar mensaje temporal
+                                        tb.Text = newAmount.ToString("C0", _mexicanCulture);
+
+                                        // Recargar todo el balance para reflejar cambios
+                                        await LoadBalanceData();
+                                    }
+                                }
+                                else
+                                {
+                                    tb.Text = "$0";
+                                }
+                            }
+                            else
+                            {
+                                tb.Text = newAmount > 0 ? newAmount.ToString("C0", _mexicanCulture) : "$0";
+                            }
+                        }
+                        else
+                        {
+                            tb.Text = tag.OriginalValue > 0 ?
+                                ((decimal)tag.OriginalValue).ToString("C0", _mexicanCulture) : "$0";
+                        }
+                    };
+
+                    valueBorder.Child = valueTextBox;
+                }
+                else
+                {
+                    // Celda normal no editable
+                    var valueText = new TextBlock
+                    {
+                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
+                        FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
+                        FontSize = isTotal ? 11 : 10,
+                        Foreground = (showNegative && value < 0) ?
+                            new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
+                            new SolidColorBrush(Color.FromRgb(55, 65, 81)),
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(0, 0, 10, 0)
+                    };
+
+                    valueBorder.Child = valueText;
+                }
+
                 Grid.SetRow(valueBorder, row);
                 Grid.SetColumn(valueBorder, i + 1);
                 gridBalance.Children.Add(valueBorder);
@@ -398,6 +486,70 @@ namespace SistemaGestionProyectos2.Views
             Grid.SetRow(totalBorder, row);
             Grid.SetColumn(totalBorder, 13);
             gridBalance.Children.Add(totalBorder);
+        }
+
+
+        // Nuevo método para refrescar solo los datos
+        private async Task RefreshBalanceData()
+        {
+            try
+            {
+                var supabaseClient = _supabaseService.GetClient();
+                var response = await supabaseClient
+                    .From<BalanceCompletoDb>()
+                    .Where(b => b.Año == _currentYear)
+                    .Order("mes_numero", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                _balanceData = response?.Models ?? new List<BalanceCompletoDb>();
+
+                // Solo actualizar KPIs sin reconstruir toda la tabla
+                UpdateKPIs();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al refrescar datos: {ex.Message}");
+            }
+        }
+
+        // Método para actualizar el total de una fila específica
+        private void UpdateRowTotal(int row)
+        {
+            decimal total = 0;
+
+            // Buscar todas las celdas de esa fila y sumar
+            foreach (var child in gridBalance.Children)
+            {
+                if (child is Border border && Grid.GetRow(border) == row)
+                {
+                    int col = Grid.GetColumn(border);
+                    // Columnas 1-12 son los meses
+                    if (col >= 1 && col <= 12)
+                    {
+                        if (border.Child is TextBox tb)
+                        {
+                            string cleanValue = tb.Text.Replace("$", "").Replace(",", "");
+                            if (decimal.TryParse(cleanValue, out decimal val))
+                            {
+                                total += val;
+                            }
+                        }
+                        else if (border.Child is TextBlock txt)
+                        {
+                            string cleanValue = txt.Text.Replace("$", "").Replace(",", "").Replace("-", "");
+                            if (decimal.TryParse(cleanValue, out decimal val))
+                            {
+                                total += val;
+                            }
+                        }
+                    }
+                    // Columna 13 es el total
+                    else if (col == 13 && border.Child is TextBlock totalText)
+                    {
+                        totalText.Text = total.ToString("C0", _mexicanCulture);
+                    }
+                }
+            }
         }
 
         private void UpdateKPIs()

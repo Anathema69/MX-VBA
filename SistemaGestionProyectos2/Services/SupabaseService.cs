@@ -2904,6 +2904,9 @@ namespace SistemaGestionProyectos2.Services
             }
         }
 
+        // ===============================================
+        // ========== MÉTODOS DE VENDEDORES ==========
+        // ==============================================
         public async Task<VendorTableDb> GetVendorById(int vendorId)
         {
             try
@@ -2919,6 +2922,32 @@ namespace SistemaGestionProyectos2.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error obteniendo vendedor: {ex.Message}");
                 return null;
+            }
+        }
+
+        // ===============================================
+        // Método par actualizar horas extras en BalancePro
+        // ==============================================
+        public async Task<bool> UpdateOvertimeHours(int year, int month, decimal amount, string notes, int userId)
+        {
+            try
+            {
+                var result = await _supabaseClient
+                    .Rpc("upsert_overtime_hours", new Dictionary<string, object>
+                    {
+                { "p_year", year },
+                { "p_month", month },
+                { "p_amount", amount },
+                { "p_notes", notes ?? "" },
+                { "p_user_id", userId }
+                    });
+
+                return result != null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error actualizando horas extras: {ex.Message}");
+                return false;
             }
         }
 
