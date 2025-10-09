@@ -42,6 +42,7 @@ namespace SistemaGestionProyectos2.Views
                     // Admin tiene acceso a todo
                     OrdersModuleButton.IsEnabled = true;
                     VendorPortalButton.IsEnabled = true;
+                    TestRunnerButton.Visibility = Visibility.Visible; // Solo admin puede ver tests
                     break;
 
                     // SOLO EL ADMIN TENDRÁ ACCESO AL MÓDULO DE ÓRDENES
@@ -149,6 +150,29 @@ namespace SistemaGestionProyectos2.Views
 
             _timer?.Stop();
             base.OnClosed(e);
+        }
+
+        // MÉTODO: Click en el Test Runner
+        private void TestRunner_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo Test Runner...";
+
+                var testWindow = new TestRunnerWindow();
+                testWindow.Show();
+
+                StatusText.Text = "Test Runner abierto";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error abriendo Test Runner: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error abriendo Test Runner";
+            }
         }
 
         // MÉTODO IMPORTANTE: Click en el portal del vendedor

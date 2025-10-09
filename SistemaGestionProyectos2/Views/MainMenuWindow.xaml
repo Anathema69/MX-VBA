@@ -263,6 +263,55 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
+
+                        <!-- TEST RUNNER (SOLO ADMIN) -->
+                        <Button x:Name="TestRunnerButton"
+                                Click="TestRunner_Click"
+                                Width="200"
+                                Height="120"
+                                Margin="15"
+                                Cursor="Hand"
+                                Visibility="Collapsed">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border"
+                                            Background="#FFF3E0"
+                                            BorderBrush="#FF9800"
+                                            BorderThickness="2"
+                                            CornerRadius="5">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="🧪"
+                                                       FontSize="36"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#FF9800"/>
+
+                                            <TextBlock Grid.Row="1"
+                                                       Text="TEST RUNNER"
+                                                       FontWeight="Bold"
+                                                       FontSize="12"
+                                                       HorizontalAlignment="Center"
+                                                       Foreground="#FF9800"
+                                                       Margin="0,5,0,10"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FFE0B2"/>
+                                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FFCC80"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
                     </WrapPanel>
 
                     <!-- Fila Inferior de Módulos -->
