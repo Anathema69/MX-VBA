@@ -1,4 +1,5 @@
 ﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.ViewModels;
 using Supabase.Gotrue;
@@ -93,10 +94,10 @@ namespace SistemaGestionProyectos2.Views
             var filtered = string.IsNullOrWhiteSpace(_searchText)
                 ? _employees
                 : _employees.Where(emp =>
-                    emp.Employee.ToLower().Contains(_searchText) ||
-                    emp.Title.ToLower().Contains(_searchText) ||
-                    emp.Range.ToLower().Contains(_searchText) ||
-                    emp.Condition.ToLower().Contains(_searchText));
+                    (emp.Employee ?? "").ToLower().Contains(_searchText) ||
+                    (emp.Title ?? "").ToLower().Contains(_searchText) ||
+                    (emp.Range ?? "").ToLower().Contains(_searchText) ||
+                    (emp.Condition ?? "").ToLower().Contains(_searchText));
 
             foreach (var employee in filtered)
             {

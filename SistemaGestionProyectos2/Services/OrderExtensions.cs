@@ -2,6 +2,7 @@
 
 using System;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 
 namespace SistemaGestionProyectos2.Services
 {

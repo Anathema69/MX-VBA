@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views

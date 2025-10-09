@@ -1,4 +1,5 @@
 ﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.ViewModels;
 using System;
@@ -1300,7 +1301,7 @@ namespace SistemaGestionProyectos2.Views
                 if (orderList == null) return;
 
                 // Cargar las siguientes 50 órdenes
-                var orders = await _supabaseService.GetRecentOrders(50, offset: currentCount);
+                var orders = await _supabaseService.GetRecentOrders(50);
 
                 foreach (var order in orders)
                 {

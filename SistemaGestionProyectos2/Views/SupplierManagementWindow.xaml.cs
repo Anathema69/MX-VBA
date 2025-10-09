@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views

@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_vendor")]
     public class VendorTableDb : BaseModel
     {
-        [PrimaryKey("f_vendor")]
+        [PrimaryKey("f_vendor", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_vendorname")]
         public string VendorName { get; set; }
@@ -38,6 +41,9 @@ namespace SistemaGestionProyectos2.Models.Database
     public class VendorDb
     {
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
         public string VendorName { get; set; }
 
         public static VendorDb FromUser(UserDb user)

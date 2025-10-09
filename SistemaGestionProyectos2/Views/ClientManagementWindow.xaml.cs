@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
@@ -292,33 +293,16 @@ namespace SistemaGestionProyectos2.Views
                         return;
                     }
 
-                    if (string.IsNullOrWhiteSpace(contact.Email))
-                    {
-                        MessageBox.Show("El email del contacto es obligatorio", "Validación",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                        ContactsDataGrid.SelectedItem = contact;
-                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[3]);
-                        ContactsDataGrid.BeginEdit();
-                        return;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(contact.Phone))
-                    {
-                        MessageBox.Show("El teléfono del contacto es obligatorio", "Validación",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                        ContactsDataGrid.SelectedItem = contact;
-                        ContactsDataGrid.CurrentCell = new DataGridCellInfo(contact, ContactsDataGrid.Columns[4]);
-                        ContactsDataGrid.BeginEdit();
-                        return;
-                    }
+                    // Email y teléfono son opcionales - se eliminó la validación obligatoria
 
                     var contactDb = new ContactDb
                     {
-                        Id = contact.Id,
+                        // NO asignar Id para nuevos contactos (auto-generado por BD)
+                        Id = contact.IsNew ? 0 : contact.Id,
                         ClientId = contact.ClientId,
                         ContactName = contact.Name.Trim(),
-                        Email = contact.Email.Trim(),
-                        Phone = contact.Phone.Trim(),
+                        Email = contact.Email?.Trim() ?? "",
+                        Phone = contact.Phone?.Trim() ?? "",
                         Position = contact.Position.Trim(),
                         IsPrimary = contact.IsPrimary,
                         IsActive = true

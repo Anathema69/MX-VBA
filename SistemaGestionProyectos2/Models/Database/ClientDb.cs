@@ -1,15 +1,19 @@
 using Postgrest.Attributes;
 using Postgrest.Models;
 using System;
+using Newtonsoft.Json;
 
 namespace SistemaGestionProyectos2.Models.Database
 {
     [Table("t_client")]
     public class ClientDb : BaseModel
     {
-        [PrimaryKey("f_client")]
+        [PrimaryKey("f_client", shouldInsert: false)]
         [Column("f_client")]
         public int Id { get; set; }
+
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_name")]
         public string Name { get; set; }

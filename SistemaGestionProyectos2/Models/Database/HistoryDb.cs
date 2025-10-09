@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("order_history")]
     public class OrderHistoryDb : BaseModel
     {
-        [PrimaryKey("id")]
+        [PrimaryKey("id", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("order_id")]
         public int OrderId { get; set; }
@@ -41,8 +44,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_vendor_commission_payment")]
     public class VendorCommissionPaymentDb : BaseModel
     {
-        [PrimaryKey("id")]
+        [PrimaryKey("id", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_order")]
         public int OrderId { get; set; }

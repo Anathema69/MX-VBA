@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_payroll")]
     public class PayrollTable : BaseModel
     {
-        [PrimaryKey("f_payroll")]
+        [PrimaryKey("f_payroll", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_employee")]
         public string Employee { get; set; }
@@ -68,8 +71,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_payroll_history")]
     public class PayrollHistoryTable : BaseModel
     {
-        [PrimaryKey("id")]
+        [PrimaryKey("id", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_payroll")]
         public int PayrollId { get; set; }
@@ -102,8 +108,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_payrollovertime")]
     public class PayrollOvertimeTable : BaseModel
     {
-        [PrimaryKey("f_payrollovertime")]
+        [PrimaryKey("f_payrollovertime", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_date")]
         public DateTime Date { get; set; }

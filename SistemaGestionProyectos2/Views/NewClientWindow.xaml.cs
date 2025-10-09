@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views
@@ -180,17 +181,11 @@ namespace SistemaGestionProyectos2.Views
             if (string.IsNullOrWhiteSpace(ContactNameTextBox.Text))
                 errors.Add("• El nombre del contacto es obligatorio");
 
-            if (string.IsNullOrWhiteSpace(ContactEmailTextBox.Text))
-            {
-                errors.Add("• El email del contacto es obligatorio");
-            }
-            else if (!ValidateEmail())
+            // Email y teléfono son opcionales, pero si se proporciona email debe ser válido
+            if (!string.IsNullOrWhiteSpace(ContactEmailTextBox.Text) && !ValidateEmail())
             {
                 errors.Add("• El email del contacto no tiene un formato válido");
             }
-
-            if (string.IsNullOrWhiteSpace(ContactPhoneTextBox.Text))
-                errors.Add("• El teléfono del contacto es obligatorio");
 
             if (errors.Any())
             {

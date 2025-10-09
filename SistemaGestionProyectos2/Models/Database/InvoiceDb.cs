@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_invoice")]
     public class InvoiceDb : BaseModel
     {
-        [PrimaryKey("f_invoice")]
+        [PrimaryKey("f_invoice", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_order")]
         public int? OrderId { get; set; }

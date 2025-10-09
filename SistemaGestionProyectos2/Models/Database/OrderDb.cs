@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_order")]
     public class OrderDb : BaseModel
     {
-        [PrimaryKey("f_order")]
+        [PrimaryKey("f_order", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_po")]
         public string Po { get; set; }

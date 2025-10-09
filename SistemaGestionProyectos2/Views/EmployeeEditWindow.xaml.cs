@@ -1,4 +1,5 @@
 ﻿using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 using SistemaGestionProyectos2.ViewModels;
 using System;

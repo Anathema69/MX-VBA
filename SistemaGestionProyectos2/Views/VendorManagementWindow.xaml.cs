@@ -11,6 +11,7 @@ using System.Windows.Media.Animation;
 using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 
 namespace SistemaGestionProyectos2.Views

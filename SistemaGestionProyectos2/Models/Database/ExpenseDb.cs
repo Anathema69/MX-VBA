@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_expense")]
     public class ExpenseDb : BaseModel
     {
-        [PrimaryKey("f_expense")]
+        [PrimaryKey("f_expense", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_supplier")]
         public int SupplierId { get; set; }

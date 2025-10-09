@@ -7,8 +7,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_fixed_expenses")]
     public class FixedExpenseTable : BaseModel
     {
-        [PrimaryKey("id")]
+        [PrimaryKey("id", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("expense_type")]
         public string ExpenseType { get; set; }
@@ -38,8 +41,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_fixed_expenses_history")]
     public class FixedExpenseHistoryTable : BaseModel
     {
-        [PrimaryKey("id")]
+        [PrimaryKey("id", shouldInsert: false)]
         public int Id { get; set; }
+        
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("expense_id")]
         public int ExpenseId { get; set; }

@@ -6,8 +6,11 @@ namespace SistemaGestionProyectos2.Models.Database
     [Table("t_contact")]
     public class ContactDb : BaseModel
     {
-        [PrimaryKey("f_contact")]
+        [PrimaryKey("f_contact", shouldInsert: false)]
         public int Id { get; set; }
+
+        // Este método controla si el Id debe serializarse
+        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_client")]
         public int ClientId { get; set; }
