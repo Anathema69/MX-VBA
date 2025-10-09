@@ -518,14 +518,7 @@ namespace SistemaGestionProyectos2.Views
                         $"Vendedor: {(VendorComboBox.SelectedItem as VendorDb)?.VendorName}" :
                         "Sin vendedor asignado";
 
-                    MessageBox.Show(
-                        $"✅ Orden creada exitosamente\n\n" +
-                        $"Orden: {createdOrder.Po}\n" +
-                        $"Cliente: {selectedClient.Name}\n" +
-                        $"{vendorInfo}",
-                        "Éxito",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    
 
                     this.DialogResult = true;
                     this.Close();

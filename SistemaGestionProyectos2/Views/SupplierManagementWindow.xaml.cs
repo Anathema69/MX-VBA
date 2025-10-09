@@ -25,6 +25,10 @@ namespace SistemaGestionProyectos2.Views
         private TextBox _currentEditingTextBox;
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
 
+        // Caché de datos
+        private DateTime _lastSuppliersLoad = DateTime.MinValue;
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+
         public SupplierManagementWindow()
         {
             InitializeComponent();
@@ -36,10 +40,26 @@ namespace SistemaGestionProyectos2.Views
             _ = LoadSuppliers();
         }
 
-        private async Task LoadSuppliers()
+        private async Task LoadSuppliers(bool forceReload = false)
         {
             try
             {
+                // Verificar si usar caché
+                bool shouldUseCache = !forceReload &&
+                                      _suppliers.Count > 0 &&
+                                      (DateTime.Now - _lastSuppliersLoad) < _cacheExpiration;
+
+                if (shouldUseCache)
+                {
+                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de proveedores");
+                    ApplyFilter();
+                    UpdateStatistics();
+                    StatusText.Text = "Listo (desde caché)";
+                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine("🔄 Recargando proveedores desde BD");
                 StatusText.Text = "Cargando proveedores...";
                 StatusText.Foreground = new SolidColorBrush(Colors.Orange);
 
@@ -75,6 +95,8 @@ namespace SistemaGestionProyectos2.Views
                     vm.PropertyChanged += OnSupplierPropertyChanged;
                     _suppliers.Add(vm);
                 }
+
+                _lastSuppliersLoad = DateTime.Now;
 
                 ApplyFilter();
                 UpdateStatistics();

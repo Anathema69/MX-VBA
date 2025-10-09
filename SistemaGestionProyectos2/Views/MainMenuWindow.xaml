@@ -265,7 +265,7 @@
                         </Button>
 
                         <!-- TEST RUNNER (SOLO ADMIN) -->
-                        <Button x:Name="TestRunnerButton"
+                        <!-- <Button x:Name="TestRunnerButton"
                                 Click="TestRunner_Click"
                                 Width="200"
                                 Height="120"
@@ -311,7 +311,7 @@
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </Button.Template>
-                        </Button>
+                        </Button> -->
                     </WrapPanel>
 
                     <!-- Fila Inferior de Módulos -->

@@ -34,6 +34,13 @@ namespace SistemaGestionProyectos2.Views
         private DateTime _lastSupplierClick = DateTime.MinValue;
         private string _lastSupplierClicked = "";
 
+        // Caché de datos
+        private DateTime _lastExpensesLoad = DateTime.MinValue;
+        private DateTime _lastSuppliersLoad = DateTime.MinValue;
+        private DateTime _lastOrdersLoad = DateTime.MinValue;
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+        private List<OrderDb> _ordersCache;
+
 
         public ExpenseManagementWindow(UserSession user)
         {
@@ -42,11 +49,12 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _expenses = new ObservableCollection<ExpenseViewModel>();
             _filteredExpenses = new ObservableCollection<ExpenseViewModel>();
+            _ordersCache = new List<OrderDb>();
 
             InitializeUI();
             _ = LoadDataAsync();
 
-            
+
 
         }
 
@@ -65,21 +73,21 @@ namespace SistemaGestionProyectos2.Views
             AddSupplierTooltips();
         }
 
-        private async Task LoadDataAsync()
+        private async Task LoadDataAsync(bool forceReload = false)
         {
             if (_isLoading) return;
 
             try
             {
                 _isLoading = true;
-                StatusText.Text = "Cargando datos...";
+                StatusText.Text = forceReload ? "Recargando datos..." : "Cargando datos...";
                 StatusText.Foreground = new SolidColorBrush(Colors.Orange);
 
                 // Cargar proveedores primero
-                await LoadSuppliers();
+                await LoadSuppliers(forceReload);
 
                 // Cargar gastos
-                await LoadExpenses();
+                await LoadExpenses(forceReload);
 
                 // Establecer filtros por defecto DESPUÉS de cargar datos
                 if (OrderFilterCombo != null && OrderFilterCombo.Items.Count > 0)
@@ -107,7 +115,8 @@ namespace SistemaGestionProyectos2.Views
                 // Actualizar estadísticas
                 UpdateStatistics();
 
-                StatusText.Text = "Datos cargados";
+                var cacheStatus = forceReload ? "" : " (caché activo)";
+                StatusText.Text = $"Datos cargados{cacheStatus}";
                 StatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
                 LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
             }
@@ -659,8 +668,8 @@ namespace SistemaGestionProyectos2.Views
         
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            // restablecemos los filtros iniciales
-            await LoadDataAsync();
+            // Forzar recarga completa desde BD
+            await LoadDataAsync(forceReload: true);
         }
 
         private void ExpensesDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -847,11 +856,25 @@ namespace SistemaGestionProyectos2.Views
 
         // Cargar órdenes recientes en el ComboBox - NUEVA VERSION
         // Modificar LoadSuppliers para cargar también las órdenes
-        private async Task LoadSuppliers()
+        private async Task LoadSuppliers(bool forceReload = false)
         {
             try
             {
+                // Verificar si usar caché
+                bool shouldUseCache = !forceReload &&
+                                      _suppliers != null &&
+                                      _suppliers.Count > 0 &&
+                                      (DateTime.Now - _lastSuppliersLoad) < _cacheExpiration;
+
+                if (shouldUseCache)
+                {
+                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de proveedores");
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine("🔄 Recargando proveedores desde BD");
                 _suppliers = await _supabaseService.GetActiveSuppliers();
+                _lastSuppliersLoad = DateTime.Now;
 
                 // Llenar combo de filtro de proveedores
                 SupplierFilterCombo.Items.Clear();
@@ -865,7 +888,7 @@ namespace SistemaGestionProyectos2.Views
                 SupplierFilterCombo.SelectedIndex = 0;
 
                 // Cargar órdenes para el filtro
-                await LoadOrdersForFilter();
+                await LoadOrdersForFilter(forceReload);
             }
             catch (Exception ex)
             {
@@ -874,15 +897,30 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Nuevo método para cargar órdenes en el filtro
-        private async Task LoadOrdersForFilter()
+        private async Task LoadOrdersForFilter(bool forceReload = false)
         {
             try
             {
-                var orders = await _supabaseService.GetRecentOrders(100); // Cargar más órdenes
+                // Verificar si usar caché
+                bool shouldUseCache = !forceReload &&
+                                      _ordersCache != null &&
+                                      _ordersCache.Count > 0 &&
+                                      (DateTime.Now - _lastOrdersLoad) < _cacheExpiration;
+
+                if (!shouldUseCache)
+                {
+                    System.Diagnostics.Debug.WriteLine("🔄 Recargando órdenes desde BD");
+                    _ordersCache = await _supabaseService.GetRecentOrders(100);
+                    _lastOrdersLoad = DateTime.Now;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de órdenes");
+                }
 
                 var orderList = new List<dynamic> { new { Id = (int?)null, Display = "Todas las órdenes" } };
 
-                foreach (var order in orders)
+                foreach (var order in _ordersCache)
                 {
                     orderList.Add(new
                     {
@@ -903,19 +941,36 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Modificar LoadExpenses para mostrar el nombre correcto de la orden
-        private async Task LoadExpenses()
+        private async Task LoadExpenses(bool forceReload = false)
         {
             try
             {
+                // Verificar si usar caché
+                bool shouldUseCache = !forceReload &&
+                                      _expenses.Count > 0 &&
+                                      (DateTime.Now - _lastExpensesLoad) < _cacheExpiration;
+
+                if (shouldUseCache)
+                {
+                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de gastos");
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine("🔄 Recargando gastos desde BD");
                 var expensesDb = await _supabaseService.GetExpenses(
                     fromDate: null,
                     toDate: null,
                     limit: 1000
                 );
 
-                // Cargar las órdenes para obtener los POs reales
-                var orders = await _supabaseService.GetRecentOrders(200);
-                var ordersDict = orders.ToDictionary(o => o.Id, o => o.Po);
+                // Usar caché de órdenes si está disponible, sino cargar
+                if (_ordersCache == null || _ordersCache.Count == 0)
+                {
+                    _ordersCache = await _supabaseService.GetRecentOrders(200);
+                    _lastOrdersLoad = DateTime.Now;
+                }
+
+                var ordersDict = _ordersCache.ToDictionary(o => o.Id, o => o.Po);
 
                 _expenses.Clear();
 
@@ -951,7 +1006,8 @@ namespace SistemaGestionProyectos2.Views
                     _expenses.Add(expenseVm);
                 }
 
-                System.Diagnostics.Debug.WriteLine($"Gastos cargados: {_expenses.Count}");
+                _lastExpensesLoad = DateTime.Now;
+                System.Diagnostics.Debug.WriteLine($"✅ Gastos cargados: {_expenses.Count}");
             }
             catch (Exception ex)
             {

@@ -190,6 +190,55 @@ namespace SistemaGestionProyectos2.Services.Orders
             }
         }
 
+        public async Task<bool> CancelOrder(int orderId)
+        {
+            try
+            {
+                LogDebug($"🔄 Cancelando orden {orderId}");
+
+                // Actualizar estado a CANCELADO (status = 5)
+                // Usar Filter con el nombre de columna de BD en lugar de Where
+                var response = await SupabaseClient
+                    .From<OrderDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.Equals, orderId)
+                    .Set(x => x.OrderStatus, 5)
+                    .Update();
+
+                bool success = response?.Models?.Count > 0;
+                if (success)
+                {
+                    LogSuccess($"✅ Orden {orderId} cancelada exitosamente. Nuevos modelos retornados: {response.Models.Count}");
+
+                    // Log del estado actualizado
+                    var updatedOrder = response.Models.FirstOrDefault();
+                    if (updatedOrder != null)
+                    {
+                        LogDebug($"   Estado actualizado: {updatedOrder.OrderStatus}");
+                    }
+                }
+                else
+                {
+                    LogError($"❌ No se pudo cancelar la orden {orderId}: Respuesta vacía o nula", null);
+                    LogDebug($"   Response is null: {response == null}");
+                    LogDebug($"   Models is null: {response?.Models == null}");
+                    LogDebug($"   Models count: {response?.Models?.Count ?? 0}");
+                }
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                LogError($"❌ Error cancelando orden {orderId}", ex);
+                LogDebug($"   Exception: {ex.GetType().Name}");
+                LogDebug($"   Message: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    LogDebug($"   Inner Exception: {ex.InnerException.Message}");
+                }
+                return false;
+            }
+        }
+
         public async Task<List<OrderDb>> GetOrdersByClientId(int clientId)
         {
             try

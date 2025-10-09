@@ -25,11 +25,17 @@ namespace SistemaGestionProyectos2.Views
         private List<OrderStatusDb> _orderStatuses;
         public bool IsAdmin => _currentUser?.Role == "admin";
 
+        // Caché completo de órdenes cargadas desde la BD
+        private List<OrderViewModel> _allOrdersCache;
+        private DateTime _lastFullLoadTime = DateTime.MinValue;
+        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+
         public OrdersManagementWindow(UserSession user)
         {
             InitializeComponent();
             _currentUser = user;
             _orders = new ObservableCollection<OrderViewModel>();
+            _allOrdersCache = new List<OrderViewModel>();
             _supabaseService = SupabaseService.Instance;
 
             // IMPORTANTE: Establecer el DataContext para los bindings
@@ -173,12 +179,27 @@ namespace SistemaGestionProyectos2.Views
         }
 
 
-        private async Task LoadOrders()
+        private async Task LoadOrders(bool forceReload = false)
         {
             try
             {
                 StatusText.Text = "Cargando órdenes...";
+
+                // Verificar si podemos usar el caché
+                bool shouldUseCache = !forceReload &&
+                                      _allOrdersCache.Count > 0 &&
+                                      (DateTime.Now - _lastFullLoadTime) < _cacheExpiration;
+
+                if (shouldUseCache)
+                {
+                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de órdenes");
+                    RepopulateFromCache();
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine("🔄 Recargando órdenes desde BD");
                 _orders.Clear();
+                _allOrdersCache.Clear();
 
                 // Determinar filtro según el rol
                 List<int> statusFilter = null;
@@ -239,7 +260,11 @@ namespace SistemaGestionProyectos2.Views
                         }
 
                         _orders.Add(viewModel);
+                        _allOrdersCache.Add(viewModel);
                     }
+
+                    // Actualizar timestamp del caché
+                    _lastFullLoadTime = DateTime.Now;
 
                     // Mostrar mensaje específico según el rol
                     if (_currentUser.Role == "coordinator")
@@ -281,6 +306,82 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxImage.Error);
 
                 System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
+            }
+        }
+
+        private void RepopulateFromCache()
+        {
+            _orders.Clear();
+            foreach (var order in _allOrdersCache)
+            {
+                _orders.Add(order);
+            }
+
+            if (_currentUser.Role == "coordinator")
+            {
+                StatusText.Text = $"{_orders.Count} órdenes activas (desde caché)";
+            }
+            else
+            {
+                StatusText.Text = $"{_orders.Count} órdenes (desde caché)";
+            }
+        }
+
+        private async Task RefreshSingleOrder(int orderId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔄 Actualizando orden {orderId}");
+
+                // Obtener la orden actualizada desde la BD
+                var updatedOrderDb = await _supabaseService.GetOrderById(orderId);
+                if (updatedOrderDb == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ Orden {orderId} no encontrada en BD");
+                    return;
+                }
+
+                // Obtener totales facturados actualizados
+                var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(new List<int> { orderId });
+
+                // Obtener datos relacionados
+                var client = _clients?.FirstOrDefault(c => c.Id == updatedOrderDb.ClientId);
+                var vendor = _vendors?.FirstOrDefault(v => v.Id == updatedOrderDb.SalesmanId);
+                var status = _orderStatuses?.FirstOrDefault(s => s.Id == updatedOrderDb.OrderStatus);
+
+                // Crear ViewModel actualizado
+                var updatedViewModel = updatedOrderDb.ToViewModel(
+                    clientName: client?.Name,
+                    vendorName: vendor?.VendorName,
+                    statusName: status?.Name
+                );
+
+                if (invoicedTotals.ContainsKey(orderId))
+                {
+                    updatedViewModel.InvoicedAmount = invoicedTotals[orderId];
+                }
+
+                // Actualizar en la colección observable
+                var existingOrder = _orders.FirstOrDefault(o => o.Id == orderId);
+                if (existingOrder != null)
+                {
+                    var index = _orders.IndexOf(existingOrder);
+                    _orders[index] = updatedViewModel;
+                }
+
+                // Actualizar en el caché
+                var cachedOrder = _allOrdersCache.FirstOrDefault(o => o.Id == orderId);
+                if (cachedOrder != null)
+                {
+                    var cacheIndex = _allOrdersCache.IndexOf(cachedOrder);
+                    _allOrdersCache[cacheIndex] = updatedViewModel;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"✅ Orden {orderId} actualizada");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error actualizando orden {orderId}: {ex.Message}");
             }
         }
 
@@ -329,6 +430,7 @@ namespace SistemaGestionProyectos2.Views
                                 }
 
                                 _orders.Add(viewModel);
+                                _allOrdersCache.Add(viewModel);
                             }
 
                             if (_currentUser.Role == "coordinator")
@@ -417,7 +519,7 @@ namespace SistemaGestionProyectos2.Views
             this.Close();
         }
 
-        private void NewOrderButton_Click(object sender, RoutedEventArgs e)
+        private async void NewOrderButton_Click(object sender, RoutedEventArgs e)
         {
             if (_currentUser.Role != "admin")
             {
@@ -437,8 +539,9 @@ namespace SistemaGestionProyectos2.Views
 
                 if (newOrderWindow.ShowDialog() == true)
                 {
-                    // Recargar órdenes después de crear una nueva
-                    _ = LoadOrders();
+                    // Forzar recarga para incluir la nueva orden (es rápido porque es una nueva)
+                    await LoadOrders(forceReload: true);
+                    StatusText.Text = "Nueva orden creada exitosamente";
                 }
             }
             catch (Exception ex)
@@ -461,8 +564,8 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // LoadOrders ya aplica el filtro según el rol
-                await LoadOrders();
+                // Forzar recarga completa desde BD (ignorar caché)
+                await LoadOrders(forceReload: true);
             }
             finally
             {
@@ -476,35 +579,35 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_ordersViewSource?.View == null) return;
+
             var searchText = SearchBox.Text?.Trim();
 
-            // Si no hay texto o es muy corto, cargar todas las órdenes
+            // Si no hay texto, quitar el filtro (NO recargar desde BD)
             if (string.IsNullOrWhiteSpace(searchText))
             {
-                await LoadOrders();
+                _ordersViewSource.View.Filter = null;
+                UpdateStatusBar();
                 return;
             }
 
-            // Aplicar filtro local en lugar de buscar en Supabase
-            if (_ordersViewSource?.View != null)
+            // Aplicar filtro local sobre las órdenes ya cargadas
+            _ordersViewSource.View.Filter = item =>
             {
-                _ordersViewSource.View.Filter = item =>
-                {
-                    var order = item as OrderViewModel;
-                    if (order == null) return false;
+                var order = item as OrderViewModel;
+                if (order == null) return false;
 
-                    var searchLower = searchText.ToLower();
-                    return order.OrderNumber.ToLower().Contains(searchLower) ||
-                           order.ClientName.ToLower().Contains(searchLower) ||
-                           order.Description.ToLower().Contains(searchLower) ||
-                           order.VendorName.ToLower().Contains(searchLower);
-                };
+                var searchLower = searchText.ToLower();
+                return order.OrderNumber.ToLower().Contains(searchLower) ||
+                       order.ClientName.ToLower().Contains(searchLower) ||
+                       order.Description.ToLower().Contains(searchLower) ||
+                       order.VendorName.ToLower().Contains(searchLower);
+            };
 
-                var count = _ordersViewSource.View.Cast<object>().Count();
-                StatusText.Text = $"{count} órdenes encontradas";
-            }
+            var count = _ordersViewSource.View.Cast<object>().Count();
+            StatusText.Text = $"{count} órdenes encontradas de {_orders.Count} total";
         }
 
         private void StatusFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -526,7 +629,7 @@ namespace SistemaGestionProyectos2.Views
             UpdateStatusBar();
         }
 
-        private void EditButton_Click(object sender, RoutedEventArgs e)
+        private async void EditButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var order = button?.Tag as OrderViewModel;
@@ -541,8 +644,9 @@ namespace SistemaGestionProyectos2.Views
 
                 if (editWindow.ShowDialog() == true)
                 {
-                    // Recargar órdenes después de editar
-                    _ = LoadOrders();
+                    // Solo actualizar esta orden específica, no recargar todo
+                    await RefreshSingleOrder(order.Id);
+                    StatusText.Text = "Orden actualizada correctamente";
                 }
             }
             catch (Exception ex)
@@ -583,27 +687,66 @@ namespace SistemaGestionProyectos2.Views
             {
                 try
                 {
-                    // Por ahora, solo remover de la lista local
-                    // TODO: Implementar eliminación en Supabase cuando sea necesario
+                    System.Diagnostics.Debug.WriteLine($"🔵 UI: Iniciando cancelación de orden {order.Id} - {order.OrderNumber}");
+                    StatusText.Text = "Cancelando orden...";
 
-                    _orders.Remove(order);
-                    UpdateStatusBar();
+                    // Cancelar la orden (cambiar estado a CANCELADO = 5)
+                    System.Diagnostics.Debug.WriteLine($"🔵 UI: Llamando a CancelOrder({order.Id})...");
+                    bool success = await _supabaseService.CancelOrder(order.Id);
+                    System.Diagnostics.Debug.WriteLine($"🔵 UI: CancelOrder retornó: {success}");
 
-                    MessageBox.Show(
-                        "Orden marcada para eliminación.\n" +
-                        "(Nota: La eliminación real está deshabilitada por seguridad)",
-                        "Información",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information);
+                    if (success)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"🔵 UI: Actualizando orden en lista local...");
+
+                        // Actualizar la orden en la lista local
+                        await RefreshSingleOrder(order.Id);
+
+                        System.Diagnostics.Debug.WriteLine($"🔵 UI: Orden actualizada en lista local");
+
+                        MessageBox.Show(
+                            $"La orden {order.OrderNumber} ha sido cancelada exitosamente.",
+                            "Orden Cancelada",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+
+                        StatusText.Text = "Orden cancelada correctamente";
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"❌ UI: CancelOrder retornó FALSE");
+
+                        MessageBox.Show(
+                            "No se pudo cancelar la orden. Por favor, intente nuevamente.\n\n" +
+                            "Revise los logs de debug para más información.",
+                            "Error",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+
+                        StatusText.Text = "Error al cancelar orden";
+                    }
                 }
                 catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"❌ UI: Excepción al cancelar orden:");
+                    System.Diagnostics.Debug.WriteLine($"   Tipo: {ex.GetType().Name}");
+                    System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"   StackTrace: {ex.StackTrace}");
+
                     MessageBox.Show(
-                        $"Error al eliminar la orden:\n{ex.Message}",
+                        $"Error al cancelar la orden:\n{ex.Message}\n\n" +
+                        $"Tipo: {ex.GetType().Name}\n\n" +
+                        "Revise los logs de debug para más información.",
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
+
+                    StatusText.Text = "Error al cancelar orden";
                 }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"🔵 UI: Usuario canceló la eliminación de orden {order.Id}");
             }
         }
 
@@ -663,8 +806,8 @@ namespace SistemaGestionProyectos2.Views
                 var invoiceWindow = new InvoiceManagementWindow(order.Id, _currentUser);
                 invoiceWindow.ShowDialog();
 
-                // Recargar órdenes para actualizar estados y montos facturados
-                await LoadOrders();
+                // Solo actualizar esta orden específica para reflejar montos facturados
+                await RefreshSingleOrder(order.Id);
             }
             catch (Exception ex)
             {
@@ -680,7 +823,7 @@ namespace SistemaGestionProyectos2.Views
 
 
         //El botón para adminsitrar clientes
-        private void ClientsManagementButton_Click(object sender, RoutedEventArgs e)
+        private async void ClientsManagementButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -688,8 +831,11 @@ namespace SistemaGestionProyectos2.Views
                 var clientsWindow = new ClientManagementWindow(_currentUser);
                 clientsWindow.ShowDialog();
 
-                // Recargar clientes después de cerrar la ventana por si hubo cambios
-                _ = LoadInitialDataAsync();
+                // Solo recargar catálogos de clientes/vendedores (no las órdenes)
+                _clients = await _supabaseService.GetClients();
+                _vendors = await _supabaseService.GetVendors();
+
+                System.Diagnostics.Debug.WriteLine($"✅ Catálogos actualizados: {_clients.Count} clientes, {_vendors.Count} vendedores");
             }
             catch (Exception ex)
             {

@@ -170,6 +170,9 @@ namespace SistemaGestionProyectos2.Services
         public Task<bool> DeleteOrder(int orderId)
             => _orderService.DeleteOrder(orderId);
 
+        public Task<bool> CancelOrder(int orderId)
+            => _orderService.CancelOrder(orderId);
+
         public Task<List<OrderDb>> GetRecentOrders(int limit = 10)
             => _orderService.GetRecentOrders(limit);
 
@@ -361,23 +364,208 @@ namespace SistemaGestionProyectos2.Services
 
         public async Task<PendingIncomesData> GetAllPendingIncomesData()
         {
-            // TODO: Implementar - por ahora retornar objeto vacío
-            return new PendingIncomesData
+            try
             {
-                ClientsWithPendingInvoices = new List<ClientPendingInfo>(),
-                OrdersDictionary = new Dictionary<int, OrderDb>(),
-                ClientsDictionary = new Dictionary<int, ClientDb>()
-            };
+                System.Diagnostics.Debug.WriteLine("🔍 Obteniendo facturas pendientes...");
+
+                // Obtener todas las facturas que NO están pagadas (status != 4)
+                var allInvoices = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Where(i => i.InvoiceStatus != 4) // Excluir PAGADAS
+                    .Order("f_order", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                var pendingInvoices = allInvoices?.Models ?? new List<InvoiceDb>();
+                System.Diagnostics.Debug.WriteLine($"📄 Facturas pendientes encontradas: {pendingInvoices.Count}");
+
+                if (pendingInvoices.Count == 0)
+                {
+                    return new PendingIncomesData
+                    {
+                        ClientsWithPendingInvoices = new List<ClientPendingInfo>(),
+                        OrdersDictionary = new Dictionary<int, OrderDb>(),
+                        ClientsDictionary = new Dictionary<int, ClientDb>()
+                    };
+                }
+
+                // Obtener IDs de órdenes únicas
+                var orderIds = pendingInvoices
+                    .Where(i => i.OrderId.HasValue)
+                    .Select(i => i.OrderId.Value)
+                    .Distinct()
+                    .ToList();
+
+                System.Diagnostics.Debug.WriteLine($"📦 Órdenes relacionadas: {orderIds.Count}");
+
+                // Obtener órdenes
+                var ordersDict = new Dictionary<int, OrderDb>();
+                if (orderIds.Any())
+                {
+                    var ordersResponse = await _supabaseClient
+                        .From<OrderDb>()
+                        .Filter("f_order", Postgrest.Constants.Operator.In, orderIds)
+                        .Get();
+
+                    if (ordersResponse?.Models != null)
+                    {
+                        ordersDict = ordersResponse.Models.ToDictionary(o => o.Id, o => o);
+                    }
+                }
+
+                // Obtener IDs de clientes únicos desde las órdenes (filtrando nulls)
+                var clientIds = ordersDict.Values
+                    .Where(o => o.ClientId.HasValue)
+                    .Select(o => o.ClientId.Value)
+                    .Distinct()
+                    .ToList();
+
+                System.Diagnostics.Debug.WriteLine($"👥 Clientes con facturas pendientes: {clientIds.Count}");
+
+                // Obtener clientes
+                var clientsDict = new Dictionary<int, ClientDb>();
+                if (clientIds.Any())
+                {
+                    var clientsResponse = await _supabaseClient
+                        .From<ClientDb>()
+                        .Filter("f_client", Postgrest.Constants.Operator.In, clientIds)
+                        .Get();
+
+                    if (clientsResponse?.Models != null)
+                    {
+                        clientsDict = clientsResponse.Models.ToDictionary(c => c.Id, c => c);
+                    }
+                }
+
+                // Agrupar facturas por cliente
+                var clientPendingList = new List<ClientPendingInfo>();
+
+                foreach (var clientId in clientIds)
+                {
+                    // Obtener facturas del cliente (a través de sus órdenes)
+                    var clientInvoices = pendingInvoices
+                        .Where(i => i.OrderId.HasValue &&
+                                    ordersDict.ContainsKey(i.OrderId.Value) &&
+                                    ordersDict[i.OrderId.Value].ClientId.HasValue &&
+                                    ordersDict[i.OrderId.Value].ClientId.Value == clientId)
+                        .ToList();
+
+                    if (clientInvoices.Any())
+                    {
+                        var client = clientsDict.ContainsKey(clientId) ? clientsDict[clientId] : null;
+                        var totalPending = clientInvoices.Sum(i => i.Total ?? 0);
+
+                        clientPendingList.Add(new ClientPendingInfo
+                        {
+                            ClientId = clientId,
+                            ClientName = client?.Name ?? "Cliente Desconocido",
+                            ClientCredit = client?.Credit ?? 0,
+                            Invoices = clientInvoices,
+                            TotalPending = totalPending
+                        });
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"✅ Datos procesados: {clientPendingList.Count} clientes con facturas pendientes");
+
+                return new PendingIncomesData
+                {
+                    ClientsWithPendingInvoices = clientPendingList,
+                    OrdersDictionary = ordersDict,
+                    ClientsDictionary = clientsDict
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error en GetAllPendingIncomesData: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<ClientInvoicesDetailData> GetClientInvoicesDetail(int clientId)
         {
-            // TODO: Implementar - por ahora retornar objeto vacío
-            return new ClientInvoicesDetailData
+            try
             {
-                Client = await GetClientById(clientId),
-                Invoices = new List<InvoiceDetailInfo>()
-            };
+                System.Diagnostics.Debug.WriteLine($"🔍 Obteniendo detalle de facturas para cliente {clientId}");
+
+                // Obtener el cliente
+                var client = await _clientService.GetClientById(clientId);
+
+                // Obtener todas las órdenes del cliente
+                var clientOrders = await _supabaseClient
+                    .From<OrderDb>()
+                    .Where(o => o.ClientId == clientId)
+                    .Get();
+
+                var orders = clientOrders?.Models ?? new List<OrderDb>();
+                System.Diagnostics.Debug.WriteLine($"📦 Órdenes del cliente: {orders.Count}");
+
+                if (orders.Count == 0)
+                {
+                    return new ClientInvoicesDetailData
+                    {
+                        Client = client,
+                        Invoices = new List<InvoiceDetailInfo>()
+                    };
+                }
+
+                // Obtener IDs de órdenes
+                var orderIds = orders.Select(o => o.Id).ToList();
+
+                // Obtener facturas pendientes (status != 4) de esas órdenes
+                var invoicesResponse = await _supabaseClient
+                    .From<InvoiceDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.In, orderIds)
+                    .Where(i => i.InvoiceStatus != 4) // Excluir PAGADAS
+                    .Order("due_date", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                var invoices = invoicesResponse?.Models ?? new List<InvoiceDb>();
+                System.Diagnostics.Debug.WriteLine($"📄 Facturas pendientes encontradas: {invoices.Count}");
+
+                // Crear diccionario de órdenes para lookup rápido
+                var ordersDict = orders.ToDictionary(o => o.Id, o => o);
+
+                // Crear lista de InvoiceDetailInfo
+                var invoiceDetailList = new List<InvoiceDetailInfo>();
+
+                foreach (var invoice in invoices)
+                {
+                    var orderPO = "";
+                    var orderId = 0;
+
+                    if (invoice.OrderId.HasValue && ordersDict.ContainsKey(invoice.OrderId.Value))
+                    {
+                        var order = ordersDict[invoice.OrderId.Value];
+                        orderPO = order.Po ?? $"Orden #{order.Id}";
+                        orderId = order.Id;
+                    }
+
+                    invoiceDetailList.Add(new InvoiceDetailInfo
+                    {
+                        Invoice = invoice,
+                        OrderPO = orderPO,
+                        OrderId = orderId
+                    });
+                }
+
+                System.Diagnostics.Debug.WriteLine($"✅ Detalle procesado: {invoiceDetailList.Count} facturas con información de órdenes");
+
+                return new ClientInvoicesDetailData
+                {
+                    Client = client,
+                    Invoices = invoiceDetailList
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error en GetClientInvoicesDetail: {ex.Message}");
+
+                return new ClientInvoicesDetailData
+                {
+                    Client = await _clientService.GetClientById(clientId),
+                    Invoices = new List<InvoiceDetailInfo>()
+                };
+            }
         }
 
         public async Task UpdateOverdueInvoicesStatus()
