@@ -2,45 +2,61 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Gestión de Clientes - IMA Mecatrónica" 
-        Height="750" 
-        Width="1400"
+        Height="900" 
+        Width="1600"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
         WindowStyle="None"
         ResizeMode="NoResize"
-        MinHeight="600"
-        MinWidth="1200">
+        MinHeight="700"
+        MinWidth="1400">
 
     <Window.Resources>
-        <!-- Estilos consistentes con las otras ventanas -->
+        <!-- Paleta de colores moderna y consistente -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#6366F1"/>
+        <SolidColorBrush x:Key="PrimaryLight" Color="#E0E7FF"/>
+        <SolidColorBrush x:Key="PrimaryDark" Color="#4F46E5"/>
+        <SolidColorBrush x:Key="SuccessColor" Color="#10B981"/>
+        <SolidColorBrush x:Key="SuccessLight" Color="#D1FAE5"/>
+        <SolidColorBrush x:Key="DangerColor" Color="#EF4444"/>
+        <SolidColorBrush x:Key="DangerLight" Color="#FEE2E2"/>
+        <SolidColorBrush x:Key="WarningColor" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="WarningLight" Color="#FEF3C7"/>
+        <SolidColorBrush x:Key="InfoColor" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="InfoLight" Color="#DBEAFE"/>
+        <SolidColorBrush x:Key="BackgroundGray" Color="#F9FAFB"/>
+        <SolidColorBrush x:Key="BorderGray" Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="TextGray" Color="#6B7280"/>
+        <SolidColorBrush x:Key="DarkText" Color="#111827"/>
+
+        <!-- Estilos de botones modernos -->
         <Style x:Key="ModernButton" TargetType="Button">
-            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="15,8"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Height" Value="38"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" 
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="5"
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8"
                                 Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" Direction="270" 
+                                                ShadowDepth="2" Opacity="0.15"/>
+                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" 
                                             VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1976D2"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0D47A1"/>
+                                <Setter Property="Opacity" Value="0.9"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#CCCCCC"/>
-                                <Setter Property="Foreground" Value="#888888"/>
+                                <Setter Property="Opacity" Value="0.5"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -48,49 +64,73 @@
             </Setter>
         </Style>
 
-        <Style x:Key="GreenButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="#4CAF50"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#388E3C"/>
-                </Trigger>
-            </Style.Triggers>
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="{StaticResource SuccessColor}"/>
         </Style>
 
-        <Style x:Key="OrangeButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="#FF9800"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#F57C00"/>
-                </Trigger>
-            </Style.Triggers>
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="{StaticResource DangerColor}"/>
         </Style>
 
-        <Style x:Key="RedButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-            <Setter Property="Background" Value="#F44336"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#D32F2F"/>
-                </Trigger>
-            </Style.Triggers>
+        <Style x:Key="WarningButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="{StaticResource WarningColor}"/>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para tarjetas -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" Direction="270" 
+                                    ShadowDepth="2" Opacity="0.05"/>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid Background="{StaticResource BackgroundGray}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header Negro con gradiente sutil -->
-        <Border Grid.Row="0" Height="60">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                    <GradientStop Color="#1a1a1a" Offset="0"/>
-                    <GradientStop Color="#2d2d2d" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
-            <Grid>
+        <!-- Header Moderno -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderGray}" 
+                BorderThickness="0,0,0,1">
+            <Grid Margin="30,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -98,83 +138,54 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Logo y Título -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" 
-                           VerticalAlignment="Center" Margin="20,0">
-                    <Border Background="#9C27B0" 
-                            Width="40" Height="40" 
-                            CornerRadius="20"
-                            Margin="0,0,15,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource PrimaryColor}" 
+                            Width="48" Height="48" 
+                            CornerRadius="12"
+                            Margin="0,0,16,0">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="8" Direction="270" 
+                                            ShadowDepth="2" Opacity="0.2"/>
+                        </Border.Effect>
                         <TextBlock Text="👥" 
-                                 FontSize="22"
+                                 FontSize="24"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Text="GESTIÓN DE CLIENTES" 
-                              Foreground="White"
-                              FontSize="22"
-                              FontWeight="Light"
-                              VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="GESTIÓN DE CLIENTES" 
+                                  Foreground="{StaticResource DarkText}"
+                                  FontSize="24"
+                                  FontWeight="Bold"/>
+                        <TextBlock Text="Administre clientes y sus contactos" 
+                                  Foreground="{StaticResource TextGray}"
+                                  FontSize="13"
+                                  Margin="0,2,0,0"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Controles de ventana -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" 
-                           VerticalAlignment="Center" Margin="0,0,20,0">
-                    <Button Content="➖" Width="35" Height="35" Margin="2" 
-                           Background="Transparent" 
-                           Foreground="White" 
-                           BorderThickness="0"
-                           FontSize="16" 
-                           Cursor="Hand"
-                           Click="MinimizeButton_Click"/>
-                    <Button Content="🔲" Width="35" Height="35" Margin="2" 
-                           Background="Transparent" 
-                           Foreground="White" 
-                           BorderThickness="0"
-                           FontSize="14" 
-                           Cursor="Hand"
-                           Click="MaximizeButton_Click"/>
-                    <Button Name="CloseWindowButton" 
-                           Content="✕" 
-                           Width="35" Height="35" 
-                           Margin="2" 
-                           Background="Transparent" 
-                           Foreground="White" 
-                           BorderThickness="0"
-                           FontSize="18" 
-                           Cursor="Hand"
-                           Click="CloseButton_Click">
-                        <Button.Template>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="border"
-                                       Background="{TemplateBinding Background}"
-                                       CornerRadius="3">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                    VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#F44336"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Button.Template>
-                    </Button>
-                </StackPanel>
+                <!-- Botón Volver -->
+                <Button Grid.Column="2" 
+                       Style="{StaticResource SecondaryButton}"
+                       Click="CloseButton_Click"
+                       VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="←" FontSize="16" Margin="0,0,8,0"/>
+                        <TextBlock Text="Volver al menú" FontSize="14"/>
+                    </StackPanel>
+                </Button>
             </Grid>
         </Border>
 
         <!-- Contenido Principal -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Margin="30,20,30,30">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="450"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Panel Izquierdo - Lista de Clientes MEJORADO -->
-            <Border Grid.Column="0" 
-                    Background="#FAFAFA" 
-                    BorderBrush="#E0E0E0" 
-                    BorderThickness="0,0,1,0">
+            <!-- Panel Izquierdo - Lista de Clientes -->
+            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,15,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -183,82 +194,65 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Header de sección con gradiente púrpura -->
-                    <Border Grid.Row="0" Height="50">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#7B1FA2" Offset="0"/>
-                                <GradientStop Color="#9C27B0" Offset="0.5"/>
-                                <GradientStop Color="#BA68C8" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
+                    <!-- Header con botón Nuevo Cliente -->
+                    <Border Grid.Row="0" Padding="20,16" 
+                            Background="{StaticResource BackgroundGray}"
+                            CornerRadius="12,12,0,0"
+                            BorderBrush="{StaticResource BorderGray}"
+                            BorderThickness="0,0,0,1">
                         <Grid>
-                            <TextBlock Text="CLIENTES REGISTRADOS" 
-                                     Foreground="White" 
-                                     FontSize="16" 
-                                     FontWeight="SemiBold"
-                                     VerticalAlignment="Center"
-                                     Margin="20,0"/>
-                            <Button Content="+ NUEVO CLIENTE"
-                                   HorizontalAlignment="Right"
-                                   Margin="0,0,20,0"
-                                   Background="White"
-                                   Foreground="#9C27B0"
-                                   FontWeight="Bold"
-                                   Padding="15,8"
-                                   Height="32"
-                                   Cursor="Hand"
-                                   Click="NewClientButton_Click">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="border"
-                                               Background="{TemplateBinding Background}"
-                                               CornerRadius="5">
-                                            <ContentPresenter HorizontalAlignment="Center"
-                                                            VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#F3E5F5"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Button.Template>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="CLIENTES REGISTRADOS" 
+                                         Foreground="{StaticResource DarkText}" 
+                                         FontSize="16" 
+                                         FontWeight="SemiBold"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Border Background="{StaticResource PrimaryLight}"
+                                           CornerRadius="12"
+                                           Padding="8,4">
+                                        <TextBlock Name="ResultCountText"
+                                                 Text="0"
+                                                 Foreground="{StaticResource PrimaryColor}"
+                                                 FontWeight="Bold"
+                                                 FontSize="11"/>
+                                    </Border>
+                                    <TextBlock Text="clientes activos" 
+                                             FontSize="11"
+                                             Foreground="{StaticResource TextGray}"
+                                             VerticalAlignment="Center"
+                                             Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Button Grid.Column="1"
+                                   Style="{StaticResource ModernButton}"
+                                   Click="NewClientButton_Click"
+                                   Padding="14,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="+" FontSize="16" FontWeight="Bold" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Nuevo" FontSize="13"/>
+                                </StackPanel>
                             </Button>
                         </Grid>
                     </Border>
 
-                    <!-- Barra de búsqueda mejorada -->
-                    <Border Grid.Row="1" 
-                            Background="White" 
-                            Padding="15"
-                            BorderBrush="#E0E0E0"
-                            BorderThickness="0,0,0,1">
-                        <Border Background="#F5F5F5"
-                               BorderBrush="#BDBDBD"
-                               BorderThickness="1"
-                               CornerRadius="5"
-                               Padding="10,0">
+                    <!-- Barra de búsqueda -->
+                    <Border Grid.Row="1" Padding="20,16" Background="White">
+                        <Border Background="{StaticResource BackgroundGray}"
+                               CornerRadius="8"
+                               Padding="0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="0"
-                                         Text="🔍" 
-                                         FontSize="16"
-                                         Foreground="#757575"
-                                         VerticalAlignment="Center"
-                                         Margin="5,0,10,0"/>
-
-                                <TextBox Grid.Column="1"
-                                       Name="SearchBox" 
+                                <TextBox Name="SearchBox" 
                                        BorderThickness="0"
                                        Background="Transparent"
                                        VerticalContentAlignment="Center"
                                        FontSize="14"
+                                       Padding="40,10,10,10"
                                        TextChanged="SearchBox_TextChanged">
                                     <TextBox.Style>
                                         <Style TargetType="TextBox">
@@ -270,40 +264,40 @@
                                                     </ControlTemplate>
                                                 </Setter.Value>
                                             </Setter>
-                                            <Style.Triggers>
-                                                <Trigger Property="Text" Value="">
-                                                    <Setter Property="Background">
-                                                        <Setter.Value>
-                                                            <VisualBrush AlignmentX="Left" AlignmentY="Center" Stretch="None">
-                                                                <VisualBrush.Visual>
-                                                                    <TextBlock Text="Buscar cliente por nombre, RFC o teléfono..." 
-                                                                             Foreground="#BDBDBD"
-                                                                             FontStyle="Italic"/>
-                                                                </VisualBrush.Visual>
-                                                            </VisualBrush>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                </Trigger>
-                                            </Style.Triggers>
                                         </Style>
                                     </TextBox.Style>
                                 </TextBox>
 
-                                <Border Grid.Column="2"
-                                       Background="#9C27B0"
-                                       CornerRadius="10"
-                                       Padding="8,4">
-                                    <TextBlock Name="ResultCountText"
-                                             Text="30"
-                                             Foreground="White"
-                                             FontWeight="Bold"
-                                             FontSize="11"/>
-                                </Border>
+                                <TextBlock Text="🔍" 
+                                         FontSize="16"
+                                         Foreground="{StaticResource TextGray}"
+                                         VerticalAlignment="Center"
+                                         Margin="12,0,0,0"
+                                         IsHitTestVisible="False"/>
+
+                                <TextBlock Text="Buscar por nombre, RFC o teléfono..." 
+                                         Foreground="{StaticResource TextGray}"
+                                         FontStyle="Italic"
+                                         FontSize="14"
+                                         VerticalAlignment="Center"
+                                         Margin="40,0,0,0"
+                                         IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Hidden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text.Length, ElementName=SearchBox}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </Grid>
                         </Border>
                     </Border>
 
-                    <!-- Lista de clientes con diseño mejorado -->
+                    <!-- Lista de clientes -->
                     <ScrollViewer Grid.Row="2" 
                                  VerticalScrollBarVisibility="Auto"
                                  Background="White">
@@ -311,30 +305,32 @@
                                BorderThickness="0"
                                Background="Transparent"
                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                               SelectionChanged="ClientsListBox_SelectionChanged">
+                               SelectionChanged="ClientsListBox_SelectionChanged"
+                               Padding="8">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
                                     <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Margin" Value="8"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="ListBoxItem">
                                                 <Border Name="ItemBorder" 
                                                       Background="White"
-                                                      BorderBrush="#F5F5F5"
-                                                      BorderThickness="0,0,0,1"
-                                                      Padding="15,12">
+                                                      BorderBrush="{StaticResource BorderGray}"
+                                                      BorderThickness="1"
+                                                      CornerRadius="8"
+                                                      Padding="16,12">
                                                     <ContentPresenter/>
                                                 </Border>
                                                 <ControlTemplate.Triggers>
                                                     <Trigger Property="IsSelected" Value="True">
-                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#F3E5F5"/>
-                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#9C27B0"/>
-                                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="3,0,0,1"/>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource PrimaryLight}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="2"/>
                                                     </Trigger>
                                                     <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#FAFAFA"/>
+                                                        <Setter TargetName="ItemBorder" Property="Background" Value="{StaticResource BackgroundGray}"/>
                                                     </Trigger>
                                                 </ControlTemplate.Triggers>
                                             </ControlTemplate>
@@ -353,46 +349,62 @@
 
                                         <!-- Avatar -->
                                         <Border Grid.Column="0"
-                                               Background="#E1BEE7"
-                                               Width="40" Height="40"
-                                               CornerRadius="20"
+                                               Background="{StaticResource PrimaryLight}"
+                                               Width="44" Height="44"
+                                               CornerRadius="22"
                                                Margin="0,0,12,0">
                                             <TextBlock Text="👤"
-                                                     FontSize="20"
+                                                     FontSize="22"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center"/>
                                         </Border>
 
                                         <!-- Información del cliente -->
-                                        <StackPanel Grid.Column="1">
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" 
                                                      FontWeight="SemiBold"
                                                      FontSize="15"
-                                                     Foreground="#212121"/>
-                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                <TextBlock FontSize="12" Foreground="#757575">
-                                                    <Run Text="RFC:"/>
-                                                    <Run Text="{Binding TaxId}" FontWeight="SemiBold"/>
-                                                </TextBlock>
-                                            </StackPanel>
+                                                     Foreground="{StaticResource DarkText}"/>
+                                            <TextBlock FontSize="12" 
+                                                     Foreground="{StaticResource TextGray}"
+                                                     Margin="0,2,0,0">
+                                                <Run Text="RFC:"/>
+                                                <Run Text="{Binding TaxId}" FontWeight="Medium"/>
+                                            </TextBlock>
                                             <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                <TextBlock Text="📞" FontSize="11" Foreground="#757575" Margin="0,0,5,0"/>
-                                                <TextBlock Text="{Binding Phone}" FontSize="12" Foreground="#757575"/>
-                                                <TextBlock Text=" • " FontSize="11" Foreground="#BDBDBD" Margin="8,0"/>
-                                                <TextBlock Text="📧" FontSize="11" Foreground="#9C27B0" Margin="0,0,5,0"/>
-                                                <TextBlock Text="{Binding ContactCount}" FontSize="12" Foreground="#9C27B0" FontWeight="SemiBold"/>
-                                                <TextBlock Text=" contactos" FontSize="12" Foreground="#9C27B0"/>
+                                                <TextBlock Text="📞" FontSize="11" Margin="0,0,4,0"/>
+                                                <TextBlock Text="{Binding Phone}" 
+                                                         FontSize="12" 
+                                                         Foreground="{StaticResource TextGray}"
+                                                         Margin="0,0,8,0"/>
+                                                <TextBlock Text="•" FontSize="11" 
+                                                         Foreground="{StaticResource BorderGray}" 
+                                                         Margin="0,0,8,0"/>
+                                                <Border Background="{StaticResource InfoLight}"
+                                                       CornerRadius="8"
+                                                       Padding="6,2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding ContactCount}" 
+                                                                 FontSize="11" 
+                                                                 Foreground="{StaticResource InfoColor}" 
+                                                                 FontWeight="Bold"/>
+                                                        <TextBlock Text=" contactos" 
+                                                                 FontSize="11" 
+                                                                 Foreground="{StaticResource InfoColor}"
+                                                                 Margin="2,0,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
                                             </StackPanel>
                                         </StackPanel>
 
                                         <!-- Estado -->
                                         <Border Grid.Column="2" 
-                                              Background="#4CAF50"
+                                              Background="{StaticResource SuccessLight}"
                                               CornerRadius="12"
-                                              Padding="10,4"
+                                              Padding="10,5"
                                               VerticalAlignment="Center">
                                             <TextBlock Text="ACTIVO" 
-                                                     Foreground="White" 
+                                                     Foreground="{StaticResource SuccessColor}" 
                                                      FontSize="10"
                                                      FontWeight="Bold"/>
                                         </Border>
@@ -402,41 +414,38 @@
                         </ListBox>
                     </ScrollViewer>
 
-                    <!-- Footer con estadísticas -->
-                    <Border Grid.Row="3">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#37474F" Offset="0"/>
-                                <GradientStop Color="#263238" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Grid Height="40">
-                            <StackPanel Orientation="Horizontal" 
-                                       VerticalAlignment="Center" 
-                                       Margin="15,0">
-                                <Border Background="#00000030"
-                                       CornerRadius="5"
-                                       Padding="10,4"
-                                       Margin="0,0,10,0">
+                    <!-- Footer -->
+                    <Border Grid.Row="3" 
+                            Background="{StaticResource BackgroundGray}"
+                            BorderBrush="{StaticResource BorderGray}"
+                            BorderThickness="0,1,0,0"
+                            CornerRadius="0,0,12,12"
+                            Padding="20,12">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Background="White"
+                                       CornerRadius="6"
+                                       Padding="10,6"
+                                       Margin="0,0,12,0">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Estado: " 
-                                                 Foreground="#B0BEC5" 
+                                                 Foreground="{StaticResource TextGray}" 
                                                  FontSize="12"/>
                                         <TextBlock Name="StatusText" 
                                                  Text="Listo" 
-                                                 Foreground="#4CAF50"
+                                                 Foreground="{StaticResource SuccessColor}"
                                                  FontWeight="SemiBold"
                                                  FontSize="12"/>
                                     </StackPanel>
                                 </Border>
 
-                                <TextBlock Text="Total clientes: " 
-                                         Foreground="#B0BEC5" 
+                                <TextBlock Text="Total: " 
+                                         Foreground="{StaticResource TextGray}" 
                                          FontSize="12"
                                          VerticalAlignment="Center"/>
                                 <TextBlock Name="TotalClientsText" 
                                          Text="0" 
-                                         Foreground="White"
+                                         Foreground="{StaticResource DarkText}"
                                          FontWeight="Bold"
                                          FontSize="14"
                                          VerticalAlignment="Center"/>
@@ -445,7 +454,8 @@
                     </Border>
                 </Grid>
             </Border>
-            <!-- CONTINÚA DEL ARTIFACT ANTERIOR - Panel Derecho -->
+
+            <!-- Panel Derecho - Detalles del Cliente -->
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -455,11 +465,11 @@
                 <!-- Mensaje cuando no hay cliente seleccionado -->
                 <Border Name="NoSelectionPanel" 
                       Grid.RowSpan="2"
-                      Background="White"
+                      Style="{StaticResource CardStyle}"
                       Visibility="Visible">
                     <StackPanel HorizontalAlignment="Center" 
                               VerticalAlignment="Center">
-                        <Border Background="#F3E5F5"
+                        <Border Background="{StaticResource PrimaryLight}"
                                Width="100" Height="100"
                                CornerRadius="50"
                                Margin="0,0,0,20">
@@ -469,15 +479,18 @@
                                      VerticalAlignment="Center"/>
                         </Border>
                         <TextBlock Text="Seleccione un cliente" 
-                                 FontSize="20" 
-                                 Foreground="#424242"
-                                 FontWeight="Light"
+                                 FontSize="22" 
+                                 Foreground="{StaticResource DarkText}"
+                                 FontWeight="SemiBold"
                                  HorizontalAlignment="Center"/>
                         <TextBlock Text="Elija un cliente de la lista para ver sus detalles y gestionar contactos" 
-                                 FontSize="13" 
-                                 Foreground="#757575"
+                                 FontSize="14" 
+                                 Foreground="{StaticResource TextGray}"
                                  Margin="0,8,0,0"
-                                 HorizontalAlignment="Center"/>
+                                 HorizontalAlignment="Center"
+                                 TextWrapping="Wrap"
+                                 TextAlignment="Center"
+                                 MaxWidth="400"/>
                     </StackPanel>
                 </Border>
 
@@ -486,165 +499,150 @@
                           Grid.Row="0"
                           Visibility="Collapsed">
 
-                    <!-- Header del cliente con gradiente púrpura -->
-                    <Border>
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                <GradientStop Color="#6A1B9A" Offset="0"/>
-                                <GradientStop Color="#8E24AA" Offset="0.5"/>
-                                <GradientStop Color="#AB47BC" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-
-                        <Grid Height="120" Margin="30,20">
+                    <!-- Header del cliente -->
+                    <Border Style="{StaticResource CardStyle}" Padding="24,20" Margin="0,0,0,16">
+                        <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <!-- Avatar grande -->
+                            <Border Grid.Column="0"
+                                   Background="{StaticResource PrimaryLight}"
+                                   Width="60" Height="60"
+                                   CornerRadius="30"
+                                   Margin="0,0,20,0">
+                                <TextBlock Text="👤"
+                                         FontSize="32"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"/>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Name="ClientNameHeader" 
                                          Text="Nombre del Cliente" 
-                                         FontSize="28" 
-                                         FontWeight="Light"
-                                         Foreground="White"/>
-                                <Border Background="#4CAF50" 
+                                         FontSize="24" 
+                                         FontWeight="Bold"
+                                         Foreground="{StaticResource DarkText}"/>
+                                <Border Background="{StaticResource SuccessLight}" 
                                       HorizontalAlignment="Left"
                                       CornerRadius="12" 
                                       Padding="12,5"
-                                      Margin="0,10,0,0">
+                                      Margin="0,8,0,0">
                                     <TextBlock Text="CLIENTE ACTIVO" 
-                                             Foreground="White" 
+                                             Foreground="{StaticResource SuccessColor}" 
                                              FontSize="11"
                                              FontWeight="Bold"/>
                                 </Border>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" 
+                            <StackPanel Grid.Column="2" 
                                        Orientation="Horizontal" 
-                                       VerticalAlignment="Top">
-                                <Button Content="✏️ EDITAR"
-                                       Style="{StaticResource OrangeButton}"
-                                       Width="130"
+                                       VerticalAlignment="Center">
+                                <Button Content="✏️ Editar"
+                                       Style="{StaticResource WarningButton}"
                                        Margin="0,0,10,0"
+                                       Padding="14,8"
                                        Click="EditClientButton_Click"/>
 
-                                <Button Content="🗑️ ELIMINAR"
-                                       Style="{StaticResource RedButton}"
-                                       Width="130"
+                                <Button Content="🗑️ Eliminar"
+                                       Style="{StaticResource DangerButton}"
+                                       Padding="14,8"
                                        Click="DeleteClientButton_Click"/>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <!-- Información del cliente en tarjetas -->
-                    <Border Background="#FAFAFA" Padding="25,20">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
+                    <!-- Tarjetas de información -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                            <!-- RFC -->
-                            <Border Grid.Column="0" 
-                                   Background="White"
-                                   CornerRadius="8"
-                                   Padding="15"
-                                   Margin="0,0,10,0"
-                                   BorderBrush="#E0E0E0"
-                                   BorderThickness="1">
-                                <StackPanel>
-                                    <TextBlock Text="RFC" 
-                                             FontSize="11" 
-                                             Foreground="#9E9E9E" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Name="ClientTaxIdText" 
-                                             Text="Sin RFC" 
+                        <!-- RFC -->
+                        <Border Grid.Column="0" Style="{StaticResource CardStyle}"
+                               Padding="16,12" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="RFC" 
+                                         FontSize="11" 
+                                         Foreground="{StaticResource TextGray}" 
+                                         FontWeight="SemiBold"/>
+                                <TextBlock Name="ClientTaxIdText" 
+                                         Text="Sin RFC" 
+                                         FontSize="15" 
+                                         Foreground="{StaticResource DarkText}" 
+                                         FontWeight="SemiBold"
+                                         Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Teléfono -->
+                        <Border Grid.Column="1" Style="{StaticResource CardStyle}"
+                               Padding="16,12" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="TELÉFONO" 
+                                         FontSize="11" 
+                                         Foreground="{StaticResource TextGray}" 
+                                         FontWeight="SemiBold"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="📞" FontSize="14" Margin="0,0,5,0"/>
+                                    <TextBlock Name="ClientPhoneText" 
+                                             Text="Sin teléfono" 
                                              FontSize="15" 
-                                             Foreground="#424242" 
-                                             FontWeight="SemiBold"
-                                             Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Teléfono -->
-                            <Border Grid.Column="1" 
-                                   Background="White"
-                                   CornerRadius="8"
-                                   Padding="15"
-                                   Margin="0,0,10,0"
-                                   BorderBrush="#E0E0E0"
-                                   BorderThickness="1">
-                                <StackPanel>
-                                    <TextBlock Text="TELÉFONO" 
-                                             FontSize="11" 
-                                             Foreground="#9E9E9E" 
+                                             Foreground="{StaticResource DarkText}"
                                              FontWeight="SemiBold"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                        <TextBlock Text="📞" FontSize="14" Margin="0,0,5,0"/>
-                                        <TextBlock Name="ClientPhoneText" 
-                                                 Text="Sin teléfono" 
-                                                 FontSize="15" 
-                                                 Foreground="#424242"
-                                                 FontWeight="SemiBold"/>
-                                    </StackPanel>
                                 </StackPanel>
-                            </Border>
+                            </StackPanel>
+                        </Border>
 
-                            <!-- Días de Crédito -->
-                            <Border Grid.Column="2" 
-                                   Background="White"
-                                   CornerRadius="8"
-                                   Padding="15"
-                                   Margin="0,0,10,0"
-                                   BorderBrush="#E0E0E0"
-                                   BorderThickness="1">
-                                <StackPanel>
-                                    <TextBlock Text="DÍAS CRÉDITO" 
-                                             FontSize="11" 
-                                             Foreground="#9E9E9E" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Name="ClientCreditDaysText" 
-                                             Text="30 días" 
-                                             FontSize="15" 
-                                             Foreground="#FF9800" 
-                                             FontWeight="Bold"
-                                             Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Border>
+                        <!-- Días de Crédito -->
+                        <Border Grid.Column="2" Style="{StaticResource CardStyle}"
+                               Padding="16,12" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="DÍAS CRÉDITO" 
+                                         FontSize="11" 
+                                         Foreground="{StaticResource TextGray}" 
+                                         FontWeight="SemiBold"/>
+                                <TextBlock Name="ClientCreditDaysText" 
+                                         Text="30 días" 
+                                         FontSize="15" 
+                                         Foreground="{StaticResource WarningColor}" 
+                                         FontWeight="Bold"
+                                         Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
 
-                            <!-- Dirección -->
-                            <Border Grid.Column="3" 
-                                   Background="White"
-                                   CornerRadius="8"
-                                   Padding="15"
-                                   BorderBrush="#E0E0E0"
-                                   BorderThickness="1">
-                                <StackPanel>
-                                    <TextBlock Text="DIRECCIÓN" 
-                                             FontSize="11" 
-                                             Foreground="#9E9E9E" 
-                                             FontWeight="SemiBold"/>
-                                    <TextBlock Name="ClientAddressText" 
-                                             Text="Sin dirección" 
-                                             FontSize="14" 
-                                             Foreground="#424242" 
-                                             TextWrapping="Wrap" 
-                                             Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </Border>
+                        <!-- Dirección -->
+                        <Border Grid.Column="3" Style="{StaticResource CardStyle}"
+                               Padding="16,12">
+                            <StackPanel>
+                                <TextBlock Text="DIRECCIÓN" 
+                                         FontSize="11" 
+                                         Foreground="{StaticResource TextGray}" 
+                                         FontWeight="SemiBold"/>
+                                <TextBlock Name="ClientAddressText" 
+                                         Text="Sin dirección" 
+                                         FontSize="14" 
+                                         Foreground="{StaticResource DarkText}" 
+                                         TextWrapping="Wrap" 
+                                         Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
 
-                    <!-- Panel de edición inline mejorado -->
+                    <!-- Panel de edición -->
                     <Border Name="ClientEditPanel" 
-                           Background="#FFF3E0" 
-                           Padding="25,20" 
+                           Style="{StaticResource CardStyle}"
+                           Background="{StaticResource WarningLight}" 
+                           Padding="24,20" 
                            Visibility="Collapsed"
-                           BorderBrush="#FF9800"
-                           BorderThickness="0,2,0,0">
+                           BorderBrush="{StaticResource WarningColor}"
+                           Margin="0,0,0,16">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -662,13 +660,14 @@
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                     <TextBlock Text="Nombre del Cliente *" 
                                              FontSize="12" 
-                                             Foreground="#666" 
+                                             Foreground="{StaticResource TextGray}" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,6"/>
                                     <TextBox Name="EditClientName" 
-                                           Height="35" 
-                                           Padding="10,8" 
-                                           BorderBrush="#FF9800"
+                                           Height="38" 
+                                           Padding="12,8"
+                                           Background="White"
+                                           BorderBrush="{StaticResource WarningColor}"
                                            BorderThickness="2"
                                            FontSize="14"/>
                                 </StackPanel>
@@ -676,13 +675,14 @@
                                 <StackPanel Grid.Column="1" Margin="0,0,10,0">
                                     <TextBlock Text="RFC" 
                                              FontSize="12" 
-                                             Foreground="#666" 
+                                             Foreground="{StaticResource TextGray}" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,6"/>
                                     <TextBox Name="EditClientRFC" 
-                                           Height="35" 
-                                           Padding="10,8" 
-                                           BorderBrush="#FF9800"
+                                           Height="38" 
+                                           Padding="12,8"
+                                           Background="White"
+                                           BorderBrush="{StaticResource WarningColor}"
                                            BorderThickness="2"
                                            FontSize="14"/>
                                 </StackPanel>
@@ -690,20 +690,21 @@
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Teléfono" 
                                              FontSize="12" 
-                                             Foreground="#666" 
+                                             Foreground="{StaticResource TextGray}" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,6"/>
                                     <TextBox Name="EditClientPhone" 
-                                           Height="35" 
-                                           Padding="10,8" 
-                                           BorderBrush="#FF9800"
+                                           Height="38" 
+                                           Padding="12,8"
+                                           Background="White"
+                                           BorderBrush="{StaticResource WarningColor}"
                                            BorderThickness="2"
                                            FontSize="14"/>
                                 </StackPanel>
                             </Grid>
 
                             <!-- Segunda fila de campos y botones -->
-                            <Grid Grid.Row="1" Margin="0,15,0,0">
+                            <Grid Grid.Row="1" Margin="0,16,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="2*"/>
                                     <ColumnDefinition Width="*"/>
@@ -713,13 +714,14 @@
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                     <TextBlock Text="Dirección" 
                                              FontSize="12" 
-                                             Foreground="#666" 
+                                             Foreground="{StaticResource TextGray}" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,6"/>
                                     <TextBox Name="EditClientAddress" 
-                                           Height="35" 
-                                           Padding="10,8" 
-                                           BorderBrush="#FF9800"
+                                           Height="38" 
+                                           Padding="12,8"
+                                           Background="White"
+                                           BorderBrush="{StaticResource WarningColor}"
                                            BorderThickness="2"
                                            FontSize="14"/>
                                 </StackPanel>
@@ -727,13 +729,14 @@
                                 <StackPanel Grid.Column="1" Margin="0,0,10,0">
                                     <TextBlock Text="Días de Crédito" 
                                              FontSize="12" 
-                                             Foreground="#666" 
+                                             Foreground="{StaticResource TextGray}" 
                                              FontWeight="SemiBold"
-                                             Margin="0,0,0,5"/>
+                                             Margin="0,0,0,6"/>
                                     <TextBox Name="EditClientCredit" 
-                                           Height="35" 
-                                           Padding="10,8" 
-                                           BorderBrush="#FF9800"
+                                           Height="38" 
+                                           Padding="12,8"
+                                           Background="White"
+                                           BorderBrush="{StaticResource WarningColor}"
                                            BorderThickness="2"
                                            FontSize="14"
                                            Text="30"/>
@@ -742,41 +745,22 @@
                                 <StackPanel Grid.Column="2" 
                                            Orientation="Horizontal" 
                                            VerticalAlignment="Bottom">
-                                    <Button Content="✓ GUARDAR" 
-                                           Style="{StaticResource GreenButton}"
-                                           Width="110"
+                                    <Button Content="✓ Guardar" 
+                                           Style="{StaticResource SuccessButton}"
+                                           Padding="14,8"
                                            Click="SaveClientEdit_Click"
                                            Margin="0,0,10,0"/>
-                                    <Button Content="✕ CANCELAR" 
-                                           Background="#757575"
-                                           Foreground="White"
-                                           Width="110"
-                                           Height="38"
-                                           FontWeight="SemiBold"
-                                           Click="CancelClientEdit_Click">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border Background="{TemplateBinding Background}" 
-                                                       CornerRadius="5"
-                                                       Padding="15,8">
-                                                    <ContentPresenter HorizontalAlignment="Center" 
-                                                                    VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#616161"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
+                                    <Button Content="✕ Cancelar" 
+                                           Style="{StaticResource SecondaryButton}"
+                                           Padding="14,8"
+                                           Click="CancelClientEdit_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>
                     </Border>
                 </StackPanel>
 
-                <!-- Sección de contactos mejorada -->
+                <!-- Sección de contactos -->
                 <Grid Name="ContactsSection" 
                     Grid.Row="1"
                     Visibility="Collapsed">
@@ -788,33 +772,32 @@
 
                     <!-- Header de contactos -->
                     <Border Grid.Row="0" 
-                           Background="#F5F5F5" 
-                           BorderBrush="#E0E0E0" 
-                           BorderThickness="0,1,0,1" 
-                           Padding="25,15">
+                           Style="{StaticResource CardStyle}"
+                           Padding="20,16"
+                           Margin="0,0,0,16">
                         <Grid>
                             <StackPanel Orientation="Horizontal" 
                                        VerticalAlignment="Center">
-                                <Border Background="#9C27B0"
-                                       Width="32" Height="32"
-                                       CornerRadius="16"
+                                <Border Background="{StaticResource InfoColor}"
+                                       Width="36" Height="36"
+                                       CornerRadius="18"
                                        Margin="0,0,12,0">
                                     <TextBlock Text="👤" 
-                                             FontSize="16" 
+                                             FontSize="18" 
                                              HorizontalAlignment="Center"
                                              VerticalAlignment="Center"/>
                                 </Border>
                                 <TextBlock Text="CONTACTOS DEL CLIENTE" 
                                          FontSize="16" 
                                          FontWeight="SemiBold" 
-                                         Foreground="#424242"/>
-                                <Border Background="#9C27B0" 
+                                         Foreground="{StaticResource DarkText}"/>
+                                <Border Background="{StaticResource InfoLight}" 
                                        CornerRadius="12" 
-                                       Padding="10,3" 
+                                       Padding="10,4" 
                                        Margin="12,0,0,0">
                                     <TextBlock Name="ContactCountBadge" 
                                              Text="0" 
-                                             Foreground="White" 
+                                             Foreground="{StaticResource InfoColor}" 
                                              FontSize="13" 
                                              FontWeight="Bold"/>
                                 </Border>
@@ -822,47 +805,37 @@
 
                             <StackPanel Orientation="Horizontal" 
                                        HorizontalAlignment="Right">
-                                <Button Content="💾 GUARDAR TODO"
+                                <Button Content="💾 Guardar"
                                        Name="SaveContactsButton"
-                                       Style="{StaticResource GreenButton}"
+                                       Style="{StaticResource SuccessButton}"
                                        Click="SaveContactsButton_Click"
+                                       Padding="14,8"
                                        Margin="0,0,10,0"/>
-                                <Button Content="+ NUEVO CONTACTO"
-       Name="NewContactButton"
-       Click="NewContactButton_Click"
-       Margin="0,0,10,0">
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource ModernButton}">
-                                            <Setter Property="Background" Value="#9C27B0"/>
-                                            <Style.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#7B1FA2"/>
-                                                </Trigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                                <Button Content="✏️ EDITAR"
-                                       Style="{StaticResource OrangeButton}"
+                                <Button Content="+ Nuevo"
+                                       Name="NewContactButton"
+                                       Style="{StaticResource ModernButton}"
+                                       Click="NewContactButton_Click"
+                                       Padding="14,8"
+                                       Margin="0,0,10,0"/>
+                                <Button Content="✏️ Editar"
+                                       Style="{StaticResource WarningButton}"
                                        Name="EditContactButton"
                                        IsEnabled="False"
                                        Click="EditContactButton_Click"
+                                       Padding="14,8"
                                        Margin="0,0,10,0"/>
-                                <Button Content="🗑️ ELIMINAR"
-                                       Style="{StaticResource RedButton}"
+                                <Button Content="🗑️ Eliminar"
+                                       Style="{StaticResource DangerButton}"
                                        Name="DeleteContactButton"
                                        IsEnabled="False"
-                                       Click="DeleteContactButton_Click"/>
+                                       Click="DeleteContactButton_Click"
+                                       Padding="14,8"/>
                             </StackPanel>
                         </Grid>
                     </Border>
 
-                    <!-- DataGrid de contactos con estilo consistente -->
-                    <Border Grid.Row="1" 
-                           Background="White"
-                           BorderBrush="#E0E0E0"
-                           BorderThickness="1"
-                           Margin="15">
+                    <!-- DataGrid de contactos -->
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}">
                         <DataGrid Name="ContactsDataGrid"
                                 SelectionChanged="ContactsDataGrid_SelectionChanged"
                                 AutoGenerateColumns="False"
@@ -872,7 +845,7 @@
                                 HeadersVisibility="Column"
                                 Background="Transparent"
                                 BorderThickness="0"
-                                RowHeight="48"
+                                RowHeight="52"
                                 FontSize="14"
                                 SelectionUnit="FullRow"
                                 ClipboardCopyMode="ExcludeHeader"
@@ -884,40 +857,29 @@
                             <DataGrid.Resources>
                                 <!-- Header Style -->
                                 <Style TargetType="DataGridColumnHeader">
-                                    <Setter Property="Background">
-                                        <Setter.Value>
-                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                <GradientStop Color="#37474F" Offset="0"/>
-                                                <GradientStop Color="#263238" Offset="1"/>
-                                            </LinearGradientBrush>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                     <Setter Property="FontSize" Value="12"/>
-                                    <Setter Property="Height" Value="42"/>
-                                    <Setter Property="Padding" Value="12,0"/>
-                                    <Setter Property="BorderBrush" Value="#455A64"/>
-                                    <Setter Property="BorderThickness" Value="0,0,1,0"/>
-                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="Height" Value="44"/>
+                                    <Setter Property="Padding" Value="16,0"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
                                 </Style>
 
                                 <!-- Row Style -->
                                 <Style TargetType="DataGridRow">
                                     <Setter Property="Background" Value="White"/>
-                                    <Setter Property="BorderBrush" Value="#F5F5F5"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
                                     <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                     <Style.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#F3E5F5"/>
+                                            <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#E1BEE7"/>
-                                            <Setter Property="BorderBrush" Value="#9C27B0"/>
-                                            <Setter Property="BorderThickness" Value="2,0,0,1"/>
-                                        </Trigger>
-                                        <Trigger Property="AlternationIndex" Value="1">
-                                            <Setter Property="Background" Value="#FAFAFA"/>
+                                            <Setter Property="Background" Value="{StaticResource PrimaryLight}"/>
+                                            <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>
@@ -925,12 +887,12 @@
                                 <!-- Cell Style -->
                                 <Style TargetType="DataGridCell">
                                     <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="Padding" Value="8,0"/>
+                                    <Setter Property="Padding" Value="16,0"/>
                                     <Setter Property="VerticalContentAlignment" Value="Center"/>
                                     <Style.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
                                             <Setter Property="Background" Value="Transparent"/>
-                                            <Setter Property="Foreground" Value="Black"/>
+                                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                                             <Setter Property="BorderBrush" Value="Transparent"/>
                                         </Trigger>
                                     </Style.Triggers>
@@ -939,7 +901,7 @@
 
                             <DataGrid.Columns>
                                 <!-- Checkbox Principal -->
-                                <DataGridTemplateColumn Header="PRINCIPAL" Width="90">
+                                <DataGridTemplateColumn Header="PRINCIPAL" Width="100">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <CheckBox IsChecked="{Binding IsPrimary, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -959,7 +921,6 @@
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
-                                            <Setter Property="Padding" Value="10,0,0,0"/>
                                             <Setter Property="HorizontalAlignment" Value="Left"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
@@ -972,8 +933,7 @@
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Left"/>
-                                            <Setter Property="Padding" Value="10,0,0,0"/>
-                                            <Setter Property="Foreground" Value="#616161"/>
+                                            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
@@ -985,67 +945,63 @@
                                                   MinWidth="250">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="#1976D2"/>
+                                            <Setter Property="Foreground" Value="{StaticResource InfoColor}"/>
                                             <Setter Property="HorizontalAlignment" Value="Left"/>
-                                            <Setter Property="Padding" Value="10,0,0,0"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!-- Teléfono -->
-                                <DataGridTemplateColumn Header="TELÉFONO" Width="150">
+                                <!-- Teléfono con emoji en modo lectura -->
+                                <DataGridTemplateColumn Header="TELÉFONO" Width="160">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" 
-                                                      HorizontalAlignment="Left"
-                                                      Margin="10,0,0,0">
-                                                <TextBlock Text="📱" 
-                                                         Margin="0,0,5,0"
-                                                         VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Phone}" 
-                                                         VerticalAlignment="Center"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📱 " Margin="0,0,4,0"/>
+                                                <TextBlock Text="{Binding Phone}"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     Padding="4"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
                                 </DataGridTemplateColumn>
-
-                                
                             </DataGrid.Columns>
                         </DataGrid>
                     </Border>
 
-                    <!-- Footer con conteo -->
-                    <Border Grid.Row="2">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Color="#37474F" Offset="0"/>
-                                <GradientStop Color="#263238" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
-                        <Grid Height="40">
-                            <StackPanel Orientation="Horizontal" 
-                                       VerticalAlignment="Center" 
-                                       Margin="25,0">
-                                <TextBlock Text="Total contactos registrados: " 
-                                         Foreground="#B0BEC5" 
+                    <!-- Footer -->
+                    <Border Grid.Row="2" 
+                            Background="{StaticResource BackgroundGray}"
+                            BorderBrush="{StaticResource BorderGray}"
+                            BorderThickness="0,1,0,0"
+                            CornerRadius="0,0,12,12"
+                            Padding="20,12"
+                            Margin="0,16,0,0">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Total contactos: " 
+                                         Foreground="{StaticResource TextGray}" 
                                          FontSize="12"/>
                                 <TextBlock Name="TotalContactsText" 
                                          Text="0" 
-                                         Foreground="White"
+                                         Foreground="{StaticResource DarkText}"
                                          FontWeight="Bold"
                                          FontSize="14"/>
                             </StackPanel>
 
-                            <TextBlock Text="© 2024 IMA Mecatrónica - Gestión de Clientes"
+                            <TextBlock Text="© 2025 IMA Mecatrónica"
                                      HorizontalAlignment="Right"
-                                     Foreground="#607D8B"
-                                     FontSize="11"
-                                     VerticalAlignment="Center"
-                                     Margin="0,0,25,0"/>
+                                     Foreground="{StaticResource TextGray}"
+                                     FontSize="11"/>
                         </Grid>
                     </Border>
                 </Grid>
             </Grid>
         </Grid>
     </Grid>
-</Window>            
+</Window>
