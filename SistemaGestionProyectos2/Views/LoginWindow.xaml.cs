@@ -113,6 +113,12 @@ namespace SistemaGestionProyectos2.Views
 
                     System.Diagnostics.Debug.WriteLine($"✅ Login exitoso: {user.FullName} ({user.Role})");
 
+                    // INICIAR MONITOREO DE TIMEOUT DE SESIÓN
+                    var timeoutService = Services.SessionTimeoutService.Instance;
+                    timeoutService.Start();
+
+                    System.Diagnostics.Debug.WriteLine($"🔐 Timeout service iniciado (IsRunning: {timeoutService.IsRunning})");
+
                     // Crear ventana de carga
                     var loadingWindow = new LoadingWindow();
                     loadingWindow.Show();

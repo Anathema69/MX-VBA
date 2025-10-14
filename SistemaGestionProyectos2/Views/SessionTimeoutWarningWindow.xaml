@@ -1,0 +1,179 @@
+<Window x:Class="SistemaGestionProyectos2.Views.SessionTimeoutWarningWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Advertencia de Inactividad"
+        Height="320"
+        Width="500"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        Topmost="False"
+        ShowInTaskbar="True">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="WarningColor" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="WarningLight" Color="#FEF3C7"/>
+        <SolidColorBrush x:Key="DangerColor" Color="#EF4444"/>
+        <SolidColorBrush x:Key="PrimaryColor" Color="#6366F1"/>
+        <SolidColorBrush x:Key="DarkText" Color="#111827"/>
+        <SolidColorBrush x:Key="TextGray" Color="#6B7280"/>
+        <SolidColorBrush x:Key="BorderGray" Color="#E5E7EB"/>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F9FAFB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="White" CornerRadius="16" BorderThickness="1" BorderBrush="{StaticResource BorderGray}">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" Direction="270" ShadowDepth="5" Opacity="0.3" Color="#F59E0B"/>
+        </Border.Effect>
+
+        <Grid Margin="32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Ícono de advertencia -->
+            <Border Grid.Row="0"
+                    Width="80" Height="80"
+                    Background="{StaticResource WarningLight}"
+                    CornerRadius="40"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,20">
+                <TextBlock Text="⚠️"
+                         FontSize="48"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Título -->
+            <TextBlock Grid.Row="1"
+                     Text="Sesión inactiva"
+                     FontSize="24"
+                     FontWeight="Bold"
+                     Foreground="{StaticResource DarkText}"
+                     HorizontalAlignment="Center"
+                     Margin="0,0,0,12"/>
+
+            <!-- Mensaje -->
+            <TextBlock Grid.Row="2"
+                     Text="No se ha detectado actividad reciente"
+                     FontSize="14"
+                     Foreground="{StaticResource TextGray}"
+                     HorizontalAlignment="Center"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     Margin="0,0,0,24"/>
+
+            <!-- Cuenta regresiva -->
+            <Border Grid.Row="3"
+                    Background="{StaticResource WarningLight}"
+                    BorderBrush="{StaticResource WarningColor}"
+                    BorderThickness="2"
+                    CornerRadius="12"
+                    Padding="20"
+                    Margin="0,0,0,24">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="Tu sesión cerrará en:"
+                             FontSize="13"
+                             Foreground="{StaticResource TextGray}"
+                             HorizontalAlignment="Center"
+                             Margin="0,0,0,8"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Name="CountdownText"
+                                 Text="2:00"
+                                 FontSize="48"
+                                 FontWeight="Bold"
+                                 Foreground="{StaticResource WarningColor}"
+                                 HorizontalAlignment="Center"/>
+                        <TextBlock Text="⏱️"
+                                 FontSize="32"
+                                 Margin="12,8,0,0"
+                                 VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Text="minutos"
+                             FontSize="12"
+                             Foreground="{StaticResource TextGray}"
+                             HorizontalAlignment="Center"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Botones -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button Name="ContinueButton"
+                        Content="Continuar trabajando"
+                        Style="{StaticResource PrimaryButton}"
+                        Click="ContinueButton_Click"
+                        Margin="0,0,12,0"/>
+
+                <Button Name="LogoutButton"
+                        Content="Cerrar sesión ahora"
+                        Style="{StaticResource SecondaryButton}"
+                        Click="LogoutButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

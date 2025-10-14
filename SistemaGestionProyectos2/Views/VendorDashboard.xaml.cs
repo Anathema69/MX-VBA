@@ -282,16 +282,10 @@ namespace SistemaGestionProyectos2.Views
 
             if (result == MessageBoxResult.Yes)
             {
-                // Volver a la ventana de login
-                var loginWindow = new LoginWindow();
-                loginWindow.Show();
-                // cerrar cualquier ventana abierta que no sea el login
-                Application.Current.Windows
-                    .OfType<Window>()
-                    .Where(w => w != loginWindow)
-                    .ToList()
-                    .ForEach(w => w.Close());
-
+                // Usar el método centralizado de App para cerrar sesión
+                // Esto cierra TODAS las ventanas excepto la de login y detiene el timeout service
+                var app = (App)Application.Current;
+                app.ForceLogout("Usuario cerró sesión manualmente", "Sesión cerrada exitosamente.");
             }
         }
 

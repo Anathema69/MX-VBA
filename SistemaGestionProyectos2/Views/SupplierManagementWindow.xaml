@@ -408,58 +408,210 @@
 
                                 <!-- RFC -->
                                 <Border Grid.Column="2" VerticalAlignment="Center" Margin="12,0">
-                                    <StackPanel>
-                                        <TextBlock Text="RFC" FontSize="10" 
-                                                 Foreground="{StaticResource TextGray}"
-                                                 Margin="0,0,0,2"/>
-                                        <TextBox Text="{Binding TaxId, UpdateSourceTrigger=PropertyChanged}"
-                                               FontSize="12" FontWeight="Medium"
-                                               BorderThickness="0"
-                                               Background="Transparent"
-                                               IsReadOnly="True"
-                                               GotFocus="Field_GotFocus"
-                                               LostFocus="Field_LostFocus"
-                                               KeyDown="Field_KeyDown"/>
-                                    </StackPanel>
+                                    <Border BorderBrush="{StaticResource BorderGray}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Background="White"
+                                            Padding="8,6">
+                                        <StackPanel>
+                                            <TextBlock Text="RFC" FontSize="10"
+                                                     Foreground="{StaticResource TextGray}"
+                                                     Margin="0,0,0,2"/>
+                                            <Grid>
+                                                <TextBox Name="TaxIdTextBox"
+                                                       Text="{Binding TaxId, UpdateSourceTrigger=PropertyChanged}"
+                                                       FontSize="12" FontWeight="Medium"
+                                                       BorderThickness="0"
+                                                       Background="Transparent"
+                                                       IsReadOnly="True"
+                                                       GotFocus="Field_GotFocus"
+                                                       LostFocus="Field_LostFocus"
+                                                       KeyDown="Field_KeyDown"/>
+                                                <TextBlock Text="Sin RFC"
+                                                         FontSize="10"
+                                                         Foreground="#9CA3AF"
+                                                         IsHitTestVisible="False"
+                                                         VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding Text.Length, ElementName=TaxIdTextBox}" Value="0"/>
+                                                                        <Condition Binding="{Binding IsEditing}" Value="True"/>
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </MultiDataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
                                 </Border>
 
                                 <!-- Contacto -->
                                 <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="0,0,12,0">
-                                    <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" 
-                                           FontSize="11" 
-                                           Foreground="{StaticResource TextGray}"
-                                           BorderThickness="0"
-                                           Background="Transparent"
-                                           IsReadOnly="True"
-                                           GotFocus="Field_GotFocus"
-                                           LostFocus="Field_LostFocus"
-                                           KeyDown="Field_KeyDown"/>
-                                    <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" 
-                                           FontSize="11" 
-                                           Foreground="{StaticResource TextGray}"
-                                           BorderThickness="0"
-                                           Background="Transparent"
-                                           IsReadOnly="True"
-                                           Margin="0,2,0,0"
-                                           GotFocus="Field_GotFocus"
-                                           LostFocus="Field_LostFocus"
-                                           KeyDown="Field_KeyDown"/>
+                                    <!-- Email -->
+                                    <Border BorderBrush="{StaticResource BorderGray}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Background="White"
+                                            Padding="6,4">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="📧"
+                                                     FontSize="10"
+                                                     Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{StaticResource TextGray}"/>
+                                            <TextBox Grid.Column="1"
+                                                   Name="EmailTextBox"
+                                                   Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextGray}"
+                                                   BorderThickness="0"
+                                                   Background="Transparent"
+                                                   IsReadOnly="True"
+                                                   GotFocus="Field_GotFocus"
+                                                   LostFocus="Field_LostFocus"
+                                                   KeyDown="Field_KeyDown"/>
+                                            <TextBlock Grid.Column="1"
+                                                     Text="Email del proveedor"
+                                                     FontSize="10"
+                                                     Foreground="#9CA3AF"
+                                                     IsHitTestVisible="False"
+                                                     VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Text.Length, ElementName=EmailTextBox}" Value="0"/>
+                                                                    <Condition Binding="{Binding IsEditing}" Value="True"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </MultiDataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Teléfono -->
+                                    <Border BorderBrush="{StaticResource BorderGray}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Background="White"
+                                            Padding="6,4"
+                                            Margin="0,4,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="📞"
+                                                     FontSize="10"
+                                                     Margin="0,0,4,0"
+                                                     VerticalAlignment="Center"
+                                                     Foreground="{StaticResource TextGray}"/>
+                                            <TextBox Grid.Column="1"
+                                                   Name="PhoneTextBox"
+                                                   Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource TextGray}"
+                                                   BorderThickness="0"
+                                                   Background="Transparent"
+                                                   IsReadOnly="True"
+                                                   GotFocus="Field_GotFocus"
+                                                   LostFocus="Field_LostFocus"
+                                                   KeyDown="Field_KeyDown"/>
+                                            <TextBlock Grid.Column="1"
+                                                     Text="Teléfono de contacto"
+                                                     FontSize="10"
+                                                     Foreground="#9CA3AF"
+                                                     IsHitTestVisible="False"
+                                                     VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <MultiDataTrigger>
+                                                                <MultiDataTrigger.Conditions>
+                                                                    <Condition Binding="{Binding Text.Length, ElementName=PhoneTextBox}" Value="0"/>
+                                                                    <Condition Binding="{Binding IsEditing}" Value="True"/>
+                                                                </MultiDataTrigger.Conditions>
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </MultiDataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Border>
                                 </StackPanel>
 
                                 <!-- Dirección -->
-                                <TextBox Grid.Column="4" 
-                                       Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"
-                                       FontSize="12"
-                                       Foreground="{StaticResource TextGray}"
-                                       BorderThickness="0"
-                                       Background="Transparent"
-                                       IsReadOnly="True"
-                                       TextWrapping="Wrap"
-                                       VerticalAlignment="Center"
-                                       Margin="0,0,12,0"
-                                       GotFocus="Field_GotFocus"
-                                       LostFocus="Field_LostFocus"
-                                       KeyDown="Field_KeyDown"/>
+                                <Border Grid.Column="4"
+                                        BorderBrush="{StaticResource BorderGray}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Background="White"
+                                        Padding="6,4"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,12,0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="📍"
+                                                 FontSize="10"
+                                                 Margin="0,0,4,0"
+                                                 VerticalAlignment="Top"
+                                                 Foreground="{StaticResource TextGray}"/>
+                                        <TextBox Grid.Column="1"
+                                               Name="AddressTextBox"
+                                               Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextGray}"
+                                               BorderThickness="0"
+                                               Background="Transparent"
+                                               IsReadOnly="True"
+                                               TextWrapping="Wrap"
+                                               GotFocus="Field_GotFocus"
+                                               LostFocus="Field_LostFocus"
+                                               KeyDown="Field_KeyDown"/>
+                                        <TextBlock Grid.Column="1"
+                                                 Text="Dirección del proveedor"
+                                                 FontSize="10"
+                                                 Foreground="#9CA3AF"
+                                                 IsHitTestVisible="False"
+                                                 VerticalAlignment="Top">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding Text.Length, ElementName=AddressTextBox}" Value="0"/>
+                                                                <Condition Binding="{Binding IsEditing}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
 
                                 <!-- Días de crédito editable inline -->
                                 <Border Grid.Column="5" 
