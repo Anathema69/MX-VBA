@@ -10,6 +10,13 @@
         ShowInTaskbar="True">
 
     <Window.Resources>
+        <!-- Sombra estándar -->
+        <DropShadowEffect x:Key="StandardShadow"
+                          ShadowDepth="2"
+                          BlurRadius="8"
+                          Opacity="0.15"
+                          Color="Black"/>
+
         <!-- Estilos -->
         <Style x:Key="TitleTextStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="20"/>
