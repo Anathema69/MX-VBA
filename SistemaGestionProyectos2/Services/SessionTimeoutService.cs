@@ -67,7 +67,7 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
-                // Usar el directorio base de la aplicación (donde está el .exe)
+                // Usar el directorio base de la aplicación (donde está el .exe en Program Files o donde esté instalada)
                 var basePath = AppDomain.CurrentDomain.BaseDirectory;
                 var configPath = Path.Combine(basePath, "appsettings.json");
 
@@ -253,32 +253,14 @@ namespace SistemaGestionProyectos2.Services
             // Timeout alcanzado
             if (inactiveMinutes >= _config.InactivityMinutes)
             {
-                System.Diagnostics.Debug.WriteLine("🔒🔒🔒 ========================================");
-                System.Diagnostics.Debug.WriteLine($"🔒 TIMEOUT ALCANZADO - Inactividad: {inactiveMinutes:F1} minutos");
-                System.Diagnostics.Debug.WriteLine($"🔒 Umbral configurado: {_config.InactivityMinutes} minutos");
-                System.Diagnostics.Debug.WriteLine("🔒🔒🔒 ========================================");
-
                 _logger.LogWarning("SESSION", "TIMEOUT_TRIGGERED", new
                 {
                     inactiveMinutes = (int)inactiveMinutes,
                     timeoutMinutes = _config.InactivityMinutes
                 });
 
-                System.Diagnostics.Debug.WriteLine("🔒 Deteniendo timer de inactividad...");
                 Stop();
-
-                // Verificar si hay suscriptores al evento
-                if (OnTimeout != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"🔒 Hay {OnTimeout.GetInvocationList().Length} suscriptor(es) al evento OnTimeout");
-                    System.Diagnostics.Debug.WriteLine("🔒 Invocando evento OnTimeout...");
-                    OnTimeout.Invoke(this, EventArgs.Empty);
-                    System.Diagnostics.Debug.WriteLine("🔒 Evento OnTimeout invocado exitosamente");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("❌❌❌ ERROR: No hay suscriptores al evento OnTimeout!");
-                }
+                OnTimeout?.Invoke(this, EventArgs.Empty);
             }
         }
 

@@ -1,0 +1,250 @@
+<Window x:Class="SistemaGestionProyectos2.Views.UpdateAvailableWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Actualización Disponible"
+        Height="500"
+        Width="550"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F5F5F5"
+        ShowInTaskbar="True">
+
+    <Window.Resources>
+        <!-- Estilos -->
+        <Style x:Key="TitleTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#2C3E50"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="SubtitleTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#7F8C8D"/>
+            <Setter Property="Margin" Value="0,0,0,20"/>
+        </Style>
+
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#34495E"/>
+            <Setter Property="Margin" Value="0,10,0,5"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#3498DB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2980B9"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#BDC3C7"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="#95A5A6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#7F8C8D"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Contenido principal -->
+        <Border Background="White"
+                Margin="20"
+                CornerRadius="10"
+                Padding="30"
+                Effect="{StaticResource StandardShadow}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <StackPanel Grid.Row="0">
+                    <TextBlock x:Name="TitleText"
+                               Style="{StaticResource TitleTextStyle}"
+                               Text="Nueva versión disponible"/>
+
+                    <TextBlock x:Name="VersionText"
+                               Style="{StaticResource SubtitleTextStyle}"
+                               Text="Versión 1.0.1 - Tamaño: 50 MB"/>
+                </StackPanel>
+
+                <!-- Contenido (Release Notes) -->
+                <ScrollViewer Grid.Row="1"
+                             VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,20">
+                    <StackPanel>
+                        <!-- Notas de la versión -->
+                        <TextBlock Style="{StaticResource SectionHeaderStyle}"
+                                   Text="Novedades de esta versión:"/>
+
+                        <TextBlock x:Name="ReleaseNotesText"
+                                   TextWrapping="Wrap"
+                                   FontSize="13"
+                                   Foreground="#34495E"
+                                   LineHeight="20"
+                                   Text="Cargando..."/>
+
+                        <!-- Changelog detallado -->
+                        <StackPanel x:Name="ChangelogPanel"
+                                   Margin="0,15,0,0"
+                                   Visibility="Collapsed">
+
+                            <!-- Agregado -->
+                            <StackPanel x:Name="AddedPanel" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SectionHeaderStyle}"
+                                          Foreground="#27AE60"
+                                          Text="✓ Agregado:"/>
+                                <ItemsControl x:Name="AddedItemsControl" Margin="15,0,0,10">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                      FontSize="12"
+                                                      Foreground="#555"
+                                                      Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Mejorado -->
+                            <StackPanel x:Name="ImprovedPanel" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SectionHeaderStyle}"
+                                          Foreground="#3498DB"
+                                          Text="↑ Mejorado:"/>
+                                <ItemsControl x:Name="ImprovedItemsControl" Margin="15,0,0,10">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                      FontSize="12"
+                                                      Foreground="#555"
+                                                      Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- Corregido -->
+                            <StackPanel x:Name="FixedPanel" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource SectionHeaderStyle}"
+                                          Foreground="#E74C3C"
+                                          Text="⚠ Corregido:"/>
+                                <ItemsControl x:Name="FixedItemsControl" Margin="15,0,0,10">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                      FontSize="12"
+                                                      Foreground="#555"
+                                                      Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Advertencia si es obligatoria -->
+                        <Border x:Name="MandatoryWarning"
+                               Background="#FFF3CD"
+                               BorderBrush="#FFC107"
+                               BorderThickness="1"
+                               CornerRadius="5"
+                               Padding="15"
+                               Margin="0,15,0,0"
+                               Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚠"
+                                          FontSize="20"
+                                          Foreground="#FF9800"
+                                          Margin="0,0,10,0"/>
+                                <TextBlock TextWrapping="Wrap"
+                                          FontSize="12"
+                                          Foreground="#856404">
+                                    <Run Text="Esta actualización es obligatoria."/>
+                                    <LineBreak/>
+                                    <Run Text="La aplicación necesita actualizarse para continuar funcionando correctamente."/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Progreso de descarga -->
+                <StackPanel x:Name="ProgressPanel"
+                           Grid.Row="2"
+                           Visibility="Collapsed"
+                           Margin="0,0,0,20">
+                    <TextBlock x:Name="ProgressText"
+                              Text="Descargando actualización..."
+                              FontSize="12"
+                              Foreground="#7F8C8D"
+                              Margin="0,0,0,5"/>
+                    <ProgressBar x:Name="DownloadProgressBar"
+                                Height="8"
+                                Minimum="0"
+                                Maximum="100"
+                                Value="0"/>
+                    <TextBlock x:Name="ProgressPercentageText"
+                              Text="0%"
+                              FontSize="11"
+                              Foreground="#95A5A6"
+                              HorizontalAlignment="Right"
+                              Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <!-- Botones -->
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Botón "Recordar después" (izquierda) -->
+                    <Button x:Name="RemindLaterButton"
+                           Grid.Column="0"
+                           Content="Recordar después"
+                           Style="{StaticResource SecondaryButtonStyle}"
+                           HorizontalAlignment="Left"
+                           Click="RemindLaterButton_Click"/>
+
+                    <!-- Botón "Actualizar ahora" (derecha) -->
+                    <Button x:Name="UpdateNowButton"
+                           Grid.Column="2"
+                           Content="Actualizar ahora"
+                           Style="{StaticResource PrimaryButtonStyle}"
+                           Margin="10,0,0,0"
+                           Click="UpdateNowButton_Click"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

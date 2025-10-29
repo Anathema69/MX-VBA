@@ -99,13 +99,13 @@ namespace SistemaGestionProyectos2.Views
             gridBalance.RowDefinitions.Clear();
             gridBalance.ColumnDefinitions.Clear();
 
-            // Crear columnas (Concepto + 12 meses + Total)
-            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(180) });
+            // Crear columnas (Concepto + 12 meses + Total) - Anchos aumentados para mejor legibilidad
+            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
             for (int i = 1; i <= 12; i++)
             {
-                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(85) });
+                gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(115) });
             }
-            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+            gridBalance.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
 
             int currentRow = 0;
 
@@ -223,7 +223,7 @@ namespace SistemaGestionProyectos2.Views
                     Background = new SolidColorBrush(Color.FromRgb(237, 242, 247)),
                     BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 224)),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    Height = 40,
+                    Height = 48,
                     Tag = $"header_col_{i + 1}",
                     Cursor = System.Windows.Input.Cursors.Hand
                 };
@@ -232,8 +232,8 @@ namespace SistemaGestionProyectos2.Views
                 {
                     Text = meses[i],
                     FontWeight = FontWeights.Bold,
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(Color.FromRgb(45, 55, 72)),
+                    FontSize = 14,
+                    Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -266,7 +266,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 Text = "TOTAL",
                 FontWeight = FontWeights.Bold,
-                FontSize = 12,
+                FontSize = 14,
                 Foreground = new SolidColorBrush(Color.FromRgb(146, 64, 14)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
@@ -292,7 +292,7 @@ namespace SistemaGestionProyectos2.Views
             var headerText = new TextBlock
             {
                 Text = title,
-                FontSize = 14,
+                FontSize = 16,
                 FontWeight = FontWeights.Bold,
                 Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                 VerticalAlignment = VerticalAlignment.Center,
@@ -319,14 +319,14 @@ namespace SistemaGestionProyectos2.Views
                     Brushes.White,
                 BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                 BorderThickness = new Thickness(0, 0, 1, 1),
-                Height = isTotal ? 42 : 38
+                Height = isTotal ? 50 : 46
             };
 
             var conceptText = new TextBlock
             {
                 Text = concepto,
                 FontWeight = isTotal ? FontWeights.Bold : FontWeights.SemiBold,
-                FontSize = isTotal ? 12 : 11,
+                FontSize = isTotal ? 15 : 14,
                 Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(15, 0, 0, 0)
@@ -348,7 +348,7 @@ namespace SistemaGestionProyectos2.Views
                         Brushes.White,
                     BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240)),
                     BorderThickness = new Thickness(0, 0, 1, 1),
-                    Height = isTotal ? 42 : 38
+                    Height = isTotal ? 50 : 46
                 };
 
                 var value = valores[i];
@@ -362,7 +362,8 @@ namespace SistemaGestionProyectos2.Views
                     var valueTextBox = new TextBox
                     {
                         Text = value > 0 ? value.ToString("C0", _mexicanCulture) : "$0",
-                        FontSize = 10,
+                        FontSize = 13,
+                        FontWeight = FontWeights.Medium,
                         TextAlignment = TextAlignment.Right,
                         BorderThickness = new Thickness(0),
                         Background = Brushes.Transparent,
@@ -443,11 +444,11 @@ namespace SistemaGestionProyectos2.Views
                     var valueText = new TextBlock
                     {
                         Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
-                        FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
-                        FontSize = isTotal ? 11 : 10,
+                        FontWeight = isTotal ? FontWeights.Bold : FontWeights.Medium,
+                        FontSize = isTotal ? 15 : 13,
                         Foreground = (showNegative && value < 0) ?
                             new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
-                            new SolidColorBrush(Color.FromRgb(55, 65, 81)),
+                            new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                         HorizontalAlignment = HorizontalAlignment.Right,
                         VerticalAlignment = VerticalAlignment.Center,
                         Margin = new Thickness(0, 0, 10, 0)
@@ -467,14 +468,14 @@ namespace SistemaGestionProyectos2.Views
                 Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(0, 0, 2, 2),
-                Height = isTotal ? 42 : 38
+                Height = isTotal ? 50 : 46
             };
 
             var totalText = new TextBlock
             {
                 Text = total.ToString("C0", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
-                FontSize = isTotal ? 12 : 11,
+                FontSize = isTotal ? 16 : 14,
                 Foreground = (showNegative && total < 0) ?
                     new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
                     new SolidColorBrush(Color.FromRgb(146, 64, 14)),

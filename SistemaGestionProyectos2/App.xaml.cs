@@ -129,7 +129,6 @@ namespace SistemaGestionProyectos2
                         if (child is Controls.SessionTimeoutBanner banner)
                         {
                             banner.Hide();
-                            System.Diagnostics.Debug.WriteLine($"📢 Banner ocultado en ventana {window.GetType().Name} por actividad del usuario");
                             break;
                         }
                     }
@@ -142,8 +141,6 @@ namespace SistemaGestionProyectos2
         {
             Dispatcher.Invoke(() =>
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ Advertencia de timeout - Mostrando banner en ventana activa");
-
                 // Buscar la ventana activa y mostrar el banner ahí
                 var activeWindow = GetActiveApplicationWindow();
                 if (activeWindow != null)
@@ -152,8 +149,6 @@ namespace SistemaGestionProyectos2
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine("⚠️ No se encontró ventana activa, usando ventana modal de respaldo");
-
                     // Fallback: usar ventana modal si no hay ventana activa
                     if (_warningWindow != null && _warningWindow.IsLoaded)
                         return;
@@ -219,14 +214,6 @@ namespace SistemaGestionProyectos2
                 {
                     // Crear y agregar nuevo banner
                     var banner = new Controls.SessionTimeoutBanner();
-                    banner.OnExtendSession += (s, args) =>
-                    {
-                        System.Diagnostics.Debug.WriteLine("✅ Sesión extendida desde banner");
-                    };
-                    banner.OnDismiss += (s, args) =>
-                    {
-                        System.Diagnostics.Debug.WriteLine("❌ Banner cerrado por usuario");
-                    };
 
                     // Agregar el banner al Grid principal
                     Grid.SetRow(banner, 0);
@@ -235,14 +222,10 @@ namespace SistemaGestionProyectos2
 
                     mainGrid.Children.Add(banner);
                     banner.Show();
-
-                    System.Diagnostics.Debug.WriteLine($"✅ Banner agregado a ventana: {window.GetType().Name}");
                 }
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ Ventana {window.GetType().Name} no tiene Grid como contenido, usando modal");
-
                 // Fallback: usar ventana modal
                 if (_warningWindow != null && _warningWindow.IsLoaded)
                     return;
@@ -263,73 +246,34 @@ namespace SistemaGestionProyectos2
         // Evento de timeout (sesión cerrada por inactividad)
         private void TimeoutService_OnTimeout(object sender, EventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("🔥🔥🔥 ========================================");
-            System.Diagnostics.Debug.WriteLine("🔥🔥🔥 EVENTO TIMEOUT DISPARADO");
-            System.Diagnostics.Debug.WriteLine("🔥🔥🔥 ========================================");
-
             Dispatcher.Invoke(() =>
             {
-                System.Diagnostics.Debug.WriteLine("🔥 Dentro de Dispatcher.Invoke");
-
                 // Cerrar ventana de advertencia si está abierta
-                if (_warningWindow != null)
-                {
-                    System.Diagnostics.Debug.WriteLine("🔥 Cerrando ventana de advertencia");
-                    _warningWindow.Close();
-                    _warningWindow = null;
-                }
+                _warningWindow?.Close();
+                _warningWindow = null;
 
-                System.Diagnostics.Debug.WriteLine("🔥 Llamando a ForceLogout...");
                 ForceLogout("Sesión cerrada por inactividad", "Tu sesión ha sido cerrada por inactividad.\n\nPor favor, inicia sesión nuevamente.");
-                System.Diagnostics.Debug.WriteLine("🔥 ForceLogout completado");
             });
         }
 
         // Forzar logout y volver a login
         public void ForceLogout(string reason, string userMessage = null)
         {
-            System.Diagnostics.Debug.WriteLine("🚪🚪🚪 ========================================");
-            System.Diagnostics.Debug.WriteLine($"🚪🚪🚪 FORCE LOGOUT INICIADO - Razón: {reason}");
-            System.Diagnostics.Debug.WriteLine("🚪🚪🚪 ========================================");
-
             _logger.LogWarning("SESSION", "FORCED_LOGOUT", new
             {
                 reason,
                 timestamp = DateTime.Now
             });
 
-            System.Diagnostics.Debug.WriteLine("🚪 Deteniendo timeout service...");
             _timeoutService.Stop();
-            System.Diagnostics.Debug.WriteLine($"🚪 Timeout service detenido (IsRunning: {_timeoutService.IsRunning})");
-
-            // Contar ventanas antes de cerrar
-            int totalWindows = Windows.Count;
-            System.Diagnostics.Debug.WriteLine($"🚪 Total de ventanas abiertas: {totalWindows}");
-
-            // Listar todas las ventanas
-            int windowIndex = 0;
-            foreach (Window window in Windows)
-            {
-                System.Diagnostics.Debug.WriteLine($"   [{windowIndex}] {window.GetType().Name} - IsActive: {window.IsActive}, IsVisible: {window.IsVisible}");
-                windowIndex++;
-            }
 
             // CREAR Y MOSTRAR LOGINWINDOW PRIMERO (para evitar que la app se cierre al cerrar todas las ventanas)
-            System.Diagnostics.Debug.WriteLine("🚪 Creando nueva ventana de Login...");
             var loginWindow = new LoginWindow();
-            System.Diagnostics.Debug.WriteLine("🚪 Mostrando ventana de Login...");
             loginWindow.Show();
-
-            // Forzar actualización de la UI
-            System.Diagnostics.Debug.WriteLine("🚪 Activando ventana de Login...");
             loginWindow.Activate();
             loginWindow.Focus();
 
-            System.Diagnostics.Debug.WriteLine($"🚪 LoginWindow mostrada - IsVisible: {loginWindow.IsVisible}, IsActive: {loginWindow.IsActive}");
-            System.Diagnostics.Debug.WriteLine($"🚪 Total de ventanas ANTES de cerrar las demás: {Windows.Count}");
-
             // AHORA cerrar todas las ventanas excepto Login
-            System.Diagnostics.Debug.WriteLine("🚪 Cerrando todas las ventanas excepto Login...");
             var windowsToClose = new System.Collections.Generic.List<Window>();
             foreach (Window window in Windows)
             {
@@ -339,36 +283,104 @@ namespace SistemaGestionProyectos2
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"🚪 Se cerrarán {windowsToClose.Count} ventanas");
             foreach (var window in windowsToClose)
             {
-                System.Diagnostics.Debug.WriteLine($"🚪   Cerrando: {window.GetType().Name}");
                 window.Close();
             }
-
-            System.Diagnostics.Debug.WriteLine($"🚪 Ventanas restantes después del cierre: {Windows.Count}");
 
             // Mostrar mensaje si se proporcionó (con delay para permitir que la ventana se renderice)
             if (!string.IsNullOrEmpty(userMessage))
             {
-                System.Diagnostics.Debug.WriteLine($"🚪 Programando mensaje al usuario (con delay)...");
-
                 // Usar Dispatcher para mostrar el MessageBox DESPUÉS de que la ventana se haya renderizado
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"🚪 Mostrando mensaje al usuario: {userMessage}");
                     MessageBox.Show(
                         loginWindow,
                         userMessage,
                         "Sesión Cerrada",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
-                    System.Diagnostics.Debug.WriteLine("🚪 Usuario cerró el MessageBox");
                 }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
+        }
 
-            System.Diagnostics.Debug.WriteLine("🚪🚪🚪 FORCE LOGOUT COMPLETADO");
-            System.Diagnostics.Debug.WriteLine("🚪🚪🚪 ========================================");
+        /// <summary>
+        /// Verifica si hay actualizaciones disponibles para la aplicación
+        /// </summary>
+        public async System.Threading.Tasks.Task CheckForUpdatesAsync()
+        {
+            try
+            {
+                // Obtener versión actual desde AssemblyInfo
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                var version = assembly.GetName().Version;
+                var currentVersion = $"{version.Major}.{version.Minor}.{version.Build}";
+
+                _logger.LogInfo("UPDATE", "CHECK_INIT", new
+                {
+                    currentVersion
+                });
+
+                // Obtener cliente de Supabase desde SupabaseService
+                var supabaseClient = SistemaGestionProyectos2.Services.SupabaseService.Instance.GetClient();
+                if (supabaseClient == null)
+                {
+                    _logger.LogWarning("UPDATE", "NO_SUPABASE_CLIENT", new
+                    {
+                        message = "Cliente de Supabase no disponible"
+                    });
+                    return;
+                }
+
+                // Crear servicio de actualización
+                var updateService = new SistemaGestionProyectos2.Services.Updates.UpdateService(supabaseClient, currentVersion);
+
+                // Verificar actualizaciones
+                var (available, newVersion, message) = await updateService.CheckForUpdate();
+
+                if (available && newVersion != null)
+                {
+                    _logger.LogInfo("UPDATE", "SHOWING_UPDATE_WINDOW", new
+                    {
+                        newVersion = newVersion.Version,
+                        mandatory = newVersion.IsMandatory
+                    });
+
+                    // Mostrar ventana de actualización en el thread de UI
+                    Dispatcher.Invoke(() =>
+                    {
+                        var updateWindow = new UpdateAvailableWindow(updateService, newVersion);
+                        updateWindow.ShowDialog();
+
+                        if (updateWindow.UpdatePostponed)
+                        {
+                            _logger.LogInfo("UPDATE", "USER_POSTPONED", new
+                            {
+                                version = newVersion.Version
+                            });
+                        }
+                    });
+                }
+                else
+                {
+                    _logger.LogInfo("UPDATE", "NO_UPDATE_NEEDED", new
+                    {
+                        currentVersion,
+                        message
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // No es crítico si falla la verificación de actualizaciones
+                _logger.LogError("UPDATE", "CHECK_FAILED", new
+                {
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+
+                System.Diagnostics.Debug.WriteLine($"Error verificando actualizaciones: {ex.Message}");
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)

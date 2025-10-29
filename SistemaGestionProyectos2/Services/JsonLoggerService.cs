@@ -76,8 +76,10 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
+                // Usar el directorio base de la aplicación (donde está el .exe en Program Files o donde esté instalada)
+                var basePath = AppDomain.CurrentDomain.BaseDirectory;
                 var configBuilder = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .SetBasePath(basePath)
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 
                 var configuration = configBuilder.Build();
@@ -115,13 +117,17 @@ namespace SistemaGestionProyectos2.Services
             _sessionStart = DateTime.Now;
             _sessionId = Guid.NewGuid().ToString("N").Substring(0, 8);
 
-            // Crear estructura: logs/sessions/2025-01-13_193500_abc123/
+            // Usar AppData para logs (tiene permisos de escritura incluso si la app está en Program Files)
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var appLogsPath = Path.Combine(appDataPath, "SistemaGestionProyectos", "logs");
+
+            // Crear estructura: %LocalAppData%/SistemaGestionProyectos/logs/sessions/2025-01-13_193500_abc123/
             var sessionFolderName = $"{_sessionStart:yyyy-MM-dd_HHmmss}_{_sessionId}";
-            _sessionFolder = Path.Combine("logs", "sessions", sessionFolderName);
+            _sessionFolder = Path.Combine(appLogsPath, "sessions", sessionFolderName);
 
             Directory.CreateDirectory(_sessionFolder);
-            Directory.CreateDirectory(Path.Combine("logs", "daily"));
-            Directory.CreateDirectory(Path.Combine("logs", "errors"));
+            Directory.CreateDirectory(Path.Combine(appLogsPath, "daily"));
+            Directory.CreateDirectory(Path.Combine(appLogsPath, "errors"));
 
             // Definir rutas de archivos
             _metadataFilePath = Path.Combine(_sessionFolder, "metadata.json");
@@ -181,7 +187,9 @@ namespace SistemaGestionProyectos2.Services
                     await File.AppendAllTextAsync(_errorsFilePath, jsonLine + Environment.NewLine);
 
                     // También agregar al log de errores diario
-                    var dailyErrorFile = Path.Combine("logs", "errors", $"{_sessionStart:yyyy-MM-dd}_errors.jsonl");
+                    var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    var appLogsPath = Path.Combine(appDataPath, "SistemaGestionProyectos", "logs");
+                    var dailyErrorFile = Path.Combine(appLogsPath, "errors", $"{_sessionStart:yyyy-MM-dd}_errors.jsonl");
                     await File.AppendAllTextAsync(dailyErrorFile, jsonLine + Environment.NewLine);
 
                     if (level == LogLevel.Error || level == LogLevel.Critical)
@@ -368,7 +376,9 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
-                var dailySummaryFile = Path.Combine("logs", "daily", $"{_sessionStart:yyyy-MM-dd}_summary.json");
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var appLogsPath = Path.Combine(appDataPath, "SistemaGestionProyectos", "logs");
+                var dailySummaryFile = Path.Combine(appLogsPath, "daily", $"{_sessionStart:yyyy-MM-dd}_summary.json");
 
                 DailySummary dailySummary;
                 if (File.Exists(dailySummaryFile))
@@ -416,7 +426,9 @@ namespace SistemaGestionProyectos2.Services
 
             try
             {
-                var logsFolder = Path.Combine("logs", "sessions");
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var appLogsPath = Path.Combine(appDataPath, "SistemaGestionProyectos", "logs");
+                var logsFolder = Path.Combine(appLogsPath, "sessions");
                 if (!Directory.Exists(logsFolder))
                     return;
 

@@ -139,7 +139,7 @@ namespace SistemaGestionProyectos2.Views
                         // Admin abre el menú principal
                         MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
                         mainMenu.Show();
-                        
+
                     }
                     else if (user.Role == "coordinator")
                     {
@@ -174,6 +174,9 @@ namespace SistemaGestionProyectos2.Views
 
                     await loadingWindow.CloseWithFade();
                     this.Close();
+
+                    // Verificar actualizaciones en segundo plano (no bloquea el login)
+                    _ = ((App)Application.Current).CheckForUpdatesAsync();
 
                 }
                 else
