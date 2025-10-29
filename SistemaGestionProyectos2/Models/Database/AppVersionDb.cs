@@ -49,31 +49,10 @@ namespace SistemaGestionProyectos2.Models.Database
 
         /// <summary>
         /// Changelog estructurado en formato JSON
+        /// Postgrest deserializa automáticamente el JSONB de Supabase
         /// </summary>
         [Column("changelog")]
-        public string ChangelogJson { get; set; }
-
-        /// <summary>
-        /// Parsea el changelog desde JSON
-        /// </summary>
-        [JsonIgnore]
-        public ChangelogData Changelog
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(ChangelogJson))
-                    return new ChangelogData();
-
-                try
-                {
-                    return System.Text.Json.JsonSerializer.Deserialize<ChangelogData>(ChangelogJson);
-                }
-                catch
-                {
-                    return new ChangelogData();
-                }
-            }
-        }
+        public ChangelogData Changelog { get; set; } = new ChangelogData();
     }
 
     /// <summary>
