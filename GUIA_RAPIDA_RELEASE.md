@@ -43,13 +43,19 @@
 
 ### 2️⃣ Compilar y Publicar
 
+⚠️ **IMPORTANTE:** Antes de compilar, cierra TODAS las instancias de la aplicación:
+```bash
+# Cerrar todas las instancias
+taskkill /F /IM SistemaGestionProyectos2.exe
+```
+
 ```bash
 cd SistemaGestionProyectos2
 dotnet clean
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=false
+dotnet publish SistemaGestionProyectos2.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false
 ```
 
-✅ Se genera en: `bin/Release/net8.0-windows/win-x64/publish/`
+✅ Se genera en: `bin/Release/net8.0-windows/win-x64/publish/` (166 MB aprox)
 
 ---
 
