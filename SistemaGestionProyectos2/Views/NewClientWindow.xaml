@@ -292,7 +292,8 @@
                          Grid.Column="0"
                          Content="Crear otro cliente después"
                          VerticalAlignment="Center"
-                         FontSize="11"/>
+                         FontSize="11"
+                         Visibility="Collapsed"/>
 
                 <Button Grid.Column="1"
                        x:Name="SaveButton"

@@ -41,7 +41,7 @@
         </Style>
 
         <Style x:Key="TotalCellStyle" TargetType="Border">
-            <Setter Property="Background" Value="#FEF3C7"/>
+            <Setter Property="Background" Value="#FDE68A"/>
             <Setter Property="Height" Value="42"/>
             <Setter Property="BorderBrush" Value="#F59E0B"/>
             <Setter Property="BorderThickness" Value="0,0,2,2"/>
@@ -194,23 +194,23 @@
             <Border Grid.Column="0" Background="White" CornerRadius="10" Margin="5"
                     BorderBrush="#FEE2E2" BorderThickness="2"
                     Effect="{StaticResource StandardShadow}">
-                <Grid Margin="20,15">
+                <Grid Margin="15,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="#FEE2E2" CornerRadius="10"
-                           Width="50" Height="50" HorizontalAlignment="Left" Margin="0,0,15,0">
-                        <TextBlock Text="💸" FontSize="28"
+                    <Border Grid.Column="0" Background="#FEE2E2" CornerRadius="8"
+                           Width="40" Height="40" HorizontalAlignment="Left" Margin="0,0,12,0">
+                        <TextBlock Text="💸" FontSize="22"
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="GASTOS TOTALES"
-                                  FontSize="11" Foreground="#9CA3AF"
-                                  FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                  FontSize="10" Foreground="#9CA3AF"
+                                  FontWeight="SemiBold" Margin="0,0,0,3"/>
                         <TextBlock Name="txtTotalGastos"
-                                  Text="$0.00" FontSize="28"
+                                  Text="$0.00" FontSize="20"
                                   FontWeight="Bold" Foreground="#DC2626"/>
                     </StackPanel>
                 </Grid>
@@ -220,23 +220,23 @@
             <Border Grid.Column="1" Background="White" CornerRadius="10" Margin="5"
                     BorderBrush="#D1FAE5" BorderThickness="2"
                     Effect="{StaticResource StandardShadow}">
-                <Grid Margin="20,15">
+                <Grid Margin="15,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="#D1FAE5" CornerRadius="10"
-                           Width="50" Height="50" HorizontalAlignment="Left" Margin="0,0,15,0">
-                        <TextBlock Text="💰" FontSize="28"
+                    <Border Grid.Column="0" Background="#D1FAE5" CornerRadius="8"
+                           Width="40" Height="40" HorizontalAlignment="Left" Margin="0,0,12,0">
+                        <TextBlock Text="💰" FontSize="22"
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="INGRESOS TOTALES"
-                                  FontSize="11" Foreground="#9CA3AF"
-                                  FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                  FontSize="10" Foreground="#9CA3AF"
+                                  FontWeight="SemiBold" Margin="0,0,0,3"/>
                         <TextBlock Name="txtTotalIngresos"
-                                  Text="$0.00" FontSize="28"
+                                  Text="$0.00" FontSize="20"
                                   FontWeight="Bold" Foreground="#10B981"/>
                     </StackPanel>
                 </Grid>
@@ -246,23 +246,23 @@
             <Border Grid.Column="2" Background="White" CornerRadius="10" Margin="5"
                     BorderBrush="#DBEAFE" BorderThickness="2"
                     Effect="{StaticResource StandardShadow}">
-                <Grid Margin="20,15">
+                <Grid Margin="15,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" Background="#DBEAFE" CornerRadius="10"
-                           Width="50" Height="50" HorizontalAlignment="Left" Margin="0,0,15,0">
-                        <TextBlock Text="📈" FontSize="28"
+                    <Border Grid.Column="0" Background="#DBEAFE" CornerRadius="8"
+                           Width="40" Height="40" HorizontalAlignment="Left" Margin="0,0,12,0">
+                        <TextBlock Text="📈" FontSize="22"
                                   HorizontalAlignment="Center"
                                   VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="UTILIDAD NETA"
-                                  FontSize="11" Foreground="#9CA3AF"
-                                  FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                  FontSize="10" Foreground="#9CA3AF"
+                                  FontWeight="SemiBold" Margin="0,0,0,3"/>
                         <TextBlock Name="txtUtilidad"
-                                  Text="$0.00" FontSize="28"
+                                  Text="$0.00" FontSize="20"
                                   FontWeight="Bold" Foreground="#3B82F6"/>
                     </StackPanel>
                 </Grid>
