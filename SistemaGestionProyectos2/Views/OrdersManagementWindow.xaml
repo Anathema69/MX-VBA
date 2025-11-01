@@ -6,7 +6,7 @@
         Height="800" 
         Width="1400"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize"
         x:Name="OrdersWindow">

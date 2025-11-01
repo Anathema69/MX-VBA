@@ -385,18 +385,32 @@ namespace SistemaGestionProyectos2
 
         protected override void OnExit(ExitEventArgs e)
         {
-            // Detener servicio de timeout
-            _timeoutService?.Stop();
-
-            // Cerrar sesión de log
-            _logger.LogInfo("SYSTEM", "APPLICATION_EXIT", new
+            try
             {
-                exitCode = e.ApplicationExitCode
-            });
+                // Detener servicio de timeout
+                _timeoutService?.Stop();
 
-            _logger.CloseSessionAsync().Wait();
+                // Cerrar sesión de log de forma sincrónica sin bloquear
+                _logger.LogInfo("SYSTEM", "APPLICATION_EXIT", new
+                {
+                    exitCode = e.ApplicationExitCode
+                });
 
-            base.OnExit(e);
+                // Intentar cerrar sesión con timeout de 2 segundos máximo
+                var closeTask = _logger.CloseSessionAsync();
+                if (!closeTask.Wait(TimeSpan.FromSeconds(2)))
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠️ Timeout cerrando logger - forzando cierre");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error en OnExit: {ex.Message}");
+            }
+            finally
+            {
+                base.OnExit(e);
+            }
         }
     }
 }

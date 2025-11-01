@@ -1,11 +1,11 @@
 [Setup]
 AppName=Sistema de Gestión de Proyectos
-AppVersion=1.0.3
+AppVersion=1.0.8
 AppPublisher=IMA Mecatrónica
 DefaultDirName={autopf}\SistemaGestionProyectos
 DefaultGroupName=Sistema de Gestión
 OutputDir=.\installer
-OutputBaseFilename=SistemaGestionProyectos-v1.0.3-Setup
+OutputBaseFilename=SistemaGestionProyectos-v1.0.8-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

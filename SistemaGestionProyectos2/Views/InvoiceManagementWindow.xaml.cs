@@ -46,8 +46,21 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             InvoicesDataGrid.ItemsSource = _invoices;
             _ = LoadOrderAndInvoices(orderId);
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private async Task LoadOrderAndInvoices(int orderId)

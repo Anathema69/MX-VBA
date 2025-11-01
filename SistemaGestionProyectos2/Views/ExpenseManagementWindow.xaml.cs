@@ -51,11 +51,24 @@ namespace SistemaGestionProyectos2.Views
             _filteredExpenses = new ObservableCollection<ExpenseViewModel>();
             _ordersCache = new List<OrderDb>();
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             InitializeUI();
             _ = LoadDataAsync();
 
 
 
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private void InitializeUI()

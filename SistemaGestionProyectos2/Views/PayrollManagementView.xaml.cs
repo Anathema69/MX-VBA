@@ -44,6 +44,9 @@ namespace SistemaGestionProyectos2.Views
             _filteredEmployees = new ObservableCollection<PayrollViewModel>();
             _expenses = new ObservableCollection<FixedExpenseViewModel>();
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             // Conectar evento de búsqueda
             SearchEmployeeBox.TextChanged += SearchEmployeeBox_TextChanged;
 
@@ -56,6 +59,16 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos de manera asíncrona
             _ = LoadData();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private async Task LoadData()

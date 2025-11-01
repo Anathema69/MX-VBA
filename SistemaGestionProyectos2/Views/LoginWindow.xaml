@@ -307,8 +307,9 @@
                 </Button>
 
                 <!-- Estado de Conexión -->
-                <Grid Grid.Row="8" 
+                <Grid Grid.Row="8"
                      VerticalAlignment="Bottom">
+
                     <!-- Loading -->
                     <Border x:Name="LoadingPanel"
                           Background="#F0F0F0"

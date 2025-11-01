@@ -6,7 +6,7 @@
         Height="750" 
         Width="1200"
         WindowStartupLocation="CenterOwner"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize"
         MinHeight="600"

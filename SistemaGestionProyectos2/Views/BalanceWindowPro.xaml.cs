@@ -48,6 +48,9 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _currentYear = DateTime.Now.Year;
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             // Inicializar año
             txtYear.Text = _currentYear.ToString();
 
@@ -56,6 +59,16 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos
             _ = LoadBalanceData();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private async Task LoadBalanceData()
@@ -130,14 +143,21 @@ namespace SistemaGestionProyectos2.Views
                 int mesIndex = dato.MesNumero - 1;
                 if (mesIndex >= 0 && mesIndex < 12)
                 {
+                    // Gastos
                     nomina[mesIndex] = dato.Nomina;
                     horasExtra[mesIndex] = dato.HorasExtra;
                     gastosFijos[mesIndex] = dato.GastosFijos;
                     gastosVariables[mesIndex] = dato.GastosVariables;
+
+                    // Ingresos - Ahora usando valores correctos de la BD
                     ingresosEsperados[mesIndex] = dato.IngresosEsperados;
                     ingresosPercibidos[mesIndex] = dato.IngresosPercibidos;
                     diferencia[mesIndex] = dato.Diferencia;
+
+                    // Ventas
                     ventasTotales[mesIndex] = dato.VentasTotales;
+
+                    // Utilidad - Calculada en la BD
                     utilidadAproximada[mesIndex] = dato.UtilidadAproximada;
                 }
             }
@@ -232,7 +252,7 @@ namespace SistemaGestionProyectos2.Views
                 {
                     Text = meses[i],
                     FontWeight = FontWeights.Bold,
-                    FontSize = 14,
+                    FontSize = 15,
                     Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
@@ -256,7 +276,7 @@ namespace SistemaGestionProyectos2.Views
             // Header Total
             var totalHeaderBorder = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)),
+                Background = new SolidColorBrush(Color.FromRgb(252, 211, 77)), // #FCD34D - ámbar suave
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(0, 0, 2, 2),
                 Height = 40
@@ -266,7 +286,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 Text = "TOTAL",
                 FontWeight = FontWeights.Bold,
-                FontSize = 14,
+                FontSize = 15,
                 Foreground = new SolidColorBrush(Color.FromRgb(146, 64, 14)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
@@ -326,10 +346,10 @@ namespace SistemaGestionProyectos2.Views
             {
                 Text = concepto,
                 FontWeight = isTotal ? FontWeights.Bold : FontWeights.SemiBold,
-                FontSize = isTotal ? 15 : 14,
+                FontSize = isTotal ? 16 : 15,
                 Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(15, 0, 0, 0)
+                Margin = new Thickness(12, 0, 0, 0)
             };
 
             conceptBorder.Child = conceptText;
@@ -361,8 +381,8 @@ namespace SistemaGestionProyectos2.Views
                     var monthIndex = i;
                     var valueTextBox = new TextBox
                     {
-                        Text = value > 0 ? value.ToString("C0", _mexicanCulture) : "$0",
-                        FontSize = 13,
+                        Text = value > 0 ? value.ToString("C2", _mexicanCulture) : "$0.00",
+                        FontSize = 14,
                         FontWeight = FontWeights.Medium,
                         TextAlignment = TextAlignment.Right,
                         BorderThickness = new Thickness(0),
@@ -376,7 +396,7 @@ namespace SistemaGestionProyectos2.Views
                         var tb = s as TextBox;
                         tb.Background = new SolidColorBrush(Color.FromRgb(254, 249, 195));
                         // Limpiar el formato para edición
-                        if (tb.Text == "$0")
+                        if (tb.Text == "$0.00")
                         {
                             tb.Text = "";
                         }
@@ -421,18 +441,18 @@ namespace SistemaGestionProyectos2.Views
                                 }
                                 else
                                 {
-                                    tb.Text = "$0";
+                                    tb.Text = "$0.00";
                                 }
                             }
                             else
                             {
-                                tb.Text = newAmount > 0 ? newAmount.ToString("C0", _mexicanCulture) : "$0";
+                                tb.Text = newAmount > 0 ? newAmount.ToString("C0", _mexicanCulture) : "$0.00";
                             }
                         }
                         else
                         {
                             tb.Text = tag.OriginalValue > 0 ?
-                                ((decimal)tag.OriginalValue).ToString("C0", _mexicanCulture) : "$0";
+                                ((decimal)tag.OriginalValue).ToString("C0", _mexicanCulture) : "$0.00";
                         }
                     };
 
@@ -443,9 +463,9 @@ namespace SistemaGestionProyectos2.Views
                     // Celda normal no editable
                     var valueText = new TextBlock
                     {
-                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
+                        Text = value != 0 ? value.ToString("C2", _mexicanCulture) : "$0.00",
                         FontWeight = isTotal ? FontWeights.Bold : FontWeights.Medium,
-                        FontSize = isTotal ? 15 : 13,
+                        FontSize = isTotal ? 16 : 14,
                         Foreground = (showNegative && value < 0) ?
                             new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
                             new SolidColorBrush(Color.FromRgb(31, 41, 55)),
@@ -465,7 +485,7 @@ namespace SistemaGestionProyectos2.Views
             // Celda de total
             var totalBorder = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(254, 243, 199)),
+                Background = new SolidColorBrush(Color.FromRgb(252, 211, 77)), // #FCD34D - ámbar suave
                 BorderBrush = new SolidColorBrush(Color.FromRgb(245, 158, 11)),
                 BorderThickness = new Thickness(0, 0, 2, 2),
                 Height = isTotal ? 50 : 46
@@ -473,9 +493,9 @@ namespace SistemaGestionProyectos2.Views
 
             var totalText = new TextBlock
             {
-                Text = total.ToString("C0", _mexicanCulture),
+                Text = total.ToString("C2", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
-                FontSize = isTotal ? 16 : 14,
+                FontSize = isTotal ? 17 : 15,
                 Foreground = (showNegative && total < 0) ?
                     new SolidColorBrush(Color.FromRgb(220, 38, 38)) :
                     new SolidColorBrush(Color.FromRgb(146, 64, 14)),
@@ -563,9 +583,9 @@ namespace SistemaGestionProyectos2.Views
             decimal margen = totalIngresos > 0 ? (utilidad / totalIngresos) * 100 : 0;
 
             // Actualizar displays
-            txtTotalGastos.Text = totalGastos.ToString("C", _mexicanCulture);
-            txtTotalIngresos.Text = totalIngresos.ToString("C", _mexicanCulture);
-            txtUtilidad.Text = utilidad.ToString("C", _mexicanCulture);
+            txtTotalGastos.Text = totalGastos.ToString("C2", _mexicanCulture);
+            txtTotalIngresos.Text = totalIngresos.ToString("C2", _mexicanCulture);
+            txtUtilidad.Text = utilidad.ToString("C2", _mexicanCulture);
             
 
             // Cambiar color de utilidad

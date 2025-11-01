@@ -6,7 +6,7 @@
         Height="900" 
         Width="1500"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize">
 

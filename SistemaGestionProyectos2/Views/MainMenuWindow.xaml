@@ -5,7 +5,7 @@
         Height="700" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize">
 
@@ -484,15 +484,20 @@
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="🕐" 
+                    <TextBlock x:Name="VersionText"
+                             Text="v1.0.8"
+                             Foreground="#999"
+                             FontSize="10"
+                             Margin="0,0,15,0"/>
+                    <TextBlock Text="🕐"
                              Foreground="White"
                              Margin="0,0,5,0"/>
-                    <TextBlock x:Name="TimeText" 
-                             Text="00:00:00" 
+                    <TextBlock x:Name="TimeText"
+                             Text="00:00:00"
                              Foreground="White"
                              Margin="0,0,20,0"/>
-                    <TextBlock x:Name="RoleText" 
-                             Text="Rol: Administrador" 
+                    <TextBlock x:Name="RoleText"
+                             Text="Rol: Administrador"
                              Foreground="White"/>
                 </StackPanel>
             </StatusBarItem>

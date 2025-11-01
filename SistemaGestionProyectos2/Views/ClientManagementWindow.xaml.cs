@@ -34,6 +34,9 @@ namespace SistemaGestionProyectos2.Views
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             _clients = new ObservableCollection<SimpleClientViewModel>();
             _contacts = new ObservableCollection<SimpleContactViewModel>();
             _allClients = new ObservableCollection<SimpleClientViewModel>();
@@ -43,6 +46,16 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos iniciales
             _ = LoadClientsAsync();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private async Task LoadClientsAsync()

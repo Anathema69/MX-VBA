@@ -38,6 +38,9 @@ namespace SistemaGestionProyectos2.Views
             _allOrdersCache = new List<OrderViewModel>();
             _supabaseService = SupabaseService.Instance;
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             // IMPORTANTE: Establecer el DataContext para los bindings
             this.DataContext = this;
 
@@ -46,6 +49,16 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos iniciales
             _ = LoadInitialDataAsync();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         

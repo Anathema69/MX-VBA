@@ -36,8 +36,21 @@ namespace SistemaGestionProyectos2.Views
             _vendors = new ObservableCollection<VendorSummaryViewModel>();
             _vendorCommissions = new ObservableCollection<CommissionDetailViewModel>();
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             InitializeUI();
             _ = LoadVendorsWithCommissions();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Obtener el área de trabajo (sin incluir la barra de tareas)
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private void InitializeUI()
