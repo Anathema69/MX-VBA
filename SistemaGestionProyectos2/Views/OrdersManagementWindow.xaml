@@ -259,7 +259,33 @@
 
         <!-- DataGrid -->
         <Border Grid.Row="2" Margin="10" BorderBrush="#DDD" BorderThickness="1">
-            <DataGrid x:Name="OrdersDataGrid"
+            <Grid>
+                <!-- Mensaje cuando no hay registros -->
+                <Border x:Name="NoRecordsMessage"
+                        Visibility="Collapsed"
+                        Background="#FAFAFA"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Padding="40,30"
+                        CornerRadius="12">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="📋" FontSize="48" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                        <TextBlock x:Name="NoRecordsTitle"
+                                   Text="Sin registros"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Foreground="#6B7280"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="NoRecordsSubtitle"
+                                   Text="No se encontraron órdenes"
+                                   FontSize="13"
+                                   Foreground="#9CA3AF"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <DataGrid x:Name="OrdersDataGrid"
                      AutoGenerateColumns="False"
                      CanUserAddRows="False"
                      CanUserDeleteRows="False"
@@ -285,14 +311,22 @@
                     </Style>
 
                     <Style TargetType="DataGridRow">
+                        <Setter Property="Background" Value="#FFFFFF"/>
                         <Style.Triggers>
+                            <!-- Mes impar = blanco puro -->
+                            <DataTrigger Binding="{Binding EsMesImpar}" Value="True">
+                                <Setter Property="Background" Value="#FFFFFF"/>
+                            </DataTrigger>
+                            <!-- Mes par = gris más notorio -->
+                            <DataTrigger Binding="{Binding EsMesImpar}" Value="False">
+                                <Setter Property="Background" Value="#D1D5DB"/>
+                            </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E3F2FD"/>
+                                <Setter Property="Background" Value="#DBEAFE"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#BBDEFB"/>
+                                <Setter Property="Background" Value="#93C5FD"/>
                                 <Setter Property="Foreground" Value="Black"/>
-                                
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -493,6 +527,7 @@
                     </DataGridTemplateColumn>
                 </DataGrid.Columns>
             </DataGrid>
+            </Grid>
         </Border>
 
         <!-- Status Bar -->

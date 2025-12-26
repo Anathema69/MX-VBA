@@ -73,16 +73,19 @@ namespace SistemaGestionProyectos2.Views
 
             // Configurar el DataGrid
             _ordersViewSource = new CollectionViewSource { Source = _orders };
-            OrdersDataGrid.ItemsSource = _ordersViewSource.View;
 
+            // Ordenar por fecha ascendente (más antiguo primero)
+            _ordersViewSource.SortDescriptions.Add(
+                new System.ComponentModel.SortDescription("OrderDate", System.ComponentModel.ListSortDirection.Ascending)
+            );
+
+            OrdersDataGrid.ItemsSource = _ordersViewSource.View;
 
             // Nuevo método para configurar el filtro de estado
             ConfigureStatusFilterComboBox();
 
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - Manejo de Órdenes - {_currentUser.FullName}";
-
-            
         }
 
         private void ConfigureStatusFilterComboBox()
@@ -91,29 +94,28 @@ namespace SistemaGestionProyectos2.Views
             StatusFilter.Items.Clear();
 
             // Agregar opción "Todos"
-            var todosItem = new ComboBoxItem { Content = "Todos", IsSelected = true };
-            StatusFilter.Items.Add(todosItem);
+            StatusFilter.Items.Add(new ComboBoxItem { Content = "Todos" });
 
             if (_currentUser.Role == "coordinator")
             {
-                // Coordinador solo ve estados 0, 1, 2
-                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
+                // Coordinador solo ve estados 0, 1, 2 - Por defecto CREADA
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA", IsSelected = true });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
 
-                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para coordinador: 3 estados");
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para coordinador: 3 estados (defecto: CREADA)");
             }
             else if (_currentUser.Role == "admin")
             {
-                // Admin ve todos los estados
-                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
+                // Admin ve todos los estados - Por defecto CREADA
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA", IsSelected = true });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CERRADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "COMPLETADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CANCELADA" });
 
-                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para admin: todos los estados");
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para admin: todos los estados (defecto: CREADA)");
             }
         }
 
@@ -296,6 +298,9 @@ namespace SistemaGestionProyectos2.Views
                     {
                         _ = LoadRemainingOrdersAsync(statusFilter);
                     }
+
+                    // Aplicar filtro inicial (CREADA por defecto)
+                    ApplyInitialFilter();
                 }
                 else
                 {
@@ -307,6 +312,10 @@ namespace SistemaGestionProyectos2.Views
                     {
                         StatusText.Text = "No se encontraron órdenes";
                     }
+
+                    // Mostrar mensaje de sin registros
+                    NoRecordsMessage.Visibility = Visibility.Visible;
+                    OrdersDataGrid.Visibility = Visibility.Collapsed;
                 }
             }
             catch (Exception ex)
@@ -642,6 +651,20 @@ namespace SistemaGestionProyectos2.Views
             UpdateStatusBar();
         }
 
+        private void ApplyInitialFilter()
+        {
+            if (_ordersViewSource?.View == null) return;
+
+            // Aplicar filtro inicial "CREADA"
+            _ordersViewSource.View.Filter = item =>
+            {
+                var order = item as OrderViewModel;
+                return order?.Status == "CREADA";
+            };
+
+            UpdateStatusBar();
+        }
+
         private async void EditButton_Click(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -767,6 +790,24 @@ namespace SistemaGestionProyectos2.Views
         {
             var visibleCount = _ordersViewSource?.View?.Cast<object>().Count() ?? 0;
             StatusText.Text = $"{visibleCount} órdenes visibles de {_orders.Count} total";
+
+            // Obtener el filtro actual
+            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
+            var currentFilter = selectedItem?.Content?.ToString() ?? "CREADA";
+
+            // Mostrar/ocultar mensaje de "Sin registros"
+            if (visibleCount == 0)
+            {
+                NoRecordsTitle.Text = $"Sin registros para: {currentFilter}";
+                NoRecordsSubtitle.Text = "Prueba con otro filtro o verifica que existan órdenes";
+                NoRecordsMessage.Visibility = Visibility.Visible;
+                OrdersDataGrid.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                NoRecordsMessage.Visibility = Visibility.Collapsed;
+                OrdersDataGrid.Visibility = Visibility.Visible;
+            }
         }
 
         private async void InvoiceButton_Click(object sender, RoutedEventArgs e)

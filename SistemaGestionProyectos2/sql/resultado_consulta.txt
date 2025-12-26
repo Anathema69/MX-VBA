@@ -1,0 +1,32 @@
+ -- Ver triggers en t_fixed_expenses
+ [
+  {
+    "trigger_name": "fixed_expense_history_trigger",
+    "event_manipulation": "INSERT",
+    "action_statement": "EXECUTE FUNCTION track_fixed_expense_changes()"
+  },
+  {
+    "trigger_name": "fixed_expense_history_trigger",
+    "event_manipulation": "DELETE",
+    "action_statement": "EXECUTE FUNCTION track_fixed_expense_changes()"
+  },
+  {
+    "trigger_name": "fixed_expense_history_trigger",
+    "event_manipulation": "UPDATE",
+    "action_statement": "EXECUTE FUNCTION track_fixed_expense_changes()"
+  }
+]
+
+
+-- Ver triggers en t_fixed_expenses_history
+Success. No rows returned
+
+
+-- Ver funciones relacionadas con fixed_expenses
+
+[
+  {
+    "proname": "track_fixed_expense_changes",
+    "prosrc": "\r\nDECLARE\r\n    v_change_type VARCHAR(50);\r\n    v_change_summary TEXT;\r\n    v_effective_date DATE;\r\nBEGIN\r\n    -- Para DELETE, registrar y permitir la operación\r\n    IF TG_OP = 'DELETE' THEN\r\n        INSERT INTO t_fixed_expenses_history (\r\n            expense_id,\r\n            description,\r\n            monthly_amount,\r\n            effective_date,\r\n            change_type,\r\n            change_summary,\r\n            created_by\r\n        ) VALUES (\r\n            OLD.id,\r\n            OLD.description,\r\n            OLD.monthly_amount,\r\n            CURRENT_DATE,\r\n            'DELETED',\r\n            'Gasto eliminado: ' || OLD.description,\r\n            COALESCE(OLD.created_by, 1)\r\n        );\r\n        RETURN OLD; -- Importante: retornar OLD para DELETE\r\n    END IF;\r\n    \r\n    -- Determinar fecha efectiva para INSERT/UPDATE\r\n    v_effective_date := COALESCE(NEW.effective_date, CURRENT_DATE);\r\n    \r\n    -- Procesar UPDATE\r\n    IF TG_OP = 'UPDATE' THEN\r\n        IF OLD.monthly_amount = NEW.monthly_amount AND \r\n           OLD.description = NEW.description THEN\r\n            RETURN NEW;\r\n        END IF;\r\n        \r\n        IF OLD.monthly_amount IS DISTINCT FROM NEW.monthly_amount THEN\r\n            IF OLD.monthly_amount < NEW.monthly_amount THEN\r\n                v_change_type := 'INCREASE';\r\n                v_change_summary := 'Aumento de $' || OLD.monthly_amount::TEXT || ' a $' || NEW.monthly_amount::TEXT;\r\n            ELSE\r\n                v_change_type := 'DECREASE';\r\n                v_change_summary := 'Reducción de $' || OLD.monthly_amount::TEXT || ' a $' || NEW.monthly_amount::TEXT;\r\n            END IF;\r\n        ELSE\r\n            v_change_type := 'MODIFIED';\r\n            v_change_summary := 'Actualización de descripción';\r\n        END IF;\r\n        \r\n        -- Evitar duplicados recientes\r\n        IF NOT EXISTS (\r\n            SELECT 1 \r\n            FROM t_fixed_expenses_history \r\n            WHERE expense_id = NEW.id\r\n              AND effective_date = v_effective_date\r\n              AND monthly_amount = NEW.monthly_amount\r\n              AND created_at > NOW() - INTERVAL '2 minutes'\r\n        ) THEN\r\n            INSERT INTO t_fixed_expenses_history (\r\n                expense_id,\r\n                description,\r\n                monthly_amount,\r\n                effective_date,\r\n                change_type,\r\n                change_summary,\r\n                created_by\r\n            ) VALUES (\r\n                NEW.id,\r\n                NEW.description,\r\n                NEW.monthly_amount,\r\n                v_effective_date,\r\n                v_change_type,\r\n                v_change_summary,\r\n                COALESCE(NEW.created_by, 1)\r\n            );\r\n        END IF;\r\n        \r\n    ELSIF TG_OP = 'INSERT' THEN\r\n        INSERT INTO t_fixed_expenses_history (\r\n            expense_id,\r\n            description,\r\n            monthly_amount,\r\n            effective_date,\r\n            change_type,\r\n            change_summary,\r\n            created_by\r\n        ) VALUES (\r\n            NEW.id,\r\n            NEW.description,\r\n            NEW.monthly_amount,\r\n            v_effective_date,\r\n            'CREATED',\r\n            'Nuevo gasto: ' || NEW.description || ' - $' || NEW.monthly_amount::TEXT,\r\n            COALESCE(NEW.created_by, 1)\r\n        );\r\n    END IF;\r\n    \r\n    RETURN NEW;\r\nEND;\r\n"
+  }
+]

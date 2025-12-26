@@ -123,21 +123,12 @@ namespace SistemaGestionProyectos2.Views
         // MÉTODO IMPORTANTE: Click en logout
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "¿Está seguro que desea cerrar sesión?",
-                "Confirmar",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+            _timer?.Stop();
 
-            if (result == MessageBoxResult.Yes)
-            {
-                _timer?.Stop();
-
-                // Usar el método centralizado de App para cerrar sesión
-                // Esto cierra TODAS las ventanas excepto la de login
-                var app = (App)Application.Current;
-                app.ForceLogout("Usuario cerró sesión manualmente", "Sesión cerrada exitosamente.");
-            }
+            // Usar el método centralizado de App para cerrar sesión
+            // Esto cierra TODAS las ventanas excepto la de login
+            var app = (App)Application.Current;
+            app.ForceLogout("Usuario cerró sesión manualmente");
         }
 
         protected override void OnClosed(EventArgs e)

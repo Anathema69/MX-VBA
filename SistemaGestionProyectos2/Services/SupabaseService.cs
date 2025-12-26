@@ -173,6 +173,12 @@ namespace SistemaGestionProyectos2.Services
         public Task<bool> CancelOrder(int orderId)
             => _orderService.CancelOrder(orderId);
 
+        public Task<(bool Success, string Message)> DeleteOrderWithAudit(int orderId, int deletedBy, string reason = "Orden creada por error")
+            => _orderService.DeleteOrderWithAudit(orderId, deletedBy, reason);
+
+        public Task<(bool CanDelete, string Reason)> CanDeleteOrder(int orderId)
+            => _orderService.CanDeleteOrder(orderId);
+
         public Task<List<OrderDb>> GetRecentOrders(int limit = 10)
             => _orderService.GetRecentOrders(limit);
 

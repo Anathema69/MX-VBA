@@ -283,8 +283,6 @@ namespace SistemaGestionProyectos2.Views
         {
             if (!_hasUnsavedContactChanges)
             {
-                MessageBox.Show("No hay cambios para guardar", "Información",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -544,9 +542,6 @@ namespace SistemaGestionProyectos2.Views
                     var success = await _supabaseService.SoftDeleteClient(_selectedClient.Id);
                     if (success)
                     {
-                        MessageBox.Show("Cliente eliminado exitosamente", "Éxito",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
-
                         _selectedClient = null;
                         NoSelectionPanel.Visibility = Visibility.Visible;
                         ClientDetailsPanel.Visibility = Visibility.Collapsed;

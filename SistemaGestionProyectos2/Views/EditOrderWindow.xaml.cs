@@ -177,8 +177,16 @@ namespace SistemaGestionProyectos2.Views
                 EditableClientComboBox.SelectedValuePath = "Id";
                 EditableClientComboBox.SelectionChanged += EditableClientComboBox_SelectionChanged;
 
-                // Llenar combo de vendedores
-                EditableVendorComboBox.ItemsSource = _vendors;
+                // Llenar combo de vendedores con opción "Sin vendedor"
+                var vendorsList = new List<VendorDb>
+                {
+                    new VendorDb { Id = 0, VendorName = "— Sin vendedor —" }
+                };
+                if (_vendors != null)
+                {
+                    vendorsList.AddRange(_vendors);
+                }
+                EditableVendorComboBox.ItemsSource = vendorsList;
                 EditableVendorComboBox.DisplayMemberPath = "VendorName";
                 EditableVendorComboBox.SelectedValuePath = "Id";
 
@@ -268,7 +276,8 @@ namespace SistemaGestionProyectos2.Views
                 EditableQuotationTextBox.Text = _originalOrderDb?.Quote ?? "";
                 EditableClientComboBox.SelectedValue = _originalOrderDb?.ClientId;
                 EditableContactComboBox.SelectedValue = _originalOrderDb?.ContactId;
-                EditableVendorComboBox.SelectedValue = _originalOrderDb?.SalesmanId;
+                // Si no tiene vendedor (null), seleccionar "Sin vendedor" (Id=0)
+                EditableVendorComboBox.SelectedValue = _originalOrderDb?.SalesmanId ?? 0;
                 EditableDescriptionTextBox.Text = _order.Description;
 
                 
@@ -546,6 +555,63 @@ namespace SistemaGestionProyectos2.Views
                 // Revertir el cambio si no se confirmó
                 SelectComboBoxItemByTag(StatusComboBox, _currentStatusId);
             }
+            else
+            {
+                // ✅ Ejecutar la cancelación
+                ExecuteCancelOrder();
+            }
+        }
+
+        private async void ExecuteCancelOrder()
+        {
+            try
+            {
+                // Mostrar indicador de carga
+                CancelOrderButton.IsEnabled = false;
+                CancelOrderButton.Content = "CANCELANDO...";
+
+                // Ejecutar cancelación en la BD
+                var success = await _supabaseService.CancelOrder(_order.Id);
+
+                if (success)
+                {
+                    MessageBox.Show(
+                        $"La orden {_order.OrderNumber} ha sido cancelada exitosamente.",
+                        "Orden Cancelada",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    // Cerrar ventana con resultado positivo para refrescar la lista
+                    this.DialogResult = true;
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "No se pudo cancelar la orden. Por favor intente nuevamente.",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+
+                    // Revertir el ComboBox
+                    SelectComboBoxItemByTag(StatusComboBox, _currentStatusId);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al cancelar la orden:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                SelectComboBoxItemByTag(StatusComboBox, _currentStatusId);
+            }
+            finally
+            {
+                CancelOrderButton.IsEnabled = true;
+                CancelOrderButton.Content = "CANCELAR ORDEN";
+            }
         }
 
         private bool ValidateStatusChange(int fromStatusId, int toStatusId)
@@ -710,7 +776,9 @@ namespace SistemaGestionProyectos2.Views
                     _originalOrderDb.Quote = EditableQuotationTextBox.Text?.Trim().ToUpper();
                     _originalOrderDb.ClientId = (int?)EditableClientComboBox.SelectedValue;
                     _originalOrderDb.ContactId = (int?)EditableContactComboBox.SelectedValue;
-                    _originalOrderDb.SalesmanId = (int?)EditableVendorComboBox.SelectedValue;
+                    // Si se selecciona "Sin vendedor" (Id=0), guardar como null
+                    var selectedVendorId = (int?)EditableVendorComboBox.SelectedValue;
+                    _originalOrderDb.SalesmanId = (selectedVendorId == 0) ? null : selectedVendorId;
                     _originalOrderDb.Description = EditableDescriptionTextBox.Text?.Trim();
                     _originalOrderDb.SaleSubtotal = _subtotalValue;
                     _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
@@ -892,6 +960,205 @@ namespace SistemaGestionProyectos2.Views
 
             // Resetear la bandera
             _isCancellingFromButton = false;
+        }
+
+        private async void DeleteOrderButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                DeleteOrderButton.IsEnabled = false;
+                DeleteOrderButton.Content = "VERIFICANDO...";
+
+                // Primero verificar si se puede eliminar (no tiene facturas, gastos o comisiones)
+                var (canDelete, reason) = await _supabaseService.CanDeleteOrder(_order.Id);
+
+                if (!canDelete)
+                {
+                    MessageBox.Show(
+                        $"No se puede eliminar esta orden:\n\n{reason}\n\n" +
+                        "Use CANCELAR ORDEN en su lugar para cambiar el estado a CANCELADA.",
+                        "No se puede eliminar",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Primera confirmación
+                var result1 = MessageBox.Show(
+                    $"¿Está seguro que desea ELIMINAR PERMANENTEMENTE la orden {_order.OrderNumber}?\n\n" +
+                    "Esta acción:\n" +
+                    "• Eliminará la orden de la base de datos\n" +
+                    "• Se guardará un registro en la tabla de auditoría\n" +
+                    "• NO se puede deshacer\n\n" +
+                    "¿Desea continuar?",
+                    "Confirmar Eliminación Permanente",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result1 != MessageBoxResult.Yes) return;
+
+                // Segunda confirmación con código
+                var confirmCode = $"ELIMINAR-{_order.OrderNumber}";
+                var inputWindow = new Window
+                {
+                    Title = "Confirmación de Seguridad - ELIMINAR",
+                    Width = 450,
+                    Height = 280,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    Owner = this,
+                    ResizeMode = ResizeMode.NoResize
+                };
+
+                var grid = new Grid { Margin = new Thickness(20) };
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                var warningLabel = new TextBlock
+                {
+                    Text = "ADVERTENCIA: Esta eliminación es PERMANENTE",
+                    FontWeight = FontWeights.Bold,
+                    Foreground = System.Windows.Media.Brushes.Red,
+                    Margin = new Thickness(0, 0, 0, 15)
+                };
+
+                var label1 = new TextBlock
+                {
+                    Text = "Para confirmar la eliminación, escriba el siguiente código:",
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 10)
+                };
+
+                var label2 = new TextBlock
+                {
+                    Text = confirmCode,
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 16,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 0, 0, 10),
+                    Foreground = System.Windows.Media.Brushes.DarkRed
+                };
+
+                var textBox = new TextBox
+                {
+                    Height = 30,
+                    FontSize = 14,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Margin = new Thickness(0, 0, 0, 15)
+                };
+
+                // Prevenir pegar
+                DataObject.AddPastingHandler(textBox, (s, ev) => { ev.CancelCommand(); });
+
+                var buttonPanel = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+
+                var confirmButton = new Button
+                {
+                    Content = "ELIMINAR PERMANENTEMENTE",
+                    Width = 220,
+                    Height = 40,
+                    Margin = new Thickness(0, 0, 10, 0),
+                    Background = System.Windows.Media.Brushes.DarkRed,
+                    Foreground = System.Windows.Media.Brushes.White,
+                    FontWeight = FontWeights.Bold
+                };
+
+                var cancelButton = new Button
+                {
+                    Content = "Cancelar",
+                    Width = 100,
+                    Height = 35
+                };
+
+                bool confirmed = false;
+
+                confirmButton.Click += (s, ev) =>
+                {
+                    if (textBox.Text == confirmCode)
+                    {
+                        confirmed = true;
+                        inputWindow.Close();
+                    }
+                    else
+                    {
+                        MessageBox.Show("El código no coincide. Intente nuevamente.",
+                            "Código Incorrecto", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        textBox.Clear();
+                        textBox.Focus();
+                    }
+                };
+
+                cancelButton.Click += (s, ev) => inputWindow.Close();
+
+                buttonPanel.Children.Add(confirmButton);
+                buttonPanel.Children.Add(cancelButton);
+
+                Grid.SetRow(warningLabel, 0);
+                Grid.SetRow(label1, 1);
+                Grid.SetRow(label2, 2);
+                Grid.SetRow(textBox, 3);
+                Grid.SetRow(buttonPanel, 4);
+
+                grid.Children.Add(warningLabel);
+                grid.Children.Add(label1);
+                grid.Children.Add(label2);
+                grid.Children.Add(textBox);
+                grid.Children.Add(buttonPanel);
+
+                inputWindow.Content = grid;
+                textBox.Focus();
+
+                inputWindow.ShowDialog();
+
+                if (!confirmed) return;
+
+                // Ejecutar la eliminación
+                DeleteOrderButton.Content = "ELIMINANDO...";
+                var (success, message) = await _supabaseService.DeleteOrderWithAudit(
+                    _order.Id,
+                    _currentUser.Id,
+                    "Orden eliminada manualmente - creada por error"
+                );
+
+                if (success)
+                {
+                    MessageBox.Show(
+                        $"La orden {_order.OrderNumber} ha sido eliminada permanentemente.\n\n{message}",
+                        "Orden Eliminada",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    this.DialogResult = true;
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show(
+                        $"No se pudo eliminar la orden:\n\n{message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al eliminar la orden:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            finally
+            {
+                DeleteOrderButton.IsEnabled = true;
+                DeleteOrderButton.Content = "ELIMINAR ORDEN";
+            }
         }
     }
 }

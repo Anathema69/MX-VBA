@@ -132,6 +132,7 @@ namespace SistemaGestionProyectos2.Views
             var horasExtra = new decimal[12];
             var gastosFijos = new decimal[12];
             var gastosVariables = new decimal[12];
+            var totalGastos = new decimal[12];
             var ingresosEsperados = new decimal[12];
             var ingresosPercibidos = new decimal[12];
             var diferencia = new decimal[12];
@@ -148,6 +149,7 @@ namespace SistemaGestionProyectos2.Views
                     horasExtra[mesIndex] = dato.HorasExtra;
                     gastosFijos[mesIndex] = dato.GastosFijos;
                     gastosVariables[mesIndex] = dato.GastosVariables;
+                    totalGastos[mesIndex] = dato.TotalGastos;
 
                     // Ingresos - Ahora usando valores correctos de la BD
                     ingresosEsperados[mesIndex] = dato.IngresosEsperados;
@@ -176,6 +178,10 @@ namespace SistemaGestionProyectos2.Views
             currentRow++;
 
             AddDataRow("Gastos Variables", gastosVariables, currentRow, false);
+            currentRow++;
+
+            // Total Gastos (renglón de suma con estilo destacado)
+            AddDataRow("Total Gastos", totalGastos, currentRow, true, _sectionColors["GASTOS"][1], false);
             currentRow++;
 
             // Espacio

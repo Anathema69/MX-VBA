@@ -158,7 +158,7 @@ namespace SistemaGestionProyectos2
 
                     if (_warningWindow.ShouldLogout)
                     {
-                        ForceLogout("Usuario eligió cerrar sesión desde advertencia", "Sesión cerrada exitosamente.");
+                        ForceLogout("Usuario eligió cerrar sesión desde advertencia");
                     }
 
                     _warningWindow = null;

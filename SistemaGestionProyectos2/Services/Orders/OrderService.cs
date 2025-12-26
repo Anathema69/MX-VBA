@@ -1,5 +1,6 @@
 using Postgrest.Responses;
 using SistemaGestionProyectos2.Models.Database;
+using SistemaGestionProyectos2.Models.DTOs;
 using SistemaGestionProyectos2.Services.Core;
 using Supabase;
 using System;
@@ -171,23 +172,77 @@ namespace SistemaGestionProyectos2.Services.Orders
             }
         }
 
-        public async Task<bool> DeleteOrder(int orderId)
+        public async Task<(bool Success, string Message)> DeleteOrderWithAudit(int orderId, int deletedBy, string reason = "Orden creada por error")
         {
             try
             {
-                await SupabaseClient
-                    .From<OrderDb>()
-                    .Where(x => x.Id == orderId)
-                    .Delete();
+                LogDebug($"🗑️ Intentando eliminar orden {orderId} con auditoría");
 
-                LogSuccess($"Orden eliminada: {orderId}");
-                return true;
+                // Llamar a la función SQL que valida y elimina
+                var response = await SupabaseClient.Rpc<List<DeleteOrderResult>>(
+                    "delete_order_with_audit",
+                    new Dictionary<string, object>
+                    {
+                        { "p_order_id", orderId },
+                        { "p_deleted_by", deletedBy },
+                        { "p_reason", reason }
+                    });
+
+                if (response != null && response.Count > 0)
+                {
+                    var result = response[0];
+                    if (result.Success)
+                    {
+                        LogSuccess($"✅ {result.Message}");
+                    }
+                    else
+                    {
+                        LogDebug($"⚠️ {result.Message}");
+                    }
+                    return (result.Success, result.Message);
+                }
+
+                return (false, "No se recibió respuesta del servidor");
             }
             catch (Exception ex)
             {
                 LogError($"Error eliminando orden {orderId}", ex);
-                return false;
+                return (false, $"Error: {ex.Message}");
             }
+        }
+
+        public async Task<(bool CanDelete, string Reason)> CanDeleteOrder(int orderId)
+        {
+            try
+            {
+                var response = await SupabaseClient.Rpc<List<CanDeleteOrderResult>>(
+                    "can_delete_order",
+                    new Dictionary<string, object>
+                    {
+                        { "p_order_id", orderId }
+                    });
+
+                if (response != null && response.Count > 0)
+                {
+                    var result = response[0];
+                    return (result.CanDelete, result.Reason);
+                }
+
+                return (false, "No se pudo verificar el estado de la orden");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error verificando si se puede eliminar orden {orderId}", ex);
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // Mantener el método simple para compatibilidad (deprecated)
+        [Obsolete("Use DeleteOrderWithAudit en su lugar")]
+        public async Task<bool> DeleteOrder(int orderId)
+        {
+            var result = await DeleteOrderWithAudit(orderId, 1, "Eliminación legacy");
+            return result.Success;
         }
 
         public async Task<bool> CancelOrder(int orderId)

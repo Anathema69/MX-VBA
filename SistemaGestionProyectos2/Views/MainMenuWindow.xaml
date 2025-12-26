@@ -485,7 +485,7 @@
             <StatusBarItem HorizontalAlignment="Right">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="VersionText"
-                             Text="v1.0.8"
+                             Text="v1.0.9"
                              Foreground="#999"
                              FontSize="10"
                              Margin="0,0,15,0"/>

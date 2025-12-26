@@ -25,5 +25,8 @@ namespace SistemaGestionProyectos2.Models
         public decimal PendingAmount => Total - InvoicedAmount;
         public string PendingAmountFormatted => PendingAmount.ToString("C");
         public double InvoicedPercentage => Total > 0 ? (double)(InvoicedAmount / Total * 100) : 0;
+
+        // Propiedad para alternar colores por mes
+        public bool EsMesImpar => OrderDate.Month % 2 == 1;
     }
 }

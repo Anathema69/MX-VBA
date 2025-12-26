@@ -519,8 +519,6 @@ namespace SistemaGestionProyectos2.Views
         {
             if (!_hasUnsavedChanges && !_invoices.Any(i => i.HasChanges || i.IsNew))
             {
-                MessageBox.Show("No hay cambios para guardar.",
-                    "Información", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 

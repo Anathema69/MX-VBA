@@ -38,6 +38,9 @@ namespace SistemaGestionProyectos2.Views
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
 
+            // Maximizar ventana dejando visible la barra de tareas
+            MaximizeWithTaskbar();
+
             ClientsItemsControl.ItemsSource = _displayedClients;
 
             // Mostrar estado de carga
@@ -45,6 +48,15 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos de manera asíncrona
             _ = LoadPendingIncomesAsync();
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            var workingArea = SystemParameters.WorkArea;
+            this.Left = workingArea.Left;
+            this.Top = workingArea.Top;
+            this.Width = workingArea.Width;
+            this.Height = workingArea.Height;
         }
 
         private void ShowLoadingState()
