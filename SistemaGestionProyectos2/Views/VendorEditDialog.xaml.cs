@@ -78,6 +78,13 @@ namespace SistemaGestionProyectos2.Views
                 InfoSection.Visibility = Visibility.Collapsed;
                 ConfirmPasswordPanel.Visibility = Visibility.Visible;
 
+                // Indicar claramente que contraseña es obligatoria para nuevos vendedores
+                PasswordLabel.Text = "Contraseña *";
+                PasswordLabel.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)); // Rojo
+                PasswordNote.Text = "⚠️ La contraseña es OBLIGATORIA para que el vendedor pueda acceder al sistema";
+                PasswordNote.Foreground = new SolidColorBrush(Color.FromRgb(220, 38, 38)); // Rojo
+                PasswordNote.Visibility = Visibility.Visible;
+
                 // Valor por defecto para comisión
                 CommissionRateTextBox.Text = "10.00";
             }
@@ -184,12 +191,23 @@ namespace SistemaGestionProyectos2.Views
                             }
                         }
 
-                        MessageBox.Show("Vendedor actualizado correctamente", "Éxito",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }
                 else
                 {
+                    // VALIDACIÓN DE SEGURIDAD: No permitir crear vendedor sin contraseña
+                    if (string.IsNullOrWhiteSpace(PasswordBox.Password))
+                    {
+                        MessageBox.Show(
+                            "La contraseña es obligatoria para crear un nuevo vendedor.\n\n" +
+                            "Sin contraseña, el vendedor no podrá acceder al sistema.",
+                            "Contraseña Requerida",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        PasswordBox.Focus();
+                        return;
+                    }
+
                     // Crear nuevo vendedor
                     var newVendor = new VendorTableDb
                     {
@@ -200,7 +218,7 @@ namespace SistemaGestionProyectos2.Views
                         CommissionRate = commissionRate
                     };
 
-                    // Primero crear el usuario si se proporcionó contraseña
+                    // Crear el usuario con la contraseña proporcionada
                     if (!string.IsNullOrWhiteSpace(PasswordBox.Password))
                     {
                         var newUser = new UserDb
@@ -228,12 +246,7 @@ namespace SistemaGestionProyectos2.Views
                         .From<VendorTableDb>()
                         .Insert(newVendor);
 
-                    if (created?.Models?.Count > 0)
-                    {
-                        MessageBox.Show("Vendedor creado correctamente", "Éxito",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                    else
+                    if (created?.Models?.Count <= 0)
                     {
                         throw new Exception("No se pudo crear el vendedor");
                     }

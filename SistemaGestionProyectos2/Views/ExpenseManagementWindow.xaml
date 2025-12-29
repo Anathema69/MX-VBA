@@ -495,9 +495,12 @@
                         </DataGridTemplateColumn.CellTemplate>
                         <DataGridTemplateColumn.CellEditingTemplate>
                             <DataTemplate>
-                                <TextBox Text="{Binding TotalExpense, StringFormat=F2}"
+                                <TextBox Text="{Binding TotalExpense, StringFormat=F2, UpdateSourceTrigger=LostFocus}"
                                        TextAlignment="Right" Padding="8,4"
-                                       PreviewTextInput="TotalAmount_PreviewTextInput"/>
+                                       PreviewTextInput="TotalAmount_PreviewTextInput"
+                                       GotFocus="TotalAmount_GotFocus"
+                                       LostFocus="TotalAmount_LostFocus"
+                                       Loaded="TotalAmount_Loaded"/>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>

@@ -435,13 +435,22 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="TASA COMISIÓN" FontSize="11" Foreground="{StaticResource TextGray}" 
+                                                    <TextBlock Text="TASA COMISIÓN" FontSize="11" Foreground="{StaticResource TextGray}"
                                                                FontWeight="Medium"/>
-                                                    <Border BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" 
-                                                            Margin="0,5,0,0" Padding="2">
+                                                    <Border BorderBrush="Transparent" BorderThickness="1" CornerRadius="4"
+                                                            Margin="0,5,0,0" Padding="4,2"
+                                                            ToolTip="Doble clic para editar"
+                                                            Cursor="Hand">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="Transparent"/>
                                                                 <Style.Triggers>
+                                                                    <!-- Efecto hover: borde azul y fondo claro -->
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter Property="BorderBrush" Value="#90CAF9"/>
+                                                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                                                    </Trigger>
+                                                                    <!-- Cuando está editando -->
                                                                     <DataTrigger Binding="{Binding IsEditingRate}" Value="True">
                                                                         <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
                                                                         <Setter Property="Background" Value="#f8f9ff"/>
@@ -449,28 +458,49 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Border.Style>
-                                                        <TextBox Text="{Binding CommissionRate, StringFormat='{}{0:F2}%'}"
-                                                                 FontSize="16" FontWeight="SemiBold" 
-                                                                 Foreground="{StaticResource DarkText}"
-                                                                 BorderThickness="0" Background="Transparent"
-                                                                 IsReadOnly="True"
-                                                                 Tag="{Binding}"
-                                                                 MouseDoubleClick="CommissionRate_MouseDoubleClick"
-                                                                 KeyDown="CommissionRate_KeyDown"
-                                                                 LostFocus="CommissionRate_LostFocus"
-                                                                 PreviewTextInput="CommissionRate_PreviewTextInput"
-                                                                 TextAlignment="Center">
-                                                            <TextBox.Style>
-                                                                <Style TargetType="TextBox">
-                                                                    <Setter Property="Cursor" Value="Hand"/>
-                                                                    <Style.Triggers>
-                                                                        <Trigger Property="IsReadOnly" Value="False">
-                                                                            <Setter Property="Cursor" Value="IBeam"/>
-                                                                        </Trigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBox.Style>
-                                                        </TextBox>
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                            <!-- Ícono de lápiz SIEMPRE visible (indica que es editable) -->
+                                                            <Border Width="16" Height="16" CornerRadius="2"
+                                                                    VerticalAlignment="Center" Margin="0,0,6,0"
+                                                                    Background="#E3F2FD">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsEditingRate}" Value="True">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <Path Data="M3,17.25 L3,21 L6.75,21 L17.81,9.94 L14.06,6.19 L3,17.25 Z M20.71,7.04 C21.1,6.65 21.1,6.02 20.71,5.63 L18.37,3.29 C17.98,2.9 17.35,2.9 16.96,3.29 L15.13,5.12 L18.88,8.87 L20.71,7.04 Z"
+                                                                      Fill="#1976D2" Stretch="Uniform" Width="10" Height="10"
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <TextBox Text="{Binding CommissionRate, StringFormat='{}{0:F2}%'}"
+                                                                     FontSize="16" FontWeight="SemiBold"
+                                                                     Foreground="{StaticResource DarkText}"
+                                                                     BorderThickness="0" Background="Transparent"
+                                                                     IsReadOnly="True"
+                                                                     Tag="{Binding}"
+                                                                     MouseDoubleClick="CommissionRate_MouseDoubleClick"
+                                                                     KeyDown="CommissionRate_KeyDown"
+                                                                     LostFocus="CommissionRate_LostFocus"
+                                                                     PreviewTextInput="CommissionRate_PreviewTextInput"
+                                                                     TextAlignment="Center"
+                                                                     VerticalAlignment="Center"
+                                                                     MinWidth="60">
+                                                                <TextBox.Style>
+                                                                    <Style TargetType="TextBox">
+                                                                        <Setter Property="Cursor" Value="Hand"/>
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsReadOnly" Value="False">
+                                                                                <Setter Property="Cursor" Value="IBeam"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBox.Style>
+                                                            </TextBox>
+                                                        </StackPanel>
                                                     </Border>
                                                 </StackPanel>
 

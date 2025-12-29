@@ -28,9 +28,10 @@ namespace SistemaGestionProyectos2.Views
         private List<BalanceCompletoDb> _balanceData;
 
         // Colores para las secciones
+        // [0] = Header/fondo claro, [1] = Fila de totales (más claro para mejor legibilidad)
         private readonly Dictionary<string, Color[]> _sectionColors = new Dictionary<string, Color[]>
         {
-            { "GASTOS", new[] { Color.FromRgb(254, 226, 226), Color.FromRgb(252, 165, 165) } },
+            { "GASTOS", new[] { Color.FromRgb(254, 226, 226), Color.FromRgb(254, 215, 215) } },  // Rosa muy suave para Total Gastos
             { "INGRESOS", new[] { Color.FromRgb(209, 250, 229), Color.FromRgb(110, 231, 183) } },
             { "UTILIDAD", new[] { Color.FromRgb(219, 234, 254), Color.FromRgb(96, 165, 250) } },
             { "VENTAS", new[] { Color.FromRgb(255, 237, 213), Color.FromRgb(251, 191, 36) } }
@@ -391,6 +392,8 @@ namespace SistemaGestionProyectos2.Views
                         FontSize = 14,
                         FontWeight = FontWeights.Medium,
                         TextAlignment = TextAlignment.Right,
+                        VerticalContentAlignment = VerticalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
                         BorderThickness = new Thickness(0),
                         Background = Brushes.Transparent,
                         Padding = new Thickness(0, 0, 10, 0),

@@ -86,4 +86,55 @@ namespace SistemaGestionProyectos2.Models.Database
         [Column("updated_by")]
         public int? UpdatedBy { get; set; }
     }
+
+    [Table("t_commission_rate_history")]
+    public class CommissionRateHistoryDb : BaseModel
+    {
+        [PrimaryKey("id", shouldInsert: false)]
+        public int Id { get; set; }
+
+        public bool ShouldSerializeId() => Id > 0;
+
+        [Column("order_id")]
+        public int OrderId { get; set; }
+
+        [Column("vendor_id")]
+        public int VendorId { get; set; }
+
+        [Column("commission_payment_id")]
+        public int? CommissionPaymentId { get; set; }
+
+        [Column("old_rate")]
+        public decimal OldRate { get; set; }
+
+        [Column("old_amount")]
+        public decimal OldAmount { get; set; }
+
+        [Column("new_rate")]
+        public decimal NewRate { get; set; }
+
+        [Column("new_amount")]
+        public decimal NewAmount { get; set; }
+
+        [Column("order_subtotal")]
+        public decimal? OrderSubtotal { get; set; }
+
+        [Column("order_number")]
+        public string OrderNumber { get; set; }
+
+        [Column("vendor_name")]
+        public string VendorName { get; set; }
+
+        [Column("changed_by")]
+        public int ChangedBy { get; set; }
+
+        [Column("changed_by_name")]
+        public string ChangedByName { get; set; }
+
+        [Column("changed_at")]
+        public DateTime? ChangedAt { get; set; }
+
+        [Column("change_reason")]
+        public string ChangeReason { get; set; }
+    }
 }

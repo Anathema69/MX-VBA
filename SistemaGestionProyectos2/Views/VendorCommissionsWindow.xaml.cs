@@ -530,20 +530,22 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // Eventos para edición de tasa - sin cambios
+        // Eventos para edición de tasa - permite editar si NO está pagada
         private void CommissionRate_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             var textBox = sender as TextBox;
             if (textBox != null)
             {
                 var commission = textBox.Tag as CommissionDetailViewModel;
-                if (commission != null && commission.PaymentStatus == "pending")
+                // Permitir editar si el estado NO es "paid"
+                if (commission != null && commission.PaymentStatus != "paid")
                 {
                     commission.IsEditingRate = true;
                     textBox.IsReadOnly = false;
+                    // Mostrar solo el número para edición fácil (sin %)
                     textBox.Text = commission.CommissionRate.ToString("F2");
-                    textBox.SelectAll();
                     textBox.Focus();
+                    textBox.SelectAll(); // Seleccionar todo para reemplazar fácilmente
                 }
             }
         }
@@ -597,49 +599,106 @@ namespace SistemaGestionProyectos2.Views
         private async Task SaveCommissionRate(TextBox textBox)
         {
             var commission = textBox.Tag as CommissionDetailViewModel;
-            if (commission != null && commission.PaymentStatus == "pending")
+            // Permitir guardar si el estado NO es "paid"
+            if (commission != null && commission.PaymentStatus != "paid")
             {
                 string cleanText = textBox.Text.Replace("%", "").Trim();
                 if (decimal.TryParse(cleanText, out decimal newRate) && newRate >= 0 && newRate <= 100)
                 {
                     if (newRate != commission.CommissionRate)
                     {
-                        try
+                        // Guardar valores anteriores para posible rollback
+                        decimal oldRate = commission.CommissionRate;
+                        decimal oldAmount = commission.CommissionAmount;
+                        decimal newCommissionAmount = Math.Round((commission.Subtotal * newRate) / 100, 2);
+
+                        // ═══════════════════════════════════════════════════════════
+                        // OPTIMISTIC UI: Actualizar UI inmediatamente (sin esperar BD)
+                        // ═══════════════════════════════════════════════════════════
+                        commission.CommissionRate = newRate;
+                        commission.CommissionAmount = newCommissionAmount;
+                        commission.CommissionAmountFormatted = newCommissionAmount.ToString("C", _cultureMX);
+                        textBox.Text = $"{newRate:F2}%";
+                        commission.IsEditingRate = false;
+                        textBox.IsReadOnly = true;
+
+                        // Feedback visual inmediato
+                        textBox.Background = new SolidColorBrush(Color.FromArgb(50, 76, 175, 80));
+                        ShowTemporaryNotification($"✓ Tasa actualizada: {oldRate:F2}% → {newRate:F2}%");
+
+                        // Actualizar totales del vendedor en UI
+                        UpdateVendorTotalsInUI(oldAmount, newCommissionAmount);
+
+                        // ═══════════════════════════════════════════════════════════
+                        // BACKGROUND: Guardar en BD en paralelo (sin bloquear UI)
+                        // ═══════════════════════════════════════════════════════════
+                        _ = Task.Run(async () =>
                         {
-                            var supabaseClient = _supabaseService.GetClient();
-                            decimal newCommissionAmount = (commission.Subtotal * newRate) / 100;
-
-                            var update = await supabaseClient
-                                .From<VendorCommissionPaymentDb>()
-                                .Where(x => x.Id == commission.CommissionPaymentId)
-                                .Set(x => x.CommissionRate, newRate)
-                                .Set(x => x.CommissionAmount, newCommissionAmount)
-                                .Set(x => x.UpdatedBy, _currentUser.Id)
-                                .Set(x => x.UpdatedAt, DateTime.Now)
-                                .Update();
-
-                            if (update != null)
+                            try
                             {
-                                commission.CommissionRate = newRate;
-                                commission.CommissionAmount = newCommissionAmount;
-                                commission.CommissionAmountFormatted = newCommissionAmount.ToString("C", _cultureMX);
+                                var supabaseClient = _supabaseService.GetClient();
+                                var now = DateTime.Now;
 
-                                textBox.Background = new SolidColorBrush(Color.FromArgb(50, 76, 175, 80));
-                                await Task.Delay(500);
-                                textBox.Background = Brushes.Transparent;
+                                // Ejecutar las 3 operaciones en PARALELO
+                                var historyTask = supabaseClient
+                                    .From<CommissionRateHistoryDb>()
+                                    .Insert(new CommissionRateHistoryDb
+                                    {
+                                        OrderId = commission.OrderId,
+                                        VendorId = commission.VendorId,
+                                        CommissionPaymentId = commission.CommissionPaymentId,
+                                        OldRate = oldRate,
+                                        OldAmount = oldAmount,
+                                        NewRate = newRate,
+                                        NewAmount = newCommissionAmount,
+                                        OrderSubtotal = commission.Subtotal,
+                                        OrderNumber = commission.OrderNumber,
+                                        VendorName = _selectedVendor?.VendorName ?? "Desconocido",
+                                        ChangedBy = _currentUser.Id,
+                                        ChangedByName = _currentUser.FullName,
+                                        ChangedAt = now,
+                                        ChangeReason = $"Cambio manual de tasa: {oldRate:F2}% → {newRate:F2}%"
+                                    });
 
-                                if (_selectedVendor != null)
-                                {
-                                    await LoadVendorCommissions(_selectedVendor.VendorId);
-                                }
+                                var commissionTask = supabaseClient
+                                    .From<VendorCommissionPaymentDb>()
+                                    .Where(x => x.Id == commission.CommissionPaymentId)
+                                    .Set(x => x.CommissionRate, newRate)
+                                    .Set(x => x.CommissionAmount, newCommissionAmount)
+                                    .Set(x => x.UpdatedBy, _currentUser.Id)
+                                    .Set(x => x.UpdatedAt, now)
+                                    .Update();
+
+                                var orderTask = supabaseClient
+                                    .From<OrderDb>()
+                                    .Where(x => x.Id == commission.OrderId)
+                                    .Set(x => x.CommissionRate, newRate)
+                                    .Set(x => x.UpdatedBy, _currentUser.Id)
+                                    .Set(x => x.UpdatedAt, now)
+                                    .Update();
+
+                                // Esperar todas en paralelo
+                                await Task.WhenAll(historyTask, commissionTask, orderTask);
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show($"Error al actualizar tasa: {ex.Message}", "Error",
-                                MessageBoxButton.OK, MessageBoxImage.Error);
-                            textBox.Text = $"{commission.CommissionRate:F2}%";
-                        }
+                            catch (Exception ex)
+                            {
+                                // Si falla, mostrar error y revertir en UI
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    commission.CommissionRate = oldRate;
+                                    commission.CommissionAmount = oldAmount;
+                                    commission.CommissionAmountFormatted = oldAmount.ToString("C", _cultureMX);
+                                    textBox.Text = $"{oldRate:F2}%";
+                                    UpdateVendorTotalsInUI(newCommissionAmount, oldAmount); // Revertir totales
+                                    ShowTemporaryNotification($"⚠️ Error al guardar: {ex.Message}");
+                                });
+                            }
+                        });
+
+                        // Limpiar fondo después de un momento
+                        await Task.Delay(300);
+                        textBox.Background = Brushes.Transparent;
+                        return;
                     }
                 }
                 else
@@ -651,6 +710,30 @@ namespace SistemaGestionProyectos2.Views
                 commission.IsEditingRate = false;
                 textBox.IsReadOnly = true;
             }
+        }
+
+        // Actualiza los totales del vendedor en la UI sin recargar de BD
+        private void UpdateVendorTotalsInUI(decimal oldAmount, decimal newAmount)
+        {
+            if (_selectedVendor == null) return;
+
+            decimal difference = newAmount - oldAmount;
+
+            // Actualizar totales en el panel derecho
+            if (decimal.TryParse(VendorTotalPendingText.Text.Replace("$", "").Replace(",", ""), out decimal currentPending))
+            {
+                VendorTotalPendingText.Text = (currentPending + difference).ToString("C", _cultureMX);
+            }
+            if (decimal.TryParse(VendorTotalAllText.Text.Replace("$", "").Replace(",", ""), out decimal currentAll))
+            {
+                VendorTotalAllText.Text = (currentAll + difference).ToString("C", _cultureMX);
+            }
+
+            // Actualizar en la lista de vendedores
+            _selectedVendor.TotalPending += difference;
+            _selectedVendor.TotalAll += difference;
+            _selectedVendor.TotalPendingFormatted = _selectedVendor.TotalPending.ToString("C", _cultureMX);
+            _selectedVendor.TotalAllFormatted = _selectedVendor.TotalAll.ToString("C", _cultureMX);
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

@@ -1217,10 +1217,73 @@ namespace SistemaGestionProyectos2.Views
         private void TotalAmount_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             var textBox = sender as System.Windows.Controls.TextBox;
-            var fullText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
 
-            decimal value;
-            e.Handled = !decimal.TryParse(fullText, out value);
+            // Si todo el texto está seleccionado, el nuevo texto lo reemplaza completamente
+            string newText;
+            if (textBox.SelectionLength == textBox.Text.Length)
+            {
+                newText = e.Text;
+            }
+            else
+            {
+                newText = textBox.Text.Insert(textBox.SelectionStart, e.Text);
+            }
+
+            // Permitir números y un solo punto decimal
+            // Validar que el resultado sea un número válido o un inicio de número (ej: "1." o ".")
+            if (e.Text == ".")
+            {
+                // Permitir punto si no hay uno ya
+                e.Handled = textBox.Text.Contains(".");
+            }
+            else
+            {
+                decimal value;
+                e.Handled = !decimal.TryParse(newText, out value) && newText != "." && !newText.EndsWith(".");
+            }
+        }
+
+        // Seleccionar todo el texto al recibir foco (para reemplazar fácilmente)
+        private void TotalAmount_GotFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as System.Windows.Controls.TextBox;
+            if (textBox != null)
+            {
+                // Programar la selección para después del foco
+                textBox.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    textBox.SelectAll();
+                }), System.Windows.Threading.DispatcherPriority.Input);
+            }
+        }
+
+        // Formatear el valor al perder foco (asegurar 2 decimales)
+        private void TotalAmount_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as System.Windows.Controls.TextBox;
+            if (textBox != null)
+            {
+                if (decimal.TryParse(textBox.Text, out decimal value))
+                {
+                    textBox.Text = value.ToString("F2");
+                }
+                else if (string.IsNullOrWhiteSpace(textBox.Text))
+                {
+                    textBox.Text = "0.00";
+                }
+            }
+        }
+
+        // Auto-foco y selección al cargar el TextBox (cuando entra en modo edición)
+        private void TotalAmount_Loaded(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as System.Windows.Controls.TextBox;
+            if (textBox != null)
+            {
+                // Enfocar y seleccionar todo el texto automáticamente
+                textBox.Focus();
+                textBox.SelectAll();
+            }
         }
 
         // === MÉTODOS PARA EDICIÓN DE FECHA DE PAGO ===
