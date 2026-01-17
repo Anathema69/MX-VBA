@@ -54,15 +54,16 @@
                         <!-- Botón Gestionar Vendedores -->
                         <Button Grid.Column="1" Name="ManageVendorsButton"
                                 Background="{StaticResource PrimaryColor}" Foreground="White"
-                                BorderThickness="0" Padding="10,5" Cursor="Hand"
+                                BorderThickness="0" Padding="12,6" Cursor="Hand"
+                                Height="32" VerticalAlignment="Center"
                                 Click="ManageVendorsButton_Click">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}" CornerRadius="6"
                                             Padding="{TemplateBinding Padding}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="⚙️" FontSize="11" Margin="0,0,6,0"/>
-                                            <TextBlock Text="Vendedores" FontWeight="SemiBold" FontSize="11"/>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="⚙️" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Vendedores" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
                                     <ControlTemplate.Triggers>
@@ -371,14 +372,15 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel Grid.Column="0">
-                                                <StackPanel Orientation="Horizontal">
+                                                <!-- Header: Orden + Badge -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                                                     <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource DarkText}">
                                                         <Run Text="Orden:"/>
                                                         <Run Text="{Binding OrderNumber}"/>
                                                     </TextBlock>
 
                                                     <!-- Badge de estado -->
-                                                    <Border Margin="10,0,0,0" CornerRadius="12" Padding="8,3">
+                                                    <Border Margin="10,0,0,0" CornerRadius="12" Padding="8,3" VerticalAlignment="Center">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Style.Triggers>
@@ -409,10 +411,39 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                                                         </TextBlock>
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBlock FontSize="14" Foreground="{StaticResource TextGray}" Margin="0,3,0,0">
-                                                    <Run Text="Cliente:"/>
-                                                    <Run Text="{Binding ClientName}"/>
-                                                </TextBlock>
+
+                                                <!-- Contenedor de Cliente y Descripción con acento lateral -->
+                                                <Border BorderThickness="3,0,0,0" BorderBrush="{StaticResource PrimaryColor}"
+                                                        Background="#FAFBFC" CornerRadius="0,6,6,0" Padding="12,8">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="Cliente:" FontSize="13" Foreground="{StaticResource TextGray}"
+                                                                       FontWeight="Medium" Width="75"/>
+                                                            <TextBlock Text="{Binding ClientName}" FontSize="13"
+                                                                       Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
+                                                        </StackPanel>
+                                                        <!-- Descripción de la orden -->
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding OrderDescription}" Value="">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding OrderDescription}" Value="{x:Null}">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <TextBlock Text="Detalle:" FontSize="13" Foreground="{StaticResource TextGray}"
+                                                                       FontWeight="Medium" Width="75"/>
+                                                            <TextBlock Text="{Binding OrderDescription}" FontSize="13"
+                                                                       Foreground="#4A5568" TextTrimming="CharacterEllipsis"
+                                                                       MaxWidth="400"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
                                             </StackPanel>
                                         </Grid>
 
@@ -434,13 +465,14 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                                                                FontWeight="SemiBold" Foreground="{StaticResource DarkText}" Margin="0,5,0,0"/>
                                                 </StackPanel>
 
-                                                <StackPanel Grid.Column="1">
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                                     <TextBlock Text="TASA COMISIÓN" FontSize="11" Foreground="{StaticResource TextGray}"
-                                                               FontWeight="Medium"/>
+                                                               FontWeight="Medium" HorizontalAlignment="Center"/>
                                                     <Border BorderBrush="Transparent" BorderThickness="1" CornerRadius="4"
                                                             Margin="0,5,0,0" Padding="4,2"
                                                             ToolTip="Doble clic para editar"
-                                                            Cursor="Hand">
+                                                            Cursor="Hand"
+                                                            HorizontalAlignment="Center">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Background" Value="Transparent"/>

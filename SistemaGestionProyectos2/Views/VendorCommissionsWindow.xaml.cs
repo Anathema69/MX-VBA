@@ -278,6 +278,7 @@ namespace SistemaGestionProyectos2.Views
                         OrderId = commission.OrderId,
                         VendorId = commission.VendorId,
                         OrderNumber = order?.Po ?? $"ORD-{commission.OrderId}",
+                        OrderDescription = order?.Description ?? "",
                         OrderDate = order?.PoDate ?? DateTime.Now,
                         ClientName = client?.Name ?? "Sin Cliente",
                         Subtotal = order?.SaleSubtotal ?? 0,
@@ -817,6 +818,7 @@ namespace SistemaGestionProyectos2.Views
         public int OrderId { get; set; }
         public int VendorId { get; set; }
         public string OrderNumber { get; set; }
+        public string OrderDescription { get; set; }
         public DateTime OrderDate { get; set; }
         public string ClientName { get; set; }
         public decimal Subtotal { get; set; }

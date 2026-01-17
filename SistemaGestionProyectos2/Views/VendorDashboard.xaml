@@ -262,7 +262,7 @@
                                             </Grid.RowDefinitions>
 
                                             <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                                <TextBlock FontSize="16" FontWeight="SemiBold" 
+                                                <TextBlock FontSize="16" FontWeight="SemiBold"
                                                            Foreground="{StaticResource DarkText}">
                                                     <Run Text="Orden:"/>
                                                     <Run Text="{Binding OrderNumber}"/>
