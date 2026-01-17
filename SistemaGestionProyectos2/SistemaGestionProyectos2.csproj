@@ -9,9 +9,9 @@
     <UseWPF>true</UseWPF>
 
     <!-- Información de versión -->
-    <Version>1.0.10</Version>
-    <AssemblyVersion>1.0.10.0</AssemblyVersion>
-    <FileVersion>1.0.10.0</FileVersion>
+    <Version>1.0.12</Version>
+    <AssemblyVersion>1.0.12.0</AssemblyVersion>
+    <FileVersion>1.0.12.0</FileVersion>
     <Company>IMA Mecatrónica</Company>
     <Product>Sistema de Gestión de Proyectos</Product>
     <Copyright>Copyright © 2025 Zuri Dev</Copyright>

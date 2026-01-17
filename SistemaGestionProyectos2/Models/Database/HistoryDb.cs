@@ -136,5 +136,8 @@ namespace SistemaGestionProyectos2.Models.Database
 
         [Column("change_reason")]
         public string ChangeReason { get; set; }
+
+        [Column("is_vendor_removal")]
+        public bool IsVendorRemoval { get; set; }
     }
 }

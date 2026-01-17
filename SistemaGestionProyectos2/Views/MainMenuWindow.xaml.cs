@@ -228,7 +228,7 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                StatusText.Text = "Abriendo Portal de Proveedores...";
+                StatusText.Text = "Abriendo Cuentas por Pagar...";
 
                 // Verificar permisos (opcional)
                 if (_currentUser.Role != "admin")
@@ -241,16 +241,16 @@ namespace SistemaGestionProyectos2.Views
                     return;
                 }
 
-                // Abrir la ventana del Portal de Proveedores
-                var expenseWindow = new ExpenseManagementWindow(_currentUser);
-                expenseWindow.ShowDialog();
+                // Abrir la nueva vista de Cuentas por Pagar (pivoteada por proveedor)
+                var supplierPendingWindow = new SupplierPendingView(_currentUser);
+                supplierPendingWindow.ShowDialog();
 
-                StatusText.Text = "Portal de Proveedores cerrado";
+                StatusText.Text = "Cuentas por Pagar cerrado";
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Error al abrir el Portal de Proveedores:\n{ex.Message}",
+                    $"Error al abrir Cuentas por Pagar:\n{ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
