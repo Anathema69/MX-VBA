@@ -28,13 +28,13 @@
 
         <!-- Style para las filas del DataGrid -->
         <Style x:Key="ExpenseRowStyle" TargetType="DataGridRow">
-            <Setter Property="Height" Value="48"/>
+            <Setter Property="Height" Value="56"/>
             <Setter Property="Margin" Value="0,2"/>
             <Setter Property="Background" Value="White"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsNew}" Value="True">
                     <Setter Property="Background" Value="#D1FAE5"/>
-                    <Setter Property="Height" Value="54"/>
+                    <Setter Property="Height" Value="62"/>
                 </DataTrigger>
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
@@ -648,63 +648,201 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Orden (ComboBox editable) -->
-                        <DataGridTemplateColumn Header="ORDEN" Width="140" SortMemberPath="OrderPO">
+                        <!-- Orden (ComboBox editable con búsqueda) -->
+                        <DataGridTemplateColumn Header="ORDEN" Width="160" SortMemberPath="OrderPO">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid>
                                         <!-- Vista normal -->
                                         <TextBlock Text="{Binding OrderPO}"
                                                    Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVis}}"
-                                                   Margin="4,0"
+                                                   Margin="8,0"
                                                    VerticalAlignment="Center"
-                                                   Foreground="{StaticResource TextGray}"/>
-                                        <!-- Vista editable (ComboBox) -->
+                                                   FontSize="13"
+                                                   Foreground="{StaticResource DarkText}"/>
+                                        <!-- Vista editable (ComboBox con búsqueda y filtrado) -->
                                         <ComboBox x:Name="OrderComboBox"
                                                   Visibility="{Binding IsEditable, Converter={StaticResource BoolToVis}}"
                                                   ItemsSource="{Binding DataContext.AvailableOrders, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   SelectedValue="{Binding SelectedOrderId, UpdateSourceTrigger=PropertyChanged}"
                                                   SelectedValuePath="Id"
                                                   DisplayMemberPath="DisplayText"
+                                                  IsEditable="True"
+                                                  IsTextSearchEnabled="False"
+                                                  StaysOpenOnEdit="True"
                                                   Margin="4"
-                                                  Padding="6,4"
-                                                  FontSize="12"
-                                                  VerticalAlignment="Center"
-                                                  BorderBrush="#10B981"
-                                                  BorderThickness="2"
-                                                  Background="White"
-                                                  TabIndex="1"/>
+                                                  MinHeight="40"
+                                                  FontSize="13"
+                                                  VerticalAlignment="Stretch"
+                                                  VerticalContentAlignment="Center"
+                                                  Focusable="True"
+                                                  IsTabStop="True"
+                                                  TabIndex="1"
+                                                  Loaded="OrderComboBox_Loaded"
+                                                  LostFocus="OrderComboBox_LostFocus"
+                                                  DropDownOpened="OrderComboBox_DropDownOpened">
+                                            <ComboBox.Style>
+                                                <Style TargetType="ComboBox">
+                                                    <Setter Property="Background" Value="White"/>
+                                                    <Setter Property="BorderBrush" Value="#10B981"/>
+                                                    <Setter Property="BorderThickness" Value="2"/>
+                                                    <Setter Property="Padding" Value="10,8"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ComboBox">
+                                                                <Grid>
+                                                                    <Border x:Name="Border"
+                                                                            Background="{TemplateBinding Background}"
+                                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                                            CornerRadius="6">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBox x:Name="PART_EditableTextBox"
+                                                                                     Grid.Column="0"
+                                                                                     Margin="0"
+                                                                                     Padding="{TemplateBinding Padding}"
+                                                                                     FontSize="{TemplateBinding FontSize}"
+                                                                                     Background="Transparent"
+                                                                                     BorderThickness="0"
+                                                                                     VerticalContentAlignment="Center"
+                                                                                     IsReadOnly="{TemplateBinding IsReadOnly}"
+                                                                                     Focusable="True"/>
+                                                                            <ToggleButton x:Name="ToggleButton"
+                                                                                          Grid.Column="1"
+                                                                                          Width="28"
+                                                                                          Background="Transparent"
+                                                                                          BorderThickness="0"
+                                                                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                                          ClickMode="Press"
+                                                                                          Focusable="False">
+                                                                                <Path x:Name="Arrow"
+                                                                                      Fill="#718096"
+                                                                                      HorizontalAlignment="Center"
+                                                                                      VerticalAlignment="Center"
+                                                                                      Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                                                            </ToggleButton>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                    <Popup x:Name="PART_Popup"
+                                                                           Placement="Bottom"
+                                                                           IsOpen="{TemplateBinding IsDropDownOpen}"
+                                                                           AllowsTransparency="True"
+                                                                           PopupAnimation="Slide">
+                                                                        <Border Background="White"
+                                                                                BorderBrush="#E2E8F0"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="6"
+                                                                                Margin="0,2,0,0"
+                                                                                MaxHeight="200"
+                                                                                MinWidth="{TemplateBinding ActualWidth}">
+                                                                            <Border.Effect>
+                                                                                <DropShadowEffect Color="#000000" Direction="270"
+                                                                                                  ShadowDepth="3" Opacity="0.15" BlurRadius="8"/>
+                                                                            </Border.Effect>
+                                                                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                                                <ItemsPresenter/>
+                                                                            </ScrollViewer>
+                                                                        </Border>
+                                                                    </Popup>
+                                                                </Grid>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsFocused" Value="True">
+                                                                        <Setter TargetName="Border" Property="BorderBrush" Value="#059669"/>
+                                                                        <Setter TargetName="Border" Property="Background" Value="#F0FDF4"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                                        <Setter TargetName="Border" Property="BorderBrush" Value="#059669"/>
+                                                                        <Setter TargetName="Border" Property="Background" Value="#F0FDF4"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ComboBox.Style>
+                                            <ComboBox.ItemContainerStyle>
+                                                <Style TargetType="ComboBoxItem">
+                                                    <Setter Property="Padding" Value="10,8"/>
+                                                    <Setter Property="FontSize" Value="13"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsHighlighted" Value="True">
+                                                            <Setter Property="Background" Value="#EBF8FF"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter Property="Background" Value="#D1FAE5"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ComboBox.ItemContainerStyle>
+                                        </ComboBox>
                                     </Grid>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
                         <!-- Total (editable) -->
-                        <DataGridTemplateColumn Header="TOTAL" Width="120" SortMemberPath="Total">
+                        <DataGridTemplateColumn Header="TOTAL" Width="140" SortMemberPath="Total">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid>
-                                        <!-- Vista normal -->
-                                        <TextBlock Text="{Binding TotalFormatted}"
-                                                   Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVis}}"
-                                                   Margin="4,0"
-                                                   VerticalAlignment="Center"
-                                                   FontWeight="Bold"
-                                                   FontSize="14"/>
+                                        <!-- Vista normal - Border ocupa toda la celda para mejor clic -->
+                                        <Border Background="Transparent"
+                                                Cursor="Hand"
+                                                Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="Doble clic o F2 para editar">
+                                            <TextBlock Text="{Binding TotalFormatted}"
+                                                       Margin="12,0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       FontWeight="Bold"
+                                                       FontSize="16"/>
+                                        </Border>
                                         <!-- Vista editable -->
-                                        <Grid Visibility="{Binding IsEditable, Converter={StaticResource BoolToVis}}">
+                                        <Grid Visibility="{Binding IsEditable, Converter={StaticResource BoolToVis}}"
+                                              Margin="4,4">
+                                            <!-- Símbolo $ - IsHitTestVisible=False permite que clics pasen al TextBox -->
                                             <TextBlock Text="$"
-                                                       FontSize="12" FontWeight="Bold"
-                                                       Foreground="#718096"
+                                                       FontSize="16" FontWeight="Bold"
+                                                       Foreground="#059669"
                                                        VerticalAlignment="Center"
                                                        Margin="12,0,0,0"
-                                                       Panel.ZIndex="1"/>
+                                                       Panel.ZIndex="1"
+                                                       IsHitTestVisible="False"/>
                                             <TextBox x:Name="TotalEditBox"
                                                      Text="{Binding TotalInput, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource InlineEditTextBox}"
-                                                     Padding="22,6,8,6"
+                                                     Padding="28,10,10,10"
                                                      FontWeight="Bold"
-                                                     TabIndex="2"/>
+                                                     FontSize="16"
+                                                     MinHeight="44"
+                                                     VerticalAlignment="Stretch"
+                                                     HorizontalAlignment="Stretch"
+                                                     VerticalContentAlignment="Center"
+                                                     BorderBrush="#10B981"
+                                                     BorderThickness="2"
+                                                     Background="White"
+                                                     Focusable="True"
+                                                     IsTabStop="True"
+                                                     TabIndex="2"
+                                                     PreviewTextInput="TotalTextBox_PreviewTextInput"
+                                                     PreviewKeyDown="TotalTextBox_PreviewKeyDown"
+                                                     GotFocus="TotalTextBox_GotFocus">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsFocused" Value="True">
+                                                                <Setter Property="BorderBrush" Value="#059669"/>
+                                                                <Setter Property="Background" Value="#F0FDF4"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
                                         </Grid>
                                     </Grid>
                                 </DataTemplate>
@@ -829,12 +967,12 @@
                         </DataGridTemplateColumn>
 
                         <!-- Estado -->
-                        <DataGridTemplateColumn Header="ESTADO" Width="100" SortMemberPath="Status">
+                        <DataGridTemplateColumn Header="ESTADO" Width="110" SortMemberPath="Status">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Border Margin="4,5" CornerRadius="4"
-                                            HorizontalAlignment="Left"
-                                            Padding="6,2">
+                                            HorizontalAlignment="Center"
+                                            Padding="8,3">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Style.Triggers>
@@ -881,7 +1019,7 @@
                         </DataGridTemplateColumn>
 
                         <!-- Acciones -->
-                        <DataGridTemplateColumn Header="" Width="110">
+                        <DataGridTemplateColumn Header="" Width="140">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Grid>
@@ -944,17 +1082,17 @@
                                             <!-- Boton Pagar (solo si no está pagado) -->
                                             <Button Tag="{Binding ExpenseId}"
                                                     Click="PayButton_Click"
-                                                    Width="32" Height="26"
+                                                    Width="38" Height="30"
                                                     Background="#10B981"
                                                     BorderThickness="0"
                                                     Cursor="Hand"
                                                     ToolTip="Marcar como pagado"
-                                                    Margin="0,0,4,0"
+                                                    Margin="0,0,5,0"
                                                     Visibility="{Binding IsPayable, Converter={StaticResource BoolToVis}}">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{TemplateBinding Background}"
-                                                                CornerRadius="4">
+                                                                CornerRadius="5">
                                                             <ContentPresenter HorizontalAlignment="Center"
                                                                             VerticalAlignment="Center"/>
                                                         </Border>
@@ -965,15 +1103,15 @@
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Button.Template>
-                                                <TextBlock Text="$" FontWeight="Bold" Foreground="White" FontSize="12"/>
+                                                <TextBlock Text="$" FontWeight="Bold" Foreground="White" FontSize="14"/>
                                             </Button>
 
                                             <!-- Indicador de pagado (cuando ya está pagado) -->
-                                            <Border Width="32" Height="26" CornerRadius="4"
-                                                    Background="#D1FAE5" Margin="0,0,4,0"
+                                            <Border Width="38" Height="30" CornerRadius="5"
+                                                    Background="#D1FAE5" Margin="0,0,5,0"
                                                     ToolTip="Ya pagado"
                                                     Visibility="{Binding IsPaid, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="✓" FontWeight="Bold" FontSize="14"
+                                                <TextBlock Text="✓" FontWeight="Bold" FontSize="16"
                                                          Foreground="#059669"
                                                          HorizontalAlignment="Center"
                                                          VerticalAlignment="Center"/>
@@ -982,17 +1120,17 @@
                                             <!-- Boton Editar (solo para no pagados) -->
                                             <Button Tag="{Binding ExpenseId}"
                                                     Click="EditButton_Click"
-                                                    Width="32" Height="26"
+                                                    Width="38" Height="30"
                                                     Background="#3B82F6"
                                                     BorderThickness="0"
                                                     Cursor="Hand"
-                                                    ToolTip="Editar gasto"
-                                                    Margin="0,0,4,0"
+                                                    ToolTip="Editar gasto (o presiona F2)"
+                                                    Margin="0,0,5,0"
                                                     Visibility="{Binding IsPayable, Converter={StaticResource BoolToVis}}">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{TemplateBinding Background}"
-                                                                CornerRadius="4">
+                                                                CornerRadius="5">
                                                             <ContentPresenter HorizontalAlignment="Center"
                                                                             VerticalAlignment="Center"/>
                                                         </Border>
@@ -1003,13 +1141,13 @@
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Button.Template>
-                                                <TextBlock Text="E" FontWeight="Bold" Foreground="White" FontSize="10"/>
+                                                <TextBlock Text="✏" FontWeight="Bold" Foreground="White" FontSize="12"/>
                                             </Button>
 
                                             <!-- Boton Eliminar (solo para no pagados) -->
                                             <Button Tag="{Binding ExpenseId}"
                                                     Click="DeleteButton_Click"
-                                                    Width="32" Height="26"
+                                                    Width="38" Height="30"
                                                     Background="#EF4444"
                                                     BorderThickness="0"
                                                     Cursor="Hand"
@@ -1018,7 +1156,7 @@
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{TemplateBinding Background}"
-                                                                CornerRadius="4">
+                                                                CornerRadius="5">
                                                             <ContentPresenter HorizontalAlignment="Center"
                                                                             VerticalAlignment="Center"/>
                                                         </Border>
@@ -1029,7 +1167,7 @@
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Button.Template>
-                                                <TextBlock Text="X" FontWeight="Bold" Foreground="White" FontSize="10"/>
+                                                <TextBlock Text="✕" FontWeight="Bold" Foreground="White" FontSize="12"/>
                                             </Button>
                                         </StackPanel>
                                     </Grid>
@@ -1068,11 +1206,12 @@
         </Border>
 
         <!-- Status Bar -->
-        <Border Grid.Row="4" Background="{StaticResource DarkText}" Height="30">
+        <Border Grid.Row="4" Background="{StaticResource DarkText}" Height="38">
             <Grid Margin="20,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
@@ -1081,7 +1220,22 @@
                          Foreground="White" FontSize="12"
                          VerticalAlignment="Center"/>
 
-                <TextBlock Grid.Column="2" x:Name="DetailLastUpdateText"
+                <!-- Hint de atajos de teclado -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,25,0">
+                    <TextBlock Text="Atajos:" Foreground="#CBD5E0" FontSize="11" FontWeight="Medium"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <Border Background="#5B3FF9" CornerRadius="4" Padding="8,3" Margin="0,0,6,0">
+                        <TextBlock Text="F2" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                    </Border>
+                    <TextBlock Text="Editar fila" Foreground="White" FontSize="12" VerticalAlignment="Center" Margin="0,0,18,0"/>
+
+                    <Border Background="#10B981" CornerRadius="4" Padding="8,3" Margin="0,0,6,0">
+                        <TextBlock Text="Doble clic" Foreground="White" FontSize="11" FontWeight="Bold"/>
+                    </Border>
+                    <TextBlock Text="Editar" Foreground="White" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="3" x:Name="DetailLastUpdateText"
                          Text="Última actualización: --:--"
                          Foreground="White" FontSize="12"
                          VerticalAlignment="Center"/>

@@ -32,6 +32,7 @@ namespace SistemaGestionProyectos2.Views
 
         // Lista de órdenes disponibles para el ComboBox
         private ObservableCollection<OrderDisplayItem> _availableOrders;
+        private List<OrderDisplayItem> _allOrders = new List<OrderDisplayItem>(); // Lista completa para filtrado
         public ObservableCollection<OrderDisplayItem> AvailableOrders
         {
             get => _availableOrders;
@@ -173,16 +174,24 @@ namespace SistemaGestionProyectos2.Views
 
                 var orders = ordersResponse?.Models ?? new List<OrderDb>();
 
-                AvailableOrders.Clear();
-                AvailableOrders.Add(new OrderDisplayItem { Id = 0, DisplayText = "-- Sin orden --" });
+                // Guardar lista completa para filtrado
+                _allOrders.Clear();
+                _allOrders.Add(new OrderDisplayItem { Id = 0, DisplayText = "-- Sin orden --" });
 
                 foreach (var order in orders)
                 {
-                    AvailableOrders.Add(new OrderDisplayItem
+                    _allOrders.Add(new OrderDisplayItem
                     {
                         Id = order.Id,
                         DisplayText = $"{order.Po ?? $"ORD-{order.Id}"}"
                     });
+                }
+
+                // Copiar a la lista observable
+                AvailableOrders.Clear();
+                foreach (var item in _allOrders)
+                {
+                    AvailableOrders.Add(item);
                 }
             }
             catch { }
@@ -1038,6 +1047,260 @@ namespace SistemaGestionProyectos2.Views
                 DetailStatusText.Text = "Error al eliminar";
             }
         }
+
+        #region Validación del campo Total (solo números decimales)
+
+        /// <summary>
+        /// Valida que solo se ingresen números y un punto decimal
+        /// </summary>
+        private void TotalTextBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            string currentText = textBox.Text;
+            string newChar = e.Text;
+
+            // Solo permitir dígitos y punto decimal
+            if (!char.IsDigit(newChar[0]) && newChar != ".")
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Solo permitir un punto decimal
+            if (newChar == "." && currentText.Contains("."))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            // Limitar a 2 decimales después del punto
+            if (currentText.Contains("."))
+            {
+                int dotIndex = currentText.IndexOf('.');
+                int selectionStart = textBox.SelectionStart;
+
+                // Si el cursor está después del punto
+                if (selectionStart > dotIndex)
+                {
+                    string decimals = currentText.Substring(dotIndex + 1);
+                    // Si ya hay 2 decimales y no hay selección, bloquear
+                    if (decimals.Length >= 2 && textBox.SelectionLength == 0)
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Previene el pegado de texto no válido
+        /// </summary>
+        private void TotalTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            // Interceptar Ctrl+V (pegar)
+            if (e.Key == System.Windows.Input.Key.V &&
+                (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) == System.Windows.Input.ModifierKeys.Control)
+            {
+                if (Clipboard.ContainsText())
+                {
+                    string pastedText = Clipboard.GetText();
+
+                    // Validar que el texto pegado sea un número válido
+                    if (!IsValidDecimalInput(pastedText, textBox.Text, textBox.SelectionStart, textBox.SelectionLength))
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+            }
+
+            // Permitir teclas especiales: Backspace, Delete, Tab, Enter, flechas
+            // No hacer nada especial para estas
+        }
+
+        /// <summary>
+        /// Selecciona todo el texto cuando el campo recibe el foco
+        /// </summary>
+        private void TotalTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox != null)
+            {
+                // Seleccionar todo el texto para facilitar la edición
+                textBox.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    textBox.SelectAll();
+                }), System.Windows.Threading.DispatcherPriority.Input);
+            }
+        }
+
+        /// <summary>
+        /// Valida si el texto pegado resultaría en un número decimal válido
+        /// </summary>
+        private bool IsValidDecimalInput(string pastedText, string currentText, int selectionStart, int selectionLength)
+        {
+            // Construir el texto resultante
+            string resultText = currentText.Substring(0, selectionStart) +
+                               pastedText +
+                               currentText.Substring(selectionStart + selectionLength);
+
+            // Permitir cadena vacía
+            if (string.IsNullOrEmpty(resultText))
+                return true;
+
+            // Intentar parsear como decimal
+            if (!decimal.TryParse(resultText, out decimal value))
+                return false;
+
+            // Verificar que no tenga más de 2 decimales
+            if (resultText.Contains("."))
+            {
+                string[] parts = resultText.Split('.');
+                if (parts.Length > 2)
+                    return false;
+                if (parts.Length == 2 && parts[1].Length > 2)
+                    return false;
+            }
+
+            return true;
+        }
+
+        #endregion
+
+        #region Filtrado del ComboBox de Órdenes
+
+        /// <summary>
+        /// Se ejecuta cuando el ComboBox se carga - conecta el evento TextChanged al TextBox interno
+        /// </summary>
+        private void OrderComboBox_Loaded(object sender, RoutedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox == null) return;
+
+            // Esperar a que el template se aplique completamente
+            comboBox.ApplyTemplate();
+
+            // Buscar el TextBox interno del ComboBox editable
+            var textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as TextBox;
+            if (textBox != null)
+            {
+                // Suscribirse al evento TextChanged
+                textBox.TextChanged += (s, args) =>
+                {
+                    // Solo filtrar si el dropdown está abierto o si hay texto
+                    string searchText = textBox.Text ?? "";
+
+                    // Abrir dropdown automáticamente al escribir
+                    if (!string.IsNullOrEmpty(searchText) && searchText.Length >= 1)
+                    {
+                        comboBox.IsDropDownOpen = true;
+                    }
+
+                    FilterOrders(searchText);
+                };
+            }
+        }
+
+        /// <summary>
+        /// Filtra la lista de órdenes mientras el usuario escribe
+        /// </summary>
+        private void OrderComboBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox == null) return;
+
+            // Obtener el TextBox interno del ComboBox editable
+            var textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as TextBox;
+            string searchText = textBox?.Text ?? comboBox.Text ?? "";
+
+            FilterOrders(searchText);
+        }
+
+        /// <summary>
+        /// Filtra las órdenes basándose en el texto de búsqueda
+        /// </summary>
+        private void FilterOrders(string searchText)
+        {
+            if (_allOrders == null || _allOrders.Count == 0) return;
+
+            AvailableOrders.Clear();
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // Si no hay texto, mostrar todas las órdenes
+                foreach (var order in _allOrders)
+                {
+                    AvailableOrders.Add(order);
+                }
+            }
+            else
+            {
+                // Filtrar órdenes que contengan el texto de búsqueda
+                var filtered = _allOrders
+                    .Where(o => o.DisplayText.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (filtered.Any())
+                {
+                    foreach (var order in filtered)
+                    {
+                        AvailableOrders.Add(order);
+                    }
+                }
+                else
+                {
+                    // Si no hay coincidencias, mostrar solo "Sin orden"
+                    var sinOrden = _allOrders.FirstOrDefault(o => o.Id == 0);
+                    if (sinOrden != null)
+                    {
+                        AvailableOrders.Add(sinOrden);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Cuando el ComboBox pierde el foco, asegurar que tenga un valor válido
+        /// </summary>
+        private void OrderComboBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox == null) return;
+
+            // Si no hay item seleccionado, seleccionar "Sin orden"
+            if (comboBox.SelectedItem == null)
+            {
+                var sinOrden = _allOrders.FirstOrDefault(o => o.Id == 0);
+                if (sinOrden != null && AvailableOrders.Contains(sinOrden))
+                {
+                    comboBox.SelectedItem = sinOrden;
+                }
+                else if (AvailableOrders.Count > 0)
+                {
+                    comboBox.SelectedIndex = 0;
+                }
+            }
+
+            // Restaurar la lista completa para la próxima vez
+            FilterOrders("");
+        }
+
+        /// <summary>
+        /// Cuando el dropdown se abre, restaurar la lista completa
+        /// </summary>
+        private void OrderComboBox_DropDownOpened(object sender, EventArgs e)
+        {
+            // Restaurar lista completa cuando se abre el dropdown
+            FilterOrders("");
+        }
+
+        #endregion
     }
 
     // ViewModel para el detalle de gastos

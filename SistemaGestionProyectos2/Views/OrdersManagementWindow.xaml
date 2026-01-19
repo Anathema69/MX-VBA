@@ -137,26 +137,14 @@
                         </StackPanel>
                     </Button>
 
-                    <Button x:Name="RefreshButton"
-                           Click="RefreshButton_Click"
-                           Content="🔄"
-                           Width="40"
-                           Height="40"
-                           FontSize="18"
-                           Background="White"
-                           BorderBrush="#999"
-                           BorderThickness="1"
-                           Margin="0,0,10,0"
-                           Cursor="Hand"
-                           ToolTip="Actualizar"/>
                     <Button x:Name="ClientsManagementButton"
                            Click="ClientsManagementButton_Click"
                            Height="40"
                            Width="150"
                            Margin="0,0,10,0"
                            Cursor="Hand"
-                           Visibility="{Binding ElementName=OrdersWindow, 
-                                       Path=Tag, 
+                           Visibility="{Binding ElementName=OrdersWindow,
+                                       Path=Tag,
                                        Converter={StaticResource AdminVisibilityConverter}}">
                                             <Button.Template>
                                                 <ControlTemplate TargetType="Button">
@@ -182,6 +170,18 @@
                                                 <TextBlock Text="CLIENTES" FontWeight="Bold" Foreground="White"/>
                                             </StackPanel>
                     </Button>
+                    <Button x:Name="RefreshButton"
+                           Click="RefreshButton_Click"
+                           Content="🔄"
+                           Width="40"
+                           Height="40"
+                           FontSize="18"
+                           Background="White"
+                           BorderBrush="#999"
+                           BorderThickness="1"
+                           Margin="0,0,10,0"
+                           Cursor="Hand"
+                           ToolTip="Actualizar"/>
                 </StackPanel>
 
                 <!-- Búsqueda -->
