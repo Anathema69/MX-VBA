@@ -23,7 +23,7 @@ namespace SistemaGestionProyectos2.Views
         private List<ClientDb> _clients;
         private List<VendorDb> _vendors;
         private List<OrderStatusDb> _orderStatuses;
-        public bool IsAdmin => _currentUser?.Role == "admin";
+        public bool IsAdmin => _currentUser?.Role == "direccion" || _currentUser?.Role == "administracion";
 
         // Caché completo de órdenes cargadas desde la BD
         private List<OrderViewModel> _allOrdersCache;
@@ -96,18 +96,18 @@ namespace SistemaGestionProyectos2.Views
             // Agregar opción "Todos"
             StatusFilter.Items.Add(new ComboBoxItem { Content = "Todos" });
 
-            if (_currentUser.Role == "coordinator")
+            if (_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos")
             {
-                // Coordinador solo ve estados 0, 1, 2 - Por defecto CREADA
-                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA", IsSelected = true });
-                StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
+                // Coordinación/Proyectos solo ve estados 0, 1, 2 - Por defecto EN PROCESO
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO", IsSelected = true });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
 
-                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para coordinador: 3 estados (defecto: CREADA)");
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para coordinacion: 3 estados (defecto: EN PROCESO)");
             }
-            else if (_currentUser.Role == "admin")
+            else if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
-                // Admin ve todos los estados - Por defecto CREADA
+                // Dirección/Administración ve todos los estados - Por defecto CREADA
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA", IsSelected = true });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
@@ -115,32 +115,33 @@ namespace SistemaGestionProyectos2.Views
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "COMPLETADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CANCELADA" });
 
-                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para admin: todos los estados (defecto: CREADA)");
+                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para direccion/admin: todos los estados (defecto: CREADA)");
             }
         }
 
         private void ConfigurePermissions()
         {
             // Configurar visibilidad y permisos según el rol
+            // Roles v2.0: direccion, administracion, proyectos, coordinacion, ventas
             switch (_currentUser.Role)
             {
-                case "admin":
-                    
+                case "direccion":
+                case "administracion":
+                    // Dirección/Administración tiene acceso total
                     NewOrderButton.IsEnabled = true;
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
                     InvoicedColumn.Visibility = Visibility.Visible;
                     break;
 
-                case "coordinator":
-                    // Coordinador NO puede crear nuevas órdenes
+                case "coordinacion":
+                case "proyectos":
+                    // Coordinación/Proyectos NO puede crear nuevas órdenes
                     NewOrderButton.IsEnabled = false;
                     NewOrderButton.Visibility = Visibility.Collapsed;
 
-                    // Como ya no existe el botón de crear para el coordinador, 
-                    // debemos mover el botón de refresh a la izquierda
                     RefreshButton.Width = 90;
-                    NewOrderButton.ToolTip = "Solo el administrador puede crear órdenes";
+                    NewOrderButton.ToolTip = "Solo Dirección puede crear órdenes";
 
                     // NO puede ver campos financieros
                     SubtotalColumn.Visibility = Visibility.Collapsed;
@@ -148,8 +149,8 @@ namespace SistemaGestionProyectos2.Views
                     InvoicedColumn.Visibility = Visibility.Collapsed;
                     break;
 
-                case "salesperson":
-                    // Los vendedores no deberían poder acceder aquí
+                case "ventas":
+                    // Ventas no debería poder acceder aquí
                     MessageBox.Show(
                         "No tiene permisos para acceder a este módulo.",
                         "Acceso Denegado",
@@ -218,13 +219,13 @@ namespace SistemaGestionProyectos2.Views
 
                 // Determinar filtro según el rol
                 List<int> statusFilter = null;
-                if (_currentUser.Role == "coordinator")
+                if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
                 {
                     // Coordinador solo ve estados 0, 1 y 2
                     statusFilter = new List<int> { 0, 1, 2 };
                     System.Diagnostics.Debug.WriteLine("👤 Aplicando filtro de coordinador: estados 0, 1, 2");
                 }
-                else if (_currentUser.Role == "admin")
+                else if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion"))
                 {
                     // Admin ve todo
                     statusFilter = null;
@@ -282,7 +283,7 @@ namespace SistemaGestionProyectos2.Views
                     _lastFullLoadTime = DateTime.Now;
 
                     // Mostrar mensaje específico según el rol
-                    if (_currentUser.Role == "coordinator")
+                    if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
                     {
                         StatusText.Text = $"{_orders.Count} órdenes activas cargadas (CREADA, EN PROCESO, LIBERADA)";
                     }
@@ -304,7 +305,7 @@ namespace SistemaGestionProyectos2.Views
                 }
                 else
                 {
-                    if (_currentUser.Role == "coordinator")
+                    if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
                     {
                         StatusText.Text = "No se encontraron órdenes activas";
                     }
@@ -339,7 +340,7 @@ namespace SistemaGestionProyectos2.Views
                 _orders.Add(order);
             }
 
-            if (_currentUser.Role == "coordinator")
+            if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
             {
                 StatusText.Text = $"{_orders.Count} órdenes activas (desde caché)";
             }
@@ -455,7 +456,7 @@ namespace SistemaGestionProyectos2.Views
                                 _allOrdersCache.Add(viewModel);
                             }
 
-                            if (_currentUser.Role == "coordinator")
+                            if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
                             {
                                 StatusText.Text = $"{_orders.Count} órdenes activas cargadas";
                             }
@@ -491,6 +492,13 @@ namespace SistemaGestionProyectos2.Views
         {
             switch (role)
             {
+                // Roles v2.0
+                case "direccion": return "Dirección";
+                case "administracion": return "Administración";
+                case "proyectos": return "Proyectos";
+                case "coordinacion": return "Coordinación";
+                case "ventas": return "Ventas";
+                // Legacy
                 case "admin": return "Administrador";
                 case "coordinator": return "Coordinador";
                 case "salesperson": return "Vendedor";
@@ -503,7 +511,7 @@ namespace SistemaGestionProyectos2.Views
         {
             // Si eres admin volver al menú principal, si eres coordinador 'cerrarás la sesión' llevandote al login
 
-            if (_currentUser.Role == "admin")
+            if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion"))
             {
                 // SI MAIN ESTÁ ABIERTO VOLVER A ÉL Y CERRAR CUALQUIER OTRA VENTANA
                 foreach (Window window in Application.Current.Windows)
@@ -543,7 +551,7 @@ namespace SistemaGestionProyectos2.Views
 
         private async void NewOrderButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentUser.Role != "admin")
+            if ((_currentUser.Role != "direccion" && _currentUser.Role != "administracion"))
             {
                 MessageBox.Show(
                     "Solo el administrador puede crear nuevas órdenes.",
@@ -594,7 +602,7 @@ namespace SistemaGestionProyectos2.Views
                 RefreshButton.IsEnabled = true;
 
                 // Restaurar permisos del botón Nueva Orden según el rol
-                if (_currentUser.Role == "admin")
+                if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion"))
                 {
                     NewOrderButton.IsEnabled = true;
                 }
@@ -697,7 +705,7 @@ namespace SistemaGestionProyectos2.Views
 
         private async void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentUser.Role != "admin")
+            if ((_currentUser.Role != "direccion" && _currentUser.Role != "administracion"))
             {
                 MessageBox.Show(
                     "Solo el administrador puede eliminar órdenes.",
@@ -813,7 +821,7 @@ namespace SistemaGestionProyectos2.Views
         private async void InvoiceButton_Click(object sender, RoutedEventArgs e)
         {
             // Verificar permisos - Solo Admin puede gestionar facturas
-            if (_currentUser.Role != "admin")
+            if ((_currentUser.Role != "direccion" && _currentUser.Role != "administracion"))
             {
                 MessageBox.Show(
                     "Solo el administrador puede gestionar facturas.",

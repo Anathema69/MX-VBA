@@ -9,8 +9,8 @@ namespace SistemaGestionProyectos2.Services
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            // Si el valor es "admin", mostrar el botón
-            if (value is string role && role == "admin")
+            // Roles v2.0: direccion y administracion tienen permisos de admin
+            if (value is string role && (role == "direccion" || role == "administracion"))
             {
                 return Visibility.Visible;
             }

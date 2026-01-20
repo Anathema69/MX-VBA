@@ -210,11 +210,13 @@
                                           BorderThickness="0"
                                           SelectedValuePath="Id"
                                           DisplayMemberPath="DisplayText"
-                                          SelectionChanged="SupplierComboBox_SelectionChanged"
                                           IsEditable="True"
                                           IsTextSearchEnabled="True"
                                           StaysOpenOnEdit="True"
-                                          Text="Buscar proveedor...">
+                                          Text="Buscar proveedor..."
+                                          Loaded="SupplierComboBox_Loaded"
+                                          DropDownClosed="SupplierComboBox_DropDownClosed"
+                                          PreviewKeyDown="SupplierComboBox_PreviewKeyDown">
                                     <ComboBox.Style>
                                         <Style TargetType="ComboBox">
                                             <Setter Property="Padding" Value="8"/>

@@ -33,11 +33,11 @@ namespace SistemaGestionProyectos2.Views
             _invoices = new ObservableCollection<InvoiceViewModel>();
             _currentUser = currentUser;
 
-            // VALIDACIÓN DE SEGURIDAD - Solo admin puede acceder
-            if (_currentUser.Role != "admin")
+            // VALIDACIÓN DE SEGURIDAD - Solo direccion y administracion pueden acceder
+            if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion")
             {
                 MessageBox.Show(
-                    "No tiene permisos para gestionar facturas.\nSolo el administrador puede acceder a este módulo.",
+                    "No tiene permisos para gestionar facturas.\nSolo Dirección y Administración pueden acceder a este módulo.",
                     "Acceso Denegado",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);

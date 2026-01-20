@@ -29,6 +29,7 @@ namespace SistemaGestionProyectos2.Views
         private int _supplierCreditDays = 0;
         private bool _isSupplierSelectionMode = false;
         private string _currentStatusFilter = "PENDIENTE"; // Filtro actual: PENDIENTE, PAGADO, TODOS
+        private bool _supplierSelectionConfirmed = false; // Para evitar selección automática al escribir
 
         // Lista de órdenes disponibles para el ComboBox
         private ObservableCollection<OrderDisplayItem> _availableOrders;
@@ -258,8 +259,72 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async void SupplierComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        #region Selector de Proveedor - Confirmación con Enter o Clic
+
+        /// <summary>
+        /// Se ejecuta cuando el ComboBox de proveedor se carga
+        /// </summary>
+        private void SupplierComboBox_Loaded(object sender, RoutedEventArgs e)
         {
+            // Nada especial por ahora, pero reservado para futuras mejoras
+        }
+
+        /// <summary>
+        /// Detecta cuando el usuario presiona Enter para confirmar selección
+        /// </summary>
+        private void SupplierComboBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                var comboBox = sender as ComboBox;
+                if (comboBox == null) return;
+
+                // Si hay un item seleccionado, confirmar
+                if (comboBox.SelectedItem != null)
+                {
+                    _supplierSelectionConfirmed = true;
+                    ConfirmSupplierSelection();
+                    e.Handled = true;
+                }
+                // Si no hay item seleccionado pero hay texto, buscar coincidencia exacta
+                else if (!string.IsNullOrWhiteSpace(comboBox.Text))
+                {
+                    var match = AvailableSuppliers?.FirstOrDefault(s =>
+                        s.DisplayText.Contains(comboBox.Text, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        comboBox.SelectedItem = match;
+                        _supplierSelectionConfirmed = true;
+                        ConfirmSupplierSelection();
+                        e.Handled = true;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Detecta cuando el dropdown se cierra (usuario hizo clic en un item)
+        /// </summary>
+        private void SupplierComboBox_DropDownClosed(object sender, EventArgs e)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox == null) return;
+
+            // Si hay un item seleccionado y el dropdown se cerró por clic
+            if (comboBox.SelectedItem != null)
+            {
+                _supplierSelectionConfirmed = true;
+                ConfirmSupplierSelection();
+            }
+        }
+
+        /// <summary>
+        /// Procesa la selección del proveedor solo cuando el usuario confirma
+        /// </summary>
+        private async void ConfirmSupplierSelection()
+        {
+            if (!_supplierSelectionConfirmed) return;
+
             var selectedSupplier = SupplierComboBox.SelectedItem as SupplierDisplayItem;
 
             // Cancelar cualquier edición en progreso al cambiar de proveedor
@@ -283,6 +348,8 @@ namespace SistemaGestionProyectos2.Views
                 // Mostrar mensaje, ocultar DataGrid
                 NoSupplierSelectedMessage.Visibility = Visibility.Visible;
                 ExpensesDataGrid.Visibility = Visibility.Collapsed;
+
+                _supplierSelectionConfirmed = false;
                 return;
             }
 
@@ -310,13 +377,17 @@ namespace SistemaGestionProyectos2.Views
             await LoadExpensesAsync();
 
             // Si el proveedor no tiene gastos pendientes, iniciar automáticamente el modo creación
-            // Esto es más intuitivo: si seleccionas un proveedor sin gastos, quieres agregarle uno
             if (_expenses.Count == 0 && !_isCreatingNewExpense)
             {
                 await Task.Delay(150);
                 Dispatcher.Invoke(() => NewExpenseButton_Click(null, null));
             }
+
+            // Resetear bandera
+            _supplierSelectionConfirmed = false;
         }
+
+        #endregion
 
         /// <summary>
         /// Cancela cualquier edición pendiente sin mostrar mensajes

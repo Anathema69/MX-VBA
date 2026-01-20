@@ -1,0 +1,79 @@
+tabla,nombre,tipo,condicion
+app_versions,2200_157365_3_not_null,CHECK,release_date IS NOT NULL
+app_versions,2200_157365_1_not_null,CHECK,id IS NOT NULL
+app_versions,2200_157365_2_not_null,CHECK,version IS NOT NULL
+app_versions,2200_157365_4_not_null,CHECK,is_latest IS NOT NULL
+app_versions,version_format,CHECK,((version)::text ~ '^\d+\.\d+\.\d+$'::text)
+app_versions,2200_157365_6_not_null,CHECK,download_url IS NOT NULL
+app_versions,2200_157365_5_not_null,CHECK,is_mandatory IS NOT NULL
+app_versions,2200_157365_11_not_null,CHECK,is_active IS NOT NULL
+app_versions,app_versions_version_key,UNIQUE,null
+audit_log,2200_18652_1_not_null,CHECK,id IS NOT NULL
+invoice_audit,2200_31869_1_not_null,CHECK,id IS NOT NULL
+invoice_status,2200_18677_2_not_null,CHECK,f_name IS NOT NULL
+invoice_status,2200_18677_1_not_null,CHECK,f_invoicestat IS NOT NULL
+order_history,2200_23692_4_not_null,CHECK,action IS NOT NULL
+order_history,2200_23692_2_not_null,CHECK,order_id IS NOT NULL
+order_history,2200_23692_3_not_null,CHECK,user_id IS NOT NULL
+order_history,2200_23692_1_not_null,CHECK,id IS NOT NULL
+order_status,2200_18667_1_not_null,CHECK,f_orderstatus IS NOT NULL
+order_status,2200_18667_2_not_null,CHECK,f_name IS NOT NULL
+t_balance_adjustments,2200_80387_1_not_null,CHECK,id IS NOT NULL
+t_balance_adjustments,2200_80387_3_not_null,CHECK,month IS NOT NULL
+t_balance_adjustments,2200_80387_2_not_null,CHECK,year IS NOT NULL
+t_balance_adjustments,t_balance_adjustments_year_month_adjustment_type_key,UNIQUE,null
+t_client,2200_18687_1_not_null,CHECK,f_client IS NOT NULL
+t_client,2200_18687_2_not_null,CHECK,f_name IS NOT NULL
+t_commission_rate_history,2200_221385_1_not_null,CHECK,id IS NOT NULL
+t_commission_rate_history,2200_221385_3_not_null,CHECK,vendor_id IS NOT NULL
+t_commission_rate_history,2200_221385_8_not_null,CHECK,new_amount IS NOT NULL
+t_commission_rate_history,2200_221385_7_not_null,CHECK,new_rate IS NOT NULL
+t_commission_rate_history,2200_221385_6_not_null,CHECK,old_amount IS NOT NULL
+t_commission_rate_history,2200_221385_5_not_null,CHECK,old_rate IS NOT NULL
+t_commission_rate_history,2200_221385_12_not_null,CHECK,changed_by IS NOT NULL
+t_commission_rate_history,2200_221385_2_not_null,CHECK,order_id IS NOT NULL
+t_contact,2200_18710_1_not_null,CHECK,f_contact IS NOT NULL
+t_expense,2200_18877_1_not_null,CHECK,f_expense IS NOT NULL
+t_fixed_expenses,2200_74423_2_not_null,CHECK,expense_type IS NOT NULL
+t_fixed_expenses,2200_74423_1_not_null,CHECK,id IS NOT NULL
+t_fixed_expenses_history,2200_76608_1_not_null,CHECK,id IS NOT NULL
+t_fixed_expenses_history,2200_76608_5_not_null,CHECK,effective_date IS NOT NULL
+t_invoice,2200_18847_1_not_null,CHECK,f_invoice IS NOT NULL
+t_order,t_order_order_percentage_check,CHECK,((order_percentage >= 0) AND (order_percentage <= 100))
+t_order,2200_18792_1_not_null,CHECK,f_order IS NOT NULL
+t_order,t_order_progress_percentage_check,CHECK,((progress_percentage >= 0) AND (progress_percentage <= 100))
+t_order_deleted,2200_214752_1_not_null,CHECK,id IS NOT NULL
+t_order_deleted,2200_214752_18_not_null,CHECK,deleted_by IS NOT NULL
+t_order_deleted,2200_214752_2_not_null,CHECK,original_order_id IS NOT NULL
+t_overtime_hours,2200_115411_2_not_null,CHECK,year IS NOT NULL
+t_overtime_hours,2200_115411_1_not_null,CHECK,id IS NOT NULL
+t_overtime_hours,2200_115411_3_not_null,CHECK,month IS NOT NULL
+t_overtime_hours,t_overtime_hours_year_month_key,UNIQUE,null
+t_overtime_hours_audit,2200_115435_4_not_null,CHECK,month IS NOT NULL
+t_overtime_hours_audit,2200_115435_1_not_null,CHECK,id IS NOT NULL
+t_overtime_hours_audit,2200_115435_2_not_null,CHECK,overtime_id IS NOT NULL
+t_overtime_hours_audit,2200_115435_3_not_null,CHECK,year IS NOT NULL
+t_payroll,2200_18918_1_not_null,CHECK,f_payroll IS NOT NULL
+t_payroll_history,2200_74479_1_not_null,CHECK,id IS NOT NULL
+t_payroll_history,2200_74479_18_not_null,CHECK,effective_date IS NOT NULL
+t_payrollovertime,2200_18935_1_not_null,CHECK,f_payrollovertime IS NOT NULL
+t_supplier,2200_18728_2_not_null,CHECK,f_suppliername IS NOT NULL
+t_supplier,2200_18728_1_not_null,CHECK,f_supplier IS NOT NULL
+t_vendor,2200_25331_1_not_null,CHECK,f_vendor IS NOT NULL
+t_vendor,2200_25331_2_not_null,CHECK,f_vendorname IS NOT NULL
+t_vendor_commission_payment,2200_56593_5_not_null,CHECK,commission_rate IS NOT NULL
+t_vendor_commission_payment,2200_56593_6_not_null,CHECK,payment_status IS NOT NULL
+t_vendor_commission_payment,2200_56593_3_not_null,CHECK,f_vendor IS NOT NULL
+t_vendor_commission_payment,2200_56593_2_not_null,CHECK,f_order IS NOT NULL
+t_vendor_commission_payment,2200_56593_1_not_null,CHECK,id IS NOT NULL
+t_vendor_commission_payment,t_vendor_commission_payment_payment_status_check,CHECK,"((payment_status)::text = ANY (ARRAY[('draft'::character varying)::text, ('pending'::character varying)::text, ('paid'::character varying)::text]))"
+t_vendor_commission_payment,2200_56593_4_not_null,CHECK,commission_amount IS NOT NULL
+users,2200_18635_1_not_null,CHECK,id IS NOT NULL
+users,2200_18635_4_not_null,CHECK,password_hash IS NOT NULL
+users,users_role_check,CHECK,"((role)::text = ANY ((ARRAY['admin'::character varying, 'coordinator'::character varying, 'salesperson'::character varying])::text[]))"
+users,2200_18635_2_not_null,CHECK,username IS NOT NULL
+users,2200_18635_6_not_null,CHECK,role IS NOT NULL
+users,2200_18635_3_not_null,CHECK,email IS NOT NULL
+users,2200_18635_5_not_null,CHECK,full_name IS NOT NULL
+users,users_username_key,UNIQUE,null
+users,users_email_key,UNIQUE,null

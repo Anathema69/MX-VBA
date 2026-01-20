@@ -172,7 +172,7 @@ namespace SistemaGestionProyectos2.Views
                                 Email = EmailTextBox.Text.Trim(),
                                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password),
                                 FullName = VendorNameTextBox.Text.Trim(),
-                                Role = "salesperson",
+                                Role = "ventas",
                                 IsActive = IsActiveCheckBox.IsChecked ?? true
                             };
 
@@ -227,7 +227,7 @@ namespace SistemaGestionProyectos2.Views
                             Email = EmailTextBox.Text.Trim(),
                             PasswordHash = BCrypt.Net.BCrypt.HashPassword(PasswordBox.Password),
                             FullName = VendorNameTextBox.Text.Trim(),
-                            Role = "salesperson",
+                            Role = "ventas",
                             IsActive = IsActiveCheckBox.IsChecked ?? true
                         };
 

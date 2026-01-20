@@ -45,7 +45,7 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                if (_currentUser.Role == "admin")
+                if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                 {
                     // SOLUCIÓN: Colapsar todo el Grid de campos de solo lectura
                     ReadOnlyFieldsGrid.Visibility = Visibility.Collapsed;
@@ -168,8 +168,8 @@ namespace SistemaGestionProyectos2.Views
                 });
             }
 
-            // Si es admin, configurar controles adicionales
-            if (_currentUser.Role == "admin")
+            // Si es admin (direccion o administracion), configurar controles adicionales
+            if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
                 // Llenar combo de clientes
                 EditableClientComboBox.ItemsSource = _clients;
@@ -205,51 +205,50 @@ namespace SistemaGestionProyectos2.Views
             // Configurar según el rol
             UserRoleText.Text = GetRoleDisplayName(_currentUser.Role);
 
-            switch (_currentUser.Role)
+            // Roles v2.0: direccion, administracion, proyectos, coordinacion, ventas
+            if (_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos")
             {
-                case "coordinator":
-                    PermissionsText.Text = "Como Coordinador, puede editar: Fecha Promesa, % Avance y Estatus";
+                PermissionsText.Text = "Como Coordinador, puede editar: Fecha Promesa, % Avance y Estatus";
 
-                    // Ocultar todos los campos de admin
-                    OrderNumberEditPanel.Visibility = Visibility.Collapsed;
-                    FechaCompraEditPanel.Visibility = Visibility.Collapsed; 
-                    
-                    AdminFieldsPanel1.Visibility = Visibility.Collapsed;
-                    AdminFieldsPanel2.Visibility = Visibility.Collapsed;
-                    AdminDescriptionPanel.Visibility = Visibility.Collapsed;
-                    FinancialSection.Visibility = Visibility.Collapsed;
-                    FinancialFields.Visibility = Visibility.Collapsed;
+                // Ocultar todos los campos de admin
+                OrderNumberEditPanel.Visibility = Visibility.Collapsed;
+                FechaCompraEditPanel.Visibility = Visibility.Collapsed;
 
-                    // Campos de solo lectura mantienen su visibilidad normal
-                    OrderNumberTextBox.IsReadOnly = true;
-                    OrderNumberTextBox.Background = System.Windows.Media.Brushes.LightGray;
-                    break;
+                AdminFieldsPanel1.Visibility = Visibility.Collapsed;
+                AdminFieldsPanel2.Visibility = Visibility.Collapsed;
+                AdminDescriptionPanel.Visibility = Visibility.Collapsed;
+                FinancialSection.Visibility = Visibility.Collapsed;
+                FinancialFields.Visibility = Visibility.Collapsed;
 
-                case "admin":
-                    PermissionsText.Text = "Como Administrador, puede editar todos los campos disponibles (excepto Fecha O.C.)";
-                    PermissionsNotice.Background = System.Windows.Media.Brushes.LightGreen;
+                // Campos de solo lectura mantienen su visibilidad normal
+                OrderNumberTextBox.IsReadOnly = true;
+                OrderNumberTextBox.Background = System.Windows.Media.Brushes.LightGray;
+            }
+            else if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
+            {
+                PermissionsText.Text = "Como Administrador, puede editar todos los campos disponibles (excepto Fecha O.C.)";
+                PermissionsNotice.Background = System.Windows.Media.Brushes.LightGreen;
 
-                    // Mostrar campos editables de admin
-                    OrderNumberEditPanel.Visibility = Visibility.Visible;
+                // Mostrar campos editables de admin
+                OrderNumberEditPanel.Visibility = Visibility.Visible;
 
-                    // Aparece fecha pero no es editable
-                    FechaCompraEditPanel.Visibility = Visibility.Visible;
-                    FechaCompraEditPanel.IsEnabled = false;
+                // Aparece fecha pero no es editable
+                FechaCompraEditPanel.Visibility = Visibility.Visible;
+                FechaCompraEditPanel.IsEnabled = false;
 
-                    AdminFieldsPanel1.Visibility = Visibility.Visible;
-                    AdminFieldsPanel2.Visibility = Visibility.Visible;
-                    AdminDescriptionPanel.Visibility = Visibility.Visible;
-                    FinancialSection.Visibility = Visibility.Visible;
-                    FinancialFields.Visibility = Visibility.Visible;
+                AdminFieldsPanel1.Visibility = Visibility.Visible;
+                AdminFieldsPanel2.Visibility = Visibility.Visible;
+                AdminDescriptionPanel.Visibility = Visibility.Visible;
+                FinancialSection.Visibility = Visibility.Visible;
+                FinancialFields.Visibility = Visibility.Visible;
 
-                    // Ocultar campos de solo lectura que ahora son editables
-                    // (excepto fecha que nunca es editable)
-                    break;
-
-                default:
-                    MessageBox.Show("No tiene permisos para editar órdenes", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    this.Close();
-                    break;
+                // Ocultar campos de solo lectura que ahora son editables
+                // (excepto fecha que nunca es editable)
+            }
+            else
+            {
+                MessageBox.Show("No tiene permisos para editar órdenes", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.Close();
             }
         }
 
@@ -266,11 +265,11 @@ namespace SistemaGestionProyectos2.Views
             // Imprimir en consola la fehca de O.C
 
 
-            if (_currentUser.Role == "admin")
+            if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
 
-                
-                
+
+
                 // Admin: cargar en campos editables
                 EditableOrderNumberTextBox.Text = _order.OrderNumber;
                 EditableQuotationTextBox.Text = _originalOrderDb?.Quote ?? "";
@@ -359,7 +358,7 @@ namespace SistemaGestionProyectos2.Views
             ProgressSlider.IsEnabled = false;
             StatusComboBox.IsEnabled = false;
 
-            if (_currentUser.Role == "admin")
+            if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
                 EditableOrderNumberTextBox.IsEnabled = false;
                 EditableQuotationTextBox.IsEnabled = false;
@@ -749,11 +748,14 @@ namespace SistemaGestionProyectos2.Views
 
         private string GetRoleDisplayName(string role)
         {
+            // Roles v2.0
             switch (role)
             {
-                case "admin": return "Administrador";
-                case "coordinator": return "Coordinador";
-                case "salesperson": return "Vendedor";
+                case "direccion": return "Dirección";
+                case "administracion": return "Administración";
+                case "coordinacion": return "Coordinación";
+                case "proyectos": return "Proyectos";
+                case "ventas": return "Vendedor";
                 default: return role;
             }
         }
@@ -769,7 +771,7 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.Content = "GUARDANDO...";
 
                 // Preparar la orden actualizada
-                if (_currentUser.Role == "admin")
+                if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                 {
                     // Admin puede actualizar todos los campos (excepto fecha OC)
                     _originalOrderDb.Po = EditableOrderNumberTextBox.Text.Trim().ToUpper();
@@ -820,7 +822,7 @@ namespace SistemaGestionProyectos2.Views
                     await _supabaseService.CheckAndUpdateOrderStatus(_order.Id, _currentUser.Id);
 
                     // Actualizar el objeto local
-                    if (_currentUser.Role == "admin")
+                    if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                     {
                         _order.OrderNumber = _originalOrderDb.Po;
                         _order.Subtotal = _originalOrderDb.SaleSubtotal ?? 0;
@@ -860,7 +862,7 @@ namespace SistemaGestionProyectos2.Views
 
         private bool ValidateForm()
         {
-            if (_currentUser.Role == "admin")
+            if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
                 if (string.IsNullOrWhiteSpace(EditableOrderNumberTextBox.Text))
                 {

@@ -1,0 +1,167 @@
+nombre_vista,definicion
+v_balance_completo," SELECT COALESCE(g.fecha, i.fecha) AS fecha,
+    COALESCE(g.""año"", i.""año"") AS ""año"",
+    COALESCE(g.mes_numero, i.mes_numero) AS mes_numero,
+    COALESCE(g.mes_nombre, i.mes_nombre) AS mes_nombre,
+    COALESCE(g.mes_corto, i.mes_corto) AS mes_corto,
+    COALESCE(g.nomina, (0)::numeric) AS nomina,
+    COALESCE(g.horas_extra, (0)::numeric) AS horas_extra,
+    COALESCE(g.gastos_fijos, (0)::numeric) AS gastos_fijos,
+    COALESCE(g.gastos_variables, (0)::numeric) AS gastos_variables,
+    COALESCE(g.total_gastos, (0)::numeric) AS total_gastos,
+    COALESCE(i.ingresos_esperados, (0)::numeric) AS ingresos_esperados,
+    COALESCE(i.ingresos_percibidos, (0)::numeric) AS ingresos_percibidos,
+    (COALESCE(i.ingresos_esperados, (0)::numeric) - COALESCE(i.ingresos_percibidos, (0)::numeric)) AS diferencia,
+    COALESCE(i.ventas_totales, (0)::numeric) AS ventas_totales,
+    (COALESCE(i.ingresos_esperados, (0)::numeric) - COALESCE(g.total_gastos, (0)::numeric)) AS utilidad_aproximada
+   FROM (v_balance_gastos g
+     FULL JOIN v_balance_ingresos i ON ((g.fecha = i.fecha)))
+  WHERE (COALESCE(g.""año"", i.""año"") IS NOT NULL)
+  ORDER BY COALESCE(g.fecha, i.fecha);"
+v_balance_gastos," WITH rango_fechas AS (
+         SELECT date_trunc('year'::text, (LEAST(COALESCE(( SELECT min(t_payroll.f_hireddate) AS min
+                   FROM t_payroll
+                  WHERE (t_payroll.f_hireddate IS NOT NULL)), CURRENT_DATE), COALESCE(( SELECT min(t_fixed_expenses_history.effective_date) AS min
+                   FROM t_fixed_expenses_history), CURRENT_DATE), COALESCE(( SELECT min(t_expense.f_paiddate) AS min
+                   FROM t_expense
+                  WHERE (t_expense.f_paiddate IS NOT NULL)), CURRENT_DATE)))::timestamp with time zone) AS fecha_inicio,
+            ((date_trunc('year'::text, (GREATEST(CURRENT_DATE, COALESCE(( SELECT max(t_payroll.f_hireddate) AS max
+                   FROM t_payroll), CURRENT_DATE), COALESCE(( SELECT max(t_fixed_expenses_history.effective_date) AS max
+                   FROM t_fixed_expenses_history), CURRENT_DATE)))::timestamp with time zone) + '11 mons'::interval) + '31 days'::interval) AS fecha_fin
+        ), meses AS (
+         SELECT (generate_series(date_trunc('month'::text, ( SELECT rango_fechas.fecha_inicio
+                   FROM rango_fechas)), date_trunc('month'::text, ( SELECT rango_fechas.fecha_fin
+                   FROM rango_fechas)), '1 mon'::interval))::date AS mes
+        ), nomina_mensual AS (
+         SELECT m_1.mes,
+            sum(
+                CASE
+                    WHEN ((p.is_active = true) AND ((p.f_hireddate IS NULL) OR (p.f_hireddate <= (((date_trunc('month'::text, (m_1.mes)::timestamp with time zone) + '1 mon'::interval) - '1 day'::interval))::date))) THEN COALESCE(( SELECT ph.f_monthlypayroll
+                       FROM t_payroll_history ph
+                      WHERE ((ph.f_payroll = p.f_payroll) AND (ph.effective_date <= m_1.mes))
+                      ORDER BY ph.effective_date DESC
+                     LIMIT 1), p.f_monthlypayroll)
+                    ELSE (0)::numeric
+                END) AS total_nomina
+           FROM (meses m_1
+             CROSS JOIN t_payroll p)
+          GROUP BY m_1.mes
+        ), horas_extra_mensual AS (
+         SELECT make_date(t_overtime_hours.year, t_overtime_hours.month, 1) AS mes,
+            t_overtime_hours.amount AS total_horas_extra
+           FROM t_overtime_hours
+        ), gastos_fijos_mensual AS (
+         SELECT m_1.mes,
+            sum(
+                CASE
+                    WHEN (fe.is_active = true) THEN COALESCE(( SELECT feh.monthly_amount
+                       FROM t_fixed_expenses_history feh
+                      WHERE ((feh.expense_id = fe.id) AND (feh.effective_date <= m_1.mes) AND ((feh.change_type)::text <> ALL ((ARRAY['DEACTIVATED'::character varying, 'DELETED'::character varying])::text[])))
+                      ORDER BY feh.effective_date DESC, feh.id DESC
+                     LIMIT 1), (0)::numeric)
+                    ELSE (0)::numeric
+                END) AS total_gastos_fijos
+           FROM (meses m_1
+             CROSS JOIN t_fixed_expenses fe)
+          GROUP BY m_1.mes
+        ), gastos_variables_mensual AS (
+         SELECT m_1.mes,
+            COALESCE(sum(e.f_totalexpense), (0)::numeric) AS total_gastos_variables
+           FROM (meses m_1
+             LEFT JOIN t_expense e ON (((date_trunc('month'::text, (e.f_paiddate)::timestamp with time zone) = m_1.mes) AND ((e.f_status)::text = 'PAGADO'::text))))
+          GROUP BY m_1.mes
+        )
+ SELECT m.mes AS fecha,
+    EXTRACT(year FROM m.mes) AS ""año"",
+    EXTRACT(month FROM m.mes) AS mes_numero,
+    to_char((m.mes)::timestamp with time zone, 'TMMonth'::text) AS mes_nombre,
+    to_char((m.mes)::timestamp with time zone, 'Mon-YY'::text) AS mes_corto,
+    COALESCE(n.total_nomina, (0)::numeric) AS nomina,
+    COALESCE(he.total_horas_extra, (0)::numeric) AS horas_extra,
+    COALESCE(gf.total_gastos_fijos, (0)::numeric) AS gastos_fijos,
+    COALESCE(gv.total_gastos_variables, (0)::numeric) AS gastos_variables,
+    (((COALESCE(n.total_nomina, (0)::numeric) + COALESCE(he.total_horas_extra, (0)::numeric)) + COALESCE(gf.total_gastos_fijos, (0)::numeric)) + COALESCE(gv.total_gastos_variables, (0)::numeric)) AS total_gastos
+   FROM ((((meses m
+     LEFT JOIN nomina_mensual n ON ((n.mes = m.mes)))
+     LEFT JOIN horas_extra_mensual he ON ((he.mes = m.mes)))
+     LEFT JOIN gastos_fijos_mensual gf ON ((gf.mes = m.mes)))
+     LEFT JOIN gastos_variables_mensual gv ON ((gv.mes = m.mes)))
+  ORDER BY m.mes;"
+v_balance_ingresos," WITH rango_fechas AS (
+         SELECT LEAST(COALESCE(( SELECT min(t_invoice.f_invoicedate) AS min
+                   FROM t_invoice
+                  WHERE (t_invoice.f_invoicedate IS NOT NULL)), CURRENT_DATE), COALESCE(( SELECT min(t_payroll.f_hireddate) AS min
+                   FROM t_payroll
+                  WHERE (t_payroll.f_hireddate IS NOT NULL)), CURRENT_DATE), COALESCE(( SELECT min(t_expense.f_paiddate) AS min
+                   FROM t_expense
+                  WHERE (t_expense.f_paiddate IS NOT NULL)), CURRENT_DATE), COALESCE(( SELECT min(t_fixed_expenses_history.effective_date) AS min
+                   FROM t_fixed_expenses_history
+                  WHERE (t_fixed_expenses_history.effective_date IS NOT NULL)), CURRENT_DATE)) AS fecha_inicio,
+            GREATEST(CURRENT_DATE, COALESCE(( SELECT max(t_invoice.due_date) AS max
+                   FROM t_invoice
+                  WHERE (t_invoice.due_date IS NOT NULL)), CURRENT_DATE), COALESCE(( SELECT max(t_invoice.f_invoicedate) AS max
+                   FROM t_invoice
+                  WHERE (t_invoice.f_invoicedate IS NOT NULL)), CURRENT_DATE)) AS fecha_fin
+        ), meses AS (
+         SELECT (generate_series(((date_trunc('month'::text, (( SELECT rango_fechas.fecha_inicio
+                   FROM rango_fechas))::timestamp with time zone))::date)::timestamp with time zone, ((date_trunc('month'::text, (( SELECT rango_fechas.fecha_fin
+                   FROM rango_fechas))::timestamp with time zone))::date)::timestamp with time zone, '1 mon'::interval))::date AS mes
+        ), ingresos_esperados AS (
+         SELECT (date_trunc('month'::text, (v_income.effective_payment_date)::timestamp with time zone))::date AS mes,
+            sum(v_income.f_total) AS total
+           FROM v_income
+          WHERE (v_income.effective_payment_date IS NOT NULL)
+          GROUP BY ((date_trunc('month'::text, (v_income.effective_payment_date)::timestamp with time zone))::date)
+        ), ingresos_percibidos AS (
+         SELECT (date_trunc('month'::text, (v_income.f_paymentdate)::timestamp with time zone))::date AS mes,
+            sum(v_income.f_total) AS total
+           FROM v_income
+          WHERE (v_income.f_paymentdate IS NOT NULL)
+          GROUP BY ((date_trunc('month'::text, (v_income.f_paymentdate)::timestamp with time zone))::date)
+        ), ventas_totales AS (
+         SELECT (date_trunc('month'::text, (t_order.f_podate)::timestamp with time zone))::date AS mes,
+            sum(t_order.f_saletotal) AS total
+           FROM t_order
+          WHERE (t_order.f_podate IS NOT NULL)
+          GROUP BY ((date_trunc('month'::text, (t_order.f_podate)::timestamp with time zone))::date)
+        )
+ SELECT m.mes AS fecha,
+    EXTRACT(year FROM m.mes) AS ""año"",
+    EXTRACT(month FROM m.mes) AS mes_numero,
+    to_char((m.mes)::timestamp with time zone, 'TMMonth'::text) AS mes_nombre,
+    to_char((m.mes)::timestamp with time zone, 'Mon-YY'::text) AS mes_corto,
+    COALESCE(ie.total, (0)::numeric) AS ingresos_esperados,
+    COALESCE(ip.total, (0)::numeric) AS ingresos_percibidos,
+    (COALESCE(ie.total, (0)::numeric) - COALESCE(ip.total, (0)::numeric)) AS diferencia,
+    COALESCE(vt.total, (0)::numeric) AS ventas_totales
+   FROM (((meses m
+     LEFT JOIN ingresos_esperados ie ON ((ie.mes = m.mes)))
+     LEFT JOIN ingresos_percibidos ip ON ((ip.mes = m.mes)))
+     LEFT JOIN ventas_totales vt ON ((vt.mes = m.mes)))
+  ORDER BY m.mes;"
+v_income," SELECT i.f_folio,
+    c.f_client,
+    c.f_name AS client_name,
+    i.f_total,
+    i.f_receptiondate,
+    ((i.f_receptiondate + ('1 day'::interval * (COALESCE(c.f_credit, 0))::double precision)))::date AS due_date,
+    i.f_invoicestat,
+    i.f_paymentdate,
+        CASE
+            WHEN (i.f_invoicestat >= 3) THEN i.f_paymentdate
+            WHEN (((i.f_receptiondate + ('1 day'::interval * (COALESCE(c.f_credit, 0))::double precision)))::date < CURRENT_DATE) THEN CURRENT_DATE
+            ELSE ((i.f_receptiondate + ('1 day'::interval * (COALESCE(c.f_credit, 0))::double precision)))::date
+        END AS effective_payment_date,
+    o.f_order,
+    o.f_po,
+    i.f_invoice,
+        CASE
+            WHEN (i.f_invoicestat = 4) THEN 'PAGADA'::text
+            WHEN (i.f_invoicestat = 3) THEN 'VENCIDA'::text
+            WHEN (i.f_invoicestat = 2) THEN 'PENDIENTE'::text
+            ELSE 'CREADA'::text
+        END AS status_text
+   FROM ((t_invoice i
+     JOIN t_order o ON ((i.f_order = o.f_order)))
+     JOIN t_client c ON ((o.f_client = c.f_client)))
+  WHERE ((i.f_invoicestat IS NOT NULL) AND (i.f_invoicestat <> 0));"

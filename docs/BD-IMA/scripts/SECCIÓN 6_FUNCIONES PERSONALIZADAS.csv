@@ -1,0 +1,36 @@
+nombre_funcion,argumentos,retorna,volatilidad,comentario
+audit_overtime_hours,,trigger,VOLATILE,null
+auto_pay_zero_credit_expense,,trigger,VOLATILE,null
+calculate_invoice_due_date,,trigger,VOLATILE,null
+calculate_scheduled_date,,trigger,VOLATILE,null
+can_delete_order,p_order_id integer,"TABLE(can_delete boolean, reason text, invoice_count integer, expense_count integer, commission_count integer)",VOLATILE,null
+create_commission_on_order_creation,,trigger,VOLATILE,null
+create_vendor_commission_if_needed,p_order_id integer,void,VOLATILE,null
+create_vendor_user,"username character varying, email character varying, password character varying, fullname character varying, role character varying, isactive boolean",void,VOLATILE,null
+delete_order_with_audit,"p_order_id integer, p_deleted_by integer, p_reason text DEFAULT 'Orden creada por error'::text","TABLE(success boolean, message text, deleted_order_id integer)",VOLATILE,Elimina una orden verificando dependencias y guardando auditoría
+f_balance_anual_horizontal,"""p_año"" integer","TABLE(""año"" integer, nomina_enero numeric, nomina_febrero numeric, nomina_marzo numeric, nomina_abril numeric, nomina_mayo numeric, nomina_junio numeric, nomina_julio numeric, nomina_agosto numeric, nomina_septiembre numeric, nomina_octubre numeric, nomina_noviembre numeric, nomina_diciembre numeric, nomina_total numeric, horas_extra_total numeric, gastos_fijos_enero numeric, gastos_fijos_febrero numeric, gastos_fijos_marzo numeric, gastos_fijos_abril numeric, gastos_fijos_mayo numeric, gastos_fijos_junio numeric, gastos_fijos_julio numeric, gastos_fijos_agosto numeric, gastos_fijos_septiembre numeric, gastos_fijos_octubre numeric, gastos_fijos_noviembre numeric, gastos_fijos_diciembre numeric, gastos_fijos_total numeric, gastos_var_enero numeric, gastos_var_febrero numeric, gastos_var_marzo numeric, gastos_var_abril numeric, gastos_var_mayo numeric, gastos_var_junio numeric, gastos_var_julio numeric, gastos_var_agosto numeric, gastos_var_septiembre numeric, gastos_var_octubre numeric, gastos_var_noviembre numeric, gastos_var_diciembre numeric, gastos_var_total numeric)",VOLATILE,null
+f_balance_completo_horizontal,"""p_año"" integer","TABLE(seccion text, concepto text, enero numeric, febrero numeric, marzo numeric, abril numeric, mayo numeric, junio numeric, julio numeric, agosto numeric, septiembre numeric, octubre numeric, noviembre numeric, diciembre numeric, total_anual numeric)",VOLATILE,null
+fn_log_vendor_removal,,trigger,VOLATILE,null
+get_monthly_payroll_total,"year_param integer, month_param integer",numeric,VOLATILE,null
+get_overtime_audit_history,"p_year integer, p_month integer","TABLE(change_date timestamp without time zone, change_type character varying, old_amount numeric, new_amount numeric, changed_by_name character varying, notes text)",VOLATILE,null
+get_payroll_at_date,target_date date,"TABLE(f_payroll integer, f_employee character varying, f_title character varying, f_range character varying, f_condition character varying, f_monthlypayroll numeric, is_active boolean, effective_from date)",VOLATILE,null
+get_vendors,,"TABLE(id integer, full_name character varying, username character varying)",VOLATILE,Obtiene lista de vendedores activos para los combos
+record_order_history,,trigger,VOLATILE,null
+set_created_by,,trigger,VOLATILE,null
+set_current_user_id,p_user_id integer,void,VOLATILE,null
+set_latest_version,,trigger,VOLATILE,null
+set_order_audit_fields,,trigger,VOLATILE,null
+sync_commission_rate,,trigger,VOLATILE,null
+sync_commission_rate_from_order,,trigger,VOLATILE,null
+track_fixed_expense_changes,,trigger,VOLATILE,null
+track_payroll_changes,,trigger,VOLATILE,null
+update_commission_on_order_status_change,,trigger,VOLATILE,null
+update_commission_on_vendor_change,,trigger,VOLATILE,null
+update_invoice_status,,trigger,VOLATILE,null
+update_order_audit_fields,,trigger,VOLATILE,null
+update_order_on_invoice_change,,trigger,VOLATILE,null
+update_order_status_from_invoices,,trigger,VOLATILE,null
+update_order_status_on_invoice,,trigger,VOLATILE,null
+update_updated_at_column,,trigger,VOLATILE,null
+update_user_password,"user_id integer, new_password character varying",void,VOLATILE,null
+upsert_overtime_hours,"p_year integer, p_month integer, p_amount numeric, p_notes text, p_user_id integer","TABLE(success boolean, message text, overtime_id integer)",VOLATILE,null

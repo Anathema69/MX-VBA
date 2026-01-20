@@ -74,9 +74,10 @@ namespace SistemaGestionProyectos2.Views
                 var vendors = vendorsResponse?.Models ?? new System.Collections.Generic.List<VendorTableDb>();
 
                 // Cargar usuarios asociados activos
+                // Roles v2.0: ventas (antes salesperson)
                 var usersResponse = await supabaseClient
                     .From<UserDb>()
-                    .Where(u => u.Role == "salesperson")
+                    .Where(u => u.Role == "ventas")
                     .Where(u => u.IsActive == true)
                     .Get();
 

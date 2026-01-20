@@ -131,37 +131,33 @@ namespace SistemaGestionProyectos2.Views
                     loadingWindow.UpdateStatus("Cargando Módulos", "Configurando permisos...");
                     await Task.Delay(600);
 
-                    
-                    // SI ES admin
 
-                    if (user.Role == "admin")
+                    // Roles v2.0: direccion, administracion, proyectos, coordinacion, ventas
+
+                    if (user.Role == "direccion" || user.Role == "administracion")
                     {
-                        // Admin abre el menú principal
+                        // Dirección y Administración abren el menú principal
                         MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
                         mainMenu.Show();
-
                     }
-                    else if (user.Role == "coordinator")
+                    else if (user.Role == "coordinacion" || user.Role == "proyectos")
                     {
-                        // Coordinador va directo al módulo de órdenes
+                        // Coordinación y Proyectos van directo al módulo de órdenes
                         OrdersManagementWindow ordersWindow = new OrdersManagementWindow(currentUser);
                         ordersWindow.Show();
-
                     }
-                    // si es vendedor
-                    else if (user.Role == "salesperson")
+                    else if (user.Role == "ventas")
                     {
-                        // Vendedor abre el portal del vendedor
+                        // Ventas abre el portal del vendedor
                         VendorDashboard vendorPortal = new VendorDashboard(currentUser);
                         vendorPortal.Show();
-
                     }
                     else
                     {
-                        // Rol desconocido
+                        // Rol desconocido (legacy o nuevo no implementado)
                         MessageBox.Show(
                             $"Su rol '{user.Role}' no tiene acceso a ninguna sección.\nContacte al administrador.",
-                            "Rol Desconocido",
+                            "Rol No Reconocido",
                             MessageBoxButton.OK,
                             MessageBoxImage.Warning);
                         logger.LogWarning("AUTH", "LOGIN_UNKNOWN_ROLE", new { username, role = user.Role }, user.Id.ToString());

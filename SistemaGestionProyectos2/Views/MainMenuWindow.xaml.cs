@@ -49,17 +49,28 @@ namespace SistemaGestionProyectos2.Views
         private void ConfigurePermissions()
         {
             // Configurar permisos según el rol
+            // Roles v2.0: direccion, administracion, proyectos, coordinacion, ventas
             switch (_currentUser.Role)
             {
-                case "admin":
-                    // Admin tiene acceso a todo
+                case "direccion":
+                case "administracion":
+                    // Direccion y Administracion tienen acceso a todo
                     OrdersModuleButton.IsEnabled = true;
                     VendorPortalButton.IsEnabled = true;
-                    //TestRunnerButton.Visibility = Visibility.Visible; // Solo admin puede ver tests
                     break;
 
-                    // SOLO EL ADMIN TENDRÁ ACCESO AL MÓDULO DE ÓRDENES
-                    // COORDINADOR IRÁN DIRECTO AL MÓDULO DE ÓRDENES QUE SE MANEJARÁ DESDE EL LOGIN
+                case "coordinacion":
+                case "proyectos":
+                    // Coordinación y Proyectos acceden a órdenes pero no a portal vendedores
+                    OrdersModuleButton.IsEnabled = true;
+                    VendorPortalButton.IsEnabled = false;
+                    break;
+
+                case "ventas":
+                    // Ventas solo accede al portal de vendedores
+                    OrdersModuleButton.IsEnabled = false;
+                    VendorPortalButton.IsEnabled = true;
+                    break;
             }
         }
 
@@ -67,6 +78,13 @@ namespace SistemaGestionProyectos2.Views
         {
             switch (role)
             {
+                // Roles v2.0
+                case "direccion": return "Dirección";
+                case "administracion": return "Administración";
+                case "proyectos": return "Proyectos";
+                case "coordinacion": return "Coordinación";
+                case "ventas": return "Ventas";
+                // Legacy (por compatibilidad)
                 case "admin": return "Administrador";
                 case "coordinator": return "Coordinador";
                 case "salesperson": return "Vendedor";
@@ -89,7 +107,8 @@ namespace SistemaGestionProyectos2.Views
         private void OrdersModule_Click(object sender, RoutedEventArgs e)
         {
             // Verificar permisos una vez más
-            if (_currentUser.Role == "salesperson")
+            // Solo ventas no tiene acceso a órdenes
+            if (_currentUser.Role == "ventas")
             {
                 MessageBox.Show(
                     "No tiene permisos para acceder al módulo de órdenes.",
@@ -176,20 +195,16 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Abriendo Portal del Vendedor...";
 
                 // Determinar qué ventana abrir según el rol
-                if (_currentUser.Role == "admin")
+                // direccion tiene acceso completo al portal de vendedores
+                // administracion NO tiene acceso (según requerimiento)
+                // ventas ve solo sus comisiones
+                if (_currentUser.Role == "direccion")
                 {
-                    // Admin ve la ventana completa con edición
-                    //var adminPortal = new VendorPortalAdminWindow(_currentUser);
-                    //adminPortal.Show();
-
-                    // abrimeremos temporalmente la ventana de demo
+                    // Dirección ve la ventana completa con edición
                     var vendorWindow = new VendorCommissionsWindow(_currentUser);
                     vendorWindow.Show();
-
-
-
                 }
-                else if (_currentUser.Role == "salesperson")
+                else if (_currentUser.Role == "ventas")
                 {
                     // Vendedor ve solo sus comisiones
                     // Por ahora usar la misma ventana, luego crearemos la específica
@@ -202,6 +217,7 @@ namespace SistemaGestionProyectos2.Views
                 }
                 else
                 {
+                    // administracion, coordinacion, proyectos no tienen acceso
                     MessageBox.Show(
                         "No tiene permisos para acceder al Portal del Vendedor.",
                         "Acceso Denegado",
@@ -230,8 +246,8 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusText.Text = "Abriendo Cuentas por Pagar...";
 
-                // Verificar permisos (opcional)
-                if (_currentUser.Role != "admin")
+                // Verificar permisos - direccion y administracion tienen acceso
+                if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion")
                 {
                     MessageBox.Show(
                         "No tiene permisos para acceder al Portal de Proveedores.",
@@ -258,12 +274,13 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        // MÉTODO IMPORTANTE: Click en el botón de ingresos pendientes (solo admin)
+        // MÉTODO IMPORTANTE: Click en el botón de ingresos pendientes
         private void PendingIncomesButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentUser.Role != "admin")
+            // direccion y administracion tienen acceso
+            if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion")
             {
-                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+                MessageBox.Show("Solo Dirección y Administración pueden acceder a este módulo.",
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -273,9 +290,9 @@ namespace SistemaGestionProyectos2.Views
         }
 
         private void OpenPayroll_Click(object sender, RoutedEventArgs e) {
-            // Verificar permisos de ser admin y abrir la ventana de nómina (payroll)
-            if (_currentUser.Role != "admin") {
-                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+            // Verificar permisos - direccion y administracion tienen acceso
+            if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion") {
+                MessageBox.Show("Solo Dirección y Administración pueden acceder a este módulo.",
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -285,9 +302,9 @@ namespace SistemaGestionProyectos2.Views
 
         // función para abrir la ventana de balance 'BalanceWindow.xaml' con 'Balance_Click'
         private void Balance_Click(object sender, RoutedEventArgs e) {
-            // Verificar permisos de ser admin y abrir la ventana de balance
-            if (_currentUser.Role != "admin") {
-                MessageBox.Show("Solo el administrador puede acceder a este módulo.",
+            // Verificar permisos - direccion y administracion tienen acceso
+            if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion") {
+                MessageBox.Show("Solo Dirección y Administración pueden acceder a este módulo.",
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
