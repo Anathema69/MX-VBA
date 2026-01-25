@@ -20,33 +20,90 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                    DATOS BÁSICOS                       │
     -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '1.0.11';
+    v_version       VARCHAR := '2.0.0';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 49.52;
-    v_is_mandatory  BOOLEAN := false;
-    v_min_version   VARCHAR := NULL;  -- NULL = cualquier versión puede actualizar
+    v_file_size_mb  NUMERIC := 50.00;  -- Tamaño real del instalador (actualizar después de compilar)
+    v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIA: cambios en roles de BD
+    v_min_version   VARCHAR := NULL;   -- NULL = cualquier versión puede actualizar
 
     -- ┌────────────────────────────────────────────────────────┐
     -- │                   RELEASE NOTES                        │
     -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 1.0.11 - Nueva Vista Cuentas por Pagar
+    v_release_notes TEXT := 'Versión 2.0.0 - Actualización Mayor
 
-NUEVA VISTA - CUENTAS POR PAGAR (PORTAL PROVEEDORES):
-- Vista pivoteada por proveedor con tarjetas
-- Muestra total pendiente por cada proveedor
-- Indicadores de estado: VENCIDO (rojo), POR VENCER (amarillo), AL CORRIENTE (verde)
-- Click en proveedor muestra detalle de todos sus gastos pendientes
-- Ordenamiento por mayor deuda de crédito
-- Filtros por estado y búsqueda por nombre
-- Tarjetas de resumen con totales
+⚠️ ACTUALIZACIÓN OBLIGATORIA
+Esta versión incluye cambios en los roles de la base de datos.
+Si no actualiza, no podrá iniciar sesión correctamente.
 
-FIX - REMOCIÓN DE VENDEDOR DE ÓRDENES:
-- Corregido error de FK constraint al remover vendedor
-- Nuevo trigger registra la remoción en historial antes de eliminar
-- Campo is_vendor_removal para identificar remociones
-- FK cambiada a ON DELETE SET NULL para preservar auditoría
+═══════════════════════════════════════════════════════════════
+NUEVO MÓDULO: GESTIÓN DE USUARIOS
+═══════════════════════════════════════════════════════════════
 
-IMPORTANTE: Ejecutar script SQL fix_commission_history_fk.sql en la BD';
+• Panel completo de administración de usuarios
+• Crear, editar y desactivar cuentas de usuario
+• Asignación de roles y permisos
+• Visualización de estado de cuenta (activo/inactivo)
+• Interfaz moderna con diseño minimalista
+
+═══════════════════════════════════════════════════════════════
+MÓDULO CALENDARIO DE PERSONAL v1.3
+═══════════════════════════════════════════════════════════════
+
+• Visualización de calendario mensual de personal
+• Asignación de turnos y horarios
+• Gestión de días libres y vacaciones
+• Vista consolidada por empleado
+• Exportación de datos
+
+═══════════════════════════════════════════════════════════════
+MÓDULO BALANCE v2.0 - REDISEÑO COMPLETO
+═══════════════════════════════════════════════════════════════
+
+DISEÑO VISUAL MINIMALISTA:
+• Paleta de colores monocromática profesional
+• Headers de sección con línea de acento colorida:
+  - Gastos (Rosa), Ingresos (Verde), Ventas (Amarillo), Resultado (Azul)
+• Columna Total Anual destacada con fondo azul claro
+• Selector de año mejorado (más grande y visible)
+
+SEMÁFORO DE VENTAS:
+• Indicador visual dot + texto con color del semáforo
+• Colores: Rojo (bajo), Amarillo (medio), Verde (meta alcanzada)
+• Tooltip con detalles de umbrales y diferencias
+• Leyenda integrada en la sección de ventas
+
+RESALTADO MES ACTUAL:
+• Header del mes con fondo azul e indicador dot
+• Celdas del mes actual con fondo azul sutil
+
+FILA DE UTILIDAD MEJORADA:
+• Flecha indicadora (▲/▼) según valor positivo/negativo
+• Colores dinámicos: verde (ganancia) / rojo (pérdida)
+• KPI de Utilidad con borde dinámico según estado
+
+EDICIÓN DE HORAS EXTRA:
+• Click selecciona todo el contenido
+• Solo entrada numérica (dígitos y punto decimal)
+• Máximo 2 decimales, autocompletado (.00)
+• Enter guarda, Escape cancela
+• Protección contra texto pegado inválido
+
+═══════════════════════════════════════════════════════════════
+MEJORAS EN MENÚ PRINCIPAL Y PERMISOS
+═══════════════════════════════════════════════════════════════
+
+• Interfaz de menú principal rediseñada
+• Sistema de permisos por rol mejorado
+• Visibilidad de opciones según rol del usuario
+• Mejor organización de módulos
+
+═══════════════════════════════════════════════════════════════
+GESTIÓN DE ÓRDENES - FILTROS PERSISTENTES
+═══════════════════════════════════════════════════════════════
+
+• Filtro de órdenes persistente para rol administración
+• Se recuerda el último filtro aplicado al volver al módulo
+• Mejora en la experiencia de navegación';
 
     -- ════════════════════════════════════════════════════════
     -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
@@ -61,19 +118,27 @@ BEGIN
     -- Changelog estructurado (opcional, para futuras implementaciones)
     v_changelog := '{
         "Added": [
-            "Nueva vista Cuentas por Pagar pivoteada por proveedor",
-            "Tarjetas con indicadores de estado por proveedor",
-            "Vista de detalle de gastos por proveedor",
-            "Campo is_vendor_removal en historial de comisiones",
-            "Trigger trg_before_commission_delete para auditoría"
+            "Módulo Gestión de Usuarios completo",
+            "Módulo Calendario de Personal v1.3",
+            "Semáforo de ventas con indicadores visuales",
+            "Resaltado de mes actual en Balance",
+            "Fila de Utilidad con flechas indicadoras",
+            "KPI de Utilidad con estilo dinámico",
+            "Edición robusta de Horas Extra",
+            "Filtros persistentes en Órdenes para rol administración"
+        ],
+        "Changed": [
+            "Rediseño completo del módulo Balance (v2.0)",
+            "Mejoras en UI del menú principal",
+            "Sistema de permisos por rol mejorado",
+            "Paleta de colores monocromática profesional"
         ],
         "Fixed": [
-            "Error FK constraint al remover vendedor de orden",
-            "Historial de comisiones ahora preserva auditoría de remociones"
+            "Corrección en visibilidad de opciones por rol",
+            "Mejora en navegación entre módulos"
         ],
-        "Improved": [
-            "Portal de Proveedores ahora muestra vista pivoteada",
-            "Mejor experiencia de navegación en cuentas por pagar"
+        "Security": [
+            "Actualización de roles en base de datos (OBLIGATORIO)"
         ]
     }'::jsonb;
 
@@ -120,6 +185,7 @@ BEGIN
     RAISE NOTICE '✓ Nueva versión % insertada correctamente', v_version;
     RAISE NOTICE '✓ URL: %', v_download_url;
     RAISE NOTICE '✓ Tamaño: % MB', v_file_size_mb;
+    RAISE NOTICE '⚠️ ACTUALIZACIÓN OBLIGATORIA: %', v_is_mandatory;
 END $$;
 
 
@@ -130,6 +196,7 @@ SELECT
     id,
     version,
     is_latest,
+    is_mandatory,
     is_active,
     release_date::date as fecha,
     file_size_mb,
