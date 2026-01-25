@@ -345,21 +345,43 @@ namespace SistemaGestionProyectos2.Views
         // Calendario - disponible para direccion y administracion
         private void Calendar_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Módulo de Calendario en desarrollo.",
-                "Próximamente",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            try
+            {
+                StatusText.Text = "Abriendo Calendario de Personal...";
+                var calendarWindow = new CalendarView(_currentUser);
+                calendarWindow.ShowDialog();
+                StatusText.Text = "Sistema listo";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir el Calendario:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir calendario";
+            }
         }
 
         // Portal de Usuarios - solo para direccion
         private void UserPortal_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(
-                "Portal de Usuarios en desarrollo.",
-                "Próximamente",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            try
+            {
+                StatusText.Text = "Abriendo Gestión de Usuarios...";
+                var userWindow = new UserManagementWindow(_currentUser);
+                userWindow.ShowDialog();
+                StatusText.Text = "Sistema listo";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir gestión de usuarios: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir módulo";
+            }
         }
 
     }

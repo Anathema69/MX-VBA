@@ -836,6 +836,39 @@ namespace SistemaGestionProyectos2.Services
         public Task<(bool Success, UserDb User, string Message)> AuthenticateUser(string username, string password)
             => _userService.AuthenticateUser(username, password);
 
+        public Task<List<UserDb>> GetAllUsers()
+            => _userService.GetAllUsers();
+
+        public Task<List<UserDb>> GetActiveUsers()
+            => _userService.GetActiveUsers();
+
+        public Task<UserDb> GetUserById(int userId)
+            => _userService.GetUserById(userId);
+
+        public Task<UserDb> CreateUser(UserDb user, string plainPassword)
+            => _userService.CreateUser(user, plainPassword);
+
+        public Task<UserDb> UpdateUser(UserDb user)
+            => _userService.UpdateUser(user);
+
+        public Task<bool> ChangePassword(int userId, string newPassword)
+            => _userService.ChangePassword(userId, newPassword);
+
+        public Task<bool> DeactivateUser(int userId)
+            => _userService.DeactivateUser(userId);
+
+        public Task<bool> ReactivateUser(int userId)
+            => _userService.ReactivateUser(userId);
+
+        public Task<bool> DeleteUser(int userId)
+            => _userService.DeleteUser(userId);
+
+        public Task<bool> UserExists(string username)
+            => _userService.UserExists(username);
+
+        public Task<bool> EmailExists(string email)
+            => _userService.EmailExists(email);
+
         // ===============================================
         // MÉTODOS DE ORDER STATUS (mantener aquí por ahora)
         // ===============================================
