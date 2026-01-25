@@ -21,9 +21,11 @@ namespace SistemaGestionProyectos2.Views
         private readonly SupabaseService _supabaseService;
         private readonly UserSession _currentUser;
         private ObservableCollection<SupplierPendingViewModel> _allSuppliers;
+        private ObservableCollection<SupplierPendingViewModel> _paidSuppliers;
         private ObservableCollection<SupplierPendingViewModel> _displayedSuppliers;
         private string _currentSearchText = "";
         private string _currentStatusFilter = "Todos";
+        private bool _showingPaid = false;
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
 
         public SupplierPendingView(UserSession currentUser)
@@ -31,6 +33,7 @@ namespace SistemaGestionProyectos2.Views
             InitializeComponent();
 
             _allSuppliers = new ObservableCollection<SupplierPendingViewModel>();
+            _paidSuppliers = new ObservableCollection<SupplierPendingViewModel>();
             _displayedSuppliers = new ObservableCollection<SupplierPendingViewModel>();
 
             _currentUser = currentUser;
@@ -81,6 +84,15 @@ namespace SistemaGestionProyectos2.Views
                     .Get();
 
                 var expenses = expensesResponse?.Models ?? new List<ExpenseDb>();
+
+                // Obtener gastos PAGADOS para el historial
+                var paidExpensesResponse = await supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(e => e.Status == "PAGADO")
+                    .Order("f_expensedate", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+
+                var paidExpenses = paidExpensesResponse?.Models ?? new List<ExpenseDb>();
 
                 // Obtener todos los proveedores
                 var suppliersResponse = await supabaseClient
@@ -160,12 +172,8 @@ namespace SistemaGestionProyectos2.Views
                     else
                         viewModel.StatusColor = new SolidColorBrush(Color.FromRgb(72, 187, 120)); // Verde
 
-                    // Generar iniciales
-                    var words = supplierName.Split(' ');
-                    if (words.Length >= 2)
-                        viewModel.SupplierInitials = $"{words[0][0]}{words[1][0]}".ToUpper();
-                    else
-                        viewModel.SupplierInitials = supplierName.Substring(0, Math.Min(2, supplierName.Length)).ToUpper();
+                    // Generar iniciales (con validación para evitar IndexOutOfRange)
+                    viewModel.SupplierInitials = GetSupplierInitials(supplierName);
 
                     // Formato del total
                     viewModel.TotalPendingFormatted = viewModel.TotalPending.ToString("C", _cultureMX);
@@ -175,6 +183,42 @@ namespace SistemaGestionProyectos2.Views
                     totalPending += viewModel.TotalPending;
                     totalOverdue += viewModel.OverdueAmount;
                     totalDueSoon += viewModel.DueSoonAmount;
+                }
+
+                // Procesar gastos PAGADOS agrupados por proveedor
+                _paidSuppliers.Clear();
+                var groupedPaidExpenses = paidExpenses
+                    .Where(e => e.SupplierId > 0)
+                    .GroupBy(e => e.SupplierId);
+
+                foreach (var group in groupedPaidExpenses)
+                {
+                    var supplierId = group.Key;
+                    var supplierExpenses = group.ToList();
+
+                    var supplier = suppliersDict.ContainsKey(supplierId) ? suppliersDict[supplierId] : null;
+                    var supplierName = supplier?.SupplierName ?? "Proveedor Desconocido";
+                    var creditDays = supplier?.CreditDays ?? 0;
+
+                    var viewModel = new SupplierPendingViewModel
+                    {
+                        SupplierId = supplierId,
+                        SupplierName = supplierName,
+                        CreditDays = creditDays,
+                        TotalPending = supplierExpenses.Sum(e => e.TotalExpense),
+                        ExpenseCount = supplierExpenses.Count,
+                        // Para pagados, color verde sólido
+                        StatusColor = new SolidColorBrush(Color.FromRgb(72, 187, 120)),
+                        TotalLabel = "Total pagado"
+                    };
+
+                    // Generar iniciales (con validación para evitar IndexOutOfRange)
+                    viewModel.SupplierInitials = GetSupplierInitials(supplierName);
+
+                    // Formato del total (Total Pagado)
+                    viewModel.TotalPendingFormatted = viewModel.TotalPending.ToString("C", _cultureMX);
+
+                    _paidSuppliers.Add(viewModel);
                 }
 
                 // Actualizar UI
@@ -211,14 +255,21 @@ namespace SistemaGestionProyectos2.Views
         {
             if (ResultCountText == null) return;
 
-            if (_allSuppliers == null || _allSuppliers.Count == 0)
+            // Seleccionar la fuente de datos según el modo
+            var sourceCollection = _showingPaid ? _paidSuppliers : _allSuppliers;
+
+            if (sourceCollection == null || sourceCollection.Count == 0)
             {
                 _displayedSuppliers?.Clear();
-                ResultCountText.Text = "0 proveedores";
+                ResultCountText.Text = _showingPaid ? "0 proveedores pagados" : "0 proveedores";
+
+                // Mostrar/ocultar mensaje de "no hay datos"
+                NoDataMessage.Visibility = Visibility.Visible;
+                SuppliersItemsControl.Visibility = Visibility.Collapsed;
                 return;
             }
 
-            IEnumerable<SupplierPendingViewModel> filtered = _allSuppliers;
+            IEnumerable<SupplierPendingViewModel> filtered = sourceCollection;
 
             // Aplicar búsqueda
             if (!string.IsNullOrWhiteSpace(_currentSearchText))
@@ -228,25 +279,33 @@ namespace SistemaGestionProyectos2.Views
                     s.SupplierName.ToLower().Contains(_currentSearchText.ToLower()));
             }
 
-            // Aplicar filtro de estado
-            switch (_currentStatusFilter)
+            // Aplicar filtro de estado (solo para pendientes)
+            if (!_showingPaid)
             {
-                case "Con vencidos":
-                    filtered = filtered.Where(s => s.HasOverdue);
-                    break;
-                case "Por vencer":
-                    filtered = filtered.Where(s => s.HasDueSoon);
-                    break;
-                case "Al corriente":
-                    filtered = filtered.Where(s => !s.HasOverdue && !s.HasDueSoon);
-                    break;
-            }
+                switch (_currentStatusFilter)
+                {
+                    case "Con vencidos":
+                        filtered = filtered.Where(s => s.HasOverdue);
+                        break;
+                    case "Por vencer":
+                        filtered = filtered.Where(s => s.HasDueSoon);
+                        break;
+                    case "Al corriente":
+                        filtered = filtered.Where(s => !s.HasOverdue && !s.HasDueSoon);
+                        break;
+                }
 
-            // Ordenar: Primero por estado (vencidos, por vencer, al corriente), luego por monto descendente
-            filtered = filtered
-                .OrderByDescending(s => s.HasOverdue)
-                .ThenByDescending(s => s.HasDueSoon)
-                .ThenByDescending(s => s.TotalPending);
+                // Ordenar: Primero por estado (vencidos, por vencer, al corriente), luego por monto descendente
+                filtered = filtered
+                    .OrderByDescending(s => s.HasOverdue)
+                    .ThenByDescending(s => s.HasDueSoon)
+                    .ThenByDescending(s => s.TotalPending);
+            }
+            else
+            {
+                // Para pagados, ordenar solo por monto descendente
+                filtered = filtered.OrderByDescending(s => s.TotalPending);
+            }
 
             // Actualizar colección mostrada
             _displayedSuppliers.Clear();
@@ -255,7 +314,21 @@ namespace SistemaGestionProyectos2.Views
                 _displayedSuppliers.Add(supplier);
             }
 
-            ResultCountText.Text = $"{_displayedSuppliers.Count} proveedor{(_displayedSuppliers.Count != 1 ? "es" : "")}";
+            // Actualizar contador
+            var suffix = _showingPaid ? " (pagados)" : "";
+            ResultCountText.Text = $"{_displayedSuppliers.Count} proveedor{(_displayedSuppliers.Count != 1 ? "es" : "")}{suffix}";
+
+            // Mostrar/ocultar mensaje de "no hay datos"
+            if (_displayedSuppliers.Count == 0)
+            {
+                NoDataMessage.Visibility = Visibility.Visible;
+                SuppliersItemsControl.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                NoDataMessage.Visibility = Visibility.Collapsed;
+                SuppliersItemsControl.Visibility = Visibility.Visible;
+            }
         }
 
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -268,7 +341,16 @@ namespace SistemaGestionProyectos2.Views
         {
             if (StatusFilter.SelectedItem is ComboBoxItem item)
             {
-                _currentStatusFilter = item.Content.ToString();
+                var content = item.Content.ToString();
+                // Extraer el texto sin el emoji (formato: "📋 Todos")
+                if (content.Contains(" "))
+                {
+                    _currentStatusFilter = content.Substring(content.IndexOf(' ') + 1);
+                }
+                else
+                {
+                    _currentStatusFilter = content;
+                }
                 ApplyFilters();
             }
         }
@@ -341,6 +423,99 @@ namespace SistemaGestionProyectos2.Views
             _currentStatusFilter = "Todos";
             ApplyFilters();
         }
+
+        private void TogglePaidButton_Click(object sender, RoutedEventArgs e)
+        {
+            _showingPaid = !_showingPaid;
+
+            // Actualizar apariencia del botón
+            var button = sender as Button;
+            var iconText = button?.FindName("TogglePaidIcon") as System.Windows.Controls.TextBlock;
+            var labelText = button?.FindName("TogglePaidText") as System.Windows.Controls.TextBlock;
+
+            // Buscar los TextBlocks dentro del StackPanel del botón
+            if (button?.Content is System.Windows.Controls.StackPanel stackPanel)
+            {
+                foreach (var child in stackPanel.Children)
+                {
+                    if (child is System.Windows.Controls.TextBlock tb)
+                    {
+                        if (tb.Text == "☐" || tb.Text == "☑")
+                        {
+                            tb.Text = _showingPaid ? "☑" : "☐";
+                            tb.Foreground = _showingPaid
+                                ? new SolidColorBrush(Color.FromRgb(72, 187, 120)) // Verde
+                                : new SolidColorBrush(Color.FromRgb(113, 128, 150)); // Gris
+                        }
+                    }
+                }
+            }
+
+            // Cambiar el fondo del botón si está activo
+            if (_showingPaid)
+            {
+                TogglePaidButton.Background = new SolidColorBrush(Color.FromRgb(240, 255, 244)); // Verde muy claro
+                TogglePaidButton.BorderBrush = new SolidColorBrush(Color.FromRgb(72, 187, 120));
+            }
+            else
+            {
+                TogglePaidButton.Background = new SolidColorBrush(Colors.White);
+                TogglePaidButton.BorderBrush = new SolidColorBrush(Color.FromRgb(226, 232, 240));
+            }
+
+            // Actualizar filtros de estado según el modo
+            UpdateStatusFilterForMode();
+
+            ApplyFilters();
+        }
+
+        private void UpdateStatusFilterForMode()
+        {
+            // Limpiar y actualizar opciones del ComboBox según el modo
+            StatusFilter.Items.Clear();
+
+            if (_showingPaid)
+            {
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "📋 Todos los pagados", IsSelected = true });
+            }
+            else
+            {
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "📋 Todos", IsSelected = true });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "🔴 Con vencidos" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "🟡 Por vencer" });
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "🟢 Al corriente" });
+            }
+
+            StatusFilter.SelectedIndex = 0;
+            _currentStatusFilter = "Todos";
+        }
+
+        /// <summary>
+        /// Genera las iniciales del proveedor de forma segura
+        /// </summary>
+        private string GetSupplierInitials(string supplierName)
+        {
+            if (string.IsNullOrWhiteSpace(supplierName))
+                return "??";
+
+            // Dividir por espacios y filtrar palabras vacías
+            var words = supplierName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (words.Length >= 2 && words[0].Length > 0 && words[1].Length > 0)
+            {
+                return $"{words[0][0]}{words[1][0]}".ToUpper();
+            }
+            else if (words.Length >= 1 && words[0].Length >= 2)
+            {
+                return words[0].Substring(0, 2).ToUpper();
+            }
+            else if (words.Length >= 1 && words[0].Length == 1)
+            {
+                return words[0].ToUpper();
+            }
+
+            return "??";
+        }
     }
 
     // ViewModel para proveedores con gastos pendientes
@@ -360,6 +535,7 @@ namespace SistemaGestionProyectos2.Views
         private bool _hasOverdue;
         private bool _hasDueSoon;
         private SolidColorBrush _statusColor;
+        private string _totalLabel = "Total pendiente";
 
         public int SupplierId
         {
@@ -443,6 +619,12 @@ namespace SistemaGestionProyectos2.Views
         {
             get => _statusColor;
             set { _statusColor = value; OnPropertyChanged(); }
+        }
+
+        public string TotalLabel
+        {
+            get => _totalLabel;
+            set { _totalLabel = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

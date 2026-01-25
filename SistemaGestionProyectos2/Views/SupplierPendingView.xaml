@@ -21,6 +21,136 @@
         <SolidColorBrush x:Key="TextGray" Color="#718096"/>
         <SolidColorBrush x:Key="DarkText" Color="#2D3748"/>
 
+        <!-- Estilo para ComboBox personalizado -->
+        <Style x:Key="StyledComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Indicador de color lateral -->
+                                    <Rectangle x:Name="colorIndicator" Grid.Column="0"
+                                               Width="3" Fill="{StaticResource PrimaryColor}"
+                                               RadiusX="1.5" RadiusY="1.5"
+                                               Margin="4,6,8,6"/>
+                                    <ContentPresenter Grid.Column="1"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      Margin="0,8,0,8"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"/>
+                                    <Border Grid.Column="2" Background="{StaticResource BackgroundGray}"
+                                            CornerRadius="4" Padding="6,4" Margin="8,0,8,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock x:Name="arrowText" Text="▼"
+                                                   FontSize="9"
+                                                   Foreground="{StaticResource TextGray}"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide"
+                                   Placement="Bottom">
+                                <Border Background="White"
+                                        BorderBrush="{StaticResource PrimaryColor}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Margin="0,4,0,0"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#5B3FF9" Direction="270"
+                                                          ShadowDepth="2" Opacity="0.20" BlurRadius="10"/>
+                                    </Border.Effect>
+                                    <ScrollViewer MaxHeight="200" Margin="4">
+                                        <StackPanel IsItemsHost="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                            <ToggleButton x:Name="toggleButton"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Background="Transparent"
+                                          BorderThickness="0"
+                                          Focusable="False"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter TargetName="border" Property="Background" Value="#FAFAFF"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                                <Setter TargetName="border" Property="Background" Value="#F5F3FF"/>
+                                <Setter TargetName="arrowText" Property="Text" Value="▲"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para items del ComboBox -->
+        <Style x:Key="StyledComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="border" Background="Transparent"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="6" Margin="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Rectangle x:Name="indicator" Grid.Column="0"
+                                           Width="3" Fill="Transparent"
+                                           RadiusX="1.5" RadiusY="1.5"
+                                           Margin="0,0,8,0"/>
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F5F3FF"/>
+                                <Setter TargetName="indicator" Property="Fill" Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#EDE9FE"/>
+                                <Setter TargetName="indicator" Property="Fill" Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- DataTemplate para las Cards de Proveedores con Pendientes -->
         <DataTemplate x:Key="SupplierPendingCardTemplate">
             <Border Margin="0,0,0,15" Background="White"
@@ -155,7 +285,7 @@
                                  FontSize="24" FontWeight="Bold"
                                  Foreground="{StaticResource DarkText}"
                                  HorizontalAlignment="Right"/>
-                        <TextBlock Text="Total pendiente"
+                        <TextBlock Text="{Binding TotalLabel}"
                                  FontSize="12"
                                  Foreground="{StaticResource TextGray}"
                                  HorizontalAlignment="Right"/>
@@ -245,9 +375,9 @@
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="+" FontSize="18" FontWeight="Bold" Margin="0,0,5,0"/>
-                            <TextBlock Text="Nuevo Gasto"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="+" FontSize="18" FontWeight="Bold" Margin="0,-2,5,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Nuevo Gasto" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -417,6 +547,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Búsqueda -->
@@ -466,18 +597,53 @@
                     </Grid>
                 </Border>
 
-                <!-- Filtro Estado -->
+                <!-- Filtro Estado con estilo personalizado -->
                 <ComboBox Grid.Column="1" x:Name="StatusFilter"
-                         Width="150" Height="36" Margin="0,0,10,0"
+                         Width="160" Height="36" Margin="0,0,10,0"
+                         Style="{StaticResource StyledComboBox}"
+                         ItemContainerStyle="{StaticResource StyledComboBoxItem}"
                          SelectionChanged="StatusFilter_SelectionChanged">
-                    <ComboBoxItem Content="Todos" IsSelected="True"/>
-                    <ComboBoxItem Content="Con vencidos"/>
-                    <ComboBoxItem Content="Por vencer"/>
-                    <ComboBoxItem Content="Al corriente"/>
+                    <ComboBoxItem Content="📋 Todos" IsSelected="True"/>
+                    <ComboBoxItem Content="🔴 Con vencidos"/>
+                    <ComboBoxItem Content="🟡 Por vencer"/>
+                    <ComboBoxItem Content="🟢 Al corriente"/>
                 </ComboBox>
 
+                <!-- Toggle Ver Pagados -->
+                <Button x:Name="TogglePaidButton" Grid.Column="2"
+                        Click="TogglePaidButton_Click"
+                        Width="130" Height="36" Margin="0,0,15,0"
+                        Background="White"
+                        BorderBrush="{StaticResource BorderGray}"
+                        BorderThickness="1"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="8">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#F7FAFC"/>
+                                    <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource SuccessColor}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="TogglePaidIcon" Text="☐" FontSize="14" Margin="0,0,6,0"
+                                   Foreground="{StaticResource TextGray}"/>
+                        <TextBlock x:Name="TogglePaidText" Text="Ver Pagados"
+                                   FontSize="13" Foreground="{StaticResource DarkText}"/>
+                    </StackPanel>
+                </Button>
+
                 <!-- Contador de resultados -->
-                <TextBlock Grid.Column="2" x:Name="ResultCountText"
+                <TextBlock Grid.Column="3" x:Name="ResultCountText"
                          Text="0 proveedores"
                          FontSize="14"
                          Foreground="{StaticResource TextGray}"

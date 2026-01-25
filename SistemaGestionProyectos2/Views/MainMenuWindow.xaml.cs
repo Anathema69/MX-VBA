@@ -107,22 +107,21 @@ namespace SistemaGestionProyectos2.Views
                     break;
 
                 default:
-                    // Rol desconocido - mostrar advertencia y dar acceso mínimo a órdenes
-                    System.Diagnostics.Debug.WriteLine($"[WARNING] Rol no reconocido: '{_currentUser.Role}'");
-                    OrdersModuleButton.IsEnabled = true;
-                    VendorPortalButton.Visibility = Visibility.Collapsed;
-                    CalendarButton.Visibility = Visibility.Collapsed;
-                    UserPortalButton.Visibility = Visibility.Collapsed;
+                    // Rol no reconocido - cerrar sesión inmediatamente
+                    System.Diagnostics.Debug.WriteLine($"[ERROR] Rol no reconocido: '{_currentUser.Role}' - Cerrando sesión");
 
-                    // Notificar al usuario del problema
                     MessageBox.Show(
                         $"Su rol '{_currentUser.Role}' no está configurado en el sistema.\n\n" +
-                        "Se le ha asignado acceso básico al módulo de órdenes.\n" +
-                        "Contacte al administrador para configurar sus permisos correctamente.",
-                        "Rol No Reconocido",
+                        "No tiene permisos para acceder a ningún módulo.\n" +
+                        "Contacte al administrador.",
+                        "Acceso Denegado",
                         MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                    break;
+                        MessageBoxImage.Error);
+
+                    // Cerrar sesión y volver a login
+                    var app = (App)Application.Current;
+                    app.ForceLogout($"Rol no reconocido: {_currentUser.Role}");
+                    return;
             }
         }
 
