@@ -44,6 +44,22 @@ namespace SistemaGestionProyectos2.Views
 
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - {_currentUser.FullName}";
+
+            // Título del departamento centrado
+            DepartmentTitle.Text = GetDepartmentTitle(_currentUser.Role);
+        }
+
+        private string GetDepartmentTitle(string role)
+        {
+            return role switch
+            {
+                "direccion" => "DIRECCIÓN",
+                "administracion" => "ADMINISTRACIÓN",
+                "ventas" => "VENTAS",
+                "proyectos" => "PROYECTOS",
+                "coordinacion" => "COORDINACIÓN",
+                _ => "SISTEMA"
+            };
         }
 
         private void ConfigurePermissions()
@@ -53,23 +69,37 @@ namespace SistemaGestionProyectos2.Views
             switch (_currentUser.Role)
             {
                 case "direccion":
-                case "administracion":
-                    // Direccion y Administracion tienen acceso a todo
+                    // Direccion tiene acceso completo a todos los módulos
                     OrdersModuleButton.IsEnabled = true;
                     VendorPortalButton.IsEnabled = true;
+                    VendorPortalButton.Visibility = Visibility.Visible;
+                    CalendarButton.Visibility = Visibility.Visible;
+                    UserPortalButton.Visibility = Visibility.Visible;
+                    break;
+
+                case "administracion":
+                    // Administracion accede a órdenes y calendario, pero no a vendedores ni usuarios
+                    OrdersModuleButton.IsEnabled = true;
+                    VendorPortalButton.Visibility = Visibility.Collapsed;
+                    CalendarButton.Visibility = Visibility.Visible;
+                    UserPortalButton.Visibility = Visibility.Collapsed;
                     break;
 
                 case "coordinacion":
                 case "proyectos":
-                    // Coordinación y Proyectos acceden a órdenes pero no a portal vendedores
+                    // Coordinación y Proyectos acceden a órdenes solamente
                     OrdersModuleButton.IsEnabled = true;
-                    VendorPortalButton.IsEnabled = false;
+                    VendorPortalButton.Visibility = Visibility.Collapsed;
+                    CalendarButton.Visibility = Visibility.Collapsed;
+                    UserPortalButton.Visibility = Visibility.Collapsed;
                     break;
 
                 case "ventas":
-                    // Ventas solo accede al portal de vendedores
-                    OrdersModuleButton.IsEnabled = false;
-                    VendorPortalButton.IsEnabled = true;
+                    // Ventas accede a órdenes solamente
+                    OrdersModuleButton.IsEnabled = true;
+                    VendorPortalButton.Visibility = Visibility.Collapsed;
+                    CalendarButton.Visibility = Visibility.Collapsed;
+                    UserPortalButton.Visibility = Visibility.Collapsed;
                     break;
             }
         }
@@ -310,6 +340,26 @@ namespace SistemaGestionProyectos2.Views
             }
             var balanceWindow = new BalanceWindowPro(_currentUser);
             balanceWindow.ShowDialog();
+        }
+
+        // Calendario - disponible para direccion y administracion
+        private void Calendar_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Módulo de Calendario en desarrollo.",
+                "Próximamente",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+
+        // Portal de Usuarios - solo para direccion
+        private void UserPortal_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+                "Portal de Usuarios en desarrollo.",
+                "Próximamente",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
     }

@@ -180,6 +180,10 @@ namespace SistemaGestionProyectos2.Views
                     GastoMaterialColumn.Visibility = Visibility.Collapsed;
                     GastoOperativoColumn.Visibility = Visibility.Collapsed;
                     GastoIndirectoColumn.Visibility = Visibility.Collapsed;
+
+                    // Mostrar título del departamento (van directo a órdenes sin menú principal)
+                    DepartmentTitle.Text = _currentUser.Role == "coordinacion" ? "COORDINACIÓN" : "PROYECTOS";
+                    DepartmentTitle.Visibility = Visibility.Visible;
                     break;
 
                 case "ventas":

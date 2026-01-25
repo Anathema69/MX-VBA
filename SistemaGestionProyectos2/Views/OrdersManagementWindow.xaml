@@ -43,12 +43,22 @@
                         </Grid>
                     </Border>
 
-                    <TextBlock Text="MANEJO DE ÓRDENES" 
+                    <TextBlock Text="MANEJO DE ÓRDENES"
                              Foreground="White"
                              FontSize="22"
                              FontWeight="Bold"
                              VerticalAlignment="Center"/>
                 </StackPanel>
+
+                <!-- Título del Departamento (visible solo para coordinación) -->
+                <TextBlock x:Name="DepartmentTitle"
+                          Text="COORDINACIÓN"
+                          Foreground="White"
+                          FontSize="20"
+                          FontWeight="Bold"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Visibility="Collapsed"/>
 
                 <!-- Botones de navegación -->
                 <StackPanel Orientation="Horizontal" 
