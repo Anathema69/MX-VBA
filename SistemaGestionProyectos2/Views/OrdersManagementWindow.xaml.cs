@@ -107,15 +107,29 @@ namespace SistemaGestionProyectos2.Views
             }
             else if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
-                // Dirección/Administración ve todos los estados - Por defecto CREADA
-                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA", IsSelected = true });
+                // Dirección/Administración ve todos los estados
+                StatusFilter.Items.Add(new ComboBoxItem { Content = "CREADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "EN PROCESO" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "LIBERADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CERRADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "COMPLETADA" });
                 StatusFilter.Items.Add(new ComboBoxItem { Content = "CANCELADA" });
 
-                System.Diagnostics.Debug.WriteLine("📋 ComboBox configurado para direccion/admin: todos los estados (defecto: CREADA)");
+                // Cargar filtro guardado para administracion, o usar CREADA por defecto
+                string savedFilter = UserPreferencesService.GetOrdersStatusFilter(_currentUser.Role);
+                string defaultFilter = savedFilter ?? "CREADA";
+
+                // Seleccionar el filtro correspondiente
+                foreach (ComboBoxItem item in StatusFilter.Items)
+                {
+                    if (item.Content?.ToString() == defaultFilter)
+                    {
+                        item.IsSelected = true;
+                        break;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"📋 ComboBox configurado para {_currentUser.Role}: todos los estados (filtro: {defaultFilter})");
             }
         }
 
@@ -752,6 +766,12 @@ namespace SistemaGestionProyectos2.Views
                 return order?.Status == filterText;
             };
 
+            // Guardar preferencia de filtro para rol administracion
+            if (_currentUser?.Role == "administracion" && !string.IsNullOrEmpty(filterText))
+            {
+                UserPreferencesService.SaveOrdersStatusFilter(_currentUser.Role, filterText);
+            }
+
             UpdateStatusBar();
         }
 
@@ -759,11 +779,18 @@ namespace SistemaGestionProyectos2.Views
         {
             if (_ordersViewSource?.View == null) return;
 
-            // Aplicar filtro inicial "CREADA"
+            // Obtener el filtro seleccionado en el ComboBox (ya considera preferencias guardadas)
+            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
+            var filterText = selectedItem?.Content?.ToString() ?? "CREADA";
+
+            // Aplicar filtro inicial según la selección del ComboBox
             _ordersViewSource.View.Filter = item =>
             {
+                if (filterText == "Todos")
+                    return true;
+
                 var order = item as OrderViewModel;
-                return order?.Status == "CREADA";
+                return order?.Status == filterText;
             };
 
             UpdateStatusBar();
