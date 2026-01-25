@@ -47,6 +47,10 @@ namespace SistemaGestionProyectos2.Views
 
             // Título del departamento centrado
             DepartmentTitle.Text = GetDepartmentTitle(_currentUser.Role);
+
+            // Versión dinámica desde el assembly
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            VersionText.Text = $"v{version?.Major}.{version?.Minor}.{version?.Build}";
         }
 
         private string GetDepartmentTitle(string role)
@@ -100,6 +104,24 @@ namespace SistemaGestionProyectos2.Views
                     VendorPortalButton.Visibility = Visibility.Collapsed;
                     CalendarButton.Visibility = Visibility.Collapsed;
                     UserPortalButton.Visibility = Visibility.Collapsed;
+                    break;
+
+                default:
+                    // Rol desconocido - mostrar advertencia y dar acceso mínimo a órdenes
+                    System.Diagnostics.Debug.WriteLine($"[WARNING] Rol no reconocido: '{_currentUser.Role}'");
+                    OrdersModuleButton.IsEnabled = true;
+                    VendorPortalButton.Visibility = Visibility.Collapsed;
+                    CalendarButton.Visibility = Visibility.Collapsed;
+                    UserPortalButton.Visibility = Visibility.Collapsed;
+
+                    // Notificar al usuario del problema
+                    MessageBox.Show(
+                        $"Su rol '{_currentUser.Role}' no está configurado en el sistema.\n\n" +
+                        "Se le ha asignado acceso básico al módulo de órdenes.\n" +
+                        "Contacte al administrador para configurar sus permisos correctamente.",
+                        "Rol No Reconocido",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                     break;
             }
         }
