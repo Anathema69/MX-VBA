@@ -3,6 +3,7 @@ using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -27,7 +28,13 @@ namespace SistemaGestionProyectos2.Views
         private decimal _subtotalValue = 0;
         private int _currentStatusId = 0;
         private bool _isLoadingData = false;
-        private bool _isCancellingFromButton = false; // Agregar esta variable de instancia al inicio de la clase
+        private bool _isCancellingFromButton = false;
+
+        // Gastos Operativos v2.0 - Manejo local hasta guardar
+        private ObservableCollection<OrderGastoOperativoDb> _gastosOperativos;
+        private List<OrderGastoOperativoDb> _gastosOriginales; // Copia original para comparar
+        private List<int> _gastosEliminados = new List<int>(); // IDs de gastos a eliminar
+        private int _tempIdCounter = -1; // IDs temporales negativos para nuevos gastos
 
 
         public EditOrderWindow(OrderViewModel order, UserSession currentUser)
@@ -62,18 +69,25 @@ namespace SistemaGestionProyectos2.Views
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "Cargando...";
 
-                // Cargar todos los datos necesarios
+                // Variables para capturar resultados paralelos
+                List<OrderGastoOperativoDb> gastos = null;
+
+                // Cargar todos los datos necesarios en paralelo (incluyendo orden y gastos)
                 var loadTasks = new List<Task>
                 {
                     Task.Run(async () => _orderStatuses = await _supabaseService.GetOrderStatuses()),
                     Task.Run(async () => _clients = await _supabaseService.GetClients()),
-                    Task.Run(async () => _vendors = await _supabaseService.GetVendors())
+                    Task.Run(async () => _vendors = await _supabaseService.GetVendors()),
+                    Task.Run(async () => _originalOrderDb = await _supabaseService.GetOrderById(_order.Id)),
+                    Task.Run(async () => {
+                        if (_currentUser.Role == "direccion")
+                        {
+                            gastos = await _supabaseService.GetGastosOperativos(_order.Id);
+                        }
+                    })
                 };
 
                 await Task.WhenAll(loadTasks);
-
-                // Cargar la orden original
-                _originalOrderDb = await _supabaseService.GetOrderById(_order.Id);
 
                 if (_originalOrderDb == null)
                 {
@@ -88,10 +102,29 @@ namespace SistemaGestionProyectos2.Views
 
                 _currentStatusId = _originalOrderDb.OrderStatus ?? 0;
 
-                // Cargar contactos del cliente actual si existe
+                // Cargar contactos del cliente actual si existe (depende de _originalOrderDb)
                 if (_originalOrderDb.ClientId.HasValue)
                 {
                     _contacts = await _supabaseService.GetContactsByClient(_originalOrderDb.ClientId.Value);
+                }
+
+                // Asignar gastos operativos y guardar copia original
+                if (_currentUser.Role == "direccion")
+                {
+                    var listaGastos = gastos ?? new List<OrderGastoOperativoDb>();
+                    _gastosOperativos = new ObservableCollection<OrderGastoOperativoDb>(listaGastos);
+                    // Guardar copia original para comparar al guardar
+                    _gastosOriginales = listaGastos.Select(g => new OrderGastoOperativoDb
+                    {
+                        Id = g.Id,
+                        OrderId = g.OrderId,
+                        Monto = g.Monto,
+                        Descripcion = g.Descripcion,
+                        Categoria = g.Categoria,
+                        FechaGasto = g.FechaGasto,
+                        CreatedBy = g.CreatedBy
+                    }).ToList();
+                    _gastosEliminados = new List<int>();
                 }
 
                 // Configurar controles
@@ -219,6 +252,9 @@ namespace SistemaGestionProyectos2.Views
                 AdminDescriptionPanel.Visibility = Visibility.Collapsed;
                 FinancialSection.Visibility = Visibility.Collapsed;
                 FinancialFields.Visibility = Visibility.Collapsed;
+                // Gastos v2.0 - ocultos para coordinación
+                GastosSection.Visibility = Visibility.Collapsed;
+                GastosFields.Visibility = Visibility.Collapsed;
 
                 // Campos de solo lectura mantienen su visibilidad normal
                 OrderNumberTextBox.IsReadOnly = true;
@@ -241,6 +277,18 @@ namespace SistemaGestionProyectos2.Views
                 AdminDescriptionPanel.Visibility = Visibility.Visible;
                 FinancialSection.Visibility = Visibility.Visible;
                 FinancialFields.Visibility = Visibility.Visible;
+
+                // Gastos v2.0 - solo visibles para direccion (pendiente validación)
+                if (_currentUser.Role == "direccion")
+                {
+                    GastosSection.Visibility = Visibility.Visible;
+                    GastosFields.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    GastosSection.Visibility = Visibility.Collapsed;
+                    GastosFields.Visibility = Visibility.Collapsed;
+                }
 
                 // Ocultar campos de solo lectura que ahora son editables
                 // (excepto fecha que nunca es editable)
@@ -285,6 +333,9 @@ namespace SistemaGestionProyectos2.Views
                 _subtotalValue = _order.Subtotal;
                 SubtotalTextBox.Text = _subtotalValue.ToString("C", new CultureInfo("es-MX"));
                 TotalTextBlock.Text = _order.Total.ToString("C", new CultureInfo("es-MX"));
+
+                // Cargar lista de gastos operativos v2.0
+                LoadGastosOperativosUI();
             }
             else
             {
@@ -725,6 +776,13 @@ namespace SistemaGestionProyectos2.Views
             e.Handled = !regex.IsMatch(fullText);
         }
 
+        // Solo números enteros (para DiasEstimados)
+        private void NumericOnlyTextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            var regex = new Regex(@"^[0-9]+$");
+            e.Handled = !regex.IsMatch(e.Text);
+        }
+
         private void UpdateSaveStatus()
         {
             if (_hasChanges)
@@ -784,6 +842,10 @@ namespace SistemaGestionProyectos2.Views
                     _originalOrderDb.Description = EditableDescriptionTextBox.Text?.Trim();
                     _originalOrderDb.SaleSubtotal = _subtotalValue;
                     _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
+
+                    // Campos de gastos v2.0
+                    // GastoOperativo se calcula automáticamente desde order_gastos_operativos
+                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
                 }
 
                 // Campos que ambos roles pueden editar (según estado)
@@ -801,6 +863,12 @@ namespace SistemaGestionProyectos2.Views
 
                 if (success)
                 {
+                    // Persistir cambios de gastos operativos (solo para direccion)
+                    if (_currentUser.Role == "direccion" && _gastosOperativos != null)
+                    {
+                        await PersistGastosOperativosAsync();
+                    }
+
                     // Registrar cambio de estado en historial si cambió
                     if (selectedStatus?.Tag is int newStatusId && newStatusId != _currentStatusId)
                     {
@@ -834,8 +902,6 @@ namespace SistemaGestionProyectos2.Views
 
                     var statusName = _orderStatuses.FirstOrDefault(s => s.Id == _originalOrderDb.OrderStatus)?.Name;
                     _order.Status = statusName ?? "PENDIENTE";
-
-                    
 
                     this.DialogResult = true;
                     this.Close();
@@ -910,9 +976,493 @@ namespace SistemaGestionProyectos2.Views
             return true;
         }
 
+        #region Gastos Operativos v2.0
+
+        /// <summary>
+        /// Persiste los cambios de gastos operativos a la BD
+        /// Solo se llama cuando el usuario hace clic en "GUARDAR CAMBIOS"
+        /// </summary>
+        private async Task PersistGastosOperativosAsync()
+        {
+            try
+            {
+                int insertados = 0, actualizados = 0, eliminados = 0;
+
+                // 1. Eliminar gastos marcados para eliminar
+                foreach (var gastoId in _gastosEliminados)
+                {
+                    System.Diagnostics.Debug.WriteLine($"🗑 Eliminando gasto ID: {gastoId}");
+                    await _supabaseService.DeleteGastoOperativo(gastoId, _order.Id, _currentUser.Id);
+                    eliminados++;
+                }
+
+                // 2. Procesar gastos en la lista actual
+                foreach (var gasto in _gastosOperativos)
+                {
+                    if (gasto.Id < 0)
+                    {
+                        // Gasto nuevo (ID temporal negativo) - Insertar
+                        System.Diagnostics.Debug.WriteLine($"➕ Insertando gasto: {gasto.Monto:C} - {gasto.Descripcion}");
+                        var resultado = await _supabaseService.AddGastoOperativo(_order.Id, gasto.Monto, gasto.Descripcion, _currentUser.Id);
+                        if (resultado != null)
+                        {
+                            insertados++;
+                            System.Diagnostics.Debug.WriteLine($"✅ Gasto insertado con ID: {resultado.Id}");
+                        }
+                    }
+                    else
+                    {
+                        // Gasto existente - Verificar si fue modificado
+                        var original = _gastosOriginales?.FirstOrDefault(g => g.Id == gasto.Id);
+                        if (original != null && (original.Monto != gasto.Monto || original.Descripcion != gasto.Descripcion))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"✏ Actualizando gasto ID: {gasto.Id}");
+                            await _supabaseService.UpdateGastoOperativo(gasto.Id, gasto.Monto, gasto.Descripcion, _order.Id, _currentUser.Id);
+                            actualizados++;
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"✅ Gastos operativos guardados: {insertados} insertados, {actualizados} actualizados, {eliminados} eliminados");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Error guardando gastos operativos: {ex.Message}");
+                MessageBox.Show($"Error al guardar gastos operativos:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
+        }
+
+        private void LoadGastosOperativosUI()
+        {
+            if (_gastosOperativos == null)
+            {
+                _gastosOperativos = new ObservableCollection<OrderGastoOperativoDb>();
+            }
+
+            GastosItemsControl.ItemsSource = _gastosOperativos;
+
+            // Mostrar/ocultar mensaje de "sin gastos"
+            NoGastosMessage.Visibility = _gastosOperativos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            // Actualizar total
+            UpdateGastoOperativoTotal();
+        }
+
+        private void UpdateGastoOperativoTotal()
+        {
+            decimal total = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
+            GastoOperativoText.Text = total.ToString("C", new CultureInfo("es-MX"));
+        }
+
+        private void AddGastoButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Mostrar fila para nuevo gasto
+            _gastoMontoValue = 0;
+            NewGastoRow.Visibility = Visibility.Visible;
+            NewGastoMontoTextBox.Text = "";
+            NewGastoDescripcionTextBox.Text = "";
+            NewGastoMontoTextBox.Focus();
+        }
+
+        private void CancelNewGastoButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Ocultar fila de nuevo gasto
+            NewGastoRow.Visibility = Visibility.Collapsed;
+            NewGastoMontoTextBox.Text = "";
+            NewGastoDescripcionTextBox.Text = "";
+            _gastoMontoValue = 0;
+        }
+
+        private decimal _gastoMontoValue = 0;
+
+        private void NewGastoMontoTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            // Mostrar valor numérico sin formato al editar
+            if (_gastoMontoValue > 0)
+            {
+                NewGastoMontoTextBox.Text = _gastoMontoValue.ToString("F2");
+            }
+            else
+            {
+                string cleanText = NewGastoMontoTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+                if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+                {
+                    _gastoMontoValue = value;
+                    NewGastoMontoTextBox.Text = value.ToString("F2");
+                }
+            }
+            NewGastoMontoTextBox.SelectAll();
+        }
+
+        private void NewGastoMontoTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            string cleanText = NewGastoMontoTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+            {
+                _gastoMontoValue = value;
+                NewGastoMontoTextBox.Text = value.ToString("C", new CultureInfo("es-MX"));
+            }
+            else if (_gastoMontoValue > 0)
+            {
+                NewGastoMontoTextBox.Text = _gastoMontoValue.ToString("C", new CultureInfo("es-MX"));
+            }
+            else
+            {
+                _gastoMontoValue = 0;
+                NewGastoMontoTextBox.Text = "";
+            }
+        }
+
+        private void NewGastoDescripcionTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                SaveNewGastoButton_Click(sender, e);
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelNewGastoButton_Click(sender, e);
+            }
+        }
+
+        private void NewGastoMontoTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                // Mover foco a descripción o guardar si descripción tiene texto
+                if (!string.IsNullOrWhiteSpace(NewGastoDescripcionTextBox.Text))
+                {
+                    SaveNewGastoButton_Click(sender, e);
+                }
+                else
+                {
+                    NewGastoDescripcionTextBox.Focus();
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                CancelNewGastoButton_Click(sender, e);
+            }
+        }
+
+        private void SaveNewGastoButton_Click(object sender, RoutedEventArgs e)
+        {
+            string montoText = NewGastoMontoTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+            string descripcion = NewGastoDescripcionTextBox.Text.Trim();
+
+            // Validar
+            if (string.IsNullOrWhiteSpace(montoText) || string.IsNullOrWhiteSpace(descripcion))
+            {
+                MessageBox.Show("Monto y Descripción son obligatorios", "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!decimal.TryParse(montoText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) || monto <= 0)
+            {
+                MessageBox.Show("El monto debe ser un número mayor a 0", "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                NewGastoMontoTextBox.Focus();
+                return;
+            }
+
+            // Llamar al método interno que maneja tanto nuevo como edición
+            SaveNewGastoButton_Click_Internal(monto, descripcion);
+        }
+
+        private void DeleteGastoButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.Tag == null) return;
+
+            // Verificar si estamos en modo edición (botón muestra ✕)
+            var border = FindParent<Border>(button);
+            if (border != null && _currentEditingRow == border)
+            {
+                // Estamos editando - cancelar edición
+                CancelInlineEdit(border);
+                return;
+            }
+
+            int gastoId = (int)button.Tag;
+            var gasto = _gastosOperativos.FirstOrDefault(g => g.Id == gastoId);
+
+            if (gasto == null) return;
+
+            // Solo marcar para eliminar en BD si es un gasto existente (ID positivo)
+            if (gastoId > 0)
+            {
+                _gastosEliminados.Add(gastoId);
+            }
+
+            // Remover de la lista local
+            _gastosOperativos.Remove(gasto);
+            LoadGastosOperativosUI();
+            _hasChanges = true;
+            UpdateSaveStatus();
+        }
+
+        private Border _currentEditingRow = null;
+
+        private void EditGastoInlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button == null) return;
+
+            // Encontrar el Border padre (la fila)
+            var border = FindParent<Border>(button);
+            if (border == null) return;
+
+            var grid = border.Child as Grid;
+            if (grid == null) return;
+
+            // Obtener controles
+            var montoView = grid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "MontoView");
+            var descView = grid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "DescView");
+            var montoEdit = grid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "MontoEdit");
+            var descEdit = grid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "DescEdit");
+            var editBtn = grid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "EditBtn");
+            var deleteBtn = grid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "DeleteBtn");
+
+            if (montoEdit == null || descEdit == null) return;
+
+            // Verificar si estamos en modo edición o vista
+            bool isEditing = montoEdit.Visibility == Visibility.Visible;
+
+            if (isEditing)
+            {
+                // Modo edición -> Guardar y volver a vista
+                SaveInlineEdit(border, montoEdit, descEdit, montoView, descView, editBtn, deleteBtn);
+            }
+            else
+            {
+                // Cancelar edición anterior si existe
+                if (_currentEditingRow != null && _currentEditingRow != border)
+                {
+                    CancelInlineEdit(_currentEditingRow);
+                }
+
+                // Modo vista -> Cambiar a edición
+                montoView.Visibility = Visibility.Collapsed;
+                descView.Visibility = Visibility.Collapsed;
+                montoEdit.Visibility = Visibility.Visible;
+                descEdit.Visibility = Visibility.Visible;
+                editBtn.Content = "✓";
+                editBtn.Foreground = System.Windows.Media.Brushes.Green;
+                editBtn.ToolTip = "Guardar";
+                deleteBtn.Content = "✕";
+                deleteBtn.Foreground = System.Windows.Media.Brushes.Gray;
+                deleteBtn.ToolTip = "Cancelar";
+
+                _currentEditingRow = border;
+                montoEdit.Focus();
+                montoEdit.SelectAll();
+            }
+        }
+
+        private void SaveInlineEdit(Border border, TextBox montoEdit, TextBox descEdit,
+            TextBlock montoView, TextBlock descView, Button editBtn, Button deleteBtn)
+        {
+            // Validar y obtener valores
+            string montoText = montoEdit.Text.Replace("$", "").Replace(",", "").Trim();
+            string descripcion = descEdit.Text.Trim();
+
+            if (!decimal.TryParse(montoText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) || monto <= 0)
+            {
+                MessageBox.Show("El monto debe ser un número mayor a 0", "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                montoEdit.Focus();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(descripcion))
+            {
+                MessageBox.Show("La descripción es obligatoria", "Validación", MessageBoxButton.OK, MessageBoxImage.Warning);
+                descEdit.Focus();
+                return;
+            }
+
+            // Actualizar el objeto en memoria
+            var gasto = border.DataContext as OrderGastoOperativoDb;
+            if (gasto != null)
+            {
+                gasto.Monto = monto;
+                gasto.Descripcion = descripcion;
+            }
+
+            // Volver a modo vista
+            montoView.Text = $"${monto:N2}";
+            descView.Text = descripcion;
+            montoView.Visibility = Visibility.Visible;
+            descView.Visibility = Visibility.Visible;
+            montoEdit.Visibility = Visibility.Collapsed;
+            descEdit.Visibility = Visibility.Collapsed;
+            editBtn.Content = "✏";
+            editBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1976D2"));
+            editBtn.ToolTip = "Editar";
+            deleteBtn.Content = "🗑";
+            deleteBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
+            deleteBtn.ToolTip = "Eliminar";
+
+            _currentEditingRow = null;
+            _hasChanges = true;
+            UpdateSaveStatus();
+            UpdateGastoOperativoTotal();
+        }
+
+        private void CancelInlineEdit(Border border)
+        {
+            if (border == null) return;
+
+            var grid = border.Child as Grid;
+            if (grid == null) return;
+
+            var montoView = grid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "MontoView");
+            var descView = grid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "DescView");
+            var montoEdit = grid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "MontoEdit");
+            var descEdit = grid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "DescEdit");
+            var editBtn = grid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "EditBtn");
+            var deleteBtn = grid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "DeleteBtn");
+
+            if (montoEdit == null) return;
+
+            // Restaurar valores originales del objeto
+            var gasto = border.DataContext as OrderGastoOperativoDb;
+            if (gasto != null)
+            {
+                montoEdit.Text = gasto.Monto.ToString("N2");
+                descEdit.Text = gasto.Descripcion;
+            }
+
+            // Volver a modo vista
+            if (montoView != null) montoView.Visibility = Visibility.Visible;
+            if (descView != null) descView.Visibility = Visibility.Visible;
+            montoEdit.Visibility = Visibility.Collapsed;
+            if (descEdit != null) descEdit.Visibility = Visibility.Collapsed;
+            if (editBtn != null)
+            {
+                editBtn.Content = "✏";
+                editBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1976D2"));
+                editBtn.ToolTip = "Editar";
+            }
+            if (deleteBtn != null)
+            {
+                deleteBtn.Content = "🗑";
+                deleteBtn.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
+                deleteBtn.ToolTip = "Eliminar";
+            }
+
+            _currentEditingRow = null;
+        }
+
+        private void GastoDescEdit_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                var textBox = sender as TextBox;
+                var border = FindParent<Border>(textBox);
+                if (border != null)
+                {
+                    var grid = border.Child as Grid;
+                    var editBtn = grid?.Children.OfType<Button>().FirstOrDefault(t => t.Name == "EditBtn");
+                    editBtn?.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                var textBox = sender as TextBox;
+                var border = FindParent<Border>(textBox);
+                CancelInlineEdit(border);
+            }
+        }
+
+        private void GastoMontoEdit_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                var textBox = sender as TextBox;
+                var border = FindParent<Border>(textBox);
+                if (border != null)
+                {
+                    var grid = border.Child as Grid;
+                    var descEdit = grid?.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "DescEdit");
+
+                    // Si descripción tiene texto, guardar; si no, mover foco a descripción
+                    if (descEdit != null && !string.IsNullOrWhiteSpace(descEdit.Text))
+                    {
+                        var editBtn = grid?.Children.OfType<Button>().FirstOrDefault(t => t.Name == "EditBtn");
+                        editBtn?.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                    else
+                    {
+                        descEdit?.Focus();
+                    }
+                }
+            }
+            else if (e.Key == Key.Escape)
+            {
+                var textBox = sender as TextBox;
+                var border = FindParent<Border>(textBox);
+                CancelInlineEdit(border);
+            }
+        }
+
+        private void GastoMontoEdit_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Formatear como moneda al perder el foco
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            string cleanText = textBox.Text.Replace("$", "").Replace(",", "").Trim();
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal value))
+            {
+                textBox.Text = value.ToString("N2");
+            }
+        }
+
+        private static T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            var parent = System.Windows.Media.VisualTreeHelper.GetParent(child);
+            while (parent != null && !(parent is T))
+            {
+                parent = System.Windows.Media.VisualTreeHelper.GetParent(parent);
+            }
+            return parent as T;
+        }
+
+        private void SaveNewGastoButton_Click_Internal(decimal monto, string descripcion)
+        {
+            // Agregar nuevo gasto solo en memoria (sin guardar a BD)
+            var nuevoGasto = new OrderGastoOperativoDb
+            {
+                Id = _tempIdCounter--, // ID temporal negativo
+                OrderId = _order.Id,
+                Monto = monto,
+                Descripcion = descripcion,
+                FechaGasto = DateTime.Now,
+                CreatedBy = _currentUser.Id
+            };
+
+            _gastosOperativos.Insert(0, nuevoGasto);
+            LoadGastosOperativosUI();
+            _hasChanges = true;
+            UpdateSaveStatus();
+
+            // Limpiar campos y preparar para otro gasto
+            NewGastoMontoTextBox.Text = "";
+            NewGastoDescripcionTextBox.Text = "";
+            _gastoMontoValue = 0;
+            NewGastoMontoTextBox.Focus();
+        }
+
+        #endregion
+
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
-            
+
 
             this.DialogResult = false;
             this.Close();

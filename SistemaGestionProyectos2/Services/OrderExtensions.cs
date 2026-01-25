@@ -50,7 +50,7 @@ namespace SistemaGestionProyectos2.Services
         }
 
         // Método para convertir OrderDb a OrderViewModel
-        public static OrderViewModel ToViewModel(this OrderDb order, string clientName = null, string vendorName = null, string statusName = null)
+        public static OrderViewModel ToViewModel(this OrderDb order, string clientName = null, string vendorName = null, string statusName = null, decimal gastoMaterial = 0)
         {
             return new OrderViewModel
             {
@@ -67,7 +67,35 @@ namespace SistemaGestionProyectos2.Services
                 Total = order.SaleTotal ?? 0,
                 Status = statusName ?? "PENDIENTE",
                 Invoiced = false,
-                LastInvoiceDate = null
+                LastInvoiceDate = null,
+                // Columnas v2.0 - Gastos
+                GastoMaterial = gastoMaterial,
+                GastoOperativo = order.GastoOperativo ?? 0
+            };
+        }
+
+        // Método para convertir OrderGastosViewDb a OrderViewModel (incluye gastos calculados)
+        public static OrderViewModel ToViewModel(this OrderGastosViewDb order, string clientName = null, string vendorName = null, string statusName = null)
+        {
+            return new OrderViewModel
+            {
+                Id = order.Id,
+                OrderNumber = order.Po ?? "N/A",
+                OrderDate = order.PoDate ?? DateTime.Now,
+                ClientName = clientName ?? "Sin cliente",
+                Description = order.Description ?? "",
+                VendorName = vendorName ?? "Sin vendedor",
+                PromiseDate = order.EstDelivery ?? DateTime.Now.AddDays(30),
+                ProgressPercentage = order.ProgressPercentage,
+                OrderPercentage = order.OrderPercentage,
+                Subtotal = order.SaleSubtotal ?? 0,
+                Total = order.SaleTotal ?? 0,
+                Status = statusName ?? "PENDIENTE",
+                Invoiced = false,
+                LastInvoiceDate = null,
+                // Columnas v2.0 - Gastos (calculados desde la vista)
+                GastoMaterial = order.GastoMaterial,
+                GastoOperativo = order.GastoOperativo
             };
         }
     }

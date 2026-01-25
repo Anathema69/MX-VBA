@@ -59,17 +59,17 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <Grid Margin="30,20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    
+                    <RowDefinition Height="Auto"/> <!-- 0: Permisos -->
+                    <RowDefinition Height="Auto"/> <!-- 1: Info Básica Header -->
+                    <RowDefinition Height="Auto"/> <!-- 2: Campos Solo Lectura -->
+                    <RowDefinition Height="Auto"/> <!-- 3: Campos Admin Panel 1 -->
+                    <RowDefinition Height="Auto"/> <!-- 4: Campos Editables Header -->
+                    <RowDefinition Height="Auto"/> <!-- 5: Info Financiera Header -->
+                    <RowDefinition Height="Auto"/> <!-- 6: Campos Financieros -->
+                    <RowDefinition Height="Auto"/> <!-- 7: Gastos Header -->
+                    <RowDefinition Height="Auto"/> <!-- 8: Campos Gastos -->
+                    <RowDefinition Height="Auto"/> <!-- 9: Auditoría -->
+                    <RowDefinition Height="Auto"/> <!-- 10: Zona Peligrosa -->
                 </Grid.RowDefinitions>
 
                 <!-- Aviso de permisos -->
@@ -489,8 +489,240 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Sección: Gastos y Tiempos (Solo Admin) v2.0 -->
+                <Border x:Name="GastosSection"
+                       Grid.Row="7"
+                       Background="#FFF8E1"
+                       Padding="10"
+                       Margin="0,0,0,10"
+                       Visibility="Collapsed">
+                    <TextBlock Text="💰 GASTOS Y TIEMPOS"
+                             FontWeight="Bold"
+                             FontSize="12"
+                             Foreground="#F57C00"/>
+                </Border>
+
+                <!-- Campos de gastos (Solo Direccion) -->
+                <StackPanel x:Name="GastosFields"
+                           Grid.Row="8"
+                           Margin="0,0,0,20"
+                           Visibility="Collapsed">
+
+                    <!-- Lista de Gastos Operativos con edición inline -->
+                    <Border Background="#FFF8E1"
+                           BorderBrush="#FFB74D"
+                           BorderThickness="1"
+                           CornerRadius="5"
+                           Padding="10">
+                        <StackPanel>
+                            <!-- Header con total y botón agregar -->
+                            <Grid Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Gastos Operativos"
+                                             FontWeight="SemiBold"
+                                             FontSize="12"
+                                             Foreground="#E65100"/>
+                                    <TextBlock Text=" - Total: "
+                                             FontSize="11"
+                                             Foreground="#666"
+                                             VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="GastoOperativoText"
+                                             Text="$0.00"
+                                             FontWeight="Bold"
+                                             FontSize="12"
+                                             Foreground="#E65100"/>
+                                </StackPanel>
+                                <Button x:Name="AddGastoButton"
+                                       Content="+ Nuevo"
+                                       HorizontalAlignment="Right"
+                                       Padding="12,5"
+                                       FontSize="11"
+                                       Background="#FB8C00"
+                                       Foreground="White"
+                                       BorderThickness="0"
+                                       Cursor="Hand"
+                                       Click="AddGastoButton_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="border"
+                                                   Background="{TemplateBinding Background}"
+                                                   CornerRadius="3"
+                                                   Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#F57C00"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Grid>
+
+                            <!-- Fila para agregar nuevo gasto (oculta por defecto) -->
+                            <Border x:Name="NewGastoRow"
+                                   Background="#FFFDE7"
+                                   BorderBrush="#FFC107"
+                                   BorderThickness="1"
+                                   CornerRadius="3"
+                                   Padding="8"
+                                   Margin="0,0,0,8"
+                                   Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Monto -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Monto *" FontSize="10" Foreground="#666" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="NewGastoMontoTextBox"
+                                                Height="30"
+                                                FontSize="13"
+                                                Padding="5,0"
+                                                PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                                GotFocus="NewGastoMontoTextBox_GotFocus"
+                                                LostFocus="NewGastoMontoTextBox_LostFocus"
+                                                KeyDown="NewGastoMontoTextBox_KeyDown"/>
+                                    </StackPanel>
+
+                                    <!-- Descripción -->
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Descripción *" FontSize="10" Foreground="#666" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="NewGastoDescripcionTextBox"
+                                                Height="30"
+                                                FontSize="13"
+                                                Padding="5,0"
+                                                KeyDown="NewGastoDescripcionTextBox_KeyDown"/>
+                                    </StackPanel>
+
+                                    <!-- Botones -->
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                        <Button Content="✓"
+                                               Width="30"
+                                               Height="30"
+                                               Background="#4CAF50"
+                                               Foreground="White"
+                                               BorderThickness="0"
+                                               FontSize="14"
+                                               Cursor="Hand"
+                                               Click="SaveNewGastoButton_Click"
+                                               ToolTip="Guardar"/>
+                                        <Button Content="✕"
+                                               Width="30"
+                                               Height="30"
+                                               Margin="5,0,0,0"
+                                               Background="#9E9E9E"
+                                               Foreground="White"
+                                               BorderThickness="0"
+                                               FontSize="14"
+                                               Cursor="Hand"
+                                               Click="CancelNewGastoButton_Click"
+                                               ToolTip="Cancelar"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Lista de gastos existentes con edición inline -->
+                            <ItemsControl x:Name="GastosItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="White"
+                                               BorderBrush="#EEE"
+                                               BorderThickness="0,0,0,1"
+                                               Padding="5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Modo Vista (visible por defecto) -->
+                                                <TextBlock x:Name="MontoView"
+                                                          Grid.Column="0"
+                                                          Text="{Binding Monto, StringFormat=\$\{0:N2\}}"
+                                                          FontWeight="SemiBold"
+                                                          Foreground="#E65100"
+                                                          VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="DescView"
+                                                          Grid.Column="1"
+                                                          Text="{Binding Descripcion}"
+                                                          Foreground="#333"
+                                                          VerticalAlignment="Center"
+                                                          TextTrimming="CharacterEllipsis"/>
+
+                                                <!-- Modo Edición (oculto por defecto) -->
+                                                <TextBox x:Name="MontoEdit"
+                                                        Grid.Column="0"
+                                                        Text="{Binding Monto, StringFormat=N2}"
+                                                        FontSize="12"
+                                                        Padding="3"
+                                                        Visibility="Collapsed"
+                                                        PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                                        LostFocus="GastoMontoEdit_LostFocus"
+                                                        KeyDown="GastoMontoEdit_KeyDown"/>
+                                                <TextBox x:Name="DescEdit"
+                                                        Grid.Column="1"
+                                                        Text="{Binding Descripcion, UpdateSourceTrigger=PropertyChanged}"
+                                                        FontSize="12"
+                                                        Padding="3"
+                                                        Margin="5,0"
+                                                        Visibility="Collapsed"
+                                                        KeyDown="GastoDescEdit_KeyDown"/>
+
+                                                <!-- Botón Editar/Guardar -->
+                                                <Button x:Name="EditBtn"
+                                                       Grid.Column="2"
+                                                       Content="✏"
+                                                       Tag="{Binding Id}"
+                                                       Click="EditGastoInlineButton_Click"
+                                                       Background="Transparent"
+                                                       BorderThickness="0"
+                                                       Foreground="#1976D2"
+                                                       FontSize="12"
+                                                       Cursor="Hand"
+                                                       ToolTip="Editar"/>
+                                                <!-- Botón Eliminar/Cancelar -->
+                                                <Button x:Name="DeleteBtn"
+                                                       Grid.Column="3"
+                                                       Content="🗑"
+                                                       Tag="{Binding Id}"
+                                                       Click="DeleteGastoButton_Click"
+                                                       Background="Transparent"
+                                                       BorderThickness="0"
+                                                       Foreground="#E53935"
+                                                       FontSize="12"
+                                                       Cursor="Hand"
+                                                       ToolTip="Eliminar"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Mensaje cuando no hay gastos -->
+                            <TextBlock x:Name="NoGastosMessage"
+                                      Text="Sin gastos registrados. Click en '+ Nuevo' para agregar."
+                                      FontStyle="Italic"
+                                      Foreground="#999"
+                                      FontSize="11"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,10,0,5"
+                                      Visibility="Visible"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
                 <!-- Información de última modificación -->
-                <Border Grid.Row="8"
+                <Border Grid.Row="9"
                        Background="#FFF3E0"
                        Padding="10"
                        CornerRadius="5">
@@ -506,7 +738,7 @@
                     </StackPanel>
                 </Border>
                 <!-- Botón Cancelar Orden - Zona Peligrosa -->
-                <Border Grid.Row="9" 
+                <Border Grid.Row="10"
         Background="#FFEBEE" 
         BorderBrush="#F44336"
         BorderThickness="1"

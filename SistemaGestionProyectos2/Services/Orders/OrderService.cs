@@ -159,6 +159,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     .Set(x => x.Expense, order.Expense)
                     .Set(x => x.OrderStatus, order.OrderStatus)
                     .Set(x => x.UpdatedBy, order.UpdatedBy)
+                    .Set(x => x.GastoOperativo, order.GastoOperativo)
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
@@ -417,5 +418,221 @@ namespace SistemaGestionProyectos2.Services.Orders
                 return false;
             }
         }
+
+        #region Vista con Gastos Calculados
+
+        /// <summary>
+        /// Obtiene órdenes con gastos de material calculados desde la vista v_order_gastos
+        /// </summary>
+        public async Task<List<OrderGastosViewDb>> GetOrdersWithGastos(int limit = 100, int offset = 0, List<int> filterStatuses = null)
+        {
+            try
+            {
+                ModeledResponse<OrderGastosViewDb> response;
+
+                if (filterStatuses != null && filterStatuses.Count > 0)
+                {
+                    response = await SupabaseClient
+                        .From<OrderGastosViewDb>()
+                        .Select("*")
+                        .Filter("f_orderstat", Postgrest.Constants.Operator.In, filterStatuses.ToArray())
+                        .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                        .Range(offset, offset + limit - 1)
+                        .Get();
+                }
+                else
+                {
+                    response = await SupabaseClient
+                        .From<OrderGastosViewDb>()
+                        .Select("*")
+                        .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                        .Range(offset, offset + limit - 1)
+                        .Get();
+                }
+
+                var orders = response?.Models ?? new List<OrderGastosViewDb>();
+                LogSuccess($"Órdenes con gastos obtenidas: {orders.Count}");
+                return orders;
+            }
+            catch (Exception ex)
+            {
+                LogError("Error obteniendo órdenes con gastos", ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene una orden específica con gastos calculados
+        /// </summary>
+        public async Task<OrderGastosViewDb> GetOrderWithGastosById(int orderId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderGastosViewDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.Equals, orderId)
+                    .Single();
+                return response;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error obteniendo orden con gastos {orderId}", ex);
+                throw;
+            }
+        }
+
+        #endregion
+
+        #region Gastos Operativos v2.0
+
+        /// <summary>
+        /// Obtiene los gastos operativos detallados de una orden
+        /// </summary>
+        public async Task<List<OrderGastoOperativoDb>> GetGastosOperativos(int orderId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderGastoOperativoDb>()
+                    .Where(g => g.OrderId == orderId)
+                    .Order("fecha_gasto", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+
+                return response?.Models ?? new List<OrderGastoOperativoDb>();
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error obteniendo gastos operativos de orden {orderId}", ex);
+                return new List<OrderGastoOperativoDb>();
+            }
+        }
+
+        /// <summary>
+        /// Agrega un gasto operativo a una orden y devuelve el registro creado
+        /// </summary>
+        public async Task<OrderGastoOperativoDb> AddGastoOperativo(int orderId, decimal monto, string descripcion, int userId)
+        {
+            try
+            {
+                LogDebug($"Insertando gasto operativo: orden={orderId}, monto={monto}, desc={descripcion}");
+
+                var ahora = DateTime.Now;
+                var gasto = new OrderGastoOperativoDb
+                {
+                    OrderId = orderId,
+                    Monto = monto,
+                    Descripcion = descripcion,
+                    FechaGasto = ahora,
+                    CreatedAt = ahora,
+                    CreatedBy = userId
+                };
+
+                var response = await SupabaseClient
+                    .From<OrderGastoOperativoDb>()
+                    .Insert(gasto);
+
+                if (response?.Models?.Count > 0)
+                {
+                    LogSuccess($"Gasto operativo agregado a orden {orderId}: {monto:C} (ID: {response.Models[0].Id})");
+                    return response.Models[0];
+                }
+
+                LogError($"Insert de gasto operativo no retornó registros para orden {orderId}", null);
+                throw new Exception($"No se pudo insertar el gasto operativo en orden {orderId}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error agregando gasto operativo a orden {orderId}", ex);
+                throw; // Re-lanzar para que el llamador sepa que falló
+            }
+        }
+
+        /// <summary>
+        /// Elimina un gasto operativo
+        /// </summary>
+        public async Task<bool> DeleteGastoOperativo(int gastoId, int orderId, int userId)
+        {
+            try
+            {
+                await SupabaseClient
+                    .From<OrderGastoOperativoDb>()
+                    .Where(g => g.Id == gastoId)
+                    .Delete();
+
+                // Recalcular total
+                await RecalcularGastoOperativo(orderId, userId);
+                LogSuccess($"Gasto operativo {gastoId} eliminado");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error eliminando gasto operativo {gastoId}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Actualiza un gasto operativo existente
+        /// </summary>
+        public async Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, int orderId, int userId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderGastoOperativoDb>()
+                    .Where(g => g.Id == gastoId)
+                    .Single();
+
+                if (response != null)
+                {
+                    response.Monto = monto;
+                    response.Descripcion = descripcion;
+                    response.UpdatedBy = userId;
+                    response.UpdatedAt = DateTime.Now;
+
+                    await SupabaseClient
+                        .From<OrderGastoOperativoDb>()
+                        .Update(response);
+
+                    // Recalcular total de gastos operativos
+                    await RecalcularGastoOperativo(orderId, userId);
+                    LogSuccess($"Gasto operativo {gastoId} actualizado");
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error actualizando gasto operativo {gastoId}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Recalcula el total de gastos operativos de una orden
+        /// </summary>
+        private async Task RecalcularGastoOperativo(int orderId, int userId)
+        {
+            try
+            {
+                var gastos = await GetGastosOperativos(orderId);
+                var total = gastos.Sum(g => g.Monto);
+
+                await SupabaseClient
+                    .From<OrderDb>()
+                    .Where(o => o.Id == orderId)
+                    .Set(o => o.GastoOperativo, total)
+                    .Set(o => o.UpdatedBy, userId)
+                    .Update();
+
+                LogDebug($"Gasto operativo total de orden {orderId} actualizado: {total:C}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error recalculando gasto operativo de orden {orderId}", ex);
+            }
+        }
+
+        #endregion
     }
 }

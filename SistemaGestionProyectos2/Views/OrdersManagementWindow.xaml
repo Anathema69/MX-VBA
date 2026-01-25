@@ -13,6 +13,7 @@
 
     <Window.Resources>
         <local:AdminVisibilityConverter x:Key="AdminVisibilityConverter"/>
+        <local:IsNegativeConverter x:Key="IsNegativeConverter"/>
     </Window.Resources>
     
     <Grid>
@@ -429,13 +430,38 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
+                    <!-- Columnas v2.0 - Gastos (solo Admin) -->
+                    <DataGridTextColumn x:Name="GastoMaterialColumn"
+                                       Header="GASTO MAT."
+                                       Binding="{Binding GastoMaterial, StringFormat=C}"
+                                       Width="100"
+                                       Visibility="Collapsed">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Foreground" Value="#E53935"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
+                    <DataGridTextColumn x:Name="GastoOperativoColumn"
+                                       Header="GASTO OP."
+                                       Binding="{Binding GastoOperativo, StringFormat=C}"
+                                       Width="100"
+                                       Visibility="Collapsed">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Foreground" Value="#FB8C00"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Estado con colores -->
                     <!-- En el DataGridTemplateColumn del ESTATUS -->
                     <!-- Columna Estado con estilo de badges -->
                     <DataGridTemplateColumn x:Name="StatusColumn"
-                        Header="ESTADO" 
+                        Header="ESTADO"
                         Width="130">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

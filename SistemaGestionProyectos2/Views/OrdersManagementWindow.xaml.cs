@@ -126,12 +126,25 @@ namespace SistemaGestionProyectos2.Views
             switch (_currentUser.Role)
             {
                 case "direccion":
-                case "administracion":
-                    // Dirección/Administración tiene acceso total
+                    // Dirección tiene acceso total incluyendo columnas de gastos v2.0
                     NewOrderButton.IsEnabled = true;
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
                     InvoicedColumn.Visibility = Visibility.Visible;
+                    // Columnas v2.0 - Gastos (solo direccion por ahora)
+                    GastoMaterialColumn.Visibility = Visibility.Visible;
+                    GastoOperativoColumn.Visibility = Visibility.Visible;
+                    break;
+
+                case "administracion":
+                    // Administración tiene acceso pero SIN columnas de gastos v2.0
+                    NewOrderButton.IsEnabled = true;
+                    SubtotalColumn.Visibility = Visibility.Visible;
+                    TotalColumn.Visibility = Visibility.Visible;
+                    InvoicedColumn.Visibility = Visibility.Visible;
+                    // Columnas v2.0 - ocultas para administracion (pendiente validación)
+                    GastoMaterialColumn.Visibility = Visibility.Collapsed;
+                    GastoOperativoColumn.Visibility = Visibility.Collapsed;
                     break;
 
                 case "coordinacion":
@@ -147,6 +160,9 @@ namespace SistemaGestionProyectos2.Views
                     SubtotalColumn.Visibility = Visibility.Collapsed;
                     TotalColumn.Visibility = Visibility.Collapsed;
                     InvoicedColumn.Visibility = Visibility.Collapsed;
+                    // Columnas v2.0 - ocultas para coordinación
+                    GastoMaterialColumn.Visibility = Visibility.Collapsed;
+                    GastoOperativoColumn.Visibility = Visibility.Collapsed;
                     break;
 
                 case "ventas":
@@ -233,52 +249,86 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 // Cargar primero las 100 órdenes más recientes con el filtro aplicado
-                var ordersFromDb = await _supabaseService.GetOrders(
-                    limit: 100,
-                    offset: 0,
-                    filterStatuses: statusFilter
-                );
+                // Para rol "direccion" usar la vista con gastos calculados
+                int ordersLoadedCount = 0;
 
-                if (ordersFromDb != null && ordersFromDb.Count > 0)
+                if (_currentUser.Role == "direccion")
                 {
-                    // Obtener los IDs de las órdenes para buscar sus facturas
-                    var orderIds = ordersFromDb.Select(o => o.Id).ToList();
+                    // Usar vista v_order_gastos que incluye gasto_material calculado
+                    var ordersWithGastos = await _supabaseService.GetOrdersWithGastos(
+                        limit: 100,
+                        offset: 0,
+                        filterStatuses: statusFilter
+                    );
 
-                    // Obtener totales facturados para todas las órdenes
-                    var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
-
-                    foreach (var order in ordersFromDb)
+                    if (ordersWithGastos != null && ordersWithGastos.Count > 0)
                     {
-                        // Obtener nombre del cliente
-                        var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                        var orderIds = ordersWithGastos.Select(o => o.Id).ToList();
+                        var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
 
-                        // Obtener nombre del vendedor desde t_vendor
-                        var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
-
-                        // Obtener nombre del estado
-                        var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
-
-                        // Usar el método de extensión para convertir a ViewModel
-                        var viewModel = order.ToViewModel(
-                            clientName: client?.Name,
-                            vendorName: vendor?.VendorName,
-                            statusName: status?.Name
-                        );
-
-                        // Agregar el monto facturado
-                        if (invoicedTotals.ContainsKey(order.Id))
+                        foreach (var order in ordersWithGastos)
                         {
-                            viewModel.InvoicedAmount = invoicedTotals[order.Id];
-                        }
-                        else
-                        {
-                            viewModel.InvoicedAmount = 0;
-                        }
+                            var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                            var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+                            var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
 
-                        _orders.Add(viewModel);
-                        _allOrdersCache.Add(viewModel);
+                            var viewModel = order.ToViewModel(
+                                clientName: client?.Name,
+                                vendorName: vendor?.VendorName,
+                                statusName: status?.Name
+                            );
+
+                            if (invoicedTotals.ContainsKey(order.Id))
+                            {
+                                viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                            }
+
+                            _orders.Add(viewModel);
+                            _allOrdersCache.Add(viewModel);
+                        }
+                        ordersLoadedCount = ordersWithGastos.Count;
                     }
+                }
+                else
+                {
+                    // Para otros roles usar tabla normal (no necesitan ver gastos)
+                    var ordersFromDb = await _supabaseService.GetOrders(
+                        limit: 100,
+                        offset: 0,
+                        filterStatuses: statusFilter
+                    );
 
+                    if (ordersFromDb != null && ordersFromDb.Count > 0)
+                    {
+                        var orderIds = ordersFromDb.Select(o => o.Id).ToList();
+                        var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+
+                        foreach (var order in ordersFromDb)
+                        {
+                            var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                            var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+                            var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
+
+                            var viewModel = order.ToViewModel(
+                                clientName: client?.Name,
+                                vendorName: vendor?.VendorName,
+                                statusName: status?.Name
+                            );
+
+                            if (invoicedTotals.ContainsKey(order.Id))
+                            {
+                                viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                            }
+
+                            _orders.Add(viewModel);
+                            _allOrdersCache.Add(viewModel);
+                        }
+                        ordersLoadedCount = ordersFromDb.Count;
+                    }
+                }
+
+                if (ordersLoadedCount > 0)
+                {
                     // Actualizar timestamp del caché
                     _lastFullLoadTime = DateTime.Now;
 
@@ -295,7 +345,7 @@ namespace SistemaGestionProyectos2.Views
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
                     // Cargar el resto en segundo plano si hay más de 100
-                    if (ordersFromDb.Count == 100)
+                    if (ordersLoadedCount == 100)
                     {
                         _ = LoadRemainingOrdersAsync(statusFilter);
                     }
@@ -415,64 +465,107 @@ namespace SistemaGestionProyectos2.Views
                 int offset = 100;
                 int batchSize = 100;
                 bool hasMore = true;
+                bool useGastosView = _currentUser.Role == "direccion";
 
                 while (hasMore)
                 {
-                    // Aplicar el mismo filtro que en la carga inicial
-                    var moreOrders = await _supabaseService.GetOrders(
-                        limit: batchSize,
-                        offset: offset,
-                        filterStatuses: statusFilter
-                    );
+                    int batchCount = 0;
 
-                    if (moreOrders != null && moreOrders.Count > 0)
+                    if (useGastosView)
                     {
-                        // Obtener totales facturados para este batch
-                        var orderIds = moreOrders.Select(o => o.Id).ToList();
-                        var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+                        // Usar vista con gastos para rol direccion
+                        var moreOrders = await _supabaseService.GetOrdersWithGastos(
+                            limit: batchSize,
+                            offset: offset,
+                            filterStatuses: statusFilter
+                        );
 
-                        // Agregar al UI en el thread principal
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        if (moreOrders != null && moreOrders.Count > 0)
                         {
-                            foreach (var order in moreOrders)
+                            var orderIds = moreOrders.Select(o => o.Id).ToList();
+                            var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
-                                var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
-                                var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
-
-                                var viewModel = order.ToViewModel(
-                                    clientName: client?.Name,
-                                    vendorName: vendor?.VendorName,
-                                    statusName: status?.Name
-                                );
-
-                                // Agregar el monto facturado
-                                if (invoicedTotals.ContainsKey(order.Id))
+                                foreach (var order in moreOrders)
                                 {
-                                    viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                                    var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                                    var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+                                    var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
+
+                                    var viewModel = order.ToViewModel(
+                                        clientName: client?.Name,
+                                        vendorName: vendor?.VendorName,
+                                        statusName: status?.Name
+                                    );
+
+                                    if (invoicedTotals.ContainsKey(order.Id))
+                                    {
+                                        viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                                    }
+
+                                    _orders.Add(viewModel);
+                                    _allOrdersCache.Add(viewModel);
                                 }
-
-                                _orders.Add(viewModel);
-                                _allOrdersCache.Add(viewModel);
-                            }
-
-                            if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
-                            {
-                                StatusText.Text = $"{_orders.Count} órdenes activas cargadas";
-                            }
-                            else
-                            {
                                 StatusText.Text = $"{_orders.Count} órdenes cargadas";
-                            }
-                        });
+                            });
 
-                        offset += batchSize;
-                        hasMore = moreOrders.Count == batchSize;
+                            batchCount = moreOrders.Count;
+                        }
                     }
                     else
                     {
-                        hasMore = false;
+                        // Usar tabla normal para otros roles
+                        var moreOrders = await _supabaseService.GetOrders(
+                            limit: batchSize,
+                            offset: offset,
+                            filterStatuses: statusFilter
+                        );
+
+                        if (moreOrders != null && moreOrders.Count > 0)
+                        {
+                            var orderIds = moreOrders.Select(o => o.Id).ToList();
+                            var invoicedTotals = await _supabaseService.GetInvoicedTotalsByOrders(orderIds);
+
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                foreach (var order in moreOrders)
+                                {
+                                    var client = _clients?.FirstOrDefault(c => c.Id == order.ClientId);
+                                    var vendor = _vendors?.FirstOrDefault(v => v.Id == order.SalesmanId);
+                                    var status = _orderStatuses?.FirstOrDefault(s => s.Id == order.OrderStatus);
+
+                                    var viewModel = order.ToViewModel(
+                                        clientName: client?.Name,
+                                        vendorName: vendor?.VendorName,
+                                        statusName: status?.Name
+                                    );
+
+                                    if (invoicedTotals.ContainsKey(order.Id))
+                                    {
+                                        viewModel.InvoicedAmount = invoicedTotals[order.Id];
+                                    }
+
+                                    _orders.Add(viewModel);
+                                    _allOrdersCache.Add(viewModel);
+                                }
+
+                                if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
+                                {
+                                    StatusText.Text = $"{_orders.Count} órdenes activas cargadas";
+                                }
+                                else
+                                {
+                                    StatusText.Text = $"{_orders.Count} órdenes cargadas";
+                                }
+                            });
+
+                            batchCount = moreOrders.Count;
+                        }
                     }
+
+                    offset += batchSize;
+                    hasMore = batchCount == batchSize;
 
                     // Pequeña pausa para no saturar
                     await Task.Delay(100);

@@ -4,14 +4,14 @@ using System;
 
 namespace SistemaGestionProyectos2.Models.Database
 {
-    [Table("t_order")]
-    public class OrderDb : BaseModel
+    /// <summary>
+    /// Modelo para la vista v_order_gastos que incluye campos calculados de gastos a proveedores
+    /// </summary>
+    [Table("v_order_gastos")]
+    public class OrderGastosViewDb : BaseModel
     {
         [PrimaryKey("f_order", shouldInsert: false)]
         public int Id { get; set; }
-        
-        // Este método controla si el Id debe serializarse
-        public bool ShouldSerializeId() => Id > 0;
 
         [Column("f_po")]
         public string Po { get; set; }
@@ -43,9 +43,6 @@ namespace SistemaGestionProyectos2.Models.Database
         [Column("f_saletotal")]
         public decimal? SaleTotal { get; set; }
 
-        [Column("f_expense")]
-        public decimal? Expense { get; set; }
-
         [Column("f_orderstat")]
         public int? OrderStatus { get; set; }
 
@@ -54,6 +51,9 @@ namespace SistemaGestionProyectos2.Models.Database
 
         [Column("order_percentage")]
         public int OrderPercentage { get; set; }
+
+        [Column("f_commission_rate")]
+        public decimal? CommissionRate { get; set; }
 
         [Column("created_by")]
         public int? CreatedBy { get; set; }
@@ -67,11 +67,21 @@ namespace SistemaGestionProyectos2.Models.Database
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
-        [Column("f_commission_rate")]
-        public decimal? CommissionRate { get; set; }
+        // Campos calculados desde la vista (gastos a proveedores)
+        [Column("gasto_material")]
+        public decimal GastoMaterial { get; set; }
 
-        // Columna v2.0 - Gasto operativo (suma de order_gastos_operativos)
+        [Column("gasto_material_pendiente")]
+        public decimal GastoMaterialPendiente { get; set; }
+
+        [Column("total_gastos_proveedor")]
+        public decimal TotalGastosProveedor { get; set; }
+
+        [Column("num_facturas_proveedor")]
+        public int NumFacturasProveedor { get; set; }
+
+        // Campo de la tabla t_order (suma de order_gastos_operativos)
         [Column("gasto_operativo")]
-        public decimal? GastoOperativo { get; set; }
+        public decimal GastoOperativo { get; set; }
     }
 }

@@ -28,5 +28,13 @@ namespace SistemaGestionProyectos2.Models
 
         // Propiedad para alternar colores por mes
         public bool EsMesImpar => OrderDate.Month % 2 == 1;
+
+        // Columnas v2.0 - Gastos
+        public decimal GastoMaterial { get; set; }  // Calculado desde t_expense (PAGADO)
+        public decimal GastoOperativo { get; set; } // Suma de order_gastos_operativos
+
+        // Propiedades formateadas para mostrar en UI
+        public string GastoMaterialFormatted => GastoMaterial.ToString("C");
+        public string GastoOperativoFormatted => GastoOperativo.ToString("C");
     }
 }
