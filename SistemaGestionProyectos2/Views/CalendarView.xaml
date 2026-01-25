@@ -1,0 +1,564 @@
+<Window x:Class="SistemaGestionProyectos2.Views.CalendarView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Calendario de Personal - Sistema de Gestión"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Normal"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Loaded="Window_Loaded">
+
+    <Window.Resources>
+        <!-- Colores (misma paleta que PayrollManagementView) -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#6366F1"/>
+        <SolidColorBrush x:Key="PrimaryLight" Color="#E0E7FF"/>
+        <SolidColorBrush x:Key="SuccessColor" Color="#10B981"/>
+        <SolidColorBrush x:Key="SuccessLight" Color="#D1FAE5"/>
+        <SolidColorBrush x:Key="DangerColor" Color="#EF4444"/>
+        <SolidColorBrush x:Key="DangerLight" Color="#FEE2E2"/>
+        <SolidColorBrush x:Key="WarningColor" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="WarningLight" Color="#FEF3C7"/>
+        <SolidColorBrush x:Key="InfoColor" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="InfoLight" Color="#DBEAFE"/>
+        <SolidColorBrush x:Key="BackgroundGray" Color="#F9FAFB"/>
+        <SolidColorBrush x:Key="BorderGray" Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="TextGray" Color="#6B7280"/>
+        <SolidColorBrush x:Key="DarkText" Color="#111827"/>
+
+        <!-- Colores específicos para estados de asistencia -->
+        <SolidColorBrush x:Key="AttendanceColor" Color="#10B981"/>
+        <SolidColorBrush x:Key="AttendanceLight" Color="#D1FAE5"/>
+        <SolidColorBrush x:Key="LateColor" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="LateLight" Color="#FEF3C7"/>
+        <SolidColorBrush x:Key="AbsentColor" Color="#EF4444"/>
+        <SolidColorBrush x:Key="AbsentLight" Color="#FEE2E2"/>
+        <SolidColorBrush x:Key="VacationColor" Color="#8B5CF6"/>
+        <SolidColorBrush x:Key="VacationLight" Color="#EDE9FE"/>
+
+        <!-- Estilo para botones modernos -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="8" Direction="270"
+                                                ShadowDepth="2" Opacity="0.15"/>
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para botones secundarios -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource BackgroundGray}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para tarjetas -->
+        <Style x:Key="TableCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" Direction="270"
+                                    ShadowDepth="2" Opacity="0.05"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para días del calendario -->
+        <Style x:Key="CalendarDayButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="DayBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="DayBorder" Property="Background" Value="{StaticResource BackgroundGray}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Estilo para botón de estado de asistencia -->
+        <Style x:Key="StatusButton" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="StatusBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                ToolTip="{TemplateBinding ToolTip}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="StatusBorder" Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource BackgroundGray}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderGray}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="30,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Vertical">
+                    <TextBlock Text="CALENDARIO DE PERSONAL"
+                             FontSize="22"
+                             FontWeight="Bold"
+                             Foreground="{StaticResource DarkText}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <Border Background="{StaticResource PrimaryLight}"
+                                CornerRadius="4" Padding="6,2">
+                            <TextBlock Name="CurrentMonthText"
+                                     Text="Enero 2026"
+                                     FontSize="12"
+                                     FontWeight="Medium"
+                                     Foreground="{StaticResource PrimaryColor}"/>
+                        </Border>
+                        <TextBlock Text="Control de Asistencias, Retardos, Faltas y Vacaciones"
+                                 FontSize="12"
+                                 Foreground="{StaticResource TextGray}"
+                                 VerticalAlignment="Center"
+                                 Margin="12,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BackButton"
+                            Click="BackButton_Click"
+                            Style="{StaticResource SecondaryButton}"
+                            Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="←" FontSize="16" Margin="0,0,6,0"/>
+                            <TextBlock Text="Volver" FontSize="13"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Cards de Resumen -->
+        <Grid Grid.Row="1" Margin="30,12,30,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Card Asistencias -->
+            <Border Grid.Column="0" Style="{StaticResource TableCard}"
+                    Margin="0,0,8,0" Padding="16,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource AttendanceLight}"
+                            Width="32" Height="32" CornerRadius="8"
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="✓" FontSize="16" FontWeight="Bold"
+                                 Foreground="{StaticResource AttendanceColor}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Text="Asistencias" FontSize="11"
+                             Foreground="{StaticResource TextGray}"
+                             FontWeight="Medium" Margin="0,0,0,4"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Name="AttendanceCountText" Text="142"
+                                 FontSize="20" FontWeight="Bold"
+                                 Foreground="{StaticResource AttendanceColor}"/>
+                        <TextBlock Text=" este mes" FontSize="11"
+                                 Foreground="{StaticResource TextGray}"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Card Retardos -->
+            <Border Grid.Column="1" Style="{StaticResource TableCard}"
+                    Margin="4,0" Padding="16,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource LateLight}"
+                            Width="32" Height="32" CornerRadius="8"
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="⏰" FontSize="16"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Text="Retardos" FontSize="11"
+                             Foreground="{StaticResource TextGray}"
+                             FontWeight="Medium" Margin="0,0,0,4"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Name="LateCountText" Text="8"
+                                 FontSize="20" FontWeight="Bold"
+                                 Foreground="{StaticResource LateColor}"/>
+                        <TextBlock Text=" este mes" FontSize="11"
+                                 Foreground="{StaticResource TextGray}"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Card Faltas -->
+            <Border Grid.Column="2" Style="{StaticResource TableCard}"
+                    Margin="4,0" Padding="16,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource AbsentLight}"
+                            Width="32" Height="32" CornerRadius="8"
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="✗" FontSize="16" FontWeight="Bold"
+                                 Foreground="{StaticResource AbsentColor}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Text="Faltas" FontSize="11"
+                             Foreground="{StaticResource TextGray}"
+                             FontWeight="Medium" Margin="0,0,0,4"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Name="AbsentCountText" Text="3"
+                                 FontSize="20" FontWeight="Bold"
+                                 Foreground="{StaticResource AbsentColor}"/>
+                        <TextBlock Text=" este mes" FontSize="11"
+                                 Foreground="{StaticResource TextGray}"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Card Vacaciones -->
+            <Border Grid.Column="3" Style="{StaticResource TableCard}"
+                    Margin="8,0,0,0" Padding="16,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{StaticResource VacationLight}"
+                            Width="32" Height="32" CornerRadius="8"
+                            HorizontalAlignment="Left" Margin="0,0,0,8">
+                        <TextBlock Text="🏖" FontSize="16"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+                    </Border>
+
+                    <TextBlock Grid.Row="1" Text="Vacaciones" FontSize="11"
+                             Foreground="{StaticResource TextGray}"
+                             FontWeight="Medium" Margin="0,0,0,4"/>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock Name="VacationCountText" Text="12"
+                                 FontSize="20" FontWeight="Bold"
+                                 Foreground="{StaticResource VacationColor}"/>
+                        <TextBlock Text=" días" FontSize="11"
+                                 Foreground="{StaticResource TextGray}"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Contenido Principal: Calendario + Lista de Empleados -->
+        <Grid Grid.Row="2" Margin="30,8,30,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Panel Izquierdo: Mini Calendario -->
+            <Border Grid.Column="0" Style="{StaticResource TableCard}"
+                    Margin="0,0,12,0" Padding="16" VerticalAlignment="Top">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Navegación del Mes -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Content="◀"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4" Click="PreviousMonth_Click"/>
+
+                        <TextBlock Grid.Column="1" Name="CalendarMonthText"
+                                 Text="ENERO 2026"
+                                 FontSize="14" FontWeight="Bold"
+                                 Foreground="{StaticResource DarkText}"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"/>
+
+                        <Button Grid.Column="2" Content="▶"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4" Click="NextMonth_Click"/>
+                    </Grid>
+
+                    <!-- Encabezados de Días -->
+                    <UniformGrid Grid.Row="1" Columns="7" Margin="0,0,0,8">
+                        <TextBlock Text="LU" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="MA" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="MI" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="JU" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="VI" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource TextGray}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="SA" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource DangerColor}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="DO" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{StaticResource DangerColor}" HorizontalAlignment="Center"/>
+                    </UniformGrid>
+
+                    <!-- Grid del Calendario (se genera dinámicamente) -->
+                    <UniformGrid Grid.Row="2" Name="CalendarGrid" Columns="7" Rows="6" Height="230">
+                        <!-- Los días se generan dinámicamente en code-behind -->
+                    </UniformGrid>
+                </Grid>
+            </Border>
+
+            <!-- Panel Derecho: Lista de Empleados del Día -->
+            <Border Grid.Column="1" Style="{StaticResource TableCard}" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header de la Lista -->
+                    <Border Grid.Row="0" Background="{StaticResource BackgroundGray}"
+                            CornerRadius="12,12,0,0" Padding="20,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Name="SelectedDateText"
+                                         Text="Sábado, 25 de Enero 2026"
+                                         FontSize="16" FontWeight="SemiBold"
+                                         Foreground="{StaticResource DarkText}"/>
+                                <TextBlock Text="Registro de asistencia del día"
+                                         FontSize="12"
+                                         Foreground="{StaticResource TextGray}"
+                                         Margin="0,2,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Name="AddVacationButton"
+                                        Click="AddVacation_Click"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Padding="12,8" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🏖" FontSize="13" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Vacaciones" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Name="MarkAllPresentButton"
+                                        Click="MarkAllPresent_Click"
+                                        Style="{StaticResource ModernButton}"
+                                        Background="{StaticResource AttendanceColor}"
+                                        Padding="12,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="✓" FontSize="13" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Marcar Todos" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Lista de Empleados -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Name="EmployeeListPanel" Margin="16,8,16,16">
+
+                            <!-- Leyenda de Estados -->
+                            <Border Background="{StaticResource BackgroundGray}"
+                                    CornerRadius="8" Padding="12,8" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                                        <Border Width="12" Height="12" CornerRadius="3"
+                                                Background="{StaticResource AttendanceColor}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Asistencia" FontSize="11" Foreground="{StaticResource TextGray}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                                        <Border Width="12" Height="12" CornerRadius="3"
+                                                Background="{StaticResource LateColor}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Retardo" FontSize="11" Foreground="{StaticResource TextGray}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                                        <Border Width="12" Height="12" CornerRadius="3"
+                                                Background="{StaticResource AbsentColor}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Falta" FontSize="11" Foreground="{StaticResource TextGray}"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="12" Height="12" CornerRadius="3"
+                                                Background="{StaticResource VacationColor}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Vacaciones" FontSize="11" Foreground="{StaticResource TextGray}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Los empleados se cargan dinámicamente desde la BD -->
+                            <!-- Indicador de carga inicial -->
+                            <TextBlock Name="LoadingText"
+                                     Text="Cargando empleados..."
+                                     FontSize="14"
+                                     Foreground="{StaticResource TextGray}"
+                                     HorizontalAlignment="Center"
+                                     Margin="0,40,0,0"/>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="3" Background="White" BorderThickness="0,1,0,0"
+                BorderBrush="{StaticResource BorderGray}" Padding="30,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <TextBlock Name="StatusText"
+                             Text=""
+                             FontSize="12"
+                             FontWeight="Medium"
+                             Foreground="{StaticResource SuccessColor}"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Border Background="{StaticResource AttendanceLight}"
+                            CornerRadius="6" Padding="12,8" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Hoy: " FontSize="12"
+                                     Foreground="{StaticResource TextGray}"/>
+                            <TextBlock Text="4/6 presentes" FontSize="12" FontWeight="SemiBold"
+                                     Foreground="{StaticResource AttendanceColor}"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="Última actualización: 25/01/2026 08:45"
+                             FontSize="11"
+                             Foreground="{StaticResource TextGray}"
+                             VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

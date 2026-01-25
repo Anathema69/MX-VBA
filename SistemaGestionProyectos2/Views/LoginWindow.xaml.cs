@@ -1,6 +1,8 @@
-﻿using SistemaGestionProyectos2.Models;
+﻿using Microsoft.Extensions.Configuration;
+using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,6 +21,35 @@ namespace SistemaGestionProyectos2.Views
             {
                 InitializeComponent();
                 _supabaseService = SupabaseService.Instance;
+
+                // Verificar DevMode para auto-login
+                var config = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: true)
+                    .Build();
+
+                var devModeEnabled = config.GetValue<bool>("DevMode:Enabled");
+                var autoLogin = config.GetValue<bool>("DevMode:AutoLogin");
+
+                if (devModeEnabled && autoLogin)
+                {
+                    var username = config.GetValue<string>("DevMode:Username");
+                    var password = config.GetValue<string>("DevMode:Password");
+
+                    if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+                    {
+                        UsernameTextBox.Text = username;
+                        PasswordBox.Password = password;
+
+                        // Auto-login después de que la ventana se cargue
+                        this.Loaded += async (s, e) =>
+                        {
+                            await Task.Delay(500); // Pequeña pausa para que se vea la ventana
+                            LoginButton_Click(this, new RoutedEventArgs());
+                        };
+                        return;
+                    }
+                }
 
                 // Quitar valores por defecto en producción
                 UsernameTextBox.Text = "";
@@ -134,7 +165,21 @@ namespace SistemaGestionProyectos2.Views
 
                     // Roles v2.0: direccion, administracion, proyectos, coordinacion, ventas
 
-                    if (user.Role == "direccion" || user.Role == "administracion")
+                    // Verificar si DevMode quiere abrir un módulo específico
+                    var devConfig = new ConfigurationBuilder()
+                        .SetBasePath(Directory.GetCurrentDirectory())
+                        .AddJsonFile("appsettings.json", optional: true)
+                        .Build();
+                    var autoOpenModule = devConfig.GetValue<string>("DevMode:AutoOpenModule");
+                    bool devModeActive = devConfig.GetValue<bool>("DevMode:Enabled");
+
+                    if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && autoOpenModule == "calendar")
+                    {
+                        // DevMode: Abrir calendario directamente
+                        CalendarView calendarView = new CalendarView(currentUser);
+                        calendarView.Show();
+                    }
+                    else if (user.Role == "direccion" || user.Role == "administracion")
                     {
                         // Dirección y Administración abren el menú principal
                         MainMenuWindow mainMenu = new MainMenuWindow(currentUser);
