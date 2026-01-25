@@ -83,5 +83,9 @@ namespace SistemaGestionProyectos2.Models.Database
         // Campo de la tabla t_order (suma de order_gastos_operativos)
         [Column("gasto_operativo")]
         public decimal GastoOperativo { get; set; }
+
+        // Campo de la tabla t_order (suma de order_gastos_indirectos)
+        [Column("gasto_indirecto")]
+        public decimal GastoIndirecto { get; set; }
     }
 }

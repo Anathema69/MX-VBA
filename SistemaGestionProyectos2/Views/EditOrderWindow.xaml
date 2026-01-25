@@ -719,6 +719,221 @@
                                       Visibility="Visible"/>
                         </StackPanel>
                     </Border>
+
+                    <!-- Separador -->
+                    <Border Height="15"/>
+
+                    <!-- Lista de Gastos Indirectos con edición inline -->
+                    <Border Background="#E3F2FD"
+                           BorderBrush="#64B5F6"
+                           BorderThickness="1"
+                           CornerRadius="5"
+                           Padding="10">
+                        <StackPanel>
+                            <!-- Header con total y botón agregar -->
+                            <Grid Margin="0,0,0,10">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Gastos Indirectos"
+                                             FontWeight="SemiBold"
+                                             FontSize="12"
+                                             Foreground="#1565C0"/>
+                                    <TextBlock Text=" - Total: "
+                                             FontSize="11"
+                                             Foreground="#666"
+                                             VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="GastoIndirectoText"
+                                             Text="$0.00"
+                                             FontWeight="Bold"
+                                             FontSize="12"
+                                             Foreground="#1565C0"/>
+                                </StackPanel>
+                                <Button x:Name="AddGastoIndirectoButton"
+                                       Content="+ Nuevo"
+                                       HorizontalAlignment="Right"
+                                       Padding="12,5"
+                                       FontSize="11"
+                                       Background="#1976D2"
+                                       Foreground="White"
+                                       BorderThickness="0"
+                                       Cursor="Hand"
+                                       Click="AddGastoIndirectoButton_Click">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="border"
+                                                   Background="{TemplateBinding Background}"
+                                                   CornerRadius="3"
+                                                   Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#1565C0"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Grid>
+
+                            <!-- Fila para agregar nuevo gasto indirecto (oculta por defecto) -->
+                            <Border x:Name="NewGastoIndirectoRow"
+                                   Background="#BBDEFB"
+                                   BorderBrush="#42A5F5"
+                                   BorderThickness="1"
+                                   CornerRadius="3"
+                                   Padding="8"
+                                   Margin="0,0,0,8"
+                                   Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Monto -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Monto *" FontSize="10" Foreground="#666" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="NewGastoIndirectoMontoTextBox"
+                                                Height="30"
+                                                FontSize="13"
+                                                Padding="5,0"
+                                                PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                                GotFocus="NewGastoIndirectoMontoTextBox_GotFocus"
+                                                LostFocus="NewGastoIndirectoMontoTextBox_LostFocus"
+                                                KeyDown="NewGastoIndirectoMontoTextBox_KeyDown"/>
+                                    </StackPanel>
+
+                                    <!-- Descripción -->
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Descripción *" FontSize="10" Foreground="#666" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="NewGastoIndirectoDescripcionTextBox"
+                                                Height="30"
+                                                FontSize="13"
+                                                Padding="5,0"
+                                                KeyDown="NewGastoIndirectoDescripcionTextBox_KeyDown"/>
+                                    </StackPanel>
+
+                                    <!-- Botones -->
+                                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                        <Button Content="✓"
+                                               Width="30"
+                                               Height="30"
+                                               Background="#4CAF50"
+                                               Foreground="White"
+                                               BorderThickness="0"
+                                               FontSize="14"
+                                               Cursor="Hand"
+                                               Click="SaveNewGastoIndirectoButton_Click"
+                                               ToolTip="Guardar"/>
+                                        <Button Content="✕"
+                                               Width="30"
+                                               Height="30"
+                                               Margin="5,0,0,0"
+                                               Background="#9E9E9E"
+                                               Foreground="White"
+                                               BorderThickness="0"
+                                               FontSize="14"
+                                               Cursor="Hand"
+                                               Click="CancelNewGastoIndirectoButton_Click"
+                                               ToolTip="Cancelar"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Lista de gastos indirectos existentes con edición inline -->
+                            <ItemsControl x:Name="GastosIndirectosItemsControl">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="White"
+                                               BorderBrush="#EEE"
+                                               BorderThickness="0,0,0,1"
+                                               Padding="5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Modo Vista (visible por defecto) -->
+                                                <TextBlock x:Name="MontoViewInd"
+                                                          Grid.Column="0"
+                                                          Text="{Binding Monto, StringFormat=\$\{0:N2\}}"
+                                                          FontWeight="SemiBold"
+                                                          Foreground="#1565C0"
+                                                          VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="DescViewInd"
+                                                          Grid.Column="1"
+                                                          Text="{Binding Descripcion}"
+                                                          Foreground="#333"
+                                                          VerticalAlignment="Center"
+                                                          TextTrimming="CharacterEllipsis"/>
+
+                                                <!-- Modo Edición (oculto por defecto) -->
+                                                <TextBox x:Name="MontoEditInd"
+                                                        Grid.Column="0"
+                                                        Text="{Binding Monto, StringFormat=N2}"
+                                                        FontSize="12"
+                                                        Padding="3"
+                                                        Visibility="Collapsed"
+                                                        PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                                        LostFocus="GastoIndirectoMontoEdit_LostFocus"
+                                                        KeyDown="GastoIndirectoMontoEdit_KeyDown"/>
+                                                <TextBox x:Name="DescEditInd"
+                                                        Grid.Column="1"
+                                                        Text="{Binding Descripcion, UpdateSourceTrigger=PropertyChanged}"
+                                                        FontSize="12"
+                                                        Padding="3"
+                                                        Margin="5,0"
+                                                        Visibility="Collapsed"
+                                                        KeyDown="GastoIndirectoDescEdit_KeyDown"/>
+
+                                                <!-- Botón Editar/Guardar -->
+                                                <Button x:Name="EditBtnInd"
+                                                       Grid.Column="2"
+                                                       Content="✏"
+                                                       Tag="{Binding Id}"
+                                                       Click="EditGastoIndirectoInlineButton_Click"
+                                                       Background="Transparent"
+                                                       BorderThickness="0"
+                                                       Foreground="#1976D2"
+                                                       FontSize="12"
+                                                       Cursor="Hand"
+                                                       ToolTip="Editar"/>
+                                                <!-- Botón Eliminar/Cancelar -->
+                                                <Button x:Name="DeleteBtnInd"
+                                                       Grid.Column="3"
+                                                       Content="🗑"
+                                                       Tag="{Binding Id}"
+                                                       Click="DeleteGastoIndirectoButton_Click"
+                                                       Background="Transparent"
+                                                       BorderThickness="0"
+                                                       Foreground="#E53935"
+                                                       FontSize="12"
+                                                       Cursor="Hand"
+                                                       ToolTip="Eliminar"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Mensaje cuando no hay gastos indirectos -->
+                            <TextBlock x:Name="NoGastosIndirectosMessage"
+                                      Text="Sin gastos registrados. Click en '+ Nuevo' para agregar."
+                                      FontStyle="Italic"
+                                      Foreground="#999"
+                                      FontSize="11"
+                                      HorizontalAlignment="Center"
+                                      Margin="0,10,0,5"
+                                      Visibility="Visible"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Información de última modificación -->

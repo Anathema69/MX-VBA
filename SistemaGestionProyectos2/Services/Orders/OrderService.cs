@@ -160,6 +160,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     .Set(x => x.OrderStatus, order.OrderStatus)
                     .Set(x => x.UpdatedBy, order.UpdatedBy)
                     .Set(x => x.GastoOperativo, order.GastoOperativo)
+                    .Set(x => x.GastoIndirecto, order.GastoIndirecto)
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
@@ -630,6 +631,158 @@ namespace SistemaGestionProyectos2.Services.Orders
             catch (Exception ex)
             {
                 LogError($"Error recalculando gasto operativo de orden {orderId}", ex);
+            }
+        }
+
+        #endregion
+
+        #region Gastos Indirectos v2.1
+
+        /// <summary>
+        /// Obtiene los gastos indirectos detallados de una orden
+        /// </summary>
+        public async Task<List<OrderGastoIndirectoDb>> GetGastosIndirectos(int orderId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderGastoIndirectoDb>()
+                    .Where(g => g.OrderId == orderId)
+                    .Order("fecha_gasto", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+
+                return response?.Models ?? new List<OrderGastoIndirectoDb>();
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error obteniendo gastos indirectos de orden {orderId}", ex);
+                return new List<OrderGastoIndirectoDb>();
+            }
+        }
+
+        /// <summary>
+        /// Agrega un gasto indirecto a una orden y devuelve el registro creado
+        /// </summary>
+        public async Task<OrderGastoIndirectoDb> AddGastoIndirecto(int orderId, decimal monto, string descripcion, int userId)
+        {
+            try
+            {
+                LogDebug($"Insertando gasto indirecto: orden={orderId}, monto={monto}, desc={descripcion}");
+
+                var ahora = DateTime.Now;
+                var gasto = new OrderGastoIndirectoDb
+                {
+                    OrderId = orderId,
+                    Monto = monto,
+                    Descripcion = descripcion,
+                    FechaGasto = ahora,
+                    CreatedAt = ahora,
+                    CreatedBy = userId
+                };
+
+                var response = await SupabaseClient
+                    .From<OrderGastoIndirectoDb>()
+                    .Insert(gasto);
+
+                if (response?.Models?.Count > 0)
+                {
+                    LogSuccess($"Gasto indirecto agregado a orden {orderId}: {monto:C} (ID: {response.Models[0].Id})");
+                    return response.Models[0];
+                }
+
+                LogError($"Insert de gasto indirecto no retornó registros para orden {orderId}", null);
+                throw new Exception($"No se pudo insertar el gasto indirecto en orden {orderId}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error agregando gasto indirecto a orden {orderId}", ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Elimina un gasto indirecto
+        /// </summary>
+        public async Task<bool> DeleteGastoIndirecto(int gastoId, int orderId, int userId)
+        {
+            try
+            {
+                await SupabaseClient
+                    .From<OrderGastoIndirectoDb>()
+                    .Where(g => g.Id == gastoId)
+                    .Delete();
+
+                // Recalcular total
+                await RecalcularGastoIndirecto(orderId, userId);
+                LogSuccess($"Gasto indirecto {gastoId} eliminado");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error eliminando gasto indirecto {gastoId}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Actualiza un gasto indirecto existente
+        /// </summary>
+        public async Task<bool> UpdateGastoIndirecto(int gastoId, decimal monto, string descripcion, int orderId, int userId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderGastoIndirectoDb>()
+                    .Where(g => g.Id == gastoId)
+                    .Single();
+
+                if (response != null)
+                {
+                    response.Monto = monto;
+                    response.Descripcion = descripcion;
+                    response.UpdatedBy = userId;
+                    response.UpdatedAt = DateTime.Now;
+
+                    await SupabaseClient
+                        .From<OrderGastoIndirectoDb>()
+                        .Update(response);
+
+                    // Recalcular total de gastos indirectos
+                    await RecalcularGastoIndirecto(orderId, userId);
+                    LogSuccess($"Gasto indirecto {gastoId} actualizado");
+                    return true;
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error actualizando gasto indirecto {gastoId}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Recalcula el total de gastos indirectos de una orden
+        /// </summary>
+        private async Task RecalcularGastoIndirecto(int orderId, int userId)
+        {
+            try
+            {
+                var gastos = await GetGastosIndirectos(orderId);
+                var total = gastos.Sum(g => g.Monto);
+
+                await SupabaseClient
+                    .From<OrderDb>()
+                    .Where(o => o.Id == orderId)
+                    .Set(o => o.GastoIndirecto, total)
+                    .Set(o => o.UpdatedBy, userId)
+                    .Update();
+
+                LogDebug($"Gasto indirecto total de orden {orderId} actualizado: {total:C}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error recalculando gasto indirecto de orden {orderId}", ex);
             }
         }
 

@@ -457,6 +457,19 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
+                    <DataGridTextColumn x:Name="GastoIndirectoColumn"
+                                       Header="GASTO IND."
+                                       Binding="{Binding GastoIndirecto, StringFormat=C}"
+                                       Width="100"
+                                       Visibility="Collapsed">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Foreground" Value="#1976D2"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
                     <!-- Estado con colores -->
                     <!-- En el DataGridTemplateColumn del ESTATUS -->
                     <!-- Columna Estado con estilo de badges -->

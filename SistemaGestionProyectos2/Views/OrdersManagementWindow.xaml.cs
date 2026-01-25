@@ -134,6 +134,7 @@ namespace SistemaGestionProyectos2.Views
                     // Columnas v2.0 - Gastos (solo direccion por ahora)
                     GastoMaterialColumn.Visibility = Visibility.Visible;
                     GastoOperativoColumn.Visibility = Visibility.Visible;
+                    GastoIndirectoColumn.Visibility = Visibility.Visible;
                     break;
 
                 case "administracion":
@@ -145,6 +146,7 @@ namespace SistemaGestionProyectos2.Views
                     // Columnas v2.0 - ocultas para administracion (pendiente validación)
                     GastoMaterialColumn.Visibility = Visibility.Collapsed;
                     GastoOperativoColumn.Visibility = Visibility.Collapsed;
+                    GastoIndirectoColumn.Visibility = Visibility.Collapsed;
                     break;
 
                 case "coordinacion":
@@ -163,6 +165,7 @@ namespace SistemaGestionProyectos2.Views
                     // Columnas v2.0 - ocultas para coordinación
                     GastoMaterialColumn.Visibility = Visibility.Collapsed;
                     GastoOperativoColumn.Visibility = Visibility.Collapsed;
+                    GastoIndirectoColumn.Visibility = Visibility.Collapsed;
                     break;
 
                 case "ventas":

@@ -73,5 +73,9 @@ namespace SistemaGestionProyectos2.Models.Database
         // Columna v2.0 - Gasto operativo (suma de order_gastos_operativos)
         [Column("gasto_operativo")]
         public decimal? GastoOperativo { get; set; }
+
+        // Columna v2.1 - Gasto indirecto (suma de order_gastos_indirectos)
+        [Column("gasto_indirecto")]
+        public decimal? GastoIndirecto { get; set; }
     }
 }

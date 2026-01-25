@@ -70,7 +70,8 @@ namespace SistemaGestionProyectos2.Services
                 LastInvoiceDate = null,
                 // Columnas v2.0 - Gastos
                 GastoMaterial = gastoMaterial,
-                GastoOperativo = order.GastoOperativo ?? 0
+                GastoOperativo = order.GastoOperativo ?? 0,
+                GastoIndirecto = order.GastoIndirecto ?? 0
             };
         }
 
@@ -95,7 +96,8 @@ namespace SistemaGestionProyectos2.Services
                 LastInvoiceDate = null,
                 // Columnas v2.0 - Gastos (calculados desde la vista)
                 GastoMaterial = order.GastoMaterial,
-                GastoOperativo = order.GastoOperativo
+                GastoOperativo = order.GastoOperativo,
+                GastoIndirecto = order.GastoIndirecto
             };
         }
     }

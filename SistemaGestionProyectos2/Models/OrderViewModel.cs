@@ -32,9 +32,11 @@ namespace SistemaGestionProyectos2.Models
         // Columnas v2.0 - Gastos
         public decimal GastoMaterial { get; set; }  // Calculado desde t_expense (PAGADO)
         public decimal GastoOperativo { get; set; } // Suma de order_gastos_operativos
+        public decimal GastoIndirecto { get; set; } // Suma de order_gastos_indirectos
 
         // Propiedades formateadas para mostrar en UI
         public string GastoMaterialFormatted => GastoMaterial.ToString("C");
         public string GastoOperativoFormatted => GastoOperativo.ToString("C");
+        public string GastoIndirectoFormatted => GastoIndirecto.ToString("C");
     }
 }
