@@ -20,7 +20,7 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                    DATOS BÁSICOS                       │
     -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '2.0.1';
+    v_version       VARCHAR := '2.0.2';
     v_created_by    VARCHAR := 'Zuri Dev';
     v_file_size_mb  NUMERIC := 49.66;
     v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIO
@@ -29,36 +29,39 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                   RELEASE NOTES                        │
     -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 2.0.1 - Balance con Gastos de Órdenes y Auditoría de Proveedores
+    v_release_notes TEXT := 'Versión 2.0.2 - Nueva Fórmula de Utilidad y Mejoras UX
 
 MÓDULO BALANCE - Nueva Fórmula de Utilidad:
-- Utilidad ahora incluye gastos de órdenes (operativo e indirecto)
-- Fórmula: Ingresos - (Nómina + Horas Extra + Gastos Fijos +
-  Gastos Variables + Gasto Operativo + Gasto Indirecto)
-- 2 nuevas filas: Gasto Operativo y Gasto Indirecto
-- Fila "Diferencia" con sombreado destacado
-- Leyenda del semáforo de Ventas más visible (junto al título)
-- Dots del semáforo más grandes y legibles
+- NUEVA FÓRMULA: Utilidad = Ventas Totales - (Gastos Fijos + Gastos Variables + Gasto Operativo + Gasto Indirecto)
+- Se EXCLUYEN Nómina y Horas Extra del cálculo de utilidad
+- Nómina y Horas Extra se mantienen visibles para referencia
+- Formato decimal mejorado: todos los valores muestran 2 decimales (#,##0.00)
+- Incluye: valores mensuales, totales anuales, ventas, utilidad y KPIs
 
-CUENTAS POR PAGAR - Auditoría Completa:
-- Nueva tabla t_expense_audit para historial de cambios
-- Trigger automático registra: INSERT, UPDATE, DELETE, PAID, UNPAID
-- Vista v_expense_audit_report para consultas
-- Captura usuario que crea (created_by) y modifica (updated_by)
-- Columna FECHA PAGO visible en vista de gastos pagados
-- Edición de fecha de pago en gastos ya pagados
+MENÚ PRINCIPAL:
+- Cards de módulos con altura uniforme
+- Eliminado texto extra debajo de iconos en BALANCE e INGRESOS PENDIENTES
 
-GESTIÓN DE ÓRDENES Y FACTURAS:
-- Correcciones en vista de proveedores pagados
-- Ordenamiento mejorado por fecha
-- Corrección de propiedad PaidDate
+GESTIÓN DE ÓRDENES Y FACTURACIÓN (commit bc8e589):
+- Corregidas transiciones de estado de órdenes
+- CheckAndUpdateOrderStatus ya no interfiere con trigger de BD
+- Solo maneja transición a COMPLETADA respetando jerarquía
+- Trigger BD maneja LIBERADA y CERRADA correctamente
 
-BASE DE DATOS:
-- Scripts SQL para recrear vistas de balance
-- Consultas de diagnóstico para gastos por orden
-- Documentación actualizada de vistas e índices
+MEJORAS EN FACTURACIÓN:
+- Carga optimizada con ejecución paralela (Task.WhenAll)
+- Navegación con Tab salta columnas no editables automáticamente
+- Clic único para editar celdas (sin necesidad de F2)
+- Mensaje de estados corregido
 
-ACTUALIZACIÓN OBLIGATORIA - Cambios críticos en cálculos de balance';
+DOCUMENTACIÓN:
+- Campos de porcentaje documentados:
+  * ProgressPercentage = Avance del TRABAJO (manual)
+  * OrderPercentage = Porcentaje de FACTURACIÓN (automático)
+- SQL de v_balance_gastos y v_balance_completo sincronizados
+- Fórmula de utilidad documentada en BD-IMA
+
+ACTUALIZACIÓN OBLIGATORIA - Cambios en cálculo de utilidad';
 
     -- ════════════════════════════════════════════════════════
     -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
@@ -73,28 +76,24 @@ BEGIN
     -- Changelog estructurado (opcional, para futuras implementaciones)
     v_changelog := '{
         "Added": [
-            "Gasto Operativo y Gasto Indirecto en Balance",
-            "Tabla t_expense_audit para auditoría de gastos",
-            "Vista v_expense_audit_report para reportes",
-            "Columna FECHA PAGO en vista de proveedores pagados",
-            "Edición de fecha de pago en gastos pagados",
-            "Campos created_by y updated_by en t_expense",
-            "Scripts SQL para actualizar vistas de balance"
+            "Nueva fórmula de utilidad: Ventas - (Fijos + Variables + Operativo + Indirecto)",
+            "Formato decimal C2 en todos los campos monetarios del Balance",
+            "Carga paralela en módulo de facturación"
         ],
         "Fixed": [
-            "Corrección propiedad PaidDate en SupplierPendingView",
-            "Correcciones en gestión de órdenes y facturas",
-            "Ordenamiento en vista de proveedores pagados"
+            "Transiciones de estado de órdenes corregidas",
+            "CheckAndUpdateOrderStatus no interfiere con trigger BD",
+            "Navegación Tab salta columnas no editables",
+            "Altura uniforme en cards del menú principal"
         ],
         "Improved": [
-            "Fórmula de utilidad incluye gastos de órdenes",
-            "Sombreado destacado en fila Diferencia",
-            "Leyenda del semáforo más visible (junto al título)",
-            "Dots del semáforo más grandes (10px)",
-            "Documentación de vistas e índices actualizada"
+            "Clic único para editar celdas en facturación",
+            "Documentación de campos ProgressPercentage vs OrderPercentage",
+            "Sincronización de documentación BD con Supabase"
         ],
-        "Breaking": [
-            "Requiere ejecutar actualizar_utilidad_balance.sql en BD"
+        "Changed": [
+            "Utilidad excluye Nómina y Horas Extra del cálculo",
+            "Base de utilidad cambia de Ingresos Esperados a Ventas Totales"
         ]
     }'::jsonb;
 
