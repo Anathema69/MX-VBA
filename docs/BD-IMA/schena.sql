@@ -50,6 +50,33 @@ CREATE TABLE public.invoice_status (
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT invoice_status_pkey PRIMARY KEY (f_invoicestat)
 );
+CREATE TABLE public.order_gastos_indirectos (
+  id integer NOT NULL DEFAULT nextval('order_gastos_indirectos_id_seq'::regclass),
+  f_order integer NOT NULL,
+  monto numeric NOT NULL,
+  descripcion character varying NOT NULL,
+  fecha_gasto timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  created_by integer,
+  updated_at timestamp without time zone,
+  updated_by integer,
+  CONSTRAINT order_gastos_indirectos_pkey PRIMARY KEY (id),
+  CONSTRAINT order_gastos_indirectos_f_order_fkey FOREIGN KEY (f_order) REFERENCES public.t_order(f_order)
+);
+CREATE TABLE public.order_gastos_operativos (
+  id integer NOT NULL DEFAULT nextval('order_gastos_operativos_id_seq'::regclass),
+  f_order integer NOT NULL,
+  monto numeric NOT NULL DEFAULT 0,
+  descripcion character varying NOT NULL,
+  categoria character varying,
+  fecha_gasto timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  created_by integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  CONSTRAINT order_gastos_operativos_pkey PRIMARY KEY (id),
+  CONSTRAINT order_gastos_operativos_f_order_fkey FOREIGN KEY (f_order) REFERENCES public.t_order(f_order)
+);
 CREATE TABLE public.order_history (
   id integer NOT NULL DEFAULT nextval('order_history_id_seq'::regclass),
   order_id integer NOT NULL,
@@ -72,6 +99,49 @@ CREATE TABLE public.order_status (
   display_order integer DEFAULT 0,
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT order_status_pkey PRIMARY KEY (f_orderstatus)
+);
+CREATE TABLE public.t_attendance (
+  id integer NOT NULL DEFAULT nextval('t_attendance_id_seq'::regclass),
+  employee_id integer NOT NULL,
+  attendance_date date NOT NULL,
+  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['ASISTENCIA'::character varying, 'RETARDO'::character varying, 'FALTA'::character varying, 'VACACIONES'::character varying, 'FERIADO'::character varying, 'DESCANSO'::character varying]::text[])),
+  check_in_time time without time zone,
+  check_out_time time without time zone,
+  late_minutes integer DEFAULT 0,
+  notes text,
+  is_justified boolean DEFAULT false,
+  justification text,
+  created_by integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  updated_at timestamp without time zone,
+  CONSTRAINT t_attendance_pkey PRIMARY KEY (id),
+  CONSTRAINT t_attendance_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.t_payroll(f_payroll)
+);
+CREATE TABLE public.t_attendance_audit (
+  id integer NOT NULL DEFAULT nextval('t_attendance_audit_id_seq'::regclass),
+  attendance_id integer NOT NULL,
+  employee_id integer NOT NULL,
+  attendance_date date NOT NULL,
+  action character varying NOT NULL CHECK (action::text = ANY (ARRAY['INSERT'::character varying, 'UPDATE'::character varying, 'DELETE'::character varying]::text[])),
+  old_status character varying,
+  old_check_in_time time without time zone,
+  old_check_out_time time without time zone,
+  old_late_minutes integer,
+  old_notes text,
+  old_is_justified boolean,
+  new_status character varying,
+  new_check_in_time time without time zone,
+  new_check_out_time time without time zone,
+  new_late_minutes integer,
+  new_notes text,
+  new_is_justified boolean,
+  changed_by integer,
+  changed_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  ip_address inet,
+  user_agent text,
+  change_reason text,
+  CONSTRAINT t_attendance_audit_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.t_balance_adjustments (
   id integer NOT NULL DEFAULT nextval('t_balance_adjustments_id_seq'::regclass),
@@ -189,6 +259,23 @@ CREATE TABLE public.t_fixed_expenses_history (
   CONSTRAINT t_fixed_expenses_history_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.t_fixed_expenses(id),
   CONSTRAINT t_fixed_expenses_history_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
 );
+CREATE TABLE public.t_holiday (
+  id integer NOT NULL DEFAULT nextval('t_holiday_id_seq'::regclass),
+  holiday_date date NOT NULL UNIQUE,
+  name character varying NOT NULL,
+  description text,
+  is_mandatory boolean DEFAULT true,
+  is_recurring boolean DEFAULT true,
+  recurring_month integer,
+  recurring_day integer,
+  recurring_rule character varying,
+  year integer,
+  created_by integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  updated_at timestamp without time zone,
+  CONSTRAINT t_holiday_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.t_invoice (
   f_invoice integer NOT NULL DEFAULT nextval('t_invoice_f_invoice_seq'::regclass),
   f_order integer,
@@ -237,6 +324,8 @@ CREATE TABLE public.t_order (
   f_salesman integer,
   updated_by integer,
   f_commission_rate numeric DEFAULT 0,
+  gasto_operativo numeric DEFAULT 0,
+  gasto_indirecto numeric DEFAULT 0,
   CONSTRAINT t_order_pkey PRIMARY KEY (f_order),
   CONSTRAINT t_order_f_client_fkey FOREIGN KEY (f_client) REFERENCES public.t_client(f_client),
   CONSTRAINT t_order_f_contact_fkey FOREIGN KEY (f_contact) REFERENCES public.t_contact(f_contact),
@@ -378,6 +467,42 @@ CREATE TABLE public.t_supplier (
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT t_supplier_pkey PRIMARY KEY (f_supplier)
 );
+CREATE TABLE public.t_vacation (
+  id integer NOT NULL DEFAULT nextval('t_vacation_id_seq'::regclass),
+  employee_id integer NOT NULL,
+  start_date date NOT NULL,
+  end_date date NOT NULL,
+  total_days integer DEFAULT ((end_date - start_date) + 1),
+  notes text,
+  status character varying DEFAULT 'PENDIENTE'::character varying CHECK (status::text = ANY (ARRAY['PENDIENTE'::character varying, 'APROBADA'::character varying, 'RECHAZADA'::character varying, 'CANCELADA'::character varying]::text[])),
+  approved_by integer,
+  approved_at timestamp without time zone,
+  rejection_reason text,
+  created_by integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_by integer,
+  updated_at timestamp without time zone,
+  CONSTRAINT t_vacation_pkey PRIMARY KEY (id),
+  CONSTRAINT t_vacation_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES public.t_payroll(f_payroll)
+);
+CREATE TABLE public.t_vacation_audit (
+  id integer NOT NULL DEFAULT nextval('t_vacation_audit_id_seq'::regclass),
+  vacation_id integer NOT NULL,
+  employee_id integer NOT NULL,
+  action character varying NOT NULL CHECK (action::text = ANY (ARRAY['INSERT'::character varying, 'UPDATE'::character varying, 'DELETE'::character varying]::text[])),
+  old_start_date date,
+  old_end_date date,
+  old_status character varying,
+  old_notes text,
+  new_start_date date,
+  new_end_date date,
+  new_status character varying,
+  new_notes text,
+  changed_by integer,
+  changed_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  change_reason text,
+  CONSTRAINT t_vacation_audit_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.t_vendor (
   f_vendor integer NOT NULL DEFAULT nextval('t_vendor_f_vendor_seq'::regclass),
   f_vendorname character varying NOT NULL,
@@ -411,13 +536,22 @@ CREATE TABLE public.t_vendor_commission_payment (
   CONSTRAINT fk_commission_created_by FOREIGN KEY (created_by) REFERENCES public.users(id),
   CONSTRAINT fk_commission_updated_by FOREIGN KEY (updated_by) REFERENCES public.users(id)
 );
+CREATE TABLE public.t_workday_config (
+  id integer NOT NULL DEFAULT nextval('t_workday_config_id_seq'::regclass),
+  day_of_week integer NOT NULL UNIQUE CHECK (day_of_week >= 0 AND day_of_week <= 6),
+  is_workday boolean DEFAULT true,
+  description character varying,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone,
+  CONSTRAINT t_workday_config_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.users (
   id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
   username character varying NOT NULL UNIQUE,
   email character varying NOT NULL UNIQUE,
   password_hash character varying NOT NULL,
   full_name character varying NOT NULL,
-  role character varying NOT NULL CHECK (role::text = ANY (ARRAY['admin'::character varying, 'coordinator'::character varying, 'salesperson'::character varying]::text[])),
+  role character varying NOT NULL CHECK (role::text = ANY (ARRAY['direccion'::character varying, 'administracion'::character varying, 'proyectos'::character varying, 'coordinacion'::character varying, 'ventas'::character varying]::text[])),
   is_active boolean DEFAULT true,
   last_login timestamp without time zone,
   created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
