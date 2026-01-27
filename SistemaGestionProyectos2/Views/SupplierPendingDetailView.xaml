@@ -932,6 +932,61 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
+                        <!-- Fecha de Pago -->
+                        <DataGridTemplateColumn Header="FECHA PAGO" Width="100" SortMemberPath="PaidDate">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <!-- Vista normal -->
+                                        <TextBlock Margin="4,0" VerticalAlignment="Center" FontSize="13">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="{Binding IsReadOnly, Converter={StaticResource BoolToVis}}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                            <Setter Property="Text" Value="{Binding PaidDate, StringFormat='{}{0:dd/MM/yy}'}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessColor}"/>
+                                                            <Setter Property="FontWeight" Value="Medium"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsPaid}" Value="False">
+                                                            <Setter Property="Text" Value="—"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <!-- Vista editable (DatePicker para gastos pagados) -->
+                                        <DatePicker x:Name="PaidDatePicker"
+                                                    SelectedDate="{Binding PaidDate, UpdateSourceTrigger=PropertyChanged}"
+                                                    Margin="2"
+                                                    Padding="2"
+                                                    FontSize="11"
+                                                    VerticalAlignment="Center"
+                                                    BorderBrush="#10B981"
+                                                    BorderThickness="2"
+                                                    Background="White"
+                                                    TabIndex="5">
+                                            <DatePicker.Style>
+                                                <Style TargetType="DatePicker">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Binding="{Binding IsEditable}" Value="True"/>
+                                                                <Condition Binding="{Binding IsPaid}" Value="True"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DatePicker.Style>
+                                        </DatePicker>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <!-- Fecha Vencimiento (calculada automáticamente) -->
                         <DataGridTemplateColumn Header="VENCE" Width="75" SortMemberPath="DueDate">
                             <DataGridTemplateColumn.CellTemplate>
@@ -1119,7 +1174,7 @@
                                                          VerticalAlignment="Center"/>
                                             </Border>
 
-                                            <!-- Boton Editar (solo para no pagados) -->
+                                            <!-- Boton Editar (para todos los gastos, incluyendo pagados) -->
                                             <Button Tag="{Binding ExpenseId}"
                                                     Click="EditButton_Click"
                                                     Width="38" Height="30"
@@ -1127,8 +1182,7 @@
                                                     BorderThickness="0"
                                                     Cursor="Hand"
                                                     ToolTip="Editar gasto (o presiona F2)"
-                                                    Margin="0,0,5,0"
-                                                    Visibility="{Binding IsPayable, Converter={StaticResource BoolToVis}}">
+                                                    Margin="0,0,5,0">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{TemplateBinding Background}"

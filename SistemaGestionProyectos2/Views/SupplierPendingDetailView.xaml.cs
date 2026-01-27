@@ -500,11 +500,11 @@ namespace SistemaGestionProyectos2.Views
 
         private void SupplierPendingDetailView_KeyDown(object sender, KeyEventArgs e)
         {
-            // F2 para editar la fila seleccionada (solo si no está pagado)
+            // F2 para editar la fila seleccionada (incluyendo gastos pagados)
             if (e.Key == Key.F2 && !_isCreatingNewExpense)
             {
                 var selectedExpense = ExpensesDataGrid.SelectedItem as ExpenseDetailViewModel;
-                if (selectedExpense != null && !selectedExpense.IsNew && !selectedExpense.IsEditing && !selectedExpense.IsPaid)
+                if (selectedExpense != null && !selectedExpense.IsNew && !selectedExpense.IsEditing)
                 {
                     StartInlineEdit(selectedExpense);
                     e.Handled = true;
@@ -529,11 +529,11 @@ namespace SistemaGestionProyectos2.Views
 
         private void ExpensesDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // Doble clic para editar (solo si no está pagado)
+            // Doble clic para editar (incluyendo gastos pagados)
             if (_isCreatingNewExpense) return;
 
             var selectedExpense = ExpensesDataGrid.SelectedItem as ExpenseDetailViewModel;
-            if (selectedExpense != null && !selectedExpense.IsNew && !selectedExpense.IsEditing && !selectedExpense.IsPaid)
+            if (selectedExpense != null && !selectedExpense.IsNew && !selectedExpense.IsEditing)
             {
                 StartInlineEdit(selectedExpense);
             }
@@ -719,7 +719,13 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al cargar gastos: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Log detallado para debugging
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR al cargar gastos: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                if (ex.InnerException != null)
+                    System.Diagnostics.Debug.WriteLine($"   Inner: {ex.InnerException.Message}");
+
+                Toast.Show("Error al cargar", "No se pudieron cargar los gastos. Intente actualizar.", ToastNotification.ToastType.Error);
                 DetailStatusText.Text = "Error al cargar";
             }
         }
@@ -903,6 +909,9 @@ namespace SistemaGestionProyectos2.Views
                         paidDate = expenseDate;
                     }
 
+                    // Capturar usuario que crea el gasto (created_by es INTEGER en la BD)
+                    int? createdByUserId = _currentUser?.Id;
+
                     var expenseDb = new ExpenseDb
                     {
                         SupplierId = _supplierId,
@@ -914,7 +923,8 @@ namespace SistemaGestionProyectos2.Views
                         PaidDate = paidDate,
                         PayMethod = payMethod,
                         OrderId = orderId,
-                        ExpenseCategory = "GENERAL"
+                        ExpenseCategory = "GENERAL",
+                        CreatedBy = createdByUserId
                     };
 
                     var result = await supabaseClient
@@ -933,7 +943,10 @@ namespace SistemaGestionProyectos2.Views
                 else
                 {
                     // ACTUALIZAR gasto existente
-                    await supabaseClient
+                    // Capturar usuario que modifica el gasto
+                    string updatedBy = _currentUser?.Username ?? "unknown";
+
+                    var updateQuery = supabaseClient
                         .From<ExpenseDb>()
                         .Where(ex => ex.Id == editingExpense.ExpenseId)
                         .Set(ex => ex.Description, editingExpense.Description.Trim())
@@ -942,7 +955,16 @@ namespace SistemaGestionProyectos2.Views
                         .Set(ex => ex.ScheduledDate, scheduledDate)
                         .Set(ex => ex.OrderId, orderId)
                         .Set(ex => ex.PayMethod, editingExpense.PayMethod ?? "TRANSFERENCIA")
-                        .Update();
+                        .Set(ex => ex.UpdatedBy, updatedBy)
+                        .Set(ex => ex.UpdatedAt, DateTime.UtcNow);
+
+                    // Si el gasto está pagado, también actualizar la fecha de pago
+                    if (editingExpense.IsPaid && editingExpense.PaidDate.HasValue)
+                    {
+                        updateQuery = updateQuery.Set(ex => ex.PaidDate, editingExpense.PaidDate.Value);
+                    }
+
+                    await updateQuery.Update();
 
                     Toast.Show("Gasto actualizado", $"{totalExpense.ToString("C", _cultureMX)}", ToastNotification.ToastType.Success);
                 }
@@ -955,8 +977,18 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                Toast.Show("Error al guardar", ex.Message, ToastNotification.ToastType.Error);
-                DetailStatusText.Text = "Error al guardar";
+                // Log detallado para debugging (visible en Output/Debug)
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR al guardar gasto: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   Inner: {ex.InnerException.Message}");
+                }
+                System.Diagnostics.Debug.WriteLine($"   StackTrace: {ex.StackTrace}");
+
+                // Toast amigable para el usuario
+                Toast.Show("Error al guardar", "No se pudo guardar el gasto. Revise los datos e intente de nuevo.", ToastNotification.ToastType.Error);
+                DetailStatusText.Text = "Error al guardar - ver log para detalles";
             }
         }
 
@@ -1045,12 +1077,17 @@ namespace SistemaGestionProyectos2.Views
 
                 var supabaseClient = _supabaseService.GetClient();
 
+                // Capturar usuario que registra el pago
+                string updatedBy = _currentUser?.Username ?? "unknown";
+
                 await supabaseClient
                     .From<ExpenseDb>()
                     .Where(ex => ex.Id == expenseId)
                     .Set(ex => ex.Status, "PAGADO")
                     .Set(ex => ex.PaidDate, DateTime.Today)
                     .Set(ex => ex.PayMethod, payMethod)
+                    .Set(ex => ex.UpdatedBy, updatedBy)
+                    .Set(ex => ex.UpdatedAt, DateTime.UtcNow)
                     .Update();
 
                 // Remover de la lista (ya no esta pendiente)
@@ -1063,7 +1100,13 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                Toast.Show("Error al registrar pago", ex.Message, ToastNotification.ToastType.Error);
+                // Log detallado para debugging
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR al registrar pago: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                if (ex.InnerException != null)
+                    System.Diagnostics.Debug.WriteLine($"   Inner: {ex.InnerException.Message}");
+
+                Toast.Show("Error al registrar pago", "No se pudo registrar el pago. Intente de nuevo.", ToastNotification.ToastType.Error);
                 DetailStatusText.Text = "Error al registrar pago";
             }
         }
@@ -1114,7 +1157,13 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                Toast.Show("Error al eliminar", ex.Message, ToastNotification.ToastType.Error);
+                // Log detallado para debugging
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR al eliminar gasto: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
+                if (ex.InnerException != null)
+                    System.Diagnostics.Debug.WriteLine($"   Inner: {ex.InnerException.Message}");
+
+                Toast.Show("Error al eliminar", "No se pudo eliminar el gasto. Intente de nuevo.", ToastNotification.ToastType.Error);
                 DetailStatusText.Text = "Error al eliminar";
             }
         }

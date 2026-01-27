@@ -72,36 +72,41 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 StatusText.Text = "Cargando información...";
 
                 var supabaseClient = _supabaseService.GetClient();
 
-                // Obtener todos los gastos PENDIENTES
-                var expensesResponse = await supabaseClient
+                // OPTIMIZACIÓN: Ejecutar las 3 consultas en paralelo
+                var pendingTask = supabaseClient
                     .From<ExpenseDb>()
                     .Where(e => e.Status == "PENDIENTE")
                     .Order("f_expensedate", Postgrest.Constants.Ordering.Descending)
                     .Get();
 
-                var expenses = expensesResponse?.Models ?? new List<ExpenseDb>();
-
-                // Obtener gastos PAGADOS para el historial
-                var paidExpensesResponse = await supabaseClient
+                var paidTask = supabaseClient
                     .From<ExpenseDb>()
                     .Where(e => e.Status == "PAGADO")
                     .Order("f_expensedate", Postgrest.Constants.Ordering.Descending)
                     .Get();
 
-                var paidExpenses = paidExpensesResponse?.Models ?? new List<ExpenseDb>();
-
-                // Obtener todos los proveedores
-                var suppliersResponse = await supabaseClient
+                var suppliersTask = supabaseClient
                     .From<SupplierDb>()
                     .Where(s => s.IsActive == true)
                     .Get();
 
-                var suppliers = suppliersResponse?.Models ?? new List<SupplierDb>();
+                // Esperar todas las consultas simultáneamente
+                await Task.WhenAll(pendingTask, paidTask, suppliersTask);
+
+                var dbTime = stopwatch.ElapsedMilliseconds;
+                System.Diagnostics.Debug.WriteLine($"⏱️ BD queries: {dbTime}ms");
+
+                var expenses = pendingTask.Result?.Models ?? new List<ExpenseDb>();
+                var paidExpenses = paidTask.Result?.Models ?? new List<ExpenseDb>();
+                var suppliers = suppliersTask.Result?.Models ?? new List<SupplierDb>();
                 var suppliersDict = suppliers.ToDictionary(s => s.Id, s => s);
+
+                System.Diagnostics.Debug.WriteLine($"📊 Pendientes: {expenses.Count}, Pagados: {paidExpenses.Count}, Proveedores: {suppliers.Count}");
 
                 _allSuppliers.Clear();
 
@@ -237,8 +242,11 @@ namespace SistemaGestionProyectos2.Views
 
                 ApplyFilters();
 
+                stopwatch.Stop();
+                System.Diagnostics.Debug.WriteLine($"⏱️ TOTAL carga: {stopwatch.ElapsedMilliseconds}ms");
+
                 LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
-                StatusText.Text = "Listo";
+                StatusText.Text = $"Listo ({stopwatch.ElapsedMilliseconds}ms)";
 
                 // Mostrar mensaje si no hay datos
                 if (_allSuppliers.Count == 0)
@@ -641,8 +649,11 @@ namespace SistemaGestionProyectos2.Views
         public DateTime? MostRecentDate
         {
             get => _mostRecentDate;
-            set { _mostRecentDate = value; OnPropertyChanged(); }
+            set { _mostRecentDate = value; OnPropertyChanged(); OnPropertyChanged(nameof(MostRecentDateFormatted)); OnPropertyChanged(nameof(HasMostRecentDate)); }
         }
+
+        public string MostRecentDateFormatted => MostRecentDate.HasValue ? MostRecentDate.Value.ToString("dd/MM/yyyy") : "";
+        public bool HasMostRecentDate => MostRecentDate.HasValue;
 
         public event PropertyChangedEventHandler PropertyChanged;
 

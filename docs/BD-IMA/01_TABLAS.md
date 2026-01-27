@@ -15,18 +15,19 @@ _Actualizar después de ejecutar Sección 1_
 5. [t_client](#t_client)
 6. [t_contact](#t_contact)
 7. [t_expense](#t_expense)
-8. [t_fixed_expenses](#t_fixed_expenses)
-9. [t_fixed_expenses_history](#t_fixed_expenses_history)
-10. [t_invoice](#t_invoice)
-11. [t_order](#t_order)
-12. [t_order_deleted](#t_order_deleted)
-13. [t_payroll](#t_payroll)
-14. [t_payroll_history](#t_payroll_history)
-15. [t_supplier](#t_supplier)
-16. [t_vendor](#t_vendor)
-17. [t_vendor_commission_payment](#t_vendor_commission_payment)
-18. [t_commission_rate_history](#t_commission_rate_history)
-19. [users](#users)
+8. [t_expense_audit](#t_expense_audit) *(Nueva - 2026-01-27)*
+9. [t_fixed_expenses](#t_fixed_expenses)
+10. [t_fixed_expenses_history](#t_fixed_expenses_history)
+11. [t_invoice](#t_invoice)
+12. [t_order](#t_order)
+13. [t_order_deleted](#t_order_deleted)
+14. [t_payroll](#t_payroll)
+15. [t_payroll_history](#t_payroll_history)
+16. [t_supplier](#t_supplier)
+17. [t_vendor](#t_vendor)
+18. [t_vendor_commission_payment](#t_vendor_commission_payment)
+19. [t_commission_rate_history](#t_commission_rate_history)
+20. [users](#users)
 
 ---
 
@@ -136,9 +137,65 @@ _Pegar resultado de Sección 2 aquí, organizado por tabla_
 
 | Columna | Tipo | Nullable | Default | PK |
 |---------|------|----------|---------|:--:|
-| _pendiente_ |
+| f_expense | integer | NO | sequence | ✓ |
+| f_supplier | integer | YES | | |
+| f_description | varchar | YES | | |
+| f_expensedate | date | YES | | |
+| f_totalexpense | numeric | YES | 0 | |
+| f_status | varchar | YES | | |
+| f_paiddate | date | YES | | |
+| f_paymethod | varchar | YES | | |
+| f_order | integer | YES | | |
+| expense_category | varchar | YES | | |
+| f_scheduleddate | date | YES | | |
+| created_at | timestamp | YES | CURRENT_TIMESTAMP | |
+| updated_at | timestamp | YES | CURRENT_TIMESTAMP | |
+| created_by | integer | YES | | |
+| updated_by | varchar(100) | YES | | |
 
 **Propósito:** Gastos a proveedores (cuentas por pagar)
+
+**Columnas de auditoría:**
+- `created_by` - ID del usuario que creó el gasto (INTEGER, FK a users.id)
+- `updated_by` - Username del usuario que modificó el gasto (VARCHAR)
+
+**Trigger asociado:** `trg_expense_audit` - Registra cambios en `t_expense_audit`
+
+---
+
+### t_expense_audit
+
+| Columna | Tipo | Nullable | Default | PK |
+|---------|------|----------|---------|:--:|
+| id | serial | NO | sequence | ✓ |
+| expense_id | integer | YES | | |
+| action | varchar(20) | NO | | |
+| old_* | varios | YES | | |
+| new_* | varios | YES | | |
+| changed_at | timestamptz | YES | NOW() | |
+| amount_change | numeric(18,2) | YES | | |
+| days_until_due_old | integer | YES | | |
+| days_until_due_new | integer | YES | | |
+| supplier_name | varchar(200) | YES | | |
+| order_po | varchar(50) | YES | | |
+| environment | varchar(20) | YES | 'production' | |
+
+**Propósito:** Auditoría de cambios en gastos a proveedores (t_expense)
+
+**Acciones registradas:**
+- `INSERT` - Gasto creado
+- `UPDATE` - Gasto modificado
+- `DELETE` - Gasto eliminado
+- `PAID` - Gasto marcado como pagado
+- `UNPAID` - Pago revertido a pendiente
+
+**Campos de usuario:**
+- `new_created_by` - ID del usuario que creó (desde t_expense.created_by)
+- `new_updated_by` - Username del usuario que modificó (desde t_expense.updated_by)
+
+**Vista asociada:** `v_expense_audit_report` - Vista formateada para reportes
+
+**Fecha de creación:** 2026-01-27
 
 ---
 

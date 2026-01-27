@@ -10,11 +10,13 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Total de tablas | **25** |
-| Total de funciones | **36** |
-| Total de triggers | **40** |
-| Total de vistas | **4** |
-| Total de secuencias | **26** |
+| Total de tablas | **26** |
+| Total de funciones | **37** |
+| Total de triggers | **41** |
+| Total de vistas | **5** |
+| Total de secuencias | **27** |
+
+*Actualizado: 2026-01-27 - Agregada auditoría de gastos*
 
 ---
 
@@ -32,7 +34,8 @@
 | `t_client` | 13 | 80 kB | Clientes |
 | `t_commission_rate_history` | 17 | 80 kB | Historial de cambios en comisiones |
 | `t_contact` | 10 | 104 kB | Contactos de clientes |
-| `t_expense` | 14 | 120 kB | Gastos/Cuentas por pagar |
+| `t_expense` | 15 | 120 kB | Gastos/Cuentas por pagar |
+| `t_expense_audit` | 28 | - | **Auditoría de gastos** *(Nueva)* |
 | `t_fixed_expenses` | 9 | 24 kB | Gastos fijos mensuales |
 | `t_fixed_expenses_history` | 9 | 32 kB | Historial de gastos fijos |
 | `t_invoice` | 17 | 216 kB | Facturas |
@@ -58,6 +61,7 @@
 | `v_balance_gastos` | Desglose de gastos mensuales (nómina, fijos, variables) |
 | `v_balance_ingresos` | Ingresos esperados y percibidos por mes |
 | `v_income` | Detalle de ingresos por factura con estado |
+| `v_expense_audit_report` | Reportes de auditoría de gastos *(Nueva)* |
 
 ---
 
@@ -79,7 +83,7 @@
 │  ────────                ─────────────────        ──────────               │
 │  • t_client              • t_supplier             • t_vendor               │
 │  • t_contact             • t_expense              • t_vendor_commission_   │
-│                                                     payment                │
+│                          • t_expense_audit          payment                │
 │                                                   • t_commission_rate_     │
 │                                                     history                │
 │                                                                             │

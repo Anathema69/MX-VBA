@@ -277,6 +277,22 @@
                             <TextBlock Text="{Binding CreditDays}" FontSize="12" FontWeight="Medium" Foreground="{StaticResource TextGray}"/>
                             <TextBlock Text=" días" FontSize="12" Foreground="{StaticResource TextGray}"/>
                         </StackPanel>
+
+                        <!-- Fecha de último pago (solo visible en pagados) -->
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasMostRecentDate}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="📅 Último pago: " FontSize="12" Foreground="{StaticResource TextGray}"/>
+                            <TextBlock Text="{Binding MostRecentDateFormatted}" FontSize="12" FontWeight="Medium" Foreground="{StaticResource SuccessColor}"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Montos y acciones -->
