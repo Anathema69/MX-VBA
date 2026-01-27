@@ -11,7 +11,16 @@ namespace SistemaGestionProyectos2.Models
         public string Description { get; set; }
         public string VendorName { get; set; }
         public DateTime PromiseDate { get; set; }
+        /// <summary>
+        /// Porcentaje de avance del TRABAJO (0-100%). Editable manualmente.
+        /// NO confundir con OrderPercentage (porcentaje de facturación).
+        /// </summary>
         public int ProgressPercentage { get; set; }
+
+        /// <summary>
+        /// Porcentaje de FACTURACIÓN (0-100%). Calculado automáticamente por trigger de BD.
+        /// NO confundir con ProgressPercentage (avance del trabajo).
+        /// </summary>
         public int OrderPercentage { get; set; }
         public decimal Subtotal { get; set; }
         public decimal Total { get; set; }

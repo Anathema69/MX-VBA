@@ -46,9 +46,18 @@ namespace SistemaGestionProyectos2.Models.Database
         [Column("f_orderstat")]
         public int? OrderStatus { get; set; }
 
+        /// <summary>
+        /// Porcentaje de avance del TRABAJO (0-100%). Editable manualmente por el usuario.
+        /// NO confundir con OrderPercentage que es el porcentaje de facturación.
+        /// </summary>
         [Column("progress_percentage")]
         public int ProgressPercentage { get; set; }
 
+        /// <summary>
+        /// Porcentaje de FACTURACIÓN (0-100%). Calculado automáticamente por el trigger
+        /// de BD (update_order_status_from_invoices) basado en las facturas.
+        /// NO confundir con ProgressPercentage que es el avance del trabajo.
+        /// </summary>
         [Column("order_percentage")]
         public int OrderPercentage { get; set; }
 

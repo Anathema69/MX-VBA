@@ -1,6 +1,6 @@
 # Funciones y Triggers - IMA Mecatrónica
 
-**Fecha de extracción:** 26 de Enero de 2026
+**Fecha de extracción:** 27 de Enero de 2026
 **Total de funciones:** 41
 **Total de triggers:** 26
 
@@ -492,6 +492,145 @@ BEGIN
 END;
 $function$;
 ```
+
+---
+
+### update_order_status_from_invoices
+
+**Propósito:** Actualiza automáticamente el estado de una orden basándose en el estado de sus facturas.
+
+**Trigger asociado:** `trigger_update_order_status_unified`
+**Tabla:** t_invoice
+**Eventos:** AFTER INSERT, DELETE, UPDATE
+
+**Lógica de transiciones de estado:**
+
+| Estado | ID | Condición |
+|--------|:--:|-----------|
+| COMPLETADA | 4 | Todas las facturas pagadas (`f_invoicestat = 4`) y ≥99% facturado |
+| CERRADA | 3 | Todas las facturas con fecha de recepción, todas pendientes/pagadas, y ≥99% facturado |
+| LIBERADA | 2 | ≥99% del total de la orden facturado |
+| EN_PROCESO | 1 | Hay facturas pero la orden estaba en CREADA |
+
+**Campos actualizados en t_order:**
+- `f_orderstat` - Estado de la orden
+- `order_percentage` - Porcentaje de facturación (calculado automáticamente)
+- `progress_percentage` - Se establece a 100% cuando pasa a CERRADA (3) o COMPLETADA (4)
+- `invoiced` - TRUE si hay facturas
+- `last_invoice_date` - Fecha de última factura
+- `updated_at` - Timestamp de actualización
+
+**Importante:** Solo actualiza si el nuevo estado es MAYOR que el actual (nunca retrocede).
+
+```sql
+CREATE OR REPLACE FUNCTION update_order_status_from_invoices()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_order_id INTEGER;
+    v_order_total NUMERIC(18,2);
+    v_invoiced_total NUMERIC(18,2);
+    v_percentage NUMERIC(5,2);
+    v_current_status INTEGER;
+    v_new_status INTEGER;
+    v_invoice_count INTEGER;
+    v_paid_count INTEGER;
+    v_pending_count INTEGER;
+    v_created_count INTEGER;
+    v_has_reception_all BOOLEAN;
+    v_should_update BOOLEAN := FALSE;
+BEGIN
+    -- Obtener el order_id de la factura (nueva o antigua)
+    v_order_id := COALESCE(NEW.f_order, OLD.f_order);
+
+    IF v_order_id IS NULL THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+
+    -- Obtener información de la orden
+    SELECT f_saletotal, f_orderstat
+    INTO v_order_total, v_current_status
+    FROM t_order
+    WHERE f_order = v_order_id;
+
+    -- Si no hay orden o total es 0, salir
+    IF v_order_total IS NULL OR v_order_total = 0 THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+
+    -- Calcular totales y conteos de facturas
+    SELECT
+        COALESCE(SUM(f_total), 0),
+        COUNT(*),
+        COUNT(CASE WHEN f_invoicestat = 1 THEN 1 END),
+        COUNT(CASE WHEN f_invoicestat = 2 THEN 1 END),
+        COUNT(CASE WHEN f_invoicestat = 4 THEN 1 END),
+        COUNT(*) = COUNT(f_receptiondate)
+    INTO
+        v_invoiced_total,
+        v_invoice_count,
+        v_created_count,
+        v_pending_count,
+        v_paid_count,
+        v_has_reception_all
+    FROM t_invoice
+    WHERE f_order = v_order_id;
+
+    -- Calcular porcentaje facturado
+    v_percentage := ROUND((v_invoiced_total / v_order_total) * 100, 2);
+
+    -- Determinar el nuevo estado basado en las condiciones
+    -- Primero verificar si TODAS están pagadas (estado más alto)
+    IF v_paid_count = v_invoice_count AND v_percentage >= 99 THEN
+        v_new_status := 4; -- COMPLETADA
+        v_should_update := TRUE;
+    -- Luego verificar si todas tienen recepción (pendientes o pagadas) Y 100% facturado
+    ELSIF v_has_reception_all AND (v_pending_count + v_paid_count) = v_invoice_count AND v_percentage >= 99 THEN
+        v_new_status := 3; -- CERRADA
+        v_should_update := TRUE;
+    -- Finalmente verificar si hay 100% facturado
+    ELSIF v_percentage >= 99 THEN
+        v_new_status := 2; -- LIBERADA
+        v_should_update := TRUE;
+    -- Si hay facturas pero no cumple ninguna condición anterior
+    ELSIF v_invoice_count > 0 AND v_current_status = 0 THEN
+        v_new_status := 1; -- EN_PROCESO
+        v_should_update := TRUE;
+    ELSE
+        v_new_status := v_current_status;
+    END IF;
+
+    -- Solo actualizar si hay cambio y el nuevo estado es mayor o igual
+    IF v_should_update AND v_new_status != v_current_status AND v_new_status > v_current_status THEN
+        UPDATE t_order
+        SET
+            f_orderstat = v_new_status,
+            order_percentage = ROUND(v_percentage),
+            -- Actualizar progress_percentage a 100 cuando pasa a CERRADA o COMPLETADA
+            progress_percentage = CASE
+                WHEN v_new_status >= 3 THEN 100
+                ELSE progress_percentage
+            END,
+            invoiced = CASE WHEN v_invoiced_total > 0 THEN TRUE ELSE FALSE END,
+            last_invoice_date = CASE WHEN v_invoiced_total > 0 THEN CURRENT_DATE ELSE last_invoice_date END,
+            updated_at = NOW()
+        WHERE f_order = v_order_id;
+    ELSE
+        -- Aún así actualizar el porcentaje de facturación
+        UPDATE t_order
+        SET
+            order_percentage = ROUND(v_percentage),
+            invoiced = CASE WHEN v_invoiced_total > 0 THEN TRUE ELSE FALSE END,
+            last_invoice_date = CASE WHEN v_invoiced_total > 0 THEN CURRENT_DATE ELSE last_invoice_date END,
+            updated_at = NOW()
+        WHERE f_order = v_order_id;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Última actualización:** 27 de Enero de 2026 (v2.0.2)
 
 ---
 

@@ -877,6 +877,8 @@ namespace SistemaGestionProyectos2.Views
 
                 // Campos que ambos roles pueden editar (según estado)
                 _originalOrderDb.EstDelivery = PromiseDatePicker.SelectedDate.Value;
+                // ProgressPercentage = Avance del TRABAJO (editable manualmente)
+                // NO confundir con OrderPercentage que es el % de facturación (automático)
                 _originalOrderDb.ProgressPercentage = (int)ProgressSlider.Value;
 
                 var selectedStatus = StatusComboBox.SelectedItem as ComboBoxItem;

@@ -1,6 +1,7 @@
 ﻿// Archivo: Views/InvoiceManagementWindow.xaml.cs - VERSIÓN MEJORADA CON NUEVAS FUNCIONALIDADES
 
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
@@ -69,27 +70,15 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusMessage.Text = "Cargando información...";
 
-                // Cargar información de la orden
-                _currentOrder = await _supabaseService.GetOrderById(orderId);
+                // OPTIMIZACIÓN: Cargar orden y clientes en paralelo para reducir tiempo de carga
+                var orderTask = _supabaseService.GetOrderById(orderId);
+                var clientsTask = _supabaseService.GetClients();
 
+                // Esperar ambas tareas en paralelo
+                await Task.WhenAll(orderTask, clientsTask);
 
-                // Validar que se pueda facturar
-                bool canInvoice = await _supabaseService.CanCreateInvoice(orderId);
-                if (!canInvoice)
-                {
-                    var statusName = await _supabaseService.GetStatusName(_currentOrder.OrderStatus ?? 0);
-
-                    MessageBox.Show(
-                        $"No se pueden gestionar facturas en este momento.\n\n" +
-                        $"Estado actual de la orden: {statusName}\n" +
-                        $"Las facturas solo se pueden crear cuando la orden está EN PROCESO.",
-                        "Facturación No Disponible",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-
-                    this.Close();
-                    return;
-                }
+                _currentOrder = await orderTask;
+                var clients = await clientsTask;
 
                 if (_currentOrder == null)
                 {
@@ -99,10 +88,30 @@ namespace SistemaGestionProyectos2.Views
                     return;
                 }
 
-                // Cargar información del cliente
+                // Validar estado de la orden (estados permitidos: EN_PROCESO(1), LIBERADA(2), CERRADA(3), COMPLETADA(4))
+                var numStatus = _currentOrder.OrderStatus ?? 0;
+                bool canInvoice = numStatus >= 1 && numStatus <= 4;
+
+                if (!canInvoice)
+                {
+                    var statusName = await _supabaseService.GetStatusName(numStatus);
+
+                    MessageBox.Show(
+                        $"No se pueden gestionar facturas en este momento.\n\n" +
+                        $"Estado actual de la orden: {statusName}\n" +
+                        $"Las facturas se pueden crear cuando la orden está EN PROCESO o posterior.\n" +
+                        $"(No disponible para órdenes en estado CREADA o CANCELADA)",
+                        "Facturación No Disponible",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    this.Close();
+                    return;
+                }
+
+                // Obtener información del cliente desde la lista ya cargada
                 if (_currentOrder.ClientId.HasValue)
                 {
-                    var clients = await _supabaseService.GetClients();
                     _currentClient = clients?.FirstOrDefault(c => c.Id == _currentOrder.ClientId.Value);
                 }
 
@@ -426,8 +435,8 @@ namespace SistemaGestionProyectos2.Views
                 // Pequeña pausa para asegurar que el commit se complete
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    // Obtener la factura actual
-                    var currentInvoice = InvoicesDataGrid.SelectedItem as InvoiceViewModel;
+                    // Obtener la factura actual (usar CurrentCell.Item con SelectionUnit="Cell")
+                    var currentInvoice = (InvoicesDataGrid.CurrentCell.Item ?? InvoicesDataGrid.SelectedItem) as InvoiceViewModel;
 
                     // Si hay una factura nueva siendo editada, validar
                     if (currentInvoice != null && currentInvoice.IsNew)
@@ -479,9 +488,89 @@ namespace SistemaGestionProyectos2.Views
             }
             else if (e.Key == Key.Tab)
             {
-                // Para Tab, también commitear la celda actual antes de moverse
+                // Para Tab, commitear la celda actual y navegar inteligentemente
                 InvoicesDataGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-                e.Handled = false; // Permitir navegación normal con Tab
+                e.Handled = true; // Manejar Tab manualmente para mejor control
+
+                // Obtener la celda actual y la fila
+                var currentCell = InvoicesDataGrid.CurrentCell;
+                var currentRow = InvoicesDataGrid.SelectedItem as InvoiceViewModel;
+
+                // Si no hay celda o fila actual, intentar obtenerla de otra forma
+                if (currentCell.Column == null || currentRow == null)
+                {
+                    currentRow = currentCell.Item as InvoiceViewModel;
+                    if (currentRow == null) return;
+                }
+
+                // Columnas editables: 1-Folio, 2-Fecha Factura, 3-Subtotal, 5-Recibo Fact., 7-Fecha Pago
+                // Columnas NO editables: 0-No., 4-Total(c/IVA), 6-Pago Prog., 8-Estado, 9-Acciones
+                var editableColumnIndices = new List<int> { 1, 2, 3, 5, 7 };
+
+                int currentColIndex = currentCell.Column != null
+                    ? InvoicesDataGrid.Columns.IndexOf(currentCell.Column)
+                    : editableColumnIndices.First();
+
+                bool shiftPressed = Keyboard.Modifiers == ModifierKeys.Shift;
+
+                int nextColIndex;
+                object targetRow = currentRow;
+
+                if (shiftPressed)
+                {
+                    // Shift+Tab: ir hacia atrás
+                    nextColIndex = editableColumnIndices
+                        .Where(i => i < currentColIndex)
+                        .OrderByDescending(i => i)
+                        .FirstOrDefault(-1);
+
+                    // Si no hay columna anterior en esta fila, ir a la fila anterior
+                    if (nextColIndex == -1)
+                    {
+                        var rowIndex = InvoicesDataGrid.Items.IndexOf(currentRow);
+                        if (rowIndex > 0)
+                        {
+                            targetRow = InvoicesDataGrid.Items[rowIndex - 1];
+                            nextColIndex = editableColumnIndices.Last();
+                        }
+                        else
+                        {
+                            return; // Ya estamos en la primera celda editable
+                        }
+                    }
+                }
+                else
+                {
+                    // Tab normal: ir hacia adelante
+                    nextColIndex = editableColumnIndices
+                        .Where(i => i > currentColIndex)
+                        .OrderBy(i => i)
+                        .FirstOrDefault(-1);
+
+                    // Si no hay columna siguiente en esta fila, ir a la siguiente fila
+                    if (nextColIndex == -1)
+                    {
+                        var rowIndex = InvoicesDataGrid.Items.IndexOf(currentRow);
+                        if (rowIndex < InvoicesDataGrid.Items.Count - 1)
+                        {
+                            targetRow = InvoicesDataGrid.Items[rowIndex + 1];
+                            nextColIndex = editableColumnIndices.First();
+                        }
+                        else
+                        {
+                            return; // Ya estamos en la última celda editable
+                        }
+                    }
+                }
+
+                // Navegar a la siguiente celda editable y comenzar edición
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    var targetColumn = InvoicesDataGrid.Columns[nextColIndex];
+                    InvoicesDataGrid.SelectedItem = targetRow;
+                    InvoicesDataGrid.CurrentCell = new DataGridCellInfo(targetRow, targetColumn);
+                    InvoicesDataGrid.BeginEdit();
+                }), System.Windows.Threading.DispatcherPriority.Input);
             }
             else if (e.Key == Key.Escape)
             {
@@ -830,6 +919,60 @@ namespace SistemaGestionProyectos2.Views
                     StatusMessage.Foreground = new SolidColorBrush(Color.FromRgb(33, 150, 243));
                 }
             }
+        }
+
+        /// <summary>
+        /// Maneja el clic del mouse para entrar automáticamente en modo edición
+        /// en celdas editables (sin necesidad de F2 o doble clic)
+        /// </summary>
+        private void InvoicesDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Buscar la celda clickeada
+            var cell = FindVisualParent<DataGridCell>(e.OriginalSource as DependencyObject);
+            if (cell == null || cell.IsEditing || cell.IsReadOnly) return;
+
+            // Obtener el índice de la columna
+            var column = cell.Column;
+            if (column == null) return;
+
+            int colIndex = InvoicesDataGrid.Columns.IndexOf(column);
+
+            // Columnas editables: 1-Folio, 2-Fecha Factura, 3-Subtotal, 5-Recibo Fact., 7-Fecha Pago
+            var editableColumnIndices = new HashSet<int> { 1, 2, 3, 5, 7 };
+
+            if (editableColumnIndices.Contains(colIndex))
+            {
+                // Seleccionar la fila primero
+                var row = FindVisualParent<DataGridRow>(cell);
+                if (row != null)
+                {
+                    InvoicesDataGrid.SelectedItem = row.Item;
+                    InvoicesDataGrid.CurrentCell = new DataGridCellInfo(row.Item, column);
+
+                    // Iniciar edición después de un pequeño delay para permitir la selección
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        InvoicesDataGrid.BeginEdit();
+                    }), System.Windows.Threading.DispatcherPriority.Input);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Busca un elemento padre visual del tipo especificado
+        /// </summary>
+        private static T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            if (child == null) return null;
+
+            var parent = VisualTreeHelper.GetParent(child);
+            while (parent != null)
+            {
+                if (parent is T typedParent)
+                    return typedParent;
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return null;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

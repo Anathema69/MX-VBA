@@ -305,6 +305,12 @@ namespace SistemaGestionProyectos2.Services
         // Métodos de InvoiceService que aún no están implementados en el servicio modular
         // TODO: Mover estos métodos a InvoiceService cuando se tenga tiempo
 
+        /// <summary>
+        /// Verifica y actualiza el estado de la orden basándose en las facturas.
+        /// IMPORTANTE: Este método solo maneja la transición a COMPLETADA.
+        /// Las transiciones a LIBERADA y CERRADA son manejadas por el trigger de BD
+        /// (update_order_status_from_invoices) para evitar condiciones de carrera.
+        /// </summary>
         public async Task<bool> CheckAndUpdateOrderStatus(int orderId, int userId = 0)
         {
             try
@@ -312,53 +318,49 @@ namespace SistemaGestionProyectos2.Services
                 var order = await GetOrderById(orderId);
                 if (order == null) return false;
 
-                var currentStatusName = await GetStatusName(order.OrderStatus ?? 0);
+                int currentStatus = order.OrderStatus ?? 0;
+                var currentStatusName = await GetStatusName(currentStatus);
+
+                // No procesar si ya está en estado final
                 if (currentStatusName == "CANCELADA" || currentStatusName == "COMPLETADA")
                     return false;
 
                 var invoices = await GetInvoicesByOrder(orderId);
+
+                // Solo verificar transición a COMPLETADA (todas las facturas pagadas)
+                // Las transiciones a LIBERADA y CERRADA las maneja el trigger de BD
+                bool allInvoicesPaid = invoices.Any() && invoices.All(i => i.PaymentDate.HasValue);
                 decimal totalInvoiced = invoices.Sum(i => i.Total ?? 0);
                 decimal orderTotal = order.SaleTotal ?? 0;
-                bool allInvoicesPaid = invoices.Any() && invoices.All(i => i.PaymentDate.HasValue);
+                bool isFullyInvoiced = orderTotal > 0 && Math.Abs(totalInvoiced - orderTotal) < 0.01m;
 
-                int newStatusId = order.OrderStatus ?? 0;
-                bool statusChanged = false;
-
-                // Solo cambiar automáticamente a COMPLETADA cuando todas las facturas estén pagadas
-                if (allInvoicesPaid && invoices.Any())
+                // Solo cambiar a COMPLETADA si:
+                // 1. Todas las facturas están pagadas
+                // 2. El total facturado cubre el total de la orden
+                // 3. El estado actual es >= CERRADA (3) para respetar la jerarquía
+                if (allInvoicesPaid && isFullyInvoiced && currentStatus >= 3)
                 {
-                    newStatusId = await GetStatusIdByName("COMPLETADA");
-                    if (newStatusId != order.OrderStatus)
+                    int completadaId = await GetStatusIdByName("COMPLETADA");
+
+                    // Solo actualizar si el nuevo estado es mayor (no retroceder)
+                    if (completadaId > currentStatus)
                     {
-                        order.ProgressPercentage = 100;
-                        statusChanged = true;
+                        order.OrderStatus = completadaId;
+                        order.UpdatedBy = userId > 0 ? userId : 1;
+
+                        var updated = await UpdateOrder(order, userId);
+                        if (updated)
+                        {
+                            await LogOrderHistory(orderId, userId, "STATUS_CHANGE",
+                                "f_orderstat", currentStatusName, "COMPLETADA",
+                                "Cambio automático: todas las facturas pagadas");
+
+                            System.Diagnostics.Debug.WriteLine($"✅ Orden {orderId} actualizada a COMPLETADA");
+                            return true;
+                        }
                     }
                 }
-                // REMOVIDO: Cambio automático a CERRADA cuando facturas recibidas
-                // El estado CERRADA debe ser establecido manualmente por el usuario
-                else if (orderTotal > 0 && Math.Abs(totalInvoiced - orderTotal) < 0.01m)
-                {
-                    newStatusId = await GetStatusIdByName("LIBERADA");
-                    if (newStatusId != order.OrderStatus)
-                    {
-                        order.ProgressPercentage = 100;
-                        statusChanged = true;
-                    }
-                }
 
-                if (statusChanged)
-                {
-                    order.OrderStatus = newStatusId;
-                    order.UpdatedBy = userId > 0 ? userId : 1;
-                    var updated = await UpdateOrder(order, userId);
-                    if (updated)
-                    {
-                        await LogOrderHistory(orderId, userId, "STATUS_CHANGE",
-                            "f_orderstat", currentStatusName, await GetStatusName(newStatusId),
-                            $"Cambio automático de estado");
-                        return true;
-                    }
-                }
                 return false;
             }
             catch (Exception ex)

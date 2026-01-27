@@ -415,6 +415,7 @@
                          CellEditEnding="InvoicesDataGrid_CellEditEnding"
                          PreparingCellForEdit="InvoicesDataGrid_PreparingCellForEdit"
                          PreviewKeyDown="InvoicesDataGrid_PreviewKeyDown"
+                         PreviewMouseLeftButtonDown="InvoicesDataGrid_PreviewMouseLeftButtonDown"
                          VerticalScrollBarVisibility="Auto"
                          HorizontalScrollBarVisibility="Hidden">
 
