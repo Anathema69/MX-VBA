@@ -60,7 +60,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header Negro con gradiente sutil -->
-        <Border Grid.Row="0"  Height="60" >
+        <Border Grid.Row="0" Height="60">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                     <GradientStop Color="#1a1a1a" Offset="0"/>
@@ -68,38 +68,39 @@
                 </LinearGradientBrush>
             </Border.Background>
             <Grid>
-                <StackPanel Orientation="Horizontal" 
+                <!-- Título a la izquierda -->
+                <StackPanel Orientation="Horizontal"
                             VerticalAlignment="Center"
-                            Margin="0,0,20,0">
-                    <Border Background="#FFC107" 
-                            Width="40" Height="40" 
+                            HorizontalAlignment="Left"
+                            Margin="20,0,0,0">
+                    <Border Background="#FFC107"
+                            Width="40" Height="40"
                             CornerRadius="20"
                             Margin="0,0,15,0">
-                        <TextBlock Text="💰" 
+                        <TextBlock Text="💰"
                                  FontSize="22"
                                  HorizontalAlignment="Center"
                                  VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Text="GESTIÓN DE FACTURAS" 
+                    <TextBlock Text="GESTIÓN DE FACTURAS"
                              Foreground="White"
                              FontSize="22"
                              FontWeight="Light"
                              VerticalAlignment="Center"/>
-                    <Button Content="⬅ Volver" 
-                            Click="BackButton_Click"
-                            Background="Transparent"
-                            BorderBrush="White"
-                            BorderThickness="1"
-                            Foreground="White"
-                            Padding="15,5"
-                            Margin="1120,0,10,0"
-                            Cursor="Hand" Width="85"/>
-                        
-                    
                 </StackPanel>
-               
 
-                
+                <!-- Botón Volver a la derecha (responsivo) -->
+                <Button Content="⬅ Volver"
+                        Click="BackButton_Click"
+                        Background="Transparent"
+                        BorderBrush="White"
+                        BorderThickness="1"
+                        Foreground="White"
+                        Padding="15,5"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Margin="0,0,20,0"
+                        Cursor="Hand"/>
             </Grid>
         </Border>
 

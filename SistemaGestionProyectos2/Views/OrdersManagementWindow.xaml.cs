@@ -702,6 +702,9 @@ namespace SistemaGestionProyectos2.Views
         {
             StatusText.Text = "Actualizando...";
 
+            // Guardar el texto de búsqueda actual antes de recargar
+            var currentSearchText = SearchBox.Text?.Trim();
+
             // Deshabilitar controles durante la actualización
             RefreshButton.IsEnabled = false;
             NewOrderButton.IsEnabled = false;
@@ -710,6 +713,9 @@ namespace SistemaGestionProyectos2.Views
             {
                 // Forzar recarga completa desde BD (ignorar caché)
                 await LoadOrders(forceReload: true);
+
+                // Reaplicar filtros después de cargar
+                ReapplyFilters(currentSearchText);
             }
             finally
             {
@@ -723,52 +729,55 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        /// <summary>
+        /// Reaplica los filtros de búsqueda y estado después de recargar datos
+        /// </summary>
+        private void ReapplyFilters(string searchText)
         {
             if (_ordersViewSource?.View == null) return;
 
-            var searchText = SearchBox.Text?.Trim();
+            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
+            var statusFilter = selectedItem?.Content?.ToString();
 
-            // Si no hay texto, quitar el filtro (NO recargar desde BD)
-            if (string.IsNullOrWhiteSpace(searchText))
-            {
-                _ordersViewSource.View.Filter = null;
-                UpdateStatusBar();
-                return;
-            }
-
-            // Aplicar filtro local sobre las órdenes ya cargadas
             _ordersViewSource.View.Filter = item =>
             {
                 var order = item as OrderViewModel;
                 if (order == null) return false;
 
-                var searchLower = searchText.ToLower();
-                return order.OrderNumber.ToLower().Contains(searchLower) ||
-                       order.ClientName.ToLower().Contains(searchLower) ||
-                       order.Description.ToLower().Contains(searchLower) ||
-                       order.VendorName.ToLower().Contains(searchLower);
+                // Filtro por estado
+                bool matchesStatus = statusFilter == "Todos" || order.Status == statusFilter;
+
+                // Filtro por texto de búsqueda
+                bool matchesSearch = true;
+                if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    var searchLower = searchText.ToLower();
+                    matchesSearch = order.OrderNumber.ToLower().Contains(searchLower) ||
+                                   order.ClientName.ToLower().Contains(searchLower) ||
+                                   order.Description.ToLower().Contains(searchLower) ||
+                                   order.VendorName.ToLower().Contains(searchLower);
+                }
+
+                return matchesStatus && matchesSearch;
             };
 
-            var count = _ordersViewSource.View.Cast<object>().Count();
-            StatusText.Text = $"{count} órdenes encontradas de {_orders.Count} total";
+            UpdateStatusBar();
+        }
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_ordersViewSource?.View == null) return;
+
+            // Reaplicar filtros combinados (búsqueda + estado)
+            ReapplyFilters(SearchBox.Text?.Trim());
         }
 
         private void StatusFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_ordersViewSource?.View == null) return;
 
-            var selectedItem = (ComboBoxItem)StatusFilter.SelectedItem;
+            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
             var filterText = selectedItem?.Content?.ToString();
-
-            _ordersViewSource.View.Filter = item =>
-            {
-                if (filterText == "Todos")
-                    return true;
-
-                var order = item as OrderViewModel;
-                return order?.Status == filterText;
-            };
 
             // Guardar preferencia de filtro para rol administracion
             if (_currentUser?.Role == "administracion" && !string.IsNullOrEmpty(filterText))
@@ -776,28 +785,16 @@ namespace SistemaGestionProyectos2.Views
                 UserPreferencesService.SaveOrdersStatusFilter(_currentUser.Role, filterText);
             }
 
-            UpdateStatusBar();
+            // Reaplicar filtros combinados (búsqueda + estado)
+            ReapplyFilters(SearchBox.Text?.Trim());
         }
 
         private void ApplyInitialFilter()
         {
             if (_ordersViewSource?.View == null) return;
 
-            // Obtener el filtro seleccionado en el ComboBox (ya considera preferencias guardadas)
-            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
-            var filterText = selectedItem?.Content?.ToString() ?? "CREADA";
-
-            // Aplicar filtro inicial según la selección del ComboBox
-            _ordersViewSource.View.Filter = item =>
-            {
-                if (filterText == "Todos")
-                    return true;
-
-                var order = item as OrderViewModel;
-                return order?.Status == filterText;
-            };
-
-            UpdateStatusBar();
+            // Aplicar filtro inicial usando el método combinado
+            ReapplyFilters(SearchBox.Text?.Trim());
         }
 
         private async void EditButton_Click(object sender, RoutedEventArgs e)

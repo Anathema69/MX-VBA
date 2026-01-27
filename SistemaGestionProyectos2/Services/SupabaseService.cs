@@ -319,12 +319,12 @@ namespace SistemaGestionProyectos2.Services
                 var invoices = await GetInvoicesByOrder(orderId);
                 decimal totalInvoiced = invoices.Sum(i => i.Total ?? 0);
                 decimal orderTotal = order.SaleTotal ?? 0;
-                bool allInvoicesReceived = invoices.Any() && invoices.All(i => i.ReceptionDate.HasValue);
                 bool allInvoicesPaid = invoices.Any() && invoices.All(i => i.PaymentDate.HasValue);
 
                 int newStatusId = order.OrderStatus ?? 0;
                 bool statusChanged = false;
 
+                // Solo cambiar automáticamente a COMPLETADA cuando todas las facturas estén pagadas
                 if (allInvoicesPaid && invoices.Any())
                 {
                     newStatusId = await GetStatusIdByName("COMPLETADA");
@@ -334,11 +334,8 @@ namespace SistemaGestionProyectos2.Services
                         statusChanged = true;
                     }
                 }
-                else if (allInvoicesReceived && invoices.Any())
-                {
-                    newStatusId = await GetStatusIdByName("CERRADA");
-                    if (newStatusId != order.OrderStatus) statusChanged = true;
-                }
+                // REMOVIDO: Cambio automático a CERRADA cuando facturas recibidas
+                // El estado CERRADA debe ser establecido manualmente por el usuario
                 else if (orderTotal > 0 && Math.Abs(totalInvoiced - orderTotal) < 0.01m)
                 {
                     newStatusId = await GetStatusIdByName("LIBERADA");
