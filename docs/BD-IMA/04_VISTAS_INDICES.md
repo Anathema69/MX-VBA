@@ -214,13 +214,14 @@ CREATE OR REPLACE VIEW v_attendance_today AS
 | `ingresos_percibidos` | Ingresos cobrados |
 | `diferencia` | ingresos_esperados - ingresos_percibidos |
 | `ventas_totales` | Total ventas del mes |
-| `utilidad_aproximada` | **ingresos_esperados - total_gastos** |
+| `utilidad_aproximada` | **ventas_totales - (gastos_fijos + gastos_variables + gasto_operativo + gasto_indirecto)** |
 
 **Formula de Utilidad (actualizada 2026-01-27):**
 ```
-utilidad_aproximada = ingresos_esperados - (nomina + horas_extra + gastos_fijos +
-                      gastos_variables + gasto_operativo + gasto_indirecto)
+utilidad_aproximada = ventas_totales - (gastos_fijos + gastos_variables + gasto_operativo + gasto_indirecto)
 ```
+
+**Nota:** Se excluyen `nomina` y `horas_extra` del cálculo de utilidad. Estos campos se mantienen en la vista para visualización pero no afectan la utilidad.
 
 ```sql
 CREATE OR REPLACE VIEW v_balance_completo AS
@@ -230,6 +231,7 @@ SELECT
     COALESCE(g.mes_numero, i.mes_numero) AS mes_numero,
     COALESCE(g.mes_nombre, i.mes_nombre) AS mes_nombre,
     COALESCE(g.mes_corto, i.mes_corto) AS mes_corto,
+    -- Gastos (se mantienen todos para visualización)
     COALESCE(g.nomina, 0) AS nomina,
     COALESCE(g.horas_extra, 0) AS horas_extra,
     COALESCE(g.gastos_fijos, 0) AS gastos_fijos,
@@ -237,11 +239,19 @@ SELECT
     COALESCE(g.gasto_operativo, 0) AS gasto_operativo,
     COALESCE(g.gasto_indirecto, 0) AS gasto_indirecto,
     COALESCE(g.total_gastos, 0) AS total_gastos,
+    -- Ingresos
     COALESCE(i.ingresos_esperados, 0) AS ingresos_esperados,
     COALESCE(i.ingresos_percibidos, 0) AS ingresos_percibidos,
     COALESCE(i.ingresos_esperados, 0) - COALESCE(i.ingresos_percibidos, 0) AS diferencia,
     COALESCE(i.ventas_totales, 0) AS ventas_totales,
-    COALESCE(i.ingresos_esperados, 0) - COALESCE(g.total_gastos, 0) AS utilidad_aproximada
+    -- UTILIDAD: ventas - (gastos_fijos + gastos_variables + gasto_operativo + gasto_indirecto)
+    -- Se excluyen: nomina y horas_extra
+    COALESCE(i.ventas_totales, 0) - (
+        COALESCE(g.gastos_fijos, 0) +
+        COALESCE(g.gastos_variables, 0) +
+        COALESCE(g.gasto_operativo, 0) +
+        COALESCE(g.gasto_indirecto, 0)
+    ) AS utilidad_aproximada
 FROM v_balance_gastos g
 FULL JOIN v_balance_ingresos i ON g.fecha = i.fecha
 WHERE COALESCE(g.año, i.año) IS NOT NULL
@@ -273,15 +283,25 @@ ORDER BY COALESCE(g.fecha, i.fecha);
 ```sql
 CREATE OR REPLACE VIEW v_balance_gastos AS
  WITH rango_fechas AS (
-         SELECT date_trunc('year'::text, LEAST(COALESCE(( SELECT min(t_payroll.f_hireddate) AS min
+         SELECT date_trunc('year'::text, LEAST(
+             COALESCE(( SELECT min(t_payroll.f_hireddate) AS min
                    FROM t_payroll
-                  WHERE t_payroll.f_hireddate IS NOT NULL), CURRENT_DATE), COALESCE(( SELECT min(t_fixed_expenses_history.effective_date) AS min
-                   FROM t_fixed_expenses_history), CURRENT_DATE), COALESCE(( SELECT min(t_expense.f_paiddate) AS min
+                  WHERE t_payroll.f_hireddate IS NOT NULL), CURRENT_DATE),
+             COALESCE(( SELECT min(t_fixed_expenses_history.effective_date) AS min
+                   FROM t_fixed_expenses_history), CURRENT_DATE),
+             COALESCE(( SELECT min(t_expense.f_paiddate) AS min
                    FROM t_expense
-                  WHERE t_expense.f_paiddate IS NOT NULL), CURRENT_DATE))::timestamp with time zone) AS fecha_inicio,
-            date_trunc('year'::text, GREATEST(CURRENT_DATE, COALESCE(( SELECT max(t_payroll.f_hireddate) AS max
-                   FROM t_payroll), CURRENT_DATE), COALESCE(( SELECT max(t_fixed_expenses_history.effective_date) AS max
-                   FROM t_fixed_expenses_history), CURRENT_DATE))::timestamp with time zone) + '11 mons'::interval + '31 days'::interval AS fecha_fin
+                  WHERE t_expense.f_paiddate IS NOT NULL), CURRENT_DATE),
+             COALESCE(( SELECT min(t_order.f_podate) AS min
+                   FROM t_order
+                  WHERE t_order.f_podate IS NOT NULL), CURRENT_DATE)
+         )::timestamp with time zone) AS fecha_inicio,
+            date_trunc('year'::text, GREATEST(CURRENT_DATE,
+             COALESCE(( SELECT max(t_payroll.f_hireddate) AS max
+                   FROM t_payroll), CURRENT_DATE),
+             COALESCE(( SELECT max(t_fixed_expenses_history.effective_date) AS max
+                   FROM t_fixed_expenses_history), CURRENT_DATE)
+         )::timestamp with time zone) + '11 mons'::interval + '31 days'::interval AS fecha_fin
         ), meses AS (
          SELECT generate_series(date_trunc('month'::text, ( SELECT rango_fechas.fecha_inicio
                    FROM rango_fechas)), date_trunc('month'::text, ( SELECT rango_fechas.fecha_fin
@@ -319,10 +339,21 @@ CREATE OR REPLACE VIEW v_balance_gastos AS
              CROSS JOIN t_fixed_expenses fe
           GROUP BY m_1.mes
         ), gastos_variables_mensual AS (
+         -- TODOS los gastos a proveedores pagados (incluye los asociados a ordenes)
          SELECT m_1.mes,
             COALESCE(sum(e.f_totalexpense), 0::numeric) AS total_gastos_variables
            FROM meses m_1
-             LEFT JOIN t_expense e ON date_trunc('month'::text, e.f_paiddate::timestamp with time zone) = m_1.mes AND e.f_status::text = 'PAGADO'::text
+             LEFT JOIN t_expense e ON date_trunc('month'::text, e.f_paiddate::timestamp with time zone) = m_1.mes
+                AND e.f_status::text = 'PAGADO'::text
+          GROUP BY m_1.mes
+        ), gastos_ordenes_mensual AS (
+         -- Gastos operativos e indirectos de ordenes (campos de t_order, NO de t_expense)
+         SELECT m_1.mes,
+            COALESCE(sum(o.gasto_operativo), 0::numeric) AS total_gasto_operativo,
+            COALESCE(sum(o.gasto_indirecto), 0::numeric) AS total_gasto_indirecto
+           FROM meses m_1
+             LEFT JOIN t_order o ON date_trunc('month'::text, o.f_podate::timestamp with time zone) = m_1.mes
+                AND o.f_podate IS NOT NULL
           GROUP BY m_1.mes
         )
  SELECT m.mes AS fecha,
@@ -334,12 +365,17 @@ CREATE OR REPLACE VIEW v_balance_gastos AS
     COALESCE(he.total_horas_extra, 0::numeric) AS horas_extra,
     COALESCE(gf.total_gastos_fijos, 0::numeric) AS gastos_fijos,
     COALESCE(gv.total_gastos_variables, 0::numeric) AS gastos_variables,
-    COALESCE(n.total_nomina, 0::numeric) + COALESCE(he.total_horas_extra, 0::numeric) + COALESCE(gf.total_gastos_fijos, 0::numeric) + COALESCE(gv.total_gastos_variables, 0::numeric) AS total_gastos
+    COALESCE(go.total_gasto_operativo, 0::numeric) AS gasto_operativo,
+    COALESCE(go.total_gasto_indirecto, 0::numeric) AS gasto_indirecto,
+    COALESCE(n.total_nomina, 0::numeric) + COALESCE(he.total_horas_extra, 0::numeric) +
+    COALESCE(gf.total_gastos_fijos, 0::numeric) + COALESCE(gv.total_gastos_variables, 0::numeric) +
+    COALESCE(go.total_gasto_operativo, 0::numeric) + COALESCE(go.total_gasto_indirecto, 0::numeric) AS total_gastos
    FROM meses m
      LEFT JOIN nomina_mensual n ON n.mes = m.mes
      LEFT JOIN horas_extra_mensual he ON he.mes = m.mes
      LEFT JOIN gastos_fijos_mensual gf ON gf.mes = m.mes
      LEFT JOIN gastos_variables_mensual gv ON gv.mes = m.mes
+     LEFT JOIN gastos_ordenes_mensual go ON go.mes = m.mes
   ORDER BY m.mes
 ```
 

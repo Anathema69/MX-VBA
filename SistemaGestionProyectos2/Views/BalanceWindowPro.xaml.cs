@@ -706,7 +706,7 @@ namespace SistemaGestionProyectos2.Views
                     // Celda normal no editable
                     var valueText = new TextBlock
                     {
-                        Text = value != 0 ? value.ToString("C0", _mexicanCulture) : "-",
+                        Text = value != 0 ? value.ToString("C2", _mexicanCulture) : "-",
                         FontWeight = isTotal ? FontWeights.SemiBold : FontWeights.Normal,
                         FontSize = 13,
                         Foreground = (showNegative && value < 0) ?
@@ -736,7 +736,7 @@ namespace SistemaGestionProyectos2.Views
 
             var totalText = new TextBlock
             {
-                Text = total.ToString("C0", _mexicanCulture),
+                Text = total.ToString("C2", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
                 FontSize = 13,
                 Foreground = (showNegative && total < 0) ?
@@ -871,7 +871,7 @@ namespace SistemaGestionProyectos2.Views
                 // Valor con color que coincide con el semáforo
                 var valueText = new TextBlock
                 {
-                    Text = ventaMes.ToString("C0", _mexicanCulture),
+                    Text = ventaMes.ToString("C2", _mexicanCulture),
                     FontWeight = FontWeights.SemiBold,
                     FontSize = 13,
                     Foreground = new SolidColorBrush(textColor),
@@ -899,7 +899,7 @@ namespace SistemaGestionProyectos2.Views
 
             var totalText = new TextBlock
             {
-                Text = total.ToString("C0", _mexicanCulture),
+                Text = total.ToString("C2", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
                 FontSize = 13,
                 Foreground = new SolidColorBrush(Color.FromRgb(30, 64, 175)),
@@ -1006,7 +1006,7 @@ namespace SistemaGestionProyectos2.Views
                 valuePanel.Children.Add(arrow);
                 valuePanel.Children.Add(new TextBlock
                 {
-                    Text = value.ToString("C0", _mexicanCulture),
+                    Text = value.ToString("C2", _mexicanCulture),
                     FontWeight = FontWeights.SemiBold,
                     FontSize = 13,
                     Foreground = new SolidColorBrush(textColor),
@@ -1051,7 +1051,7 @@ namespace SistemaGestionProyectos2.Views
 
             totalPanel.Children.Add(new TextBlock
             {
-                Text = total.ToString("C0", _mexicanCulture),
+                Text = total.ToString("C2", _mexicanCulture),
                 FontWeight = FontWeights.Bold,
                 FontSize = 14,
                 Foreground = new SolidColorBrush(totalTextColor),
@@ -1202,7 +1202,7 @@ namespace SistemaGestionProyectos2.Views
                     // Columna 13 es el total
                     else if (col == 13 && border.Child is TextBlock totalText)
                     {
-                        totalText.Text = total.ToString("C0", _mexicanCulture);
+                        totalText.Text = total.ToString("C2", _mexicanCulture);
                     }
                 }
             }
@@ -1215,11 +1215,11 @@ namespace SistemaGestionProyectos2.Views
             decimal utilidad = _balanceData.Sum(d => d.UtilidadAproximada);
             decimal totalVentas = _balanceData.Sum(d => d.VentasTotales);
 
-            // Actualizar displays (formato sin decimales para mejor legibilidad)
-            txtTotalIngresos.Text = totalIngresos.ToString("C0", _mexicanCulture);
-            txtTotalGastos.Text = totalGastos.ToString("C0", _mexicanCulture);
-            txtUtilidad.Text = utilidad.ToString("C0", _mexicanCulture);
-            txtTotalVentas.Text = totalVentas.ToString("C0", _mexicanCulture);
+            // Actualizar displays con 2 decimales
+            txtTotalIngresos.Text = totalIngresos.ToString("C2", _mexicanCulture);
+            txtTotalGastos.Text = totalGastos.ToString("C2", _mexicanCulture);
+            txtUtilidad.Text = utilidad.ToString("C2", _mexicanCulture);
+            txtTotalVentas.Text = totalVentas.ToString("C2", _mexicanCulture);
 
             // Destacar KPI de Utilidad según positiva/negativa
             bool isPositive = utilidad >= 0;

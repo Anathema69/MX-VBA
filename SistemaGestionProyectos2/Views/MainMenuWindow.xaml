@@ -203,19 +203,13 @@
                               VerticalAlignment="Center"
                               Foreground="#1976D2"/>
 
-                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
-                                                <TextBlock Text="BALANCE"
-                                  FontWeight="Bold"
-                                  FontSize="12"
-                                  HorizontalAlignment="Center"
-                                  Foreground="#1976D2"/>
-                                                <TextBlock Text="_"
-                                  FontSize="9"
-                                  FontStyle="Italic"
-                                  HorizontalAlignment="Center"
-                                  Foreground="#1976D2"
-                                  Margin="0,0,0,10"/>
-                                            </StackPanel>
+                                            <TextBlock Grid.Row="1"
+                                                     Text="BALANCE"
+                                                     FontWeight="Bold"
+                                                     FontSize="12"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="#1976D2"
+                                                     Margin="0,5,0,10"/>
                                         </Grid>
                                     </Border>
                                 </ControlTemplate>
@@ -352,19 +346,13 @@
                                                      Foreground="#1976D2"
                                                      />
 
-                                            <StackPanel Grid.Row="1" HorizontalAlignment="Center">
-                                                <TextBlock Text="INGRESOS PENDIENTES"
-                                                         FontWeight="Bold"
-                                                         FontSize="12"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="#1976D2"/>
-                                                <TextBlock Text=" "
-                                                         FontSize="9"
-                                                         FontStyle="Italic"
-                                                         HorizontalAlignment="Center"
-                                                         Foreground="#1976D2"
-                                                         Margin="0,0,0,10"/>
-                                            </StackPanel>
+                                            <TextBlock Grid.Row="1"
+                                                     Text="INGRESOS PENDIENTES"
+                                                     FontWeight="Bold"
+                                                     FontSize="12"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="#1976D2"
+                                                     Margin="0,5,0,10"/>
                                         </Grid>
                                     </Border>
                                 </ControlTemplate>
