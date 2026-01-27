@@ -200,6 +200,13 @@ namespace SistemaGestionProyectos2.Views
                     var supplierName = supplier?.SupplierName ?? "Proveedor Desconocido";
                     var creditDays = supplier?.CreditDays ?? 0;
 
+                    // Obtener la fecha más reciente de los gastos pagados
+                    var mostRecentDate = supplierExpenses
+                        .Where(e => e.PaymentDate.HasValue)
+                        .Select(e => e.PaymentDate.Value)
+                        .DefaultIfEmpty(supplierExpenses.Max(e => e.ExpenseDate))
+                        .Max();
+
                     var viewModel = new SupplierPendingViewModel
                     {
                         SupplierId = supplierId,
@@ -209,7 +216,8 @@ namespace SistemaGestionProyectos2.Views
                         ExpenseCount = supplierExpenses.Count,
                         // Para pagados, color verde sólido
                         StatusColor = new SolidColorBrush(Color.FromRgb(72, 187, 120)),
-                        TotalLabel = "Total pagado"
+                        TotalLabel = "Total pagado",
+                        MostRecentDate = mostRecentDate
                     };
 
                     // Generar iniciales (con validación para evitar IndexOutOfRange)
@@ -303,8 +311,10 @@ namespace SistemaGestionProyectos2.Views
             }
             else
             {
-                // Para pagados, ordenar solo por monto descendente
-                filtered = filtered.OrderByDescending(s => s.TotalPending);
+                // Para pagados, ordenar por fecha más reciente y luego por monto descendente
+                filtered = filtered
+                    .OrderByDescending(s => s.MostRecentDate ?? DateTime.MinValue)
+                    .ThenByDescending(s => s.TotalPending);
             }
 
             // Actualizar colección mostrada
@@ -625,6 +635,13 @@ namespace SistemaGestionProyectos2.Views
         {
             get => _totalLabel;
             set { _totalLabel = value; OnPropertyChanged(); }
+        }
+
+        private DateTime? _mostRecentDate;
+        public DateTime? MostRecentDate
+        {
+            get => _mostRecentDate;
+            set { _mostRecentDate = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
