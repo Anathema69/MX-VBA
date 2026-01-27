@@ -202,8 +202,8 @@ namespace SistemaGestionProyectos2.Views
 
                     // Obtener la fecha más reciente de los gastos pagados
                     var mostRecentDate = supplierExpenses
-                        .Where(e => e.PaymentDate.HasValue)
-                        .Select(e => e.PaymentDate.Value)
+                        .Where(e => e.PaidDate.HasValue)
+                        .Select(e => e.PaidDate.Value)
                         .DefaultIfEmpty(supplierExpenses.Max(e => e.ExpenseDate))
                         .Max();
 
