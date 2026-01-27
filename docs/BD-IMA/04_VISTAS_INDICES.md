@@ -1,6 +1,7 @@
 # Vistas e Indices - IMA Mecatronica
 
 **Fecha de extraccion:** 26 de Enero de 2026
+**Ultima actualizacion:** 27 de Enero de 2026 - Agregados gastos de ordenes al balance
 
 ---
 
@@ -194,34 +195,80 @@ CREATE OR REPLACE VIEW v_attendance_today AS
 
 **Proposito:** Balance mensual completo (gastos + ingresos + utilidad)
 
+**Columnas:**
+| Columna | Descripcion |
+|---------|-------------|
+| `fecha` | Primer dia del mes |
+| `año` | Año |
+| `mes_numero` | Numero del mes (1-12) |
+| `mes_nombre` | Nombre del mes |
+| `mes_corto` | Formato corto (Ene-26) |
+| `nomina` | Total nomina mensual |
+| `horas_extra` | Total horas extra |
+| `gastos_fijos` | Total gastos fijos |
+| `gastos_variables` | Gastos a proveedores pagados |
+| `gasto_operativo` | **Suma de gastos operativos de ordenes** *(Nuevo)* |
+| `gasto_indirecto` | **Suma de gastos indirectos de ordenes** *(Nuevo)* |
+| `total_gastos` | Suma de todos los gastos (incluye operativo e indirecto) |
+| `ingresos_esperados` | Ingresos esperados por facturas |
+| `ingresos_percibidos` | Ingresos cobrados |
+| `diferencia` | ingresos_esperados - ingresos_percibidos |
+| `ventas_totales` | Total ventas del mes |
+| `utilidad_aproximada` | **ingresos_esperados - total_gastos** |
+
+**Formula de Utilidad (actualizada 2026-01-27):**
+```
+utilidad_aproximada = ingresos_esperados - (nomina + horas_extra + gastos_fijos +
+                      gastos_variables + gasto_operativo + gasto_indirecto)
+```
+
 ```sql
 CREATE OR REPLACE VIEW v_balance_completo AS
- SELECT COALESCE(g.fecha, i.fecha) AS fecha,
-    COALESCE(g."año", i."año") AS "año",
+SELECT
+    COALESCE(g.fecha, i.fecha) AS fecha,
+    COALESCE(g.año, i.año) AS año,
     COALESCE(g.mes_numero, i.mes_numero) AS mes_numero,
     COALESCE(g.mes_nombre, i.mes_nombre) AS mes_nombre,
     COALESCE(g.mes_corto, i.mes_corto) AS mes_corto,
-    COALESCE(g.nomina, 0::numeric) AS nomina,
-    COALESCE(g.horas_extra, 0::numeric) AS horas_extra,
-    COALESCE(g.gastos_fijos, 0::numeric) AS gastos_fijos,
-    COALESCE(g.gastos_variables, 0::numeric) AS gastos_variables,
-    COALESCE(g.total_gastos, 0::numeric) AS total_gastos,
-    COALESCE(i.ingresos_esperados, 0::numeric) AS ingresos_esperados,
-    COALESCE(i.ingresos_percibidos, 0::numeric) AS ingresos_percibidos,
-    COALESCE(i.ingresos_esperados, 0::numeric) - COALESCE(i.ingresos_percibidos, 0::numeric) AS diferencia,
-    COALESCE(i.ventas_totales, 0::numeric) AS ventas_totales,
-    COALESCE(i.ingresos_esperados, 0::numeric) - COALESCE(g.total_gastos, 0::numeric) AS utilidad_aproximada
-   FROM v_balance_gastos g
-     FULL JOIN v_balance_ingresos i ON g.fecha = i.fecha
-  WHERE COALESCE(g."año", i."año") IS NOT NULL
-  ORDER BY (COALESCE(g.fecha, i.fecha))
+    COALESCE(g.nomina, 0) AS nomina,
+    COALESCE(g.horas_extra, 0) AS horas_extra,
+    COALESCE(g.gastos_fijos, 0) AS gastos_fijos,
+    COALESCE(g.gastos_variables, 0) AS gastos_variables,
+    COALESCE(g.gasto_operativo, 0) AS gasto_operativo,
+    COALESCE(g.gasto_indirecto, 0) AS gasto_indirecto,
+    COALESCE(g.total_gastos, 0) AS total_gastos,
+    COALESCE(i.ingresos_esperados, 0) AS ingresos_esperados,
+    COALESCE(i.ingresos_percibidos, 0) AS ingresos_percibidos,
+    COALESCE(i.ingresos_esperados, 0) - COALESCE(i.ingresos_percibidos, 0) AS diferencia,
+    COALESCE(i.ventas_totales, 0) AS ventas_totales,
+    COALESCE(i.ingresos_esperados, 0) - COALESCE(g.total_gastos, 0) AS utilidad_aproximada
+FROM v_balance_gastos g
+FULL JOIN v_balance_ingresos i ON g.fecha = i.fecha
+WHERE COALESCE(g.año, i.año) IS NOT NULL
+ORDER BY COALESCE(g.fecha, i.fecha);
 ```
 
 ---
 
 #### v_balance_gastos
 
-**Proposito:** Desglose de gastos mensuales (nomina, fijos, variables)
+**Proposito:** Desglose de gastos mensuales (nomina, fijos, variables, operativos, indirectos)
+
+**Columnas (actualizado 2026-01-27):**
+| Columna | Descripcion |
+|---------|-------------|
+| `fecha` | Primer dia del mes |
+| `año` | Año |
+| `mes_numero` | Numero del mes (1-12) |
+| `mes_nombre` | Nombre del mes |
+| `mes_corto` | Formato corto |
+| `nomina` | Total nomina mensual |
+| `horas_extra` | Total horas extra |
+| `gastos_fijos` | Total gastos fijos |
+| `gastos_variables` | Gastos a proveedores pagados |
+| `gasto_operativo` | **Suma de gasto_operativo de ordenes del mes** *(Nuevo)* |
+| `gasto_indirecto` | **Suma de gasto_indirecto de ordenes del mes** *(Nuevo)* |
+| `total_gastos` | Suma de todos los gastos |
 
 ```sql
 CREATE OR REPLACE VIEW v_balance_gastos AS

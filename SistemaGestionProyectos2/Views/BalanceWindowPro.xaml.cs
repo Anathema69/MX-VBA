@@ -152,6 +152,8 @@ namespace SistemaGestionProyectos2.Views
             var horasExtra = new decimal[12];
             var gastosFijos = new decimal[12];
             var gastosVariables = new decimal[12];
+            var gastoOperativo = new decimal[12];
+            var gastoIndirecto = new decimal[12];
             var totalGastos = new decimal[12];
             var ingresosEsperados = new decimal[12];
             var ingresosPercibidos = new decimal[12];
@@ -169,6 +171,8 @@ namespace SistemaGestionProyectos2.Views
                     horasExtra[mesIndex] = dato.HorasExtra;
                     gastosFijos[mesIndex] = dato.GastosFijos;
                     gastosVariables[mesIndex] = dato.GastosVariables;
+                    gastoOperativo[mesIndex] = dato.GastoOperativo;
+                    gastoIndirecto[mesIndex] = dato.GastoIndirecto;
                     totalGastos[mesIndex] = dato.TotalGastos;
 
                     // Ingresos - Ahora usando valores correctos de la BD
@@ -200,6 +204,12 @@ namespace SistemaGestionProyectos2.Views
             AddDataRow("Gastos Variables", gastosVariables, currentRow, false);
             currentRow++;
 
+            AddDataRow("Gasto Operativo", gastoOperativo, currentRow, false);
+            currentRow++;
+
+            AddDataRow("Gasto Indirecto", gastoIndirecto, currentRow, false);
+            currentRow++;
+
             // Total Gastos (renglón de suma con estilo destacado)
             AddDataRow("Total Gastos", totalGastos, currentRow, true);
             currentRow++;
@@ -214,7 +224,7 @@ namespace SistemaGestionProyectos2.Views
             AddDataRow("Ingresos Percibidos", ingresosPercibidos, currentRow, false);
             currentRow++;
 
-            AddDataRow("Diferencia", diferencia, currentRow, false, null, false, true);
+            AddDataRow("Diferencia", diferencia, currentRow, true, null, false, true);
             currentRow++;
 
             // SECCIÓN VENTAS CON SEMÁFORO
@@ -408,15 +418,15 @@ namespace SistemaGestionProyectos2.Views
             Grid.SetColumn(headerText, 0);
             headerGrid.Children.Add(headerText);
 
-            // Si es VENTAS, agregar leyenda del semáforo
+            // Si es VENTAS, agregar leyenda del semáforo (junto al título)
             if (isVentas)
             {
                 var legendPanel = new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right,
+                    HorizontalAlignment = HorizontalAlignment.Left,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 16, 0)
+                    Margin = new Thickness(24, 0, 0, 0)
                 };
 
                 // Bajo
@@ -442,13 +452,13 @@ namespace SistemaGestionProyectos2.Views
             var item = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(12, 0, 0, 0)
+                Margin = new Thickness(16, 0, 0, 0)
             };
 
             var dot = new System.Windows.Shapes.Ellipse
             {
-                Width = 8,
-                Height = 8,
+                Width = 10,
+                Height = 10,
                 Fill = new SolidColorBrush(dotColor),
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -456,10 +466,11 @@ namespace SistemaGestionProyectos2.Views
             var text = new TextBlock
             {
                 Text = label,
-                FontSize = 10,
+                FontSize = 11,
+                FontWeight = FontWeights.Medium,
                 Foreground = new SolidColorBrush(BalanceColors.TextSecondary),
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 0, 0)
+                Margin = new Thickness(5, 0, 0, 0)
             };
 
             item.Children.Add(dot);
@@ -1421,6 +1432,13 @@ namespace SistemaGestionProyectos2.Views
 
         [Column("gastos_variables")]
         public decimal GastosVariables { get; set; }
+
+        // Gastos de órdenes
+        [Column("gasto_operativo")]
+        public decimal GastoOperativo { get; set; }
+
+        [Column("gasto_indirecto")]
+        public decimal GastoIndirecto { get; set; }
 
         [Column("total_gastos")]
         public decimal TotalGastos { get; set; }
