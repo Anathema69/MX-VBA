@@ -20,48 +20,55 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                    DATOS BÁSICOS                       │
     -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '2.0.2';
+    v_version       VARCHAR := '2.0.3';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 49.66;
+    v_file_size_mb  NUMERIC := 49.67;
     v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIO
     v_min_version   VARCHAR := NULL;   -- NULL = cualquier versión puede actualizar
 
     -- ┌────────────────────────────────────────────────────────┐
     -- │                   RELEASE NOTES                        │
     -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 2.0.2 - Nueva Fórmula de Utilidad y Mejoras UX
+    v_release_notes TEXT := 'Versión 2.0.3 - Triggers de Gastos Operativos, Comisión de Vendedor y Mejoras UI
 
-MÓDULO BALANCE - Nueva Fórmula de Utilidad:
-- NUEVA FÓRMULA: Utilidad = Ventas Totales - (Gastos Fijos + Gastos Variables + Gasto Operativo + Gasto Indirecto)
-- Se EXCLUYEN Nómina y Horas Extra del cálculo de utilidad
-- Nómina y Horas Extra se mantienen visibles para referencia
-- Formato decimal mejorado: todos los valores muestran 2 decimales (#,##0.00)
-- Incluye: valores mensuales, totales anuales, ventas, utilidad y KPIs
+MÓDULO ÓRDENES - Requerimientos 1-5:
+- Filtros dinámicos por Año y Mes en listado de órdenes (basado en f_podate)
+- Comisión de vendedor integrada en gastos operativos con preview en tiempo real
+- Preview desglosado (Base + Comisión + Total) para nuevo gasto y edición inline
+- Auto-commit de edición inline al presionar GUARDAR CAMBIOS
+- Rol "proyectos" con mismos permisos que coordinación
 
-MENÚ PRINCIPAL:
-- Cards de módulos con altura uniforme
-- Eliminado texto extra debajo de iconos en BALANCE e INGRESOS PENDIENTES
+ARQUITECTURA BD - GASTOS OPERATIVOS:
+- Nueva columna f_commission_rate en order_gastos_operativos (snapshot del % comisión)
+- Nuevo trigger trg_recalcular_gasto_operativo: calcula automáticamente t_order.gasto_operativo
+- Nuevo trigger trg_sync_commission_rate: propaga cambios de comisión a gastos existentes
+- Eliminado cálculo en C# (RecalcularGastoOperativo), reemplazado por trigger BD
+- Monto almacena valor BASE, comisión se aplica en fórmula del trigger
 
-GESTIÓN DE ÓRDENES Y FACTURACIÓN (commit bc8e589):
-- Corregidas transiciones de estado de órdenes
-- CheckAndUpdateOrderStatus ya no interfiere con trigger de BD
-- Solo maneja transición a COMPLETADA respetando jerarquía
-- Trigger BD maneja LIBERADA y CERRADA correctamente
+ACCESO ADMINISTRACIÓN:
+- Rol administración ahora ve las 3 columnas de gastos (operativo, indirecto, material)
+- Acceso completo a edición de gastos en ventana de edición de orden
 
-MEJORAS EN FACTURACIÓN:
-- Carga optimizada con ejecución paralela (Task.WhenAll)
-- Navegación con Tab salta columnas no editables automáticamente
-- Clic único para editar celdas (sin necesidad de F2)
-- Mensaje de estados corregido
+MEJORAS UI:
+- Ventana edición redimensionable (800x680, CanResizeWithGrip)
+- Removido botón de configuración (tuerca) del menú principal
+- Removido botón de exportar de gestión de órdenes
+- Coordinación/Proyectos: oculta columna vendedor y botón exportar
+- Eliminado MessageBox de confirmación al cerrar sesión
+
+PORTAL VENDEDORES:
+- Descripción de orden visible en dashboard del vendedor
+- Botón de cerrar sesión agregado
+
+CORRECCIONES:
+- Fix: doble-comisión al refrescar grilla (removidas propiedades calculadas)
+- Fix: gastos no cargaban para perfil administración (3 condiciones restringidas)
 
 DOCUMENTACIÓN:
-- Campos de porcentaje documentados:
-  * ProgressPercentage = Avance del TRABAJO (manual)
-  * OrderPercentage = Porcentaje de FACTURACIÓN (automático)
-- SQL de v_balance_gastos y v_balance_completo sincronizados
-- Fórmula de utilidad documentada en BD-IMA
+- Documentación completa de triggers y funciones BD actualizadas
+- Esquema BD actualizado con nuevas tablas y columnas
 
-ACTUALIZACIÓN OBLIGATORIA - Cambios en cálculo de utilidad';
+ACTUALIZACIÓN OBLIGATORIA - Cambios en arquitectura de gastos operativos';
 
     -- ════════════════════════════════════════════════════════
     -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
@@ -76,24 +83,31 @@ BEGIN
     -- Changelog estructurado (opcional, para futuras implementaciones)
     v_changelog := '{
         "Added": [
-            "Nueva fórmula de utilidad: Ventas - (Fijos + Variables + Operativo + Indirecto)",
-            "Formato decimal C2 en todos los campos monetarios del Balance",
-            "Carga paralela en módulo de facturación"
+            "Filtros dinámicos por Año y Mes en listado de órdenes",
+            "Comisión de vendedor en gastos operativos con preview en tiempo real",
+            "Trigger trg_recalcular_gasto_operativo para cálculo automático en BD",
+            "Trigger trg_sync_commission_rate para propagación de cambios de comisión",
+            "Columna f_commission_rate en order_gastos_operativos",
+            "Acceso de administración a 3 columnas de gastos",
+            "Rol proyectos con permisos de coordinación",
+            "Descripción de orden en dashboard de vendedor",
+            "Botón cerrar sesión en portal de vendedores"
         ],
         "Fixed": [
-            "Transiciones de estado de órdenes corregidas",
-            "CheckAndUpdateOrderStatus no interfiere con trigger BD",
-            "Navegación Tab salta columnas no editables",
-            "Altura uniforme en cards del menú principal"
+            "Doble-comisión al refrescar grilla de órdenes",
+            "Gastos no cargaban para perfil administración",
+            "Auto-commit de edición inline pendiente al guardar"
         ],
         "Improved": [
-            "Clic único para editar celdas en facturación",
-            "Documentación de campos ProgressPercentage vs OrderPercentage",
-            "Sincronización de documentación BD con Supabase"
+            "Ventana de edición redimensionable",
+            "Documentación BD completa con triggers y funciones",
+            "Arquitectura: cálculo de gastos movido de C# a trigger BD"
         ],
-        "Changed": [
-            "Utilidad excluye Nómina y Horas Extra del cálculo",
-            "Base de utilidad cambia de Ingresos Esperados a Ventas Totales"
+        "Removed": [
+            "Botón de configuración (tuerca) del menú principal",
+            "Botón de exportar de gestión de órdenes",
+            "MessageBox de confirmación al cerrar sesión",
+            "RecalcularGastoOperativo() de OrderService.cs"
         ]
     }'::jsonb;
 
