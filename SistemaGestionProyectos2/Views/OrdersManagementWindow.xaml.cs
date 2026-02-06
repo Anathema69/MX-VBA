@@ -84,8 +84,91 @@ namespace SistemaGestionProyectos2.Views
             // Nuevo método para configurar el filtro de estado
             ConfigureStatusFilterComboBox();
 
+            // Los filtros de fecha (Año/Mes) se configuran dinámicamente después de cargar los datos
+            // Ver UpdateDateFiltersFromData()
+
             // Título de la ventana
             this.Title = $"IMA Mecatrónica - Manejo de Órdenes - {_currentUser.FullName}";
+        }
+
+        /// <summary>
+        /// Actualiza los filtros de Año y Mes basándose en los datos disponibles en el caché
+        /// </summary>
+        private void UpdateDateFiltersFromData()
+        {
+            if (_allOrdersCache == null || _allOrdersCache.Count == 0) return;
+
+            // Obtener años únicos disponibles (ordenados descendente)
+            var availableYears = _allOrdersCache
+                .Select(o => o.OrderDate.Year)
+                .Distinct()
+                .OrderByDescending(y => y)
+                .ToList();
+
+            // Guardar selección actual
+            var currentYearItem = YearFilter.SelectedItem as ComboBoxItem;
+            var currentYear = currentYearItem?.Tag as int?;
+
+            var currentMonthItem = MonthFilter.SelectedItem as ComboBoxItem;
+            var currentMonth = currentMonthItem?.Tag as int?;
+
+            // Actualizar YearFilter
+            YearFilter.SelectionChanged -= YearFilter_SelectionChanged;
+            YearFilter.Items.Clear();
+            YearFilter.Items.Add(new ComboBoxItem { Content = "Todos", IsSelected = !currentYear.HasValue });
+
+            foreach (var year in availableYears)
+            {
+                var item = new ComboBoxItem { Content = year.ToString(), Tag = year };
+                if (currentYear.HasValue && currentYear.Value == year)
+                {
+                    item.IsSelected = true;
+                }
+                YearFilter.Items.Add(item);
+            }
+            YearFilter.SelectionChanged += YearFilter_SelectionChanged;
+
+            // Actualizar MonthFilter basándose en el año seleccionado
+            UpdateMonthFilterForYear(currentYear, currentMonth);
+        }
+
+        /// <summary>
+        /// Actualiza el filtro de meses según el año seleccionado
+        /// </summary>
+        private void UpdateMonthFilterForYear(int? selectedYear, int? currentMonth = null)
+        {
+            if (_allOrdersCache == null) return;
+
+            // Nombres de meses en español
+            var monthNames = new[] { "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                                    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+
+            // Obtener meses únicos disponibles para el año seleccionado (o todos si no hay año)
+            var ordersToFilter = selectedYear.HasValue
+                ? _allOrdersCache.Where(o => o.OrderDate.Year == selectedYear.Value)
+                : _allOrdersCache;
+
+            var availableMonths = ordersToFilter
+                .Select(o => o.OrderDate.Month)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList();
+
+            // Actualizar MonthFilter
+            MonthFilter.SelectionChanged -= MonthFilter_SelectionChanged;
+            MonthFilter.Items.Clear();
+            MonthFilter.Items.Add(new ComboBoxItem { Content = "Todos", IsSelected = !currentMonth.HasValue });
+
+            foreach (var month in availableMonths)
+            {
+                var item = new ComboBoxItem { Content = monthNames[month], Tag = month };
+                if (currentMonth.HasValue && currentMonth.Value == month)
+                {
+                    item.IsSelected = true;
+                }
+                MonthFilter.Items.Add(item);
+            }
+            MonthFilter.SelectionChanged += MonthFilter_SelectionChanged;
         }
 
         private void ConfigureStatusFilterComboBox()
@@ -170,13 +253,16 @@ namespace SistemaGestionProyectos2.Views
                     NewOrderButton.Visibility = Visibility.Collapsed;
 
                     RefreshButton.Width = 90;
-                    NewOrderButton.ToolTip = "Solo Dirección puede crear órdenes";
 
-                    // NO puede ver campos financieros
+                    // Ocultar botón Exportar (no aplica para este rol)
+                    ExportButton.Visibility = Visibility.Collapsed;
+
+                    // NO puede ver campos financieros ni vendedor
+                    VendorColumn.Visibility = Visibility.Collapsed;
                     SubtotalColumn.Visibility = Visibility.Collapsed;
                     TotalColumn.Visibility = Visibility.Collapsed;
                     InvoicedColumn.Visibility = Visibility.Collapsed;
-                    // Columnas v2.0 - ocultas para coordinación
+                    // Columnas v2.0 - ocultas para coordinación/proyectos
                     GastoMaterialColumn.Visibility = Visibility.Collapsed;
                     GastoOperativoColumn.Visibility = Visibility.Collapsed;
                     GastoIndirectoColumn.Visibility = Visibility.Collapsed;
@@ -370,6 +456,9 @@ namespace SistemaGestionProyectos2.Views
                     {
                         _ = LoadRemainingOrdersAsync(statusFilter);
                     }
+
+                    // Actualizar filtros de fecha basados en los datos disponibles
+                    UpdateDateFiltersFromData();
 
                     // Aplicar filtro inicial (CREADA por defecto)
                     ApplyInitialFilter();
@@ -623,16 +712,13 @@ namespace SistemaGestionProyectos2.Views
         // Event Handlers
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
-            // Si eres admin volver al menú principal, si eres coordinador 'cerrarás la sesión' llevandote al login
-
-            if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion"))
+            if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
             {
-                // SI MAIN ESTÁ ABIERTO VOLVER A ÉL Y CERRAR CUALQUIER OTRA VENTANA
+                // Admin: volver al menú principal
                 foreach (Window window in Application.Current.Windows)
                 {
                     if (window is MainMenuWindow)
                     {
-                        // SI HAY MÁS DE UN MAIN, CERRAR TODOS MENOS ESTE
                         foreach (Window win in Application.Current.Windows)
                         {
                             if (win is MainMenuWindow) continue;
@@ -645,17 +731,7 @@ namespace SistemaGestionProyectos2.Views
             }
             else
             {
-                // Cerrar sesión para coordinador, pero antes preguntar
-                var result = MessageBox.Show(
-                    "¿Está seguro que desea cerrar sesión?",
-                    "Confirmar",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-
-                // si dice que sí, cerrar sesión e ir al login cerrando esta ventana
-                if (result != MessageBoxResult.Yes) return;
-
-
+                // Coordinacion/Proyectos: cerrar sesión directo sin confirmacion
                 LoginWindow loginWindow = new LoginWindow();
                 loginWindow.Show();
             }
@@ -730,14 +806,20 @@ namespace SistemaGestionProyectos2.Views
         }
 
         /// <summary>
-        /// Reaplica los filtros de búsqueda y estado después de recargar datos
+        /// Reaplica los filtros de búsqueda, estado, mes y año después de recargar datos
         /// </summary>
         private void ReapplyFilters(string searchText)
         {
             if (_ordersViewSource?.View == null) return;
 
-            var selectedItem = StatusFilter.SelectedItem as ComboBoxItem;
-            var statusFilter = selectedItem?.Content?.ToString();
+            var selectedStatusItem = StatusFilter.SelectedItem as ComboBoxItem;
+            var statusFilter = selectedStatusItem?.Content?.ToString();
+
+            var selectedMonthItem = MonthFilter.SelectedItem as ComboBoxItem;
+            var monthFilter = selectedMonthItem?.Tag as int?;
+
+            var selectedYearItem = YearFilter.SelectedItem as ComboBoxItem;
+            var yearFilter = selectedYearItem?.Tag as int?;
 
             _ordersViewSource.View.Filter = item =>
             {
@@ -746,6 +828,12 @@ namespace SistemaGestionProyectos2.Views
 
                 // Filtro por estado
                 bool matchesStatus = statusFilter == "Todos" || order.Status == statusFilter;
+
+                // Filtro por mes (basado en f_podate / OrderDate)
+                bool matchesMonth = !monthFilter.HasValue || order.OrderDate.Month == monthFilter.Value;
+
+                // Filtro por año (basado en f_podate / OrderDate)
+                bool matchesYear = !yearFilter.HasValue || order.OrderDate.Year == yearFilter.Value;
 
                 // Filtro por texto de búsqueda
                 bool matchesSearch = true;
@@ -758,7 +846,7 @@ namespace SistemaGestionProyectos2.Views
                                    order.VendorName.ToLower().Contains(searchLower);
                 }
 
-                return matchesStatus && matchesSearch;
+                return matchesStatus && matchesMonth && matchesYear && matchesSearch;
             };
 
             UpdateStatusBar();
@@ -785,7 +873,30 @@ namespace SistemaGestionProyectos2.Views
                 UserPreferencesService.SaveOrdersStatusFilter(_currentUser.Role, filterText);
             }
 
-            // Reaplicar filtros combinados (búsqueda + estado)
+            // Reaplicar filtros combinados (búsqueda + estado + mes + año)
+            ReapplyFilters(SearchBox.Text?.Trim());
+        }
+
+        private void MonthFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_ordersViewSource?.View == null) return;
+
+            // Reaplicar filtros combinados
+            ReapplyFilters(SearchBox.Text?.Trim());
+        }
+
+        private void YearFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_ordersViewSource?.View == null) return;
+
+            // Obtener año seleccionado
+            var selectedYearItem = YearFilter.SelectedItem as ComboBoxItem;
+            var selectedYear = selectedYearItem?.Tag as int?;
+
+            // Actualizar meses disponibles para el año seleccionado
+            UpdateMonthFilterForYear(selectedYear);
+
+            // Reaplicar filtros combinados
             ReapplyFilters(SearchBox.Text?.Trim());
         }
 
@@ -806,13 +917,11 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Abrir ventana de edición con los permisos del usuario actual
                 var editWindow = new EditOrderWindow(order, _currentUser);
                 editWindow.Owner = this;
 
                 if (editWindow.ShowDialog() == true)
                 {
-                    // Solo actualizar esta orden específica, no recargar todo
                     await RefreshSingleOrder(order.Id);
                     StatusText.Text = "Orden actualizada correctamente";
                 }

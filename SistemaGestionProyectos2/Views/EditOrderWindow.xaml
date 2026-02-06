@@ -589,7 +589,28 @@
                                                 PreviewTextInput="NumericTextBox_PreviewTextInput"
                                                 GotFocus="NewGastoMontoTextBox_GotFocus"
                                                 LostFocus="NewGastoMontoTextBox_LostFocus"
+                                                TextChanged="NewGastoMontoTextBox_TextChanged"
                                                 KeyDown="NewGastoMontoTextBox_KeyDown"/>
+                                        <!-- Preview comisión en tiempo real -->
+                                        <Border x:Name="ComisionPreviewBorder" Background="#FFF8E1" BorderBrush="#FFE0B2"
+                                                BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,4,0,0"
+                                                Visibility="Collapsed">
+                                            <StackPanel>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Base: " Foreground="#999" FontSize="10"/>
+                                                    <TextBlock x:Name="PreviewBaseText" Text="$0.00" Foreground="#333" FontSize="10"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                                    <TextBlock x:Name="PreviewComisionLabel" Text="Comisión: " Foreground="#999" FontSize="10"/>
+                                                    <TextBlock x:Name="PreviewComisionValue" Text="$0.00" Foreground="#FB8C00" FontSize="10" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                                <Border Background="#FFE0B2" Height="1" Margin="0,3"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Total: " Foreground="#333" FontSize="10" FontWeight="SemiBold"/>
+                                                    <TextBlock x:Name="PreviewTotalText" Text="$0.00" Foreground="#2E7D32" FontSize="11" FontWeight="Bold"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Descripción -->
@@ -638,6 +659,10 @@
                                                BorderThickness="0,0,0,1"
                                                Padding="5">
                                             <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="100"/>
                                                     <ColumnDefinition Width="*"/>
@@ -668,7 +693,8 @@
                                                         Visibility="Collapsed"
                                                         PreviewTextInput="NumericTextBox_PreviewTextInput"
                                                         LostFocus="GastoMontoEdit_LostFocus"
-                                                        KeyDown="GastoMontoEdit_KeyDown"/>
+                                                        KeyDown="GastoMontoEdit_KeyDown"
+                                                        TextChanged="InlineMontoEdit_TextChanged"/>
                                                 <TextBox x:Name="DescEdit"
                                                         Grid.Column="1"
                                                         Text="{Binding Descripcion, UpdateSourceTrigger=PropertyChanged}"
@@ -677,6 +703,29 @@
                                                         Margin="5,0"
                                                         Visibility="Collapsed"
                                                         KeyDown="GastoDescEdit_KeyDown"/>
+
+                                                <!-- Preview comisión inline (oculto por defecto) -->
+                                                <Border x:Name="InlineComisionPreviewBorder"
+                                                       Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                       Background="#FFF8E1" BorderBrush="#FFE0B2"
+                                                       BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,4,0,0"
+                                                       Visibility="Collapsed">
+                                                    <StackPanel>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="Base: " Foreground="#999" FontSize="10"/>
+                                                            <TextBlock x:Name="InlinePreviewBase" Text="$0.00" Foreground="#333" FontSize="10"/>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                                                            <TextBlock x:Name="InlinePreviewComisionLabel" Text="Comisión: " Foreground="#999" FontSize="10"/>
+                                                            <TextBlock x:Name="InlinePreviewComisionValue" Text="$0.00" Foreground="#FB8C00" FontSize="10" FontWeight="SemiBold"/>
+                                                        </StackPanel>
+                                                        <Border Background="#FFE0B2" Height="1" Margin="0,3"/>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="Total: " Foreground="#333" FontSize="10" FontWeight="SemiBold"/>
+                                                            <TextBlock x:Name="InlinePreviewTotal" Text="$0.00" Foreground="#2E7D32" FontSize="11" FontWeight="Bold"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
 
                                                 <!-- Botón Editar/Guardar -->
                                                 <Button x:Name="EditBtn"

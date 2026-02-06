@@ -1,0 +1,8 @@
+[
+  {
+    "trigger_name": "trigger_update_order_status_unified",
+    "enabled": "O",
+    "trigger_definition": "CREATE TRIGGER trigger_update_order_status_unified AFTER INSERT OR DELETE OR UPDATE ON t_invoice FOR EACH ROW EXECUTE FUNCTION update_order_status_from_invoices()"
+  }
+]
+]

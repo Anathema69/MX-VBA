@@ -850,6 +850,30 @@ namespace SistemaGestionProyectos2.Views
                 // Validar campos obligatorios
                 if (!ValidateForm()) return;
 
+                // Auto-commit ediciones inline pendientes antes de guardar
+                if (_currentEditingRow != null)
+                {
+                    var pendingGrid = _currentEditingRow.Child as Grid;
+                    if (pendingGrid != null)
+                    {
+                        var pMontoEdit = pendingGrid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "MontoEdit");
+                        var pDescEdit = pendingGrid.Children.OfType<TextBox>().FirstOrDefault(t => t.Name == "DescEdit");
+                        var pMontoView = pendingGrid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "MontoView");
+                        var pDescView = pendingGrid.Children.OfType<TextBlock>().FirstOrDefault(t => t.Name == "DescView");
+                        var pEditBtn = pendingGrid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "EditBtn");
+                        var pDeleteBtn = pendingGrid.Children.OfType<Button>().FirstOrDefault(t => t.Name == "DeleteBtn");
+
+                        if (pMontoEdit != null && pDescEdit != null)
+                        {
+                            SaveInlineEdit(_currentEditingRow, pMontoEdit, pDescEdit, pMontoView, pDescView, pEditBtn, pDeleteBtn);
+                        }
+                    }
+                }
+                if (_currentEditingRowIndirecto != null)
+                {
+                    SaveInlineEditIndirecto(_currentEditingRowIndirecto);
+                }
+
                 SaveButton.IsEnabled = false;
                 SaveButton.Content = "GUARDANDO...";
 
@@ -1107,6 +1131,7 @@ namespace SistemaGestionProyectos2.Views
             NewGastoMontoTextBox.Text = "";
             NewGastoDescripcionTextBox.Text = "";
             _gastoMontoValue = 0;
+            ComisionPreviewBorder.Visibility = Visibility.Collapsed;
         }
 
         private decimal _gastoMontoValue = 0;
@@ -1147,6 +1172,41 @@ namespace SistemaGestionProyectos2.Views
             {
                 _gastoMontoValue = 0;
                 NewGastoMontoTextBox.Text = "";
+            }
+            UpdateComisionPreview();
+        }
+
+        private void NewGastoMontoTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (!NewGastoMontoTextBox.IsFocused) return;
+            UpdateComisionPreview();
+        }
+
+        private void UpdateComisionPreview()
+        {
+            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
+            if (commissionRate <= 0)
+            {
+                ComisionPreviewBorder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            string cleanText = NewGastoMontoTextBox.Text.Replace("$", "").Replace(",", "").Trim();
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) && monto > 0)
+            {
+                decimal comision = monto * commissionRate / 100;
+                decimal total = monto + comision;
+                var culture = new CultureInfo("es-MX");
+
+                ComisionPreviewBorder.Visibility = Visibility.Visible;
+                PreviewBaseText.Text = monto.ToString("C", culture);
+                PreviewComisionLabel.Text = $"Comisión ({commissionRate:N2}%): ";
+                PreviewComisionValue.Text = comision.ToString("C", culture);
+                PreviewTotalText.Text = total.ToString("C", culture);
+            }
+            else
+            {
+                ComisionPreviewBorder.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1290,6 +1350,24 @@ namespace SistemaGestionProyectos2.Views
                 deleteBtn.ToolTip = "Cancelar";
 
                 _currentEditingRow = border;
+
+                // Mostrar preview de comisión al entrar en edición
+                decimal commRate = _originalOrderDb?.CommissionRate ?? 0;
+                if (commRate > 0)
+                {
+                    var previewBorder = grid.Children.OfType<Border>()
+                        .FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
+                    if (previewBorder != null)
+                    {
+                        string cleanText = montoEdit.Text.Replace("$", "").Replace(",", "").Trim();
+                        if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal m) && m > 0)
+                        {
+                            UpdateInlinePreviewValues(previewBorder, m, commRate);
+                            previewBorder.Visibility = Visibility.Visible;
+                        }
+                    }
+                }
+
                 montoEdit.Focus();
                 montoEdit.SelectAll();
             }
@@ -1316,16 +1394,22 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
+            // Aplicar comisión del vendedor si existe
+            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
+            decimal montoFinal = commissionRate > 0
+                ? monto + (monto * commissionRate / 100)
+                : monto;
+
             // Actualizar el objeto en memoria
             var gasto = border.DataContext as OrderGastoOperativoDb;
             if (gasto != null)
             {
-                gasto.Monto = monto;
+                gasto.Monto = montoFinal;
                 gasto.Descripcion = descripcion;
             }
 
             // Volver a modo vista
-            montoView.Text = $"${monto:N2}";
+            montoView.Text = $"${montoFinal:N2}";
             descView.Text = descripcion;
             montoView.Visibility = Visibility.Visible;
             descView.Visibility = Visibility.Visible;
@@ -1339,6 +1423,11 @@ namespace SistemaGestionProyectos2.Views
             deleteBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
             deleteBtn.ToolTip = "Eliminar";
+
+            // Ocultar preview de comisión
+            var gridForPreview = border.Child as Grid;
+            var previewBdr = gridForPreview?.Children.OfType<Border>().FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
+            if (previewBdr != null) previewBdr.Visibility = Visibility.Collapsed;
 
             _currentEditingRow = null;
             _hasChanges = true;
@@ -1389,6 +1478,10 @@ namespace SistemaGestionProyectos2.Views
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
                 deleteBtn.ToolTip = "Eliminar";
             }
+
+            // Ocultar preview de comisión
+            var previewBdr = grid.Children.OfType<Border>().FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
+            if (previewBdr != null) previewBdr.Visibility = Visibility.Collapsed;
 
             _currentEditingRow = null;
         }
@@ -1458,6 +1551,77 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        private void InlineMontoEdit_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null || !textBox.IsFocused) return;
+
+            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
+
+            var grid = textBox.Parent as Grid;
+            if (grid == null) return;
+
+            var previewBorder = grid.Children.OfType<Border>()
+                .FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
+            if (previewBorder == null) return;
+
+            if (commissionRate <= 0)
+            {
+                previewBorder.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            string cleanText = textBox.Text.Replace("$", "").Replace(",", "").Trim();
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) && monto > 0)
+            {
+                UpdateInlinePreviewValues(previewBorder, monto, commissionRate);
+                previewBorder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                previewBorder.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void UpdateInlinePreviewValues(Border previewBorder, decimal monto, decimal commissionRate)
+        {
+            decimal comision = monto * commissionRate / 100;
+            decimal total = monto + comision;
+            var culture = new CultureInfo("es-MX");
+
+            var stackPanel = previewBorder.Child as StackPanel;
+            if (stackPanel == null) return;
+
+            // Buscar los TextBlocks por nombre recorriendo el StackPanel
+            foreach (var child in stackPanel.Children)
+            {
+                if (child is StackPanel sp)
+                {
+                    foreach (var innerChild in sp.Children)
+                    {
+                        if (innerChild is TextBlock tb)
+                        {
+                            switch (tb.Name)
+                            {
+                                case "InlinePreviewBase":
+                                    tb.Text = monto.ToString("C", culture);
+                                    break;
+                                case "InlinePreviewComisionLabel":
+                                    tb.Text = $"Comisión ({commissionRate:N2}%): ";
+                                    break;
+                                case "InlinePreviewComisionValue":
+                                    tb.Text = comision.ToString("C", culture);
+                                    break;
+                                case "InlinePreviewTotal":
+                                    tb.Text = total.ToString("C", culture);
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         private static T FindParent<T>(DependencyObject child) where T : DependencyObject
         {
             var parent = System.Windows.Media.VisualTreeHelper.GetParent(child);
@@ -1470,12 +1634,18 @@ namespace SistemaGestionProyectos2.Views
 
         private void SaveNewGastoButton_Click_Internal(decimal monto, string descripcion)
         {
+            // Aplicar comisión del vendedor si existe
+            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
+            decimal montoFinal = commissionRate > 0
+                ? monto + (monto * commissionRate / 100)
+                : monto;
+
             // Agregar nuevo gasto solo en memoria (sin guardar a BD)
             var nuevoGasto = new OrderGastoOperativoDb
             {
                 Id = _tempIdCounter--, // ID temporal negativo
                 OrderId = _order.Id,
-                Monto = monto,
+                Monto = montoFinal,
                 Descripcion = descripcion,
                 FechaGasto = DateTime.Now,
                 CreatedBy = _currentUser.Id
@@ -1490,6 +1660,7 @@ namespace SistemaGestionProyectos2.Views
             NewGastoMontoTextBox.Text = "";
             NewGastoDescripcionTextBox.Text = "";
             _gastoMontoValue = 0;
+            ComisionPreviewBorder.Visibility = Visibility.Collapsed;
             NewGastoMontoTextBox.Focus();
         }
 

@@ -40,12 +40,20 @@ namespace SistemaGestionProyectos2.Models
 
         // Columnas v2.0 - Gastos
         public decimal GastoMaterial { get; set; }  // Calculado desde t_expense (PAGADO)
-        public decimal GastoOperativo { get; set; } // Suma de order_gastos_operativos
+        public decimal GastoOperativo { get; set; } // Suma de order_gastos_operativos (valor manual)
         public decimal GastoIndirecto { get; set; } // Suma de order_gastos_indirectos
+
+        // Comisión del vendedor (porcentaje decimal, ej: 5.00 = 5%)
+        public decimal CommissionRate { get; set; }
 
         // Propiedades formateadas para mostrar en UI
         public string GastoMaterialFormatted => GastoMaterial.ToString("C");
         public string GastoOperativoFormatted => GastoOperativo.ToString("C");
         public string GastoIndirectoFormatted => GastoIndirecto.ToString("C");
+
+        // Texto descriptivo para tooltip de Gasto Operativo
+        public string GastoOperativoTooltip => CommissionRate > 0
+            ? $"Gasto operativo (incluye comisión {CommissionRate:N2}%): {GastoOperativo:C}"
+            : $"Gasto operativo: {GastoOperativo:C}";
     }
 }

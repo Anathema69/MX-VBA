@@ -66,16 +66,26 @@
                 <!-- Botón Volver -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal"
                            VerticalAlignment="Center" Margin="0,0,20,0">
-                    <Button Name="btnVolver"
-                           Content="← Volver"
-                           Background="Transparent"
-                           BorderThickness="0"
-                           Foreground="White"
-                           FontSize="16"
-                           Padding="15,8"
-                           Height="45"
-                           Cursor="Hand"
-                           Click="LogoutButton_Click"/>
+                    <Button Name="btnCerrarSesion"
+                           Foreground="White" FontSize="14" FontWeight="SemiBold"
+                           Padding="18,8" Height="40" Cursor="Hand"
+                           Click="LogoutButton_Click" BorderThickness="0">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="#44FFFFFF" CornerRadius="8"
+                                        Padding="{TemplateBinding Padding}">
+                                    <TextBlock Text="Cerrar Sesion" Foreground="White"
+                                               FontWeight="SemiBold" FontSize="14"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Opacity" Value="0.85"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -259,9 +269,11 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
-                                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                            <!-- Header: Orden + Badge -->
+                                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
                                                 <TextBlock FontSize="16" FontWeight="SemiBold"
                                                            Foreground="{StaticResource DarkText}">
                                                     <Run Text="Orden:"/>
@@ -308,30 +320,50 @@
                                                 </Border>
                                             </StackPanel>
 
-                                            <Grid Grid.Row="1" Margin="0,8,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,0">
-                                                    <TextBlock Text="Cliente: " FontSize="13" 
-                                                               Foreground="{StaticResource TextGray}"/>
-                                                    <TextBlock Text="{Binding ClientName}" FontSize="13" 
-                                                               Foreground="{StaticResource DarkText}" FontWeight="Medium"/>
+                                            <!-- Bloque Cliente + Descripción -->
+                                            <Border Grid.Row="1" Padding="0,0,0,0">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="Cliente:" FontSize="13" Foreground="{StaticResource TextGray}"
+                                                                   FontWeight="Medium" Width="60"/>
+                                                        <TextBlock Text="{Binding ClientName}" FontSize="13"
+                                                                   Foreground="{StaticResource DarkText}" FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                    <!-- Descripción de la orden -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding OrderDescription}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding OrderDescription}" Value="{x:Null}">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <TextBlock Text="Detalle:" FontSize="13" Foreground="{StaticResource TextGray}"
+                                                                   FontWeight="Medium" Width="60"/>
+                                                        <TextBlock Text="{Binding OrderDescription}" FontSize="13"
+                                                                   Foreground="#4A5568" TextTrimming="CharacterEllipsis"
+                                                                   MaxWidth="500"/>
+                                                    </StackPanel>
                                                 </StackPanel>
+                                            </Border>
 
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0">
-                                                    <TextBlock Text="Fecha: " FontSize="13" 
+                                            <!-- Fecha -->
+                                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                                                    <TextBlock Text="Fecha: " FontSize="13"
                                                                Foreground="{StaticResource TextGray}"/>
-                                                    <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                                               FontSize="13" Foreground="{StaticResource DarkText}" 
+                                                    <TextBlock Text="{Binding OrderDate, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                                               FontSize="13" Foreground="{StaticResource DarkText}"
                                                                FontWeight="Medium"/>
                                                 </StackPanel>
 
-                                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                                    <TextBlock Text="Fecha de pago: " FontSize="13" 
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Fecha de pago: " FontSize="13"
                                                                Foreground="{StaticResource TextGray}">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -344,8 +376,8 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <TextBlock Text="{Binding PaymentDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
-                                                               FontSize="13" Foreground="{StaticResource DarkText}" 
+                                                    <TextBlock Text="{Binding PaymentDate, StringFormat='{}{0:dd/MM/yyyy}'}"
+                                                               FontSize="13" Foreground="{StaticResource DarkText}"
                                                                FontWeight="Medium">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -359,7 +391,7 @@
                                                         </TextBlock.Style>
                                                     </TextBlock>
                                                 </StackPanel>
-                                            </Grid>
+                                            </StackPanel>
                                         </Grid>
 
                                         <!-- Monto de la Comisión -->

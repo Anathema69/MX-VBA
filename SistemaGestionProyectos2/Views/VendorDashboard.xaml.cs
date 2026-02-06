@@ -171,6 +171,7 @@ namespace SistemaGestionProyectos2.Views
                         OrderId = commission.OrderId,
                         CommissionId = commission.Id,
                         OrderNumber = order?.Po ?? $"ORD-{commission.OrderId}",
+                        OrderDescription = order?.Description ?? "",
                         OrderDate = order?.PoDate ?? DateTime.Now,
                         ClientName = client?.Name ?? "Sin Cliente",
                         CommissionAmount = commission.CommissionAmount,
@@ -287,19 +288,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "¿Está seguro que desea cerrar sesión?",
-                "Confirmar",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                // Usar el método centralizado de App para cerrar sesión
-                // Esto cierra TODAS las ventanas excepto la de login y detiene el timeout service
-                var app = (App)Application.Current;
-                app.ForceLogout("Usuario cerró sesión manualmente", "Sesión cerrada exitosamente.");
-            }
+            var app = (App)Application.Current;
+            app.ForceLogout("Usuario cerró sesión manualmente", "Sesión cerrada exitosamente.");
         }
 
         private string GetInitials(string name)
@@ -321,6 +311,7 @@ namespace SistemaGestionProyectos2.Views
         public int OrderId { get; set; }
         public int CommissionId { get; set; }
         public string OrderNumber { get; set; }
+        public string OrderDescription { get; set; }
         public DateTime OrderDate { get; set; }
         public string ClientName { get; set; }
         public decimal CommissionAmount { get; set; }

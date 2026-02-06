@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using SistemaGestionProyectos2.Models;
+using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
 using System;
 using System.IO;
@@ -34,12 +35,13 @@ namespace SistemaGestionProyectos2.Views
                 if (devModeEnabled && autoLogin)
                 {
                     var username = config.GetValue<string>("DevMode:Username");
-                    var password = config.GetValue<string>("DevMode:Password");
+                    var password = config.GetValue<string>("DevMode:Password") ?? "";
+                    var skipPwd = config.GetValue<bool>("DevMode:SkipPassword");
 
-                    if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+                    if (!string.IsNullOrEmpty(username) && (skipPwd || !string.IsNullOrEmpty(password)))
                     {
                         UsernameTextBox.Text = username;
-                        PasswordBox.Password = password;
+                        PasswordBox.Password = skipPwd ? "devmode" : password;
 
                         // Auto-login después de que la ventana se cargue
                         this.Loaded += async (s, e) =>
@@ -120,8 +122,40 @@ namespace SistemaGestionProyectos2.Views
 
                 logger.LogInfo("AUTH", "LOGIN_ATTEMPT", new { username });
 
-                // AUTENTICACIÓN CON SUPABASE
-                var (success, user, message) = await _supabaseService.AuthenticateUser(username, password);
+                // Verificar si DevMode SkipPassword está activo
+                var devCfg = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: true)
+                    .Build();
+                bool skipPassword = devCfg.GetValue<bool>("DevMode:Enabled") && devCfg.GetValue<bool>("DevMode:SkipPassword");
+
+                bool success;
+                UserDb user;
+                string message;
+
+                if (skipPassword)
+                {
+                    // DevMode: Buscar usuario solo por username, sin validar contraseña
+                    var client = _supabaseService.GetClient();
+                    var userResponse = await client.From<UserDb>().Where(x => x.Username == username).Single();
+                    if (userResponse != null && userResponse.IsActive)
+                    {
+                        success = true;
+                        user = userResponse;
+                        message = "OK";
+                    }
+                    else
+                    {
+                        success = false;
+                        user = null;
+                        message = userResponse == null ? "Usuario no encontrado" : "Usuario desactivado";
+                    }
+                }
+                else
+                {
+                    // Autenticación normal con contraseña
+                    (success, user, message) = await _supabaseService.AuthenticateUser(username, password);
+                }
 
                 if (success && user != null)
                 {

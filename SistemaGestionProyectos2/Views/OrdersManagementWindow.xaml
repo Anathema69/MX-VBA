@@ -77,16 +77,17 @@
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="Content" Value="⬅ Volver"/>
+                                <Setter Property="ToolTip" Value="Volver al menu principal"/>
                                 <Style.Triggers>
-                                    <!-- Si el usuario es coordinador, mostrar "Cerrar Sesión" -->
-                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="coordinator">
-                                        <Setter Property="Content" Value="🚪 Cerrar Sesión"/>
-                                        <Setter Property="ToolTip" Value="Cerrar sesión y volver al login"/>
+                                    <!-- Coordinacion: no tiene menu principal, cierra sesion -->
+                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="coordinacion">
+                                        <Setter Property="Content" Value="Cerrar Sesion"/>
+                                        <Setter Property="ToolTip" Value="Cerrar sesion y volver al login"/>
                                     </DataTrigger>
-                                    <!-- Si es admin, mostrar "Volver" -->
-                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="admin">
-                                        <Setter Property="Content" Value="⬅ Volver"/>
-                                        <Setter Property="ToolTip" Value="Volver al menú principal"/>
+                                    <!-- Proyectos: mismo comportamiento que coordinacion -->
+                                    <DataTrigger Binding="{Binding ElementName=OrdersWindow, Path=Tag}" Value="proyectos">
+                                        <Setter Property="Content" Value="Cerrar Sesion"/>
+                                        <Setter Property="ToolTip" Value="Cerrar sesion y volver al login"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -249,7 +250,32 @@
 
                 <!-- Filtros -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <TextBlock Text="Estado:" 
+                    <!-- Filtro por Año (primero) -->
+                    <TextBlock Text="Año:"
+                             VerticalAlignment="Center"
+                             Margin="0,0,5,0"/>
+                    <ComboBox x:Name="YearFilter"
+                            Width="80"
+                            Height="35"
+                            Margin="0,0,10,0"
+                            SelectionChanged="YearFilter_SelectionChanged">
+                        <ComboBoxItem Content="Todos" IsSelected="True"/>
+                    </ComboBox>
+
+                    <!-- Filtro por Mes (segundo) -->
+                    <TextBlock Text="Mes:"
+                             VerticalAlignment="Center"
+                             Margin="0,0,5,0"/>
+                    <ComboBox x:Name="MonthFilter"
+                            Width="110"
+                            Height="35"
+                            Margin="0,0,15,0"
+                            SelectionChanged="MonthFilter_SelectionChanged">
+                        <ComboBoxItem Content="Todos" IsSelected="True"/>
+                    </ComboBox>
+
+                    <!-- Filtro por Estado -->
+                    <TextBlock Text="Estado:"
                              VerticalAlignment="Center"
                              Margin="0,0,5,0"/>
                     <ComboBox x:Name="StatusFilter"
@@ -370,8 +396,9 @@
                                        Binding="{Binding Description}" 
                                        Width="*"/>
 
-                    <DataGridTextColumn Header="VENDEDOR" 
-                                       Binding="{Binding VendorName}" 
+                    <DataGridTextColumn x:Name="VendorColumn"
+                                       Header="VENDEDOR"
+                                       Binding="{Binding VendorName}"
                                        Width="150"/>
 
                     <DataGridTextColumn Header="FECHA PROMESA" 
@@ -442,18 +469,21 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <DataGridTextColumn x:Name="GastoOperativoColumn"
+                    <DataGridTemplateColumn x:Name="GastoOperativoColumn"
                                        Header="GASTO OP."
-                                       Binding="{Binding GastoOperativo, StringFormat=C}"
-                                       Width="100"
+                                       Width="110"
                                        Visibility="Collapsed">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="Foreground" Value="#FB8C00"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Padding="5,0"
+                                           Foreground="#FB8C00"
+                                           Text="{Binding GastoOperativo, StringFormat=C}"
+                                           ToolTip="{Binding GastoOperativoTooltip}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
                     <DataGridTextColumn x:Name="GastoIndirectoColumn"
                                        Header="GASTO IND."

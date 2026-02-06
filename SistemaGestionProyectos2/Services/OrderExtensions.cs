@@ -97,7 +97,9 @@ namespace SistemaGestionProyectos2.Services
                 // Columnas v2.0 - Gastos (calculados desde la vista)
                 GastoMaterial = order.GastoMaterial,
                 GastoOperativo = order.GastoOperativo,
-                GastoIndirecto = order.GastoIndirecto
+                GastoIndirecto = order.GastoIndirecto,
+                // Comisión del vendedor para cálculo visual
+                CommissionRate = order.CommissionRate ?? 0
             };
         }
     }
