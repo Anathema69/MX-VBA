@@ -71,15 +71,6 @@
                              Foreground="White"
                              VerticalAlignment="Center"
                              Margin="0,0,20,0"/>
-                    <Button Content="⚙" 
-                           Width="30" 
-                           Height="30"
-                           Background="Transparent"
-                           BorderThickness="0"
-                           Foreground="White"
-                           FontSize="18"
-                           Cursor="Hand"
-                           ToolTip="Configuración"/>
                     <Button Content="🚪" 
                            Click="LogoutButton_Click"
                            Width="30" 

@@ -28,6 +28,8 @@ _Actualizar después de ejecutar Sección 1_
 18. [t_vendor_commission_payment](#t_vendor_commission_payment)
 19. [t_commission_rate_history](#t_commission_rate_history)
 20. [users](#users)
+21. [order_gastos_operativos](#order_gastos_operativos) *(Actualizada 2026-02-06)*
+22. [order_gastos_indirectos](#order_gastos_indirectos)
 
 ---
 
@@ -306,6 +308,52 @@ _Pegar resultado de Sección 2 aquí, organizado por tabla_
 | _pendiente_ |
 
 **Propósito:** Historial de cambios en gastos fijos
+
+---
+
+### order_gastos_operativos *(Actualizada 2026-02-06)*
+
+| Columna | Tipo | Nullable | Default | PK |
+|---------|------|----------|---------|:--:|
+| id | integer | NO | sequence | ✓ |
+| f_order | integer | NO | - | |
+| monto | numeric | NO | 0 | |
+| descripcion | varchar | NO | - | |
+| categoria | varchar | YES | - | |
+| fecha_gasto | timestamp | YES | CURRENT_TIMESTAMP | |
+| created_at | timestamp | YES | CURRENT_TIMESTAMP | |
+| created_by | integer | YES | - | |
+| updated_at | timestamp | YES | CURRENT_TIMESTAMP | |
+| updated_by | integer | YES | - | |
+| **f_commission_rate** | **numeric** | **YES** | **0** | |
+
+**Propósito:** Gastos operativos individuales por orden
+
+**Columna nueva (2026-02-06):** `f_commission_rate` almacena el snapshot del porcentaje de comisión del vendedor al momento de crear/editar el gasto. Se usa para calcular el monto final con comisión incluida.
+
+**FK:** `f_order` → `t_order(f_order)`
+
+**Trigger asociado:** `trg_recalcular_gasto_operativo` - Al insertar/editar/eliminar, recalcula `t_order.gasto_operativo` como `SUM(monto * (1 + f_commission_rate/100))`
+
+---
+
+### order_gastos_indirectos
+
+| Columna | Tipo | Nullable | Default | PK |
+|---------|------|----------|---------|:--:|
+| id | integer | NO | sequence | ✓ |
+| f_order | integer | NO | - | |
+| monto | numeric | NO | - | |
+| descripcion | varchar | NO | - | |
+| fecha_gasto | timestamp | YES | CURRENT_TIMESTAMP | |
+| created_at | timestamp | YES | CURRENT_TIMESTAMP | |
+| created_by | integer | YES | - | |
+| updated_at | timestamp | YES | - | |
+| updated_by | integer | YES | - | |
+
+**Propósito:** Gastos indirectos individuales por orden (SIN comisión)
+
+**FK:** `f_order` → `t_order(f_order)`
 
 ---
 

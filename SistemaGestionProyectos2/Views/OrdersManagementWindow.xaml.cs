@@ -235,15 +235,14 @@ namespace SistemaGestionProyectos2.Views
                     break;
 
                 case "administracion":
-                    // Administración tiene acceso pero SIN columnas de gastos v2.0
+                    // Administración tiene acceso incluyendo columnas de gastos v2.0
                     NewOrderButton.IsEnabled = true;
                     SubtotalColumn.Visibility = Visibility.Visible;
                     TotalColumn.Visibility = Visibility.Visible;
                     InvoicedColumn.Visibility = Visibility.Visible;
-                    // Columnas v2.0 - ocultas para administracion (pendiente validación)
-                    GastoMaterialColumn.Visibility = Visibility.Collapsed;
-                    GastoOperativoColumn.Visibility = Visibility.Collapsed;
-                    GastoIndirectoColumn.Visibility = Visibility.Collapsed;
+                    GastoMaterialColumn.Visibility = Visibility.Visible;
+                    GastoOperativoColumn.Visibility = Visibility.Visible;
+                    GastoIndirectoColumn.Visibility = Visibility.Visible;
                     break;
 
                 case "coordinacion":
@@ -253,9 +252,6 @@ namespace SistemaGestionProyectos2.Views
                     NewOrderButton.Visibility = Visibility.Collapsed;
 
                     RefreshButton.Width = 90;
-
-                    // Ocultar botón Exportar (no aplica para este rol)
-                    ExportButton.Visibility = Visibility.Collapsed;
 
                     // NO puede ver campos financieros ni vendedor
                     VendorColumn.Visibility = Visibility.Collapsed;
@@ -356,10 +352,10 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 // Cargar primero las 100 órdenes más recientes con el filtro aplicado
-                // Para rol "direccion" usar la vista con gastos calculados
+                // Para rol "direccion" y "administracion" usar la vista con gastos calculados
                 int ordersLoadedCount = 0;
 
-                if (_currentUser.Role == "direccion")
+                if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                 {
                     // Usar vista v_order_gastos que incluye gasto_material calculado
                     var ordersWithGastos = await _supabaseService.GetOrdersWithGastos(
@@ -575,7 +571,7 @@ namespace SistemaGestionProyectos2.Views
                 int offset = 100;
                 int batchSize = 100;
                 bool hasMore = true;
-                bool useGastosView = _currentUser.Role == "direccion";
+                bool useGastosView = _currentUser.Role == "direccion" || _currentUser.Role == "administracion";
 
                 while (hasMore)
                 {

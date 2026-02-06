@@ -304,7 +304,7 @@ stateDiagram-v2
 |---------|------|----------|---------|-------------|
 | id | int (PK) | NO | autoincrement | ID del gasto |
 | f_order | int (FK) | NO | - | Orden asociada |
-| monto | numeric | NO | 0 | Monto del gasto |
+| monto | numeric | NO | 0 | Monto BASE del gasto (sin comisión) |
 | descripcion | varchar | NO | - | Descripción del gasto |
 | categoria | varchar | YES | - | Categoría (fletes, viáticos, etc.) |
 | fecha_gasto | timestamp | YES | CURRENT_TIMESTAMP | Fecha del gasto |
@@ -312,10 +312,13 @@ stateDiagram-v2
 | created_by | int (FK) | YES | - | Usuario que creó |
 | updated_at | timestamp | YES | CURRENT_TIMESTAMP | Fecha de modificación |
 | updated_by | int (FK) | YES | - | Usuario que modificó |
+| **f_commission_rate** | **numeric** | **YES** | **0** | **Snapshot del % de comisión del vendedor** *(Nueva 2026-02-06)* |
 
 **FK:** `f_order` → `t_order(f_order)`
 
-**Nota:** La suma se sincroniza automáticamente a `t_order.gasto_operativo`.
+**Trigger:** `trg_recalcular_gasto_operativo` - Al insertar/editar/eliminar, recalcula automáticamente `t_order.gasto_operativo` como `SUM(monto * (1 + f_commission_rate/100))`.
+
+**Nota:** El campo `monto` almacena el valor BASE (lo que el usuario escribe). La comisión se aplica en el cálculo del trigger, no se multiplica antes de guardar.
 
 ---
 

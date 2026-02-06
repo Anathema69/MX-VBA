@@ -88,7 +88,7 @@ namespace SistemaGestionProyectos2.Views
                     Task.Run(async () => _vendors = await _supabaseService.GetVendors()),
                     Task.Run(async () => _originalOrderDb = await _supabaseService.GetOrderById(_order.Id)),
                     Task.Run(async () => {
-                        if (_currentUser.Role == "direccion")
+                        if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                         {
                             gastos = await _supabaseService.GetGastosOperativos(_order.Id);
                             gastosIndirectos = await _supabaseService.GetGastosIndirectos(_order.Id);
@@ -118,7 +118,7 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 // Asignar gastos operativos y guardar copia original
-                if (_currentUser.Role == "direccion")
+                if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                 {
                     var listaGastos = gastos ?? new List<OrderGastoOperativoDb>();
                     _gastosOperativos = new ObservableCollection<OrderGastoOperativoDb>(listaGastos);
@@ -128,6 +128,7 @@ namespace SistemaGestionProyectos2.Views
                         Id = g.Id,
                         OrderId = g.OrderId,
                         Monto = g.Monto,
+                        CommissionRate = g.CommissionRate,
                         Descripcion = g.Descripcion,
                         Categoria = g.Categoria,
                         FechaGasto = g.FechaGasto,
@@ -301,8 +302,8 @@ namespace SistemaGestionProyectos2.Views
                 FinancialSection.Visibility = Visibility.Visible;
                 FinancialFields.Visibility = Visibility.Visible;
 
-                // Gastos v2.0 - solo visibles para direccion (pendiente validación)
-                if (_currentUser.Role == "direccion")
+                // Gastos v2.0 - visibles para direccion y administracion
+                if (_currentUser.Role == "direccion" || _currentUser.Role == "administracion")
                 {
                     GastosSection.Visibility = Visibility.Visible;
                     GastosFields.Visibility = Visibility.Visible;
@@ -893,8 +894,8 @@ namespace SistemaGestionProyectos2.Views
                     _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
 
                     // Campos de gastos v2.0
-                    // GastoOperativo se calcula automáticamente desde order_gastos_operativos
-                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
+                    // GastoOperativo: suma local con comisión (igual que el trigger en BD)
+                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto * (1 + g.CommissionRate / 100)) ?? 0;
                     // GastoIndirecto se calcula automáticamente desde order_gastos_indirectos
                     _originalOrderDb.GastoIndirecto = _gastosIndirectos?.Sum(g => g.Monto) ?? 0;
                 }
@@ -916,14 +917,14 @@ namespace SistemaGestionProyectos2.Views
 
                 if (success)
                 {
-                    // Persistir cambios de gastos operativos (solo para direccion)
-                    if (_currentUser.Role == "direccion" && _gastosOperativos != null)
+                    // Persistir cambios de gastos operativos (direccion y administracion)
+                    if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion") && _gastosOperativos != null)
                     {
                         await PersistGastosOperativosAsync();
                     }
 
-                    // Persistir cambios de gastos indirectos (solo para direccion)
-                    if (_currentUser.Role == "direccion" && _gastosIndirectos != null)
+                    // Persistir cambios de gastos indirectos (direccion y administracion)
+                    if ((_currentUser.Role == "direccion" || _currentUser.Role == "administracion") && _gastosIndirectos != null)
                     {
                         await PersistGastosIndirectosAsync();
                     }
@@ -1061,8 +1062,8 @@ namespace SistemaGestionProyectos2.Views
                     if (gasto.Id < 0)
                     {
                         // Gasto nuevo (ID temporal negativo) - Insertar
-                        System.Diagnostics.Debug.WriteLine($"➕ Insertando gasto: {gasto.Monto:C} - {gasto.Descripcion}");
-                        var resultado = await _supabaseService.AddGastoOperativo(_order.Id, gasto.Monto, gasto.Descripcion, _currentUser.Id);
+                        System.Diagnostics.Debug.WriteLine($"➕ Insertando gasto: {gasto.Monto:C} (rate={gasto.CommissionRate}%) - {gasto.Descripcion}");
+                        var resultado = await _supabaseService.AddGastoOperativo(_order.Id, gasto.Monto, gasto.Descripcion, gasto.CommissionRate, _currentUser.Id);
                         if (resultado != null)
                         {
                             insertados++;
@@ -1073,10 +1074,10 @@ namespace SistemaGestionProyectos2.Views
                     {
                         // Gasto existente - Verificar si fue modificado
                         var original = _gastosOriginales?.FirstOrDefault(g => g.Id == gasto.Id);
-                        if (original != null && (original.Monto != gasto.Monto || original.Descripcion != gasto.Descripcion))
+                        if (original != null && (original.Monto != gasto.Monto || original.Descripcion != gasto.Descripcion || original.CommissionRate != gasto.CommissionRate))
                         {
-                            System.Diagnostics.Debug.WriteLine($"✏ Actualizando gasto ID: {gasto.Id}");
-                            await _supabaseService.UpdateGastoOperativo(gasto.Id, gasto.Monto, gasto.Descripcion, _order.Id, _currentUser.Id);
+                            System.Diagnostics.Debug.WriteLine($"✏ Actualizando gasto ID: {gasto.Id} (rate={gasto.CommissionRate}%)");
+                            await _supabaseService.UpdateGastoOperativo(gasto.Id, gasto.Monto, gasto.Descripcion, gasto.CommissionRate, _order.Id, _currentUser.Id);
                             actualizados++;
                         }
                     }
@@ -1110,7 +1111,7 @@ namespace SistemaGestionProyectos2.Views
 
         private void UpdateGastoOperativoTotal()
         {
-            decimal total = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
+            decimal total = _gastosOperativos?.Sum(g => g.Monto * (1 + g.CommissionRate / 100)) ?? 0;
             GastoOperativoText.Text = total.ToString("C", new CultureInfo("es-MX"));
         }
 
@@ -1394,22 +1395,20 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Aplicar comisión del vendedor si existe
+            // Guardar monto BASE + snapshot del rate (el trigger calcula el total en BD)
             decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-            decimal montoFinal = commissionRate > 0
-                ? monto + (monto * commissionRate / 100)
-                : monto;
 
             // Actualizar el objeto en memoria
             var gasto = border.DataContext as OrderGastoOperativoDb;
             if (gasto != null)
             {
-                gasto.Monto = montoFinal;
+                gasto.Monto = monto;
+                gasto.CommissionRate = commissionRate;
                 gasto.Descripcion = descripcion;
             }
 
             // Volver a modo vista
-            montoView.Text = $"${montoFinal:N2}";
+            montoView.Text = $"${monto:N2}";
             descView.Text = descripcion;
             montoView.Visibility = Visibility.Visible;
             descView.Visibility = Visibility.Visible;
@@ -1634,18 +1633,15 @@ namespace SistemaGestionProyectos2.Views
 
         private void SaveNewGastoButton_Click_Internal(decimal monto, string descripcion)
         {
-            // Aplicar comisión del vendedor si existe
+            // Guardar monto BASE + snapshot del rate (el trigger calcula el total en BD)
             decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-            decimal montoFinal = commissionRate > 0
-                ? monto + (monto * commissionRate / 100)
-                : monto;
 
-            // Agregar nuevo gasto solo en memoria (sin guardar a BD)
             var nuevoGasto = new OrderGastoOperativoDb
             {
                 Id = _tempIdCounter--, // ID temporal negativo
                 OrderId = _order.Id,
-                Monto = montoFinal,
+                Monto = monto,
+                CommissionRate = commissionRate,
                 Descripcion = descripcion,
                 FechaGasto = DateTime.Now,
                 CreatedBy = _currentUser.Id

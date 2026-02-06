@@ -20,6 +20,9 @@ namespace SistemaGestionProyectos2.Models.Database
         [Column("monto")]
         public decimal Monto { get; set; }
 
+        [Column("f_commission_rate")]
+        public decimal CommissionRate { get; set; }
+
         [Column("descripcion")]
         public string Descripcion { get; set; }
 

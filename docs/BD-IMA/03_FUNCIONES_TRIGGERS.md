@@ -1,8 +1,8 @@
 # Funciones y Triggers - IMA Mecatrónica
 
 **Fecha de extracción:** 27 de Enero de 2026
-**Total de funciones:** 41
-**Total de triggers:** 26
+**Total de funciones:** 43
+**Total de triggers:** 28
 
 ---
 
@@ -10,9 +10,9 @@
 
 | Categoría | Cantidad | Descripción |
 |-----------|----------|-------------|
-| Funciones Trigger | 24 | Funciones que retornan `trigger` |
+| Funciones Trigger | 26 | Funciones que retornan `trigger` |
 | Funciones Invocables | 17 | Funciones llamadas directamente |
-| Triggers Activos | 26 | Todos habilitados (ENABLED) |
+| Triggers Activos | 28 | Todos habilitados (ENABLED) |
 
 ---
 
@@ -52,7 +52,7 @@
 | `update_user_password` | `user_id, new_password` | void | Actualiza contraseña de usuario |
 | `upsert_overtime_hours` | `p_year, p_month, p_amount, p_notes, p_user_id` | TABLE(success, message, overtime_id) | Inserta/actualiza horas extras |
 
-### Funciones Trigger (24)
+### Funciones Trigger (26)
 
 | Función | Descripción |
 |---------|-------------|
@@ -79,6 +79,8 @@
 | `update_order_on_invoice_change` | Actualiza orden al cambiar factura |
 | `update_order_status_from_invoices` | Actualiza estado de orden desde facturas |
 | `update_order_status_on_invoice` | Actualiza estado de orden por factura |
+| `recalcular_gasto_operativo` | Recalcula t_order.gasto_operativo desde order_gastos_operativos *(Nueva 2026-02-06)* |
+| `sync_commission_rate_to_gastos` | Propaga cambio de f_commission_rate a gastos operativos *(Nueva 2026-02-06)* |
 | `update_updated_at_column` | Actualiza timestamp updated_at |
 
 ---
@@ -112,13 +114,21 @@
 | `trg_vacation_audit` | t_vacation | AFTER | INSERT, DELETE, UPDATE | audit_vacation_changes |
 | `update_vendor_updated_at` | t_vendor | BEFORE | UPDATE | update_updated_at_column |
 | `trg_before_commission_delete` | t_vendor_commission_payment | BEFORE | DELETE | fn_log_vendor_removal |
+| `trg_recalcular_gasto_operativo` | order_gastos_operativos | AFTER | INSERT, DELETE, UPDATE | recalcular_gasto_operativo |
+| `trg_sync_commission_rate` | t_order | AFTER | UPDATE | sync_commission_rate_to_gastos |
 | `trigger_sync_commission_rate` | t_vendor_commission_payment | AFTER | UPDATE | sync_commission_rate |
 
 ---
 
 ## Triggers por Tabla
 
-### t_order (7 triggers) - CORE DEL NEGOCIO
+### order_gastos_operativos (1 trigger) - GASTOS OPERATIVOS *(Nuevo 2026-02-06)*
+
+| Trigger | Momento | Evento | Función | Propósito |
+|---------|---------|--------|---------|-----------|
+| `trg_recalcular_gasto_operativo` | AFTER | INSERT, UPDATE, DELETE | recalcular_gasto_operativo | Recalcula t_order.gasto_operativo como SUM(monto * (1 + rate/100)) |
+
+### t_order (8 triggers) - CORE DEL NEGOCIO
 
 | Trigger | Momento | Evento | Función | Propósito |
 |---------|---------|--------|---------|-----------|
@@ -129,6 +139,7 @@
 | `trigger_create_commission_on_order` | AFTER | INSERT | create_commission_on_order_creation | Crea comisión automáticamente |
 | `trigger_sync_commission_from_order` | AFTER | UPDATE | sync_commission_rate_from_order | Sincroniza tasa de comisión |
 | `trigger_update_commission_on_status_change` | AFTER | UPDATE | update_commission_on_order_status_change | Actualiza estado de comisión |
+| `trg_sync_commission_rate` | AFTER | UPDATE | sync_commission_rate_to_gastos | Propaga f_commission_rate a gastos operativos *(Nuevo 2026-02-06)* |
 
 ### t_invoice (4 triggers)
 
@@ -798,6 +809,77 @@ $function$;
 
 ---
 
+## Funciones de Gastos Operativos *(Nuevo 2026-02-06)*
+
+### recalcular_gasto_operativo()
+
+**Propósito:** Trigger que recalcula automáticamente `t_order.gasto_operativo` sumando todos los gastos operativos con comisión aplicada.
+
+**Tabla afectada:** order_gastos_operativos
+**Evento:** AFTER INSERT, UPDATE, DELETE
+**Actualiza:** t_order.gasto_operativo
+
+**Fórmula:** `SUM(monto * (1 + COALESCE(f_commission_rate, 0) / 100))`
+
+```sql
+CREATE OR REPLACE FUNCTION recalcular_gasto_operativo()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE t_order
+    SET gasto_operativo = (
+        SELECT COALESCE(SUM(monto * (1 + COALESCE(f_commission_rate, 0) / 100)), 0)
+        FROM order_gastos_operativos
+        WHERE f_order = COALESCE(NEW.f_order, OLD.f_order)
+    )
+    WHERE f_order = COALESCE(NEW.f_order, OLD.f_order);
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_recalcular_gasto_operativo
+    AFTER INSERT OR UPDATE OR DELETE ON order_gastos_operativos
+    FOR EACH ROW EXECUTE FUNCTION recalcular_gasto_operativo();
+```
+
+**Reemplaza:** Método `RecalcularGastoOperativo()` de `OrderService.cs` (eliminado del código C#).
+
+---
+
+### sync_commission_rate_to_gastos()
+
+**Propósito:** Trigger que propaga cambios en `f_commission_rate` de una orden a todos sus gastos operativos. Al actualizar los gastos, se dispara `trg_recalcular_gasto_operativo` que recalcula la suma.
+
+**Tabla afectada:** t_order
+**Evento:** AFTER UPDATE OF f_commission_rate
+**Actualiza:** order_gastos_operativos.f_commission_rate
+
+```sql
+CREATE OR REPLACE FUNCTION sync_commission_rate_to_gastos()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.f_commission_rate IS DISTINCT FROM NEW.f_commission_rate THEN
+        UPDATE order_gastos_operativos
+        SET f_commission_rate = COALESCE(NEW.f_commission_rate, 0)
+        WHERE f_order = NEW.f_order;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_commission_rate
+    AFTER UPDATE OF f_commission_rate ON t_order
+    FOR EACH ROW EXECUTE FUNCTION sync_commission_rate_to_gastos();
+```
+
+**Cadena de triggers:**
+```
+t_order.f_commission_rate cambia
+  → sync_commission_rate_to_gastos() actualiza gastos
+    → recalcular_gasto_operativo() recalcula suma en t_order
+```
+
+---
+
 ## Diagrama de Flujo de Triggers en t_order
 
 ```
@@ -826,9 +908,21 @@ $function$;
                                         │
         ┌───────────────────────────────┼───────────────────────────────┐
         ▼                               ▼                               ▼
-  [AFTER UPDATE]                  [AFTER UPDATE]                  [AFTER UPDATE]
-  record_order_history      sync_commission_from_order    update_commission_on_status
-  (cambios en history)       (sincroniza tasa)             (si cambia estado)
+  [AFTER UPDATE]           [AFTER UPDATE]           [AFTER UPDATE]           [AFTER UPDATE]
+  record_order_history  sync_commission_from_order  update_commission   sync_commission_rate
+  (cambios en history)    (sincroniza tasa)        _on_status          _to_gastos (NEW)
+                                                   (si cambia estado)  (propaga rate a gastos)
+```
+
+```
+              ┌───────────────────────────────────────────────────────┐
+              │      INSERT/UPDATE/DELETE en order_gastos_operativos   │
+              └───────────────────────────────────────────────────────┘
+                                          │
+                                          ▼
+                                  [AFTER I/U/D]
+                          recalcular_gasto_operativo
+                   (SUM(monto * (1 + rate/100)) → t_order)
 ```
 
 ---
@@ -844,3 +938,9 @@ $function$;
 4. **Auditoría completa:** El sistema mantiene historial completo de cambios en órdenes, nómina, gastos fijos, asistencias y vacaciones.
 
 5. **Comisiones automáticas:** Al crear una orden con vendedor, se crea automáticamente el registro de comisión.
+
+6. **Gastos operativos (2026-02-06):** `t_order.gasto_operativo` se calcula automáticamente por trigger al insertar/editar/eliminar gastos en `order_gastos_operativos`. El cálculo incluye la comisión del vendedor: `SUM(monto * (1 + rate/100))`.
+
+7. **Propagación de comisión:** Al cambiar `f_commission_rate` en `t_order`, el trigger `trg_sync_commission_rate` propaga el nuevo rate a todos los gastos operativos, disparando a su vez el recálculo automático.
+
+**Última actualización:** 06 de Febrero de 2026 (triggers de gastos operativos)

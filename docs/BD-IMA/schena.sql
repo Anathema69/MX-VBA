@@ -74,6 +74,7 @@ CREATE TABLE public.order_gastos_operativos (
   created_by integer,
   updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
   updated_by integer,
+  f_commission_rate numeric DEFAULT 0,
   CONSTRAINT order_gastos_operativos_pkey PRIMARY KEY (id),
   CONSTRAINT order_gastos_operativos_f_order_fkey FOREIGN KEY (f_order) REFERENCES public.t_order(f_order)
 );

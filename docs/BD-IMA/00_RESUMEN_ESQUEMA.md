@@ -10,13 +10,13 @@
 
 | Métrica | Valor |
 |---------|-------|
-| Total de tablas | **26** |
-| Total de funciones | **37** |
-| Total de triggers | **41** |
+| Total de tablas | **28** |
+| Total de funciones | **39** |
+| Total de triggers | **43** |
 | Total de vistas | **5** |
 | Total de secuencias | **27** |
 
-*Actualizado: 2026-01-27 - Agregada auditoría de gastos*
+*Actualizado: 2026-02-06 - Triggers de gastos operativos y comision*
 
 ---
 
@@ -28,6 +28,8 @@
 | `audit_log` | 10 | 32 kB | Log de auditoría general |
 | `invoice_audit` | 7 | 16 kB | Auditoría de cambios en facturas |
 | `invoice_status` | 5 | 24 kB | Catálogo de estados de factura |
+| `order_gastos_indirectos` | 9 | - | Gastos indirectos por orden *(v2.0)* |
+| `order_gastos_operativos` | 11 | - | Gastos operativos por orden (con f_commission_rate) *(v2.0, actualizada 2026-02-06)* |
 | `order_history` | 10 | 272 kB | Histórico de cambios en órdenes |
 | `order_status` | 5 | 24 kB | Catálogo de estados de orden |
 | `t_balance_adjustments` | 10 | 24 kB | Ajustes manuales al balance |
@@ -84,8 +86,10 @@
 │  • t_client              • t_supplier             • t_vendor               │
 │  • t_contact             • t_expense              • t_vendor_commission_   │
 │                          • t_expense_audit          payment                │
-│                                                   • t_commission_rate_     │
-│                                                     history                │
+│                          • order_gastos_           • t_commission_rate_     │
+│                            operativos               history                │
+│                          • order_gastos_                                   │
+│                            indirectos                                      │
 │                                                                             │
 │  NÓMINA/RRHH             BALANCE/FINANZAS         SISTEMA                  │
 │  ──────────              ───────────────          ───────                  │
