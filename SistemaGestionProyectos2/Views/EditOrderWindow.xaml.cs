@@ -893,9 +893,8 @@ namespace SistemaGestionProyectos2.Views
                     _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
 
                     // Campos de gastos v2.0
-                    // GastoOperativo: suma de gastos base (el trigger en BD suma + commission_amount)
-                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
-                    // GastoIndirecto se calcula automáticamente desde order_gastos_indirectos
+                    // GastoOperativo: NO se setea desde C# - lo calcula el trigger trg_recalcular_gasto_operativo
+                    // GastoIndirecto: se calcula desde C# (sin trigger aún)
                     _originalOrderDb.GastoIndirecto = _gastosIndirectos?.Sum(g => g.Monto) ?? 0;
                 }
 

@@ -159,7 +159,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     .Set(x => x.Expense, order.Expense)
                     .Set(x => x.OrderStatus, order.OrderStatus)
                     .Set(x => x.UpdatedBy, order.UpdatedBy)
-                    .Set(x => x.GastoOperativo, order.GastoOperativo)
+                    // GastoOperativo: NO se envía - lo calcula el trigger trg_recalcular_gasto_operativo
                     .Set(x => x.GastoIndirecto, order.GastoIndirecto)
                     .Update();
 
