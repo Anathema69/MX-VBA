@@ -15,7 +15,7 @@
         <local:AdminVisibilityConverter x:Key="AdminVisibilityConverter"/>
         <local:IsNegativeConverter x:Key="IsNegativeConverter"/>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -149,29 +149,29 @@
                            Visibility="{Binding ElementName=OrdersWindow,
                                        Path=Tag,
                                        Converter={StaticResource AdminVisibilityConverter}}">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border x:Name="border"
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="border"
                                        Background="#2196F3"
                                        CornerRadius="3">
-                                                        <ContentPresenter HorizontalAlignment="Center"
+                                    <ContentPresenter HorizontalAlignment="Center"
                                                     VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="border" Property="Background" Value="#1976D2"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsEnabled" Value="False">
-                                                            <Setter TargetName="border" Property="Background" Value="#DDD"/>
-                                                            <Setter TargetName="border" Property="Opacity" Value="0.6"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="👥" FontSize="16" Margin="0,0,8,0" Foreground="White"/>
-                                                <TextBlock Text="CLIENTES" FontWeight="Bold" Foreground="White"/>
-                                            </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#1976D2"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="border" Property="Background" Value="#DDD"/>
+                                        <Setter TargetName="border" Property="Opacity" Value="0.6"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👥" FontSize="16" Margin="0,0,8,0" Foreground="White"/>
+                            <TextBlock Text="CLIENTES" FontWeight="Bold" Foreground="White"/>
+                        </StackPanel>
                     </Button>
                     <Button x:Name="RefreshButton"
                            Click="RefreshButton_Click"
@@ -327,233 +327,264 @@
                      RowHeight="35"
                      FontSize="12">
 
-                <DataGrid.Resources>
-                    <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="#f0f0f0"/>
-                        <Setter Property="Foreground" Value="Black"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
-                        <Setter Property="Height" Value="40"/>
-                        <Setter Property="BorderBrush" Value="#DDD"/>
-                        <Setter Property="BorderThickness" Value="0,0,1,1"/>
-                        <Setter Property="Padding" Value="10,0"/>
-                    </Style>
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#f0f0f0"/>
+                            <Setter Property="Foreground" Value="Black"/>
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <Setter Property="Height" Value="40"/>
+                            <Setter Property="BorderBrush" Value="#DDD"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                            <Setter Property="Padding" Value="10,0"/>
+                        </Style>
 
-                    <Style TargetType="DataGridRow">
-                        <Setter Property="Background" Value="#FFFFFF"/>
-                        <Style.Triggers>
-                            <!-- Mes impar = blanco puro -->
-                            <DataTrigger Binding="{Binding EsMesImpar}" Value="True">
-                                <Setter Property="Background" Value="#FFFFFF"/>
-                            </DataTrigger>
-                            <!-- Mes par = gris más notorio -->
-                            <DataTrigger Binding="{Binding EsMesImpar}" Value="False">
-                                <Setter Property="Background" Value="#D1D5DB"/>
-                            </DataTrigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#DBEAFE"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#93C5FD"/>
-                                <Setter Property="Foreground" Value="Black"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                    <Style TargetType="DataGridCell">
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#90CAF9"/>
-                                <Setter Property="Foreground" Value="Black"/>
-                                <Setter Property="BorderBrush" Value="#1976D2"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.Resources>
+                        <!-- Estilo para headers de columnas monetarias (alineados a la derecha) -->
+                        <Style x:Key="RightAlignedHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+                            <Setter Property="Padding" Value="0,0,10,0"/>
+                        </Style>
 
-                <DataGrid.Columns>
-                    <!-- Columnas visibles para todos -->
-                    <DataGridTextColumn Header="O.C." 
+                        <!-- Estilo para headers centrados -->
+                        <Style x:Key="CenterAlignedHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                        </Style>
+
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="#FFFFFF"/>
+                            <Style.Triggers>
+                                <!-- Mes impar = blanco puro -->
+                                <DataTrigger Binding="{Binding EsMesImpar}" Value="True">
+                                    <Setter Property="Background" Value="#FFFFFF"/>
+                                </DataTrigger>
+                                <!-- Mes par = gris más notorio -->
+                                <DataTrigger Binding="{Binding EsMesImpar}" Value="False">
+                                    <Setter Property="Background" Value="#D1D5DB"/>
+                                </DataTrigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#DBEAFE"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#93C5FD"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                        <Style TargetType="DataGridCell">
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#90CAF9"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="BorderBrush" Value="#1976D2"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.Columns>
+                        <!-- Columnas visibles para todos -->
+                        <DataGridTextColumn Header="O.C." 
                                        Binding="{Binding OrderNumber}" 
                                        Width="100"/>
 
-                    <DataGridTextColumn Header="FECHA O.C." 
+                        <DataGridTextColumn Header="FECHA O.C." 
                                        Binding="{Binding OrderDate, StringFormat=dd/MM/yyyy}" 
                                        Width="100"/>
 
-                    <DataGridTextColumn Header="EMPRESA" 
+                        <DataGridTextColumn Header="EMPRESA" 
                                        Binding="{Binding ClientName}" 
                                        Width="200"/>
 
-                    <DataGridTextColumn Header="DESCRIPCIÓN" 
+                        <DataGridTextColumn Header="DESCRIPCIÓN" 
                                        Binding="{Binding Description}" 
                                        Width="*"/>
 
-                    <DataGridTextColumn x:Name="VendorColumn"
+                        <DataGridTextColumn x:Name="VendorColumn"
                                        Header="VENDEDOR"
                                        Binding="{Binding VendorName}"
                                        Width="150"/>
 
-                    <DataGridTextColumn Header="FECHA PROMESA" 
+                        <DataGridTextColumn Header="FECHA PROMESA" 
                                        Binding="{Binding PromiseDate, StringFormat=dd/MM/yyyy}" 
                                        Width="110"/>
 
-                    <DataGridTextColumn Header="% AVANCE" 
+                        <DataGridTextColumn Header="% AVANCE" 
                                        Binding="{Binding ProgressPercentage, StringFormat={}{0}%}" 
-                                       Width="80">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Center"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                                       Width="80"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    <!-- Columnas exclusivas para Admin -->
-                    <DataGridTextColumn x:Name="SubtotalColumn"
+                        <!-- Columnas exclusivas para Admin -->
+                        <DataGridTextColumn x:Name="SubtotalColumn"
                                        Header="SUBTOTAL" 
                                        Binding="{Binding Subtotal, StringFormat=C}" 
-                                       Width="100"
-                                       Visibility="Collapsed">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                                       Width="110"
+                                       Visibility="Collapsed"
+                                       HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="0,0,8,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    <DataGridTextColumn x:Name="TotalColumn"
+                        <DataGridTextColumn x:Name="TotalColumn"
                                        Header="TOTAL" 
                                        Binding="{Binding Total, StringFormat=C}" 
-                                       Width="100"
-                                       Visibility="Collapsed">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="FontWeight" Value="Bold"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                                       Width="110"
+                                       Visibility="Collapsed"
+                                       HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Padding" Value="0,0,8,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    
-                    <DataGridTextColumn x:Name="InvoicedColumn"
+
+                        <DataGridTextColumn x:Name="InvoicedColumn"
                    Header="FACTURADO"
                    Binding="{Binding InvoicedAmount, StringFormat=C}"
-                   Width="110">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="FontWeight" Value="Bold"/>
-                                <Setter Property="Foreground" Value="#4CAF50"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                   Width="110"
+                   HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Foreground" Value="#4CAF50"/>
+                                    <Setter Property="Padding" Value="0,0,8,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    <!-- Columnas v2.0 - Gastos (solo Admin) -->
-                    <DataGridTextColumn x:Name="GastoMaterialColumn"
+                        <!-- Columnas v2.0 - Gastos (solo Admin) -->
+                        <DataGridTextColumn x:Name="GastoMaterialColumn"
                                        Header="GASTO MAT."
                                        Binding="{Binding GastoMaterial, StringFormat=C}"
-                                       Width="100"
-                                       Visibility="Collapsed">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="Foreground" Value="#E53935"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                                       Width="110"
+                                       Visibility="Collapsed"
+                                       HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Foreground" Value="#E53935"/>
+                                    <Setter Property="Padding" Value="0,0,8,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    <DataGridTemplateColumn x:Name="GastoOperativoColumn"
+                        <DataGridTemplateColumn x:Name="GastoOperativoColumn"
                                        Header="GASTO OP."
                                        Width="110"
-                                       Visibility="Collapsed">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock HorizontalAlignment="Right"
+                                       Visibility="Collapsed"
+                                       HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock HorizontalAlignment="Right"
                                            VerticalAlignment="Center"
-                                           Padding="5,0"
+                                           Padding="0,0,8,0"
                                            Foreground="#FB8C00"
                                            Text="{Binding GastoOperativo, StringFormat=C}"
                                            ToolTip="{Binding GastoOperativoTooltip}"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTextColumn x:Name="GastoIndirectoColumn"
+                        <DataGridTextColumn x:Name="GastoIndirectoColumn"
                                        Header="GASTO IND."
                                        Binding="{Binding GastoIndirecto, StringFormat=C}"
-                                       Width="100"
-                                       Visibility="Collapsed">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                <Setter Property="Foreground" Value="#1976D2"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                                       Width="110"
+                                       Visibility="Collapsed"
+                                       HeaderStyle="{StaticResource RightAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Foreground" Value="#1976D2"/>
+                                    <Setter Property="Padding" Value="0,0,8,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                    <!-- Estado con colores -->
-                    <!-- En el DataGridTemplateColumn del ESTATUS -->
-                    <!-- Columna Estado con estilo de badges -->
-                    <DataGridTemplateColumn x:Name="StatusColumn"
+                        <!-- Estado con colores -->
+                        <!-- En el DataGridTemplateColumn del ESTATUS -->
+                        <!-- Columna Estado con estilo de badges -->
+                        <DataGridTemplateColumn x:Name="StatusColumn"
                         Header="ESTADO"
-                        Width="130">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <Border x:Name="StatusBorder" 
+                        Width="130"
+                        HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="StatusBorder" 
                     CornerRadius="3" 
                     Padding="8,4"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Status}" 
+                                        <TextBlock Text="{Binding Status}" 
                           FontWeight="SemiBold"
                           FontSize="11"
                           HorizontalAlignment="Center"/>
-                                </Border>
-                                <DataTemplate.Triggers>
-                                    <!-- CREADA - Gris -->
-                                    <DataTrigger Binding="{Binding Status}" Value="CREADA">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#E0E0E0"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#616161"/>
-                                    </DataTrigger>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <!-- CREADA - Gris -->
+                                        <DataTrigger Binding="{Binding Status}" Value="CREADA">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#E0E0E0"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#616161"/>
+                                        </DataTrigger>
 
-                                    <!-- EN PROCESO - Naranja -->
-                                    <DataTrigger Binding="{Binding Status}" Value="EN PROCESO">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFE0B2"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#E65100"/>
-                                    </DataTrigger>
+                                        <!-- EN PROCESO - Naranja -->
+                                        <DataTrigger Binding="{Binding Status}" Value="EN PROCESO">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#FFE0B2"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#E65100"/>
+                                        </DataTrigger>
 
-                                    <!-- LIBERADA - Amarillo Tráfico -->
-                                    <DataTrigger Binding="{Binding Status}" Value="LIBERADA">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFD600"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#000000"/>
-                                    </DataTrigger>
+                                        <!-- LIBERADA - Amarillo Tráfico -->
+                                        <DataTrigger Binding="{Binding Status}" Value="LIBERADA">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#FFD600"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#000000"/>
+                                        </DataTrigger>
 
-                                    <!-- CERRADA - Azul -->
-                                    <DataTrigger Binding="{Binding Status}" Value="CERRADA">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#2196F3"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#FFFFFF"/>
-                                    </DataTrigger>
+                                        <!-- CERRADA - Azul -->
+                                        <DataTrigger Binding="{Binding Status}" Value="CERRADA">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#2196F3"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#FFFFFF"/>
+                                        </DataTrigger>
 
-                                    <!-- COMPLETADA - Verde -->
-                                    <DataTrigger Binding="{Binding Status}" Value="COMPLETADA">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#C8E6C9"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#1B5E20"/>
-                                    </DataTrigger>
+                                        <!-- COMPLETADA - Verde -->
+                                        <DataTrigger Binding="{Binding Status}" Value="COMPLETADA">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#C8E6C9"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#1B5E20"/>
+                                        </DataTrigger>
 
-                                    <!-- CANCELADA - Rojo -->
-                                    <DataTrigger Binding="{Binding Status}" Value="CANCELADA">
-                                        <Setter TargetName="StatusBorder" Property="Background" Value="#FFCDD2"/>
-                                        <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#B71C1C"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                                        <!-- CANCELADA - Rojo -->
+                                        <DataTrigger Binding="{Binding Status}" Value="CANCELADA">
+                                            <Setter TargetName="StatusBorder" Property="Background" Value="#FFCDD2"/>
+                                            <Setter TargetName="StatusBorder" Property="TextBlock.Foreground" Value="#B71C1C"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="ACCIONES" Width="150">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <!-- Botón Editar - Siempre visible -->
-                                    <Button    Content="✏" 
+                        <DataGridTemplateColumn Header="ACCIONES" Width="150"
+                                           HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <!-- Botón Editar - Siempre visible -->
+                                        <Button    Content="✏" 
                                                Click="EditButton_Click"
                                                Tag="{Binding}"
                                                Background="Transparent"
@@ -563,8 +594,8 @@
                                                ToolTip="Editar"
                                                Margin="5,0"/>
 
-                                    <!-- Botón Facturas - Solo visible para Admin usando Tag del Window -->
-                                    <Button x:Name="InvoiceBtn"
+                                        <!-- Botón Facturas - Solo visible para Admin usando Tag del Window -->
+                                        <Button x:Name="InvoiceBtn"
                                                Content="💰" 
                                                Click="InvoiceButton_Click"
                                                Tag="{Binding}"
@@ -578,13 +609,13 @@
                                                            Path=Tag, 
                                                            Converter={StaticResource AdminVisibilityConverter}}"/>
 
-                                    
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
             </Grid>
         </Border>
 
@@ -598,4 +629,4 @@
             </StatusBarItem>
         </StatusBar>
     </Grid>
-</Window>
+</Window>

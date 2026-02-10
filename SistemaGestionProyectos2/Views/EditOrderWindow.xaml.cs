@@ -128,7 +128,6 @@ namespace SistemaGestionProyectos2.Views
                         Id = g.Id,
                         OrderId = g.OrderId,
                         Monto = g.Monto,
-                        CommissionRate = g.CommissionRate,
                         Descripcion = g.Descripcion,
                         Categoria = g.Categoria,
                         FechaGasto = g.FechaGasto,
@@ -894,8 +893,8 @@ namespace SistemaGestionProyectos2.Views
                     _originalOrderDb.SaleTotal = _subtotalValue * 1.16m;
 
                     // Campos de gastos v2.0
-                    // GastoOperativo: suma local con comisión (igual que el trigger en BD)
-                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto * (1 + g.CommissionRate / 100)) ?? 0;
+                    // GastoOperativo: suma de gastos base (el trigger en BD suma + commission_amount)
+                    _originalOrderDb.GastoOperativo = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
                     // GastoIndirecto se calcula automáticamente desde order_gastos_indirectos
                     _originalOrderDb.GastoIndirecto = _gastosIndirectos?.Sum(g => g.Monto) ?? 0;
                 }
@@ -1062,8 +1061,8 @@ namespace SistemaGestionProyectos2.Views
                     if (gasto.Id < 0)
                     {
                         // Gasto nuevo (ID temporal negativo) - Insertar
-                        System.Diagnostics.Debug.WriteLine($"➕ Insertando gasto: {gasto.Monto:C} (rate={gasto.CommissionRate}%) - {gasto.Descripcion}");
-                        var resultado = await _supabaseService.AddGastoOperativo(_order.Id, gasto.Monto, gasto.Descripcion, gasto.CommissionRate, _currentUser.Id);
+                        System.Diagnostics.Debug.WriteLine($"➕ Insertando gasto: {gasto.Monto:C} - {gasto.Descripcion}");
+                        var resultado = await _supabaseService.AddGastoOperativo(_order.Id, gasto.Monto, gasto.Descripcion, _currentUser.Id);
                         if (resultado != null)
                         {
                             insertados++;
@@ -1074,10 +1073,10 @@ namespace SistemaGestionProyectos2.Views
                     {
                         // Gasto existente - Verificar si fue modificado
                         var original = _gastosOriginales?.FirstOrDefault(g => g.Id == gasto.Id);
-                        if (original != null && (original.Monto != gasto.Monto || original.Descripcion != gasto.Descripcion || original.CommissionRate != gasto.CommissionRate))
+                        if (original != null && (original.Monto != gasto.Monto || original.Descripcion != gasto.Descripcion))
                         {
-                            System.Diagnostics.Debug.WriteLine($"✏ Actualizando gasto ID: {gasto.Id} (rate={gasto.CommissionRate}%)");
-                            await _supabaseService.UpdateGastoOperativo(gasto.Id, gasto.Monto, gasto.Descripcion, gasto.CommissionRate, _order.Id, _currentUser.Id);
+                            System.Diagnostics.Debug.WriteLine($"✏ Actualizando gasto ID: {gasto.Id}");
+                            await _supabaseService.UpdateGastoOperativo(gasto.Id, gasto.Monto, gasto.Descripcion, _order.Id, _currentUser.Id);
                             actualizados++;
                         }
                     }
@@ -1111,8 +1110,23 @@ namespace SistemaGestionProyectos2.Views
 
         private void UpdateGastoOperativoTotal()
         {
-            decimal total = _gastosOperativos?.Sum(g => g.Monto * (1 + g.CommissionRate / 100)) ?? 0;
-            GastoOperativoText.Text = total.ToString("C", new CultureInfo("es-MX"));
+            var culture = new CultureInfo("es-MX");
+            decimal subtotal = _gastosOperativos?.Sum(g => g.Monto) ?? 0;
+            GastoOperativoText.Text = subtotal.ToString("C", culture);
+
+            // Mostrar info de comisión del vendedor si aplica
+            decimal rate = _originalOrderDb?.CommissionRate ?? 0;
+            if (rate > 0 && _originalOrderDb?.SaleSubtotal > 0)
+            {
+                decimal comision = (_originalOrderDb.SaleSubtotal ?? 0) * rate / 100;
+                decimal totalConComision = subtotal + comision;
+                ComisionInfoText.Text = $"+ Comisión vendedor: {comision.ToString("C", culture)}  |  Gasto operativo: {totalConComision.ToString("C", culture)}";
+                ComisionInfoText.Visibility = System.Windows.Visibility.Visible;
+            }
+            else
+            {
+                ComisionInfoText.Visibility = System.Windows.Visibility.Collapsed;
+            }
         }
 
         private void AddGastoButton_Click(object sender, RoutedEventArgs e)
@@ -1132,7 +1146,6 @@ namespace SistemaGestionProyectos2.Views
             NewGastoMontoTextBox.Text = "";
             NewGastoDescripcionTextBox.Text = "";
             _gastoMontoValue = 0;
-            ComisionPreviewBorder.Visibility = Visibility.Collapsed;
         }
 
         private decimal _gastoMontoValue = 0;
@@ -1173,41 +1186,6 @@ namespace SistemaGestionProyectos2.Views
             {
                 _gastoMontoValue = 0;
                 NewGastoMontoTextBox.Text = "";
-            }
-            UpdateComisionPreview();
-        }
-
-        private void NewGastoMontoTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (!NewGastoMontoTextBox.IsFocused) return;
-            UpdateComisionPreview();
-        }
-
-        private void UpdateComisionPreview()
-        {
-            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-            if (commissionRate <= 0)
-            {
-                ComisionPreviewBorder.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            string cleanText = NewGastoMontoTextBox.Text.Replace("$", "").Replace(",", "").Trim();
-            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) && monto > 0)
-            {
-                decimal comision = monto * commissionRate / 100;
-                decimal total = monto + comision;
-                var culture = new CultureInfo("es-MX");
-
-                ComisionPreviewBorder.Visibility = Visibility.Visible;
-                PreviewBaseText.Text = monto.ToString("C", culture);
-                PreviewComisionLabel.Text = $"Comisión ({commissionRate:N2}%): ";
-                PreviewComisionValue.Text = comision.ToString("C", culture);
-                PreviewTotalText.Text = total.ToString("C", culture);
-            }
-            else
-            {
-                ComisionPreviewBorder.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1352,23 +1330,6 @@ namespace SistemaGestionProyectos2.Views
 
                 _currentEditingRow = border;
 
-                // Mostrar preview de comisión al entrar en edición
-                decimal commRate = _originalOrderDb?.CommissionRate ?? 0;
-                if (commRate > 0)
-                {
-                    var previewBorder = grid.Children.OfType<Border>()
-                        .FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
-                    if (previewBorder != null)
-                    {
-                        string cleanText = montoEdit.Text.Replace("$", "").Replace(",", "").Trim();
-                        if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal m) && m > 0)
-                        {
-                            UpdateInlinePreviewValues(previewBorder, m, commRate);
-                            previewBorder.Visibility = Visibility.Visible;
-                        }
-                    }
-                }
-
                 montoEdit.Focus();
                 montoEdit.SelectAll();
             }
@@ -1395,15 +1356,11 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            // Guardar monto BASE + snapshot del rate (el trigger calcula el total en BD)
-            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-
             // Actualizar el objeto en memoria
             var gasto = border.DataContext as OrderGastoOperativoDb;
             if (gasto != null)
             {
                 gasto.Monto = monto;
-                gasto.CommissionRate = commissionRate;
                 gasto.Descripcion = descripcion;
             }
 
@@ -1422,11 +1379,6 @@ namespace SistemaGestionProyectos2.Views
             deleteBtn.Foreground = new System.Windows.Media.SolidColorBrush(
                 (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
             deleteBtn.ToolTip = "Eliminar";
-
-            // Ocultar preview de comisión
-            var gridForPreview = border.Child as Grid;
-            var previewBdr = gridForPreview?.Children.OfType<Border>().FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
-            if (previewBdr != null) previewBdr.Visibility = Visibility.Collapsed;
 
             _currentEditingRow = null;
             _hasChanges = true;
@@ -1477,10 +1429,6 @@ namespace SistemaGestionProyectos2.Views
                     (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E53935"));
                 deleteBtn.ToolTip = "Eliminar";
             }
-
-            // Ocultar preview de comisión
-            var previewBdr = grid.Children.OfType<Border>().FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
-            if (previewBdr != null) previewBdr.Visibility = Visibility.Collapsed;
 
             _currentEditingRow = null;
         }
@@ -1550,77 +1498,6 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void InlineMontoEdit_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            var textBox = sender as TextBox;
-            if (textBox == null || !textBox.IsFocused) return;
-
-            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-
-            var grid = textBox.Parent as Grid;
-            if (grid == null) return;
-
-            var previewBorder = grid.Children.OfType<Border>()
-                .FirstOrDefault(b => b.Name == "InlineComisionPreviewBorder");
-            if (previewBorder == null) return;
-
-            if (commissionRate <= 0)
-            {
-                previewBorder.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            string cleanText = textBox.Text.Replace("$", "").Replace(",", "").Trim();
-            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal monto) && monto > 0)
-            {
-                UpdateInlinePreviewValues(previewBorder, monto, commissionRate);
-                previewBorder.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                previewBorder.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private void UpdateInlinePreviewValues(Border previewBorder, decimal monto, decimal commissionRate)
-        {
-            decimal comision = monto * commissionRate / 100;
-            decimal total = monto + comision;
-            var culture = new CultureInfo("es-MX");
-
-            var stackPanel = previewBorder.Child as StackPanel;
-            if (stackPanel == null) return;
-
-            // Buscar los TextBlocks por nombre recorriendo el StackPanel
-            foreach (var child in stackPanel.Children)
-            {
-                if (child is StackPanel sp)
-                {
-                    foreach (var innerChild in sp.Children)
-                    {
-                        if (innerChild is TextBlock tb)
-                        {
-                            switch (tb.Name)
-                            {
-                                case "InlinePreviewBase":
-                                    tb.Text = monto.ToString("C", culture);
-                                    break;
-                                case "InlinePreviewComisionLabel":
-                                    tb.Text = $"Comisión ({commissionRate:N2}%): ";
-                                    break;
-                                case "InlinePreviewComisionValue":
-                                    tb.Text = comision.ToString("C", culture);
-                                    break;
-                                case "InlinePreviewTotal":
-                                    tb.Text = total.ToString("C", culture);
-                                    break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         private static T FindParent<T>(DependencyObject child) where T : DependencyObject
         {
             var parent = System.Windows.Media.VisualTreeHelper.GetParent(child);
@@ -1633,15 +1510,11 @@ namespace SistemaGestionProyectos2.Views
 
         private void SaveNewGastoButton_Click_Internal(decimal monto, string descripcion)
         {
-            // Guardar monto BASE + snapshot del rate (el trigger calcula el total en BD)
-            decimal commissionRate = _originalOrderDb?.CommissionRate ?? 0;
-
             var nuevoGasto = new OrderGastoOperativoDb
             {
                 Id = _tempIdCounter--, // ID temporal negativo
                 OrderId = _order.Id,
                 Monto = monto,
-                CommissionRate = commissionRate,
                 Descripcion = descripcion,
                 FechaGasto = DateTime.Now,
                 CreatedBy = _currentUser.Id
@@ -1656,7 +1529,6 @@ namespace SistemaGestionProyectos2.Views
             NewGastoMontoTextBox.Text = "";
             NewGastoDescripcionTextBox.Text = "";
             _gastoMontoValue = 0;
-            ComisionPreviewBorder.Visibility = Visibility.Collapsed;
             NewGastoMontoTextBox.Focus();
         }
 

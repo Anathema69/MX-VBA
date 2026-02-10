@@ -518,21 +518,29 @@
                            Padding="10">
                         <StackPanel>
                             <!-- Header con total y botón agregar -->
-                            <Grid Margin="0,0,0,10">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Gastos Operativos"
-                                             FontWeight="SemiBold"
-                                             FontSize="12"
-                                             Foreground="#E65100"/>
-                                    <TextBlock Text=" - Total: "
-                                             FontSize="11"
-                                             Foreground="#666"
-                                             VerticalAlignment="Center"/>
-                                    <TextBlock x:Name="GastoOperativoText"
-                                             Text="$0.00"
-                                             FontWeight="Bold"
-                                             FontSize="12"
-                                             Foreground="#E65100"/>
+                            <Grid Margin="0,0,0,8">
+                                <StackPanel VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Gastos Operativos"
+                                                 FontWeight="SemiBold"
+                                                 FontSize="12"
+                                                 Foreground="#E65100"/>
+                                        <TextBlock Text=" - Subtotal: "
+                                                 FontSize="11"
+                                                 Foreground="#666"
+                                                 VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="GastoOperativoText"
+                                                 Text="$0.00"
+                                                 FontWeight="Bold"
+                                                 FontSize="12"
+                                                 Foreground="#E65100"/>
+                                    </StackPanel>
+                                    <!-- Info comisión vendedor (visible solo si hay comisión) -->
+                                    <TextBlock x:Name="ComisionInfoText"
+                                             FontSize="10"
+                                             Foreground="#888"
+                                             Margin="0,2,0,0"
+                                             Visibility="Collapsed"/>
                                 </StackPanel>
                                 <Button x:Name="AddGastoButton"
                                        Content="+ Nuevo"
@@ -591,28 +599,7 @@
                                                 PreviewTextInput="NumericTextBox_PreviewTextInput"
                                                 GotFocus="NewGastoMontoTextBox_GotFocus"
                                                 LostFocus="NewGastoMontoTextBox_LostFocus"
-                                                TextChanged="NewGastoMontoTextBox_TextChanged"
                                                 KeyDown="NewGastoMontoTextBox_KeyDown"/>
-                                        <!-- Preview comisión en tiempo real -->
-                                        <Border x:Name="ComisionPreviewBorder" Background="#FFF8E1" BorderBrush="#FFE0B2"
-                                                BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,4,0,0"
-                                                Visibility="Collapsed">
-                                            <StackPanel>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Base: " Foreground="#999" FontSize="10"/>
-                                                    <TextBlock x:Name="PreviewBaseText" Text="$0.00" Foreground="#333" FontSize="10"/>
-                                                </StackPanel>
-                                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                                    <TextBlock x:Name="PreviewComisionLabel" Text="Comisión: " Foreground="#999" FontSize="10"/>
-                                                    <TextBlock x:Name="PreviewComisionValue" Text="$0.00" Foreground="#FB8C00" FontSize="10" FontWeight="SemiBold"/>
-                                                </StackPanel>
-                                                <Border Background="#FFE0B2" Height="1" Margin="0,3"/>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="Total: " Foreground="#333" FontSize="10" FontWeight="SemiBold"/>
-                                                    <TextBlock x:Name="PreviewTotalText" Text="$0.00" Foreground="#2E7D32" FontSize="11" FontWeight="Bold"/>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
                                     </StackPanel>
 
                                     <!-- Descripción -->
@@ -659,17 +646,13 @@
                                         <Border Background="White"
                                                BorderBrush="#EEE"
                                                BorderThickness="0,0,0,1"
-                                               Padding="5">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto"/>
-                                                    <RowDefinition Height="Auto"/>
-                                                </Grid.RowDefinitions>
+                                               Padding="4,6">
+                                            <Grid Height="22">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="100"/>
                                                     <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="30"/>
-                                                    <ColumnDefinition Width="30"/>
+                                                    <ColumnDefinition Width="24"/>
+                                                    <ColumnDefinition Width="24"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <!-- Modo Vista (visible por defecto) -->
@@ -677,12 +660,15 @@
                                                           Grid.Column="0"
                                                           Text="{Binding Monto, StringFormat=\$\{0:N2\}}"
                                                           FontWeight="SemiBold"
+                                                          FontSize="12"
                                                           Foreground="#E65100"
                                                           VerticalAlignment="Center"/>
                                                 <TextBlock x:Name="DescView"
                                                           Grid.Column="1"
                                                           Text="{Binding Descripcion}"
+                                                          FontSize="12"
                                                           Foreground="#333"
+                                                          Margin="8,0,0,0"
                                                           VerticalAlignment="Center"
                                                           TextTrimming="CharacterEllipsis"/>
 
@@ -691,43 +677,21 @@
                                                         Grid.Column="0"
                                                         Text="{Binding Monto, StringFormat=N2}"
                                                         FontSize="12"
-                                                        Padding="3"
+                                                        Padding="2,1"
+                                                        VerticalAlignment="Center"
                                                         Visibility="Collapsed"
                                                         PreviewTextInput="NumericTextBox_PreviewTextInput"
                                                         LostFocus="GastoMontoEdit_LostFocus"
-                                                        KeyDown="GastoMontoEdit_KeyDown"
-                                                        TextChanged="InlineMontoEdit_TextChanged"/>
+                                                        KeyDown="GastoMontoEdit_KeyDown"/>
                                                 <TextBox x:Name="DescEdit"
                                                         Grid.Column="1"
                                                         Text="{Binding Descripcion, UpdateSourceTrigger=PropertyChanged}"
                                                         FontSize="12"
-                                                        Padding="3"
-                                                        Margin="5,0"
+                                                        Padding="2,1"
+                                                        Margin="8,0,0,0"
+                                                        VerticalAlignment="Center"
                                                         Visibility="Collapsed"
                                                         KeyDown="GastoDescEdit_KeyDown"/>
-
-                                                <!-- Preview comisión inline (oculto por defecto) -->
-                                                <Border x:Name="InlineComisionPreviewBorder"
-                                                       Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                                       Background="#FFF8E1" BorderBrush="#FFE0B2"
-                                                       BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="0,4,0,0"
-                                                       Visibility="Collapsed">
-                                                    <StackPanel>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="Base: " Foreground="#999" FontSize="10"/>
-                                                            <TextBlock x:Name="InlinePreviewBase" Text="$0.00" Foreground="#333" FontSize="10"/>
-                                                        </StackPanel>
-                                                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
-                                                            <TextBlock x:Name="InlinePreviewComisionLabel" Text="Comisión: " Foreground="#999" FontSize="10"/>
-                                                            <TextBlock x:Name="InlinePreviewComisionValue" Text="$0.00" Foreground="#FB8C00" FontSize="10" FontWeight="SemiBold"/>
-                                                        </StackPanel>
-                                                        <Border Background="#FFE0B2" Height="1" Margin="0,3"/>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="Total: " Foreground="#333" FontSize="10" FontWeight="SemiBold"/>
-                                                            <TextBlock x:Name="InlinePreviewTotal" Text="$0.00" Foreground="#2E7D32" FontSize="11" FontWeight="Bold"/>
-                                                        </StackPanel>
-                                                    </StackPanel>
-                                                </Border>
 
                                                 <!-- Botón Editar/Guardar -->
                                                 <Button x:Name="EditBtn"
@@ -738,7 +702,12 @@
                                                        Background="Transparent"
                                                        BorderThickness="0"
                                                        Foreground="#1976D2"
-                                                       FontSize="12"
+                                                       FontSize="11"
+                                                       Width="22" Height="22"
+                                                       Padding="0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalContentAlignment="Center"
+                                                       VerticalContentAlignment="Center"
                                                        Cursor="Hand"
                                                        ToolTip="Editar"/>
                                                 <!-- Botón Eliminar/Cancelar -->
@@ -750,7 +719,12 @@
                                                        Background="Transparent"
                                                        BorderThickness="0"
                                                        Foreground="#E53935"
-                                                       FontSize="12"
+                                                       FontSize="11"
+                                                       Width="22" Height="22"
+                                                       Padding="0"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalContentAlignment="Center"
+                                                       VerticalContentAlignment="Center"
                                                        Cursor="Hand"
                                                        ToolTip="Eliminar"/>
                                             </Grid>

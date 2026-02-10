@@ -511,18 +511,17 @@ namespace SistemaGestionProyectos2.Services.Orders
         /// <summary>
         /// Agrega un gasto operativo a una orden y devuelve el registro creado
         /// </summary>
-        public async Task<OrderGastoOperativoDb> AddGastoOperativo(int orderId, decimal monto, string descripcion, decimal commissionRate, int userId)
+        public async Task<OrderGastoOperativoDb> AddGastoOperativo(int orderId, decimal monto, string descripcion, int userId)
         {
             try
             {
-                LogDebug($"Insertando gasto operativo: orden={orderId}, monto={monto}, rate={commissionRate}%, desc={descripcion}");
+                LogDebug($"Insertando gasto operativo: orden={orderId}, monto={monto}, desc={descripcion}");
 
                 var ahora = DateTime.Now;
                 var gasto = new OrderGastoOperativoDb
                 {
                     OrderId = orderId,
                     Monto = monto,
-                    CommissionRate = commissionRate,
                     Descripcion = descripcion,
                     FechaGasto = ahora,
                     CreatedAt = ahora,
@@ -575,7 +574,7 @@ namespace SistemaGestionProyectos2.Services.Orders
         /// <summary>
         /// Actualiza un gasto operativo existente
         /// </summary>
-        public async Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, decimal commissionRate, int orderId, int userId)
+        public async Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, int orderId, int userId)
         {
             try
             {
@@ -587,7 +586,6 @@ namespace SistemaGestionProyectos2.Services.Orders
                 if (response != null)
                 {
                     response.Monto = monto;
-                    response.CommissionRate = commissionRate;
                     response.Descripcion = descripcion;
                     response.UpdatedBy = userId;
                     response.UpdatedAt = DateTime.Now;
@@ -610,7 +608,7 @@ namespace SistemaGestionProyectos2.Services.Orders
         }
 
         // RecalcularGastoOperativo eliminado - ahora lo hace el trigger trg_recalcular_gasto_operativo en BD
-        // El trigger calcula: SUM(monto * (1 + COALESCE(f_commission_rate, 0) / 100)) automáticamente
+        // El trigger calcula: SUM(monto) + commission_amount (de t_vendor_commission_payment)
 
         #endregion
 

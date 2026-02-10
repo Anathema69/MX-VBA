@@ -199,14 +199,14 @@ namespace SistemaGestionProyectos2.Services
         public Task<List<OrderGastoOperativoDb>> GetGastosOperativos(int orderId)
             => _orderService.GetGastosOperativos(orderId);
 
-        public Task<OrderGastoOperativoDb> AddGastoOperativo(int orderId, decimal monto, string descripcion, decimal commissionRate, int userId)
-            => _orderService.AddGastoOperativo(orderId, monto, descripcion, commissionRate, userId);
+        public Task<OrderGastoOperativoDb> AddGastoOperativo(int orderId, decimal monto, string descripcion, int userId)
+            => _orderService.AddGastoOperativo(orderId, monto, descripcion, userId);
 
         public Task<bool> DeleteGastoOperativo(int gastoId, int orderId, int userId)
             => _orderService.DeleteGastoOperativo(gastoId, orderId, userId);
 
-        public Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, decimal commissionRate, int orderId, int userId)
-            => _orderService.UpdateGastoOperativo(gastoId, monto, descripcion, commissionRate, orderId, userId);
+        public Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, int orderId, int userId)
+            => _orderService.UpdateGastoOperativo(gastoId, monto, descripcion, orderId, userId);
 
         // Gastos Indirectos v2.1
         public Task<List<OrderGastoIndirectoDb>> GetGastosIndirectos(int orderId)
