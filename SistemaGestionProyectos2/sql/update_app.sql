@@ -20,7 +20,7 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                    DATOS BÁSICOS                       │
     -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '2.0.3';
+    v_version       VARCHAR := '2.0.4';
     v_created_by    VARCHAR := 'Zuri Dev';
     v_file_size_mb  NUMERIC := 49.67;
     v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIO
@@ -29,46 +29,27 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                   RELEASE NOTES                        │
     -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 2.0.3 - Triggers de Gastos Operativos, Comisión de Vendedor y Mejoras UI
+    v_release_notes TEXT := 'Versión 2.0.4 - Corrección fórmula gasto operativo
 
-MÓDULO ÓRDENES - Requerimientos 1-5:
-- Filtros dinámicos por Año y Mes en listado de órdenes (basado en f_podate)
-- Comisión de vendedor integrada en gastos operativos con preview en tiempo real
-- Preview desglosado (Base + Comisión + Total) para nuevo gasto y edición inline
-- Auto-commit de edición inline al presionar GUARDAR CAMBIOS
-- Rol "proyectos" con mismos permisos que coordinación
+CORRECCIÓN DE FÓRMULA:
+- Fórmula anterior: SUM(monto * (1 + commission_rate/100)) - comisión por gasto individual
+- Fórmula nueva: SUM(monto) + SUM(commission_amount) - gastos base + comisión vendedor
+- commission_amount proviene de t_vendor_commission_payment (ya existente)
 
-ARQUITECTURA BD - GASTOS OPERATIVOS:
-- Nueva columna f_commission_rate en order_gastos_operativos (snapshot del % comisión)
-- Nuevo trigger trg_recalcular_gasto_operativo: calcula automáticamente t_order.gasto_operativo
-- Nuevo trigger trg_sync_commission_rate: propaga cambios de comisión a gastos existentes
-- Eliminado cálculo en C# (RecalcularGastoOperativo), reemplazado por trigger BD
-- Monto almacena valor BASE, comisión se aplica en fórmula del trigger
+CAMBIOS EN BD:
+- Trigger recalcular_gasto_operativo() modificado con nueva fórmula
+- Nuevo trigger trg_recalcular_gasto_op_por_comision en t_vendor_commission_payment
+- Eliminado trigger trg_sync_commission_rate y función sync_commission_rate_to_gastos
+- 21 órdenes recalculadas y verificadas OK
 
-ACCESO ADMINISTRACIÓN:
-- Rol administración ahora ve las 3 columnas de gastos (operativo, indirecto, material)
-- Acceso completo a edición de gastos en ventana de edición de orden
+CAMBIOS EN APLICACIÓN:
+- Removido CommissionRate de modelo de gastos operativos
+- Simplificadas firmas de Add/UpdateGastoOperativo (sin parámetro commissionRate)
+- Removido preview desglosado de comisión (Base + Comisión + Total)
+- Header cambiado a Subtotal con línea informativa: comisión vendedor | gasto operativo
+- Alineación corregida en lista de gastos (altura fija, botones centrados)
 
-MEJORAS UI:
-- Ventana edición redimensionable (800x680, CanResizeWithGrip)
-- Removido botón de configuración (tuerca) del menú principal
-- Removido botón de exportar de gestión de órdenes
-- Coordinación/Proyectos: oculta columna vendedor y botón exportar
-- Eliminado MessageBox de confirmación al cerrar sesión
-
-PORTAL VENDEDORES:
-- Descripción de orden visible en dashboard del vendedor
-- Botón de cerrar sesión agregado
-
-CORRECCIONES:
-- Fix: doble-comisión al refrescar grilla (removidas propiedades calculadas)
-- Fix: gastos no cargaban para perfil administración (3 condiciones restringidas)
-
-DOCUMENTACIÓN:
-- Documentación completa de triggers y funciones BD actualizadas
-- Esquema BD actualizado con nuevas tablas y columnas
-
-ACTUALIZACIÓN OBLIGATORIA - Cambios en arquitectura de gastos operativos';
+ACTUALIZACIÓN OBLIGATORIA - Corrección de cálculo de gastos operativos';
 
     -- ════════════════════════════════════════════════════════
     -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
@@ -82,32 +63,22 @@ BEGIN
 
     -- Changelog estructurado (opcional, para futuras implementaciones)
     v_changelog := '{
-        "Added": [
-            "Filtros dinámicos por Año y Mes en listado de órdenes",
-            "Comisión de vendedor en gastos operativos con preview en tiempo real",
-            "Trigger trg_recalcular_gasto_operativo para cálculo automático en BD",
-            "Trigger trg_sync_commission_rate para propagación de cambios de comisión",
-            "Columna f_commission_rate en order_gastos_operativos",
-            "Acceso de administración a 3 columnas de gastos",
-            "Rol proyectos con permisos de coordinación",
-            "Descripción de orden en dashboard de vendedor",
-            "Botón cerrar sesión en portal de vendedores"
-        ],
         "Fixed": [
-            "Doble-comisión al refrescar grilla de órdenes",
-            "Gastos no cargaban para perfil administración",
-            "Auto-commit de edición inline pendiente al guardar"
+            "Fórmula gasto operativo: SUM(monto) + SUM(commission_amount)",
+            "Alineación vertical en lista de gastos operativos"
+        ],
+        "Added": [
+            "Trigger trg_recalcular_gasto_op_por_comision en t_vendor_commission_payment",
+            "Línea informativa de comisión vendedor en edición de orden"
         ],
         "Improved": [
-            "Ventana de edición redimensionable",
-            "Documentación BD completa con triggers y funciones",
-            "Arquitectura: cálculo de gastos movido de C# a trigger BD"
+            "Header Subtotal con info de comisión y gasto operativo total",
+            "Firmas simplificadas de Add/UpdateGastoOperativo"
         ],
         "Removed": [
-            "Botón de configuración (tuerca) del menú principal",
-            "Botón de exportar de gestión de órdenes",
-            "MessageBox de confirmación al cerrar sesión",
-            "RecalcularGastoOperativo() de OrderService.cs"
+            "Trigger trg_sync_commission_rate y función sync_commission_rate_to_gastos",
+            "Preview desglosado de comisión (Base + Comisión + Total)",
+            "CommissionRate de modelo OrderGastoOperativoDb"
         ]
     }'::jsonb;
 
