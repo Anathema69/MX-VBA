@@ -6,6 +6,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,7 +27,8 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<ClientPendingViewModel> _displayedClients;
         private string _currentSearchText = "";
         private string _currentStatusFilter = "Todos";
-        
+        private CancellationTokenSource _cts = new();
+
 
         public PendingIncomesView(UserSession currentUser)
         {
@@ -47,7 +49,7 @@ namespace SistemaGestionProyectos2.Views
             ShowLoadingState();
 
             // Cargar datos de manera asíncrona
-            _ = LoadPendingIncomesAsync();
+            _ = SafeLoadAsync(() => LoadPendingIncomesAsync());
         }
 
         private void MaximizeWithTaskbar()
@@ -314,6 +316,25 @@ namespace SistemaGestionProyectos2.Views
             StatusFilter.SelectedIndex = 0; // Index de "Todos"
             _currentStatusFilter = "Todos";
             ApplyFilters();
+        }
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

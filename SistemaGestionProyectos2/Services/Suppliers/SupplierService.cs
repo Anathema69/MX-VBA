@@ -17,46 +17,49 @@ namespace SistemaGestionProyectos2.Services.Suppliers
         /// </summary>
         public async Task<List<SupplierDb>> GetActiveSuppliers()
         {
-            try
+            return await Cache.GetOrLoadAsync("suppliers:active", async () =>
             {
-                var response = await SupabaseClient
-                    .From<SupplierDb>()
-                    .Where(s => s.IsActive == true)
-                    .Order("f_suppliername", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<SupplierDb>()
+                        .Where(s => s.IsActive == true)
+                        .Order("f_suppliername", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var suppliers = response?.Models ?? new List<SupplierDb>();
-                LogSuccess($"Proveedores activos obtenidos: {suppliers.Count}");
-                return suppliers;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo proveedores", ex);
-                throw;
-            }
+                    var suppliers = response?.Models ?? new List<SupplierDb>();
+                    LogSuccess($"Proveedores activos obtenidos: {suppliers.Count}");
+                    return suppliers;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo proveedores", ex);
+                    throw;
+                }
+            });
         }
 
-        /// <summary>
-        /// Obtiene todos los proveedores (activos e inactivos)
-        /// </summary>
         public async Task<List<SupplierDb>> GetAllSuppliers()
         {
-            try
+            return await Cache.GetOrLoadAsync("suppliers:all", async () =>
             {
-                var response = await SupabaseClient
-                    .From<SupplierDb>()
-                    .Order("f_suppliername", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<SupplierDb>()
+                        .Order("f_suppliername", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var suppliers = response?.Models ?? new List<SupplierDb>();
-                LogSuccess($"Todos los proveedores obtenidos: {suppliers.Count}");
-                return suppliers;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo todos los proveedores", ex);
-                throw;
-            }
+                    var suppliers = response?.Models ?? new List<SupplierDb>();
+                    LogSuccess($"Todos los proveedores obtenidos: {suppliers.Count}");
+                    return suppliers;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo todos los proveedores", ex);
+                    throw;
+                }
+            });
         }
 
         /// <summary>
@@ -101,6 +104,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
 
                 if (response?.Models?.Count > 0)
                 {
+                    Cache.InvalidatePrefix("suppliers:");
                     LogSuccess($"Proveedor creado: {supplier.SupplierName}");
                     return response.Models.First();
                 }
@@ -131,7 +135,11 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                     .Update(supplier);
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Proveedor actualizado: {supplier.SupplierName}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("suppliers:");
+                    LogSuccess($"Proveedor actualizado: {supplier.SupplierName}");
+                }
                 return success;
             }
             catch (Exception ex)
@@ -153,6 +161,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                     .Where(s => s.Id == supplierId)
                     .Delete();
 
+                Cache.InvalidatePrefix("suppliers:");
                 LogSuccess($"Proveedor eliminado: {supplierId}");
                 return true;
             }
@@ -178,7 +187,11 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Proveedor desactivado: {supplierId}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("suppliers:");
+                    LogSuccess($"Proveedor desactivado: {supplierId}");
+                }
                 return success;
             }
             catch (Exception ex)

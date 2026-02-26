@@ -698,10 +698,13 @@
 
                 <!-- ItemsControl para las Cards -->
                 <ItemsControl x:Name="SuppliersItemsControl"
-                              ItemTemplate="{StaticResource SupplierPendingCardTemplate}">
+                              ItemTemplate="{StaticResource SupplierPendingCardTemplate}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.CanContentScroll="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel/>
+                            <VirtualizingStackPanel/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

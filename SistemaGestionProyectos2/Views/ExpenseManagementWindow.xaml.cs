@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -33,6 +34,7 @@ namespace SistemaGestionProyectos2.Views
         private ExpenseViewModel _newExpenseRow = null;
         private DateTime _lastSupplierClick = DateTime.MinValue;
         private string _lastSupplierClicked = "";
+        private CancellationTokenSource _cts = new();
 
         // Caché de datos
         private DateTime _lastExpensesLoad = DateTime.MinValue;
@@ -55,7 +57,7 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             InitializeUI();
-            _ = LoadDataAsync();
+            _ = SafeLoadAsync(() => LoadDataAsync());
 
 
 
@@ -1711,8 +1713,24 @@ namespace SistemaGestionProyectos2.Views
             return null;
         }
 
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
 
-
-
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
+        }
     }
 }

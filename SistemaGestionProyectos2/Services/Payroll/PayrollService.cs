@@ -216,15 +216,18 @@ namespace SistemaGestionProyectos2.Services.Payroll
         {
             try
             {
-                var payrolls = await GetActivePayroll();
-                var total = payrolls.Sum(p => p.MonthlyPayroll ?? 0);
-                LogSuccess($"Total mensual de nómina calculado: {total:C}");
-                return total;
+                var result = await SupabaseClient.Rpc<decimal>(
+                    "get_monthly_payroll_total",
+                    new Dictionary<string, object>());
+                LogSuccess($"Total mensual de nómina calculado (server-side): {result:C}");
+                return result;
             }
             catch (Exception ex)
             {
-                LogError("Error calculando total mensual de nómina", ex);
-                throw;
+                LogError("Error calculando total mensual via RPC, fallback a client-side", ex);
+                // Fallback: client-side sum
+                var payrolls = await GetActivePayroll();
+                return payrolls.Sum(p => p.MonthlyPayroll ?? 0);
             }
         }
 

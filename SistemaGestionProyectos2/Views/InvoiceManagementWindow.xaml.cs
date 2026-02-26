@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,6 +27,7 @@ namespace SistemaGestionProyectos2.Views
         private decimal _orderTotal;
         private bool _hasUnsavedChanges = false;
         private bool _isCreatingNewInvoice = false; // Nueva bandera para controlar creación
+        private CancellationTokenSource _cts = new();
 
         public InvoiceManagementWindow(int orderId, UserSession currentUser)
         {
@@ -51,7 +53,7 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             InvoicesDataGrid.ItemsSource = _invoices;
-            _ = LoadOrderAndInvoices(orderId);
+            _ = SafeLoadAsync(() => LoadOrderAndInvoices(orderId));
         }
 
         private void MaximizeWithTaskbar()
@@ -987,6 +989,26 @@ namespace SistemaGestionProyectos2.Views
         private void BackButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 }

@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,7 @@ namespace SistemaGestionProyectos2.Views
         private string _currentStatusFilter = "Todos";
         private bool _showingPaid = false;
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
+        private CancellationTokenSource _cts = new();
 
         public SupplierPendingView(UserSession currentUser)
         {
@@ -45,7 +47,7 @@ namespace SistemaGestionProyectos2.Views
 
             ShowLoadingState();
 
-            _ = LoadPendingExpensesAsync();
+            _ = SafeLoadAsync(() => LoadPendingExpensesAsync());
         }
 
         private void MaximizeWithTaskbar()
@@ -533,6 +535,26 @@ namespace SistemaGestionProyectos2.Views
             }
 
             return "??";
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

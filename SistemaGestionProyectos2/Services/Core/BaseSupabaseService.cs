@@ -9,6 +9,8 @@ namespace SistemaGestionProyectos2.Services.Core
     /// </summary>
     public abstract class BaseSupabaseService
     {
+        protected static readonly ServiceCache Cache = new();
+
         protected Client SupabaseClient { get; private set; }
 
         protected BaseSupabaseService(Client supabaseClient)

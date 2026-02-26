@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
@@ -7,6 +8,24 @@ namespace SistemaGestionProyectos2.ViewModels
 {
     public class VendorCommissionViewModel : INotifyPropertyChanged
     {
+        private static readonly CultureInfo MxCulture = new("es-MX");
+        private static readonly Brush PendingBackground;
+        private static readonly Brush TransparentBackground;
+        private static readonly Brush GreenForeground;
+        private static readonly Brush RedForeground;
+
+        static VendorCommissionViewModel()
+        {
+            PendingBackground = new SolidColorBrush(Color.FromArgb(50, 255, 0, 0));
+            PendingBackground.Freeze();
+            TransparentBackground = new SolidColorBrush(Colors.Transparent);
+            TransparentBackground.Freeze();
+            GreenForeground = new SolidColorBrush(Colors.Green);
+            GreenForeground.Freeze();
+            RedForeground = new SolidColorBrush(Colors.Red);
+            RedForeground.Freeze();
+        }
+
         private int _orderId;
         private string _orderNumber;
         private string _vendorName;
@@ -40,26 +59,11 @@ namespace SistemaGestionProyectos2.ViewModels
             }
         }
 
-        // Para el color del fondo
-        public Brush PaymentStatusBackground
-        {
-            get
-            {
-                return PaymentStatus == "Por Pagar"
-                    ? new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)) // Rojo semi-transparente
-                    : new SolidColorBrush(Colors.Transparent);
-            }
-        }
+        public Brush PaymentStatusBackground =>
+            PaymentStatus == "Por Pagar" ? PendingBackground : TransparentBackground;
 
-        public Brush PaymentStatusForeground
-        {
-            get
-            {
-                return PaymentStatus == "Pagado"
-                    ? new SolidColorBrush(Colors.Green)
-                    : new SolidColorBrush(Colors.Red);
-            }
-        }
+        public Brush PaymentStatusForeground =>
+            PaymentStatus == "Pagado" ? GreenForeground : RedForeground;
 
         public int OrderId
         {
@@ -170,8 +174,8 @@ namespace SistemaGestionProyectos2.ViewModels
         }
 
         // Propiedades formateadas para mostrar en la UI
-        public string SubtotalFormatted => Subtotal.ToString("C2", new System.Globalization.CultureInfo("es-MX"));
-        public string CommissionFormatted => Commission.ToString("C2", new System.Globalization.CultureInfo("es-MX"));
+        public string SubtotalFormatted => Subtotal.ToString("C2", MxCulture);
+        public string CommissionFormatted => Commission.ToString("C2", MxCulture);
         public string OrderDateFormatted => OrderDate?.ToString("dd/MM/yyyy") ?? "";
         public string CommissionRateFormatted => $"{CommissionRate:F2}%";
 

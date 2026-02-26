@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -34,6 +35,7 @@ namespace SistemaGestionProyectos2.Views
         // Para edición de gastos
         private FixedExpenseViewModel _currentEditingExpense = null;
         private bool _isEditingExpense = false;
+        private CancellationTokenSource _cts = new();
 
         public PayrollManagementView(UserSession currentUser)
         {
@@ -58,7 +60,7 @@ namespace SistemaGestionProyectos2.Views
             _expenses.CollectionChanged += (s, e) => UpdateTotals();
 
             // Cargar datos de manera asíncrona
-            _ = LoadData();
+            _ = SafeLoadAsync(() => LoadData());
         }
 
         private void MaximizeWithTaskbar()
@@ -1149,6 +1151,26 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
             EndExpenseEdit();
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

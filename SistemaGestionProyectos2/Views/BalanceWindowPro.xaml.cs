@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -68,6 +69,7 @@ namespace SistemaGestionProyectos2.Views
         private int _selectedColumnIndex = -1;
         private List<Border> _highlightedCells = new List<Border>();
         private int _currentMonth = DateTime.Now.Month; // Mes actual (1-12)
+        private CancellationTokenSource _cts = new();
 
         public BalanceWindowPro(UserSession currentUser)
         {
@@ -84,7 +86,7 @@ namespace SistemaGestionProyectos2.Views
             txtLastUpdate.Text = $"Actualizado: {DateTime.Now:dd/MM/yyyy HH:mm}";
 
             // Cargar datos
-            _ = LoadBalanceData();
+            _ = SafeLoadAsync(() => LoadBalanceData());
         }
 
         private async Task LoadBalanceData()
@@ -1285,6 +1287,35 @@ namespace SistemaGestionProyectos2.Views
             Close();
         }
 
+        private async void BtnRefreshBalance_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                btnRefreshBalance.IsEnabled = false;
+                btnRefreshBalance.Content = "Actualizando...";
+
+                // Refresh the materialized view via RPC
+                var client = _supabaseService.GetClient();
+                await client.Rpc("refresh_balance_completo", new Dictionary<string, object>());
+
+                // Reload data
+                await LoadBalanceData();
+
+                txtLastUpdate.Text = $"Actualizado: {DateTime.Now:dd/MM/yyyy HH:mm}";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing balance: {ex.Message}");
+                // If MV refresh fails, just reload (will use whatever view is available)
+                await LoadBalanceData();
+            }
+            finally
+            {
+                btnRefreshBalance.IsEnabled = true;
+                btnRefreshBalance.Content = "Actualizar Datos";
+            }
+        }
+
         // Métodos para resaltado de filas y columnas
         private static readonly Color HighlightColor = Color.FromArgb(25, 24, 24, 27); // #18181B con transparencia
 
@@ -1399,10 +1430,30 @@ namespace SistemaGestionProyectos2.Views
             _selectedRowIndex = -1;
             _selectedColumnIndex = -1;
         }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
+        }
     }
 
     // Modelo para la vista de la base de datos
-    [Table("v_balance_completo")]
+    [Table("mv_balance_completo")]
     public class BalanceCompletoDb : BaseModel
     {
         [Column("fecha")]

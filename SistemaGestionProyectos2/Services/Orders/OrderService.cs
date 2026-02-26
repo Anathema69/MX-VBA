@@ -14,6 +14,9 @@ namespace SistemaGestionProyectos2.Services.Orders
     {
         public OrderService(Client supabaseClient) : base(supabaseClient) { }
 
+        // Columns needed for order list views (excludes audit fields to reduce payload ~30%)
+        private const string OrderListColumns = "f_order,f_po,f_podate,f_client,f_description,f_salesman,f_estdelivery,f_salesubtotal,f_saletotal,f_expense,f_orderstat,progress_percentage,order_percentage,gasto_operativo,gasto_indirecto";
+
         public async Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0, List<int> filterStatuses = null)
         {
             try
@@ -26,7 +29,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     {
                         response = await SupabaseClient
                             .From<OrderDb>()
-                            .Select("*")
+                            .Select(OrderListColumns)
                             .Filter("f_orderstat", Postgrest.Constants.Operator.In, filterStatuses.ToArray())
                             .Order("f_podate", Postgrest.Constants.Ordering.Descending)
                             .Range(offset, offset + limit - 1)
@@ -36,7 +39,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     {
                         response = await SupabaseClient
                             .From<OrderDb>()
-                            .Select("*")
+                            .Select(OrderListColumns)
                             .Filter("f_orderstat", Postgrest.Constants.Operator.Equals, filterStatuses[0])
                             .Order("f_podate", Postgrest.Constants.Ordering.Descending)
                             .Range(offset, offset + limit - 1)
@@ -47,7 +50,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 {
                     response = await SupabaseClient
                         .From<OrderDb>()
-                        .Select("*")
+                        .Select(OrderListColumns)
                         .Order("f_podate", Postgrest.Constants.Ordering.Descending)
                         .Range(offset, offset + limit - 1)
                         .Get();
@@ -336,20 +339,21 @@ namespace SistemaGestionProyectos2.Services.Orders
         {
             try
             {
-                var response = await SupabaseClient
+                var query = SupabaseClient
                     .From<OrderDb>()
-                    .Order(o => o.PoDate, Postgrest.Constants.Ordering.Descending)
-                    .Get();
-
-                var orders = response?.Models ?? new List<OrderDb>();
+                    .Select(OrderListColumns);
 
                 if (fromDate.HasValue)
                 {
-                    orders = orders.Where(o => o.PoDate >= fromDate.Value).ToList();
+                    query = query.Filter("f_podate", Postgrest.Constants.Operator.GreaterThanOrEqual, fromDate.Value.ToString("yyyy-MM-dd"));
                 }
 
-                orders = orders.Skip(offset).Take(limit).ToList();
-                return orders;
+                var response = await query
+                    .Order("f_podate", Postgrest.Constants.Ordering.Descending)
+                    .Range(offset, offset + limit - 1)
+                    .Get();
+
+                return response?.Models ?? new List<OrderDb>();
             }
             catch (Exception ex)
             {
@@ -358,22 +362,27 @@ namespace SistemaGestionProyectos2.Services.Orders
             }
         }
 
+        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(30);
+
         public async Task<List<OrderStatusDb>> GetOrderStatuses()
         {
-            try
+            return await Cache.GetOrLoadAsync("orderstatuses:all", async () =>
             {
-                var response = await SupabaseClient
-                    .From<OrderStatusDb>()
-                    .Where(s => s.IsActive == true)
-                    .Order("display_order", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
-                return response?.Models ?? new List<OrderStatusDb>();
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo estados de órdenes", ex);
-                throw;
-            }
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<OrderStatusDb>()
+                        .Where(s => s.IsActive == true)
+                        .Order("display_order", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
+                    return response?.Models ?? new List<OrderStatusDb>();
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo estados de órdenes", ex);
+                    throw;
+                }
+            }, StatusCacheTtl);
         }
 
         public async Task<string> GetStatusName(int statusId)
@@ -431,11 +440,11 @@ namespace SistemaGestionProyectos2.Services.Orders
             {
                 ModeledResponse<OrderGastosViewDb> response;
 
+                // View columns match the order list columns plus gasto_material
                 if (filterStatuses != null && filterStatuses.Count > 0)
                 {
                     response = await SupabaseClient
                         .From<OrderGastosViewDb>()
-                        .Select("*")
                         .Filter("f_orderstat", Postgrest.Constants.Operator.In, filterStatuses.ToArray())
                         .Order("f_podate", Postgrest.Constants.Ordering.Descending)
                         .Range(offset, offset + limit - 1)
@@ -445,7 +454,6 @@ namespace SistemaGestionProyectos2.Services.Orders
                 {
                     response = await SupabaseClient
                         .From<OrderGastosViewDb>()
-                        .Select("*")
                         .Order("f_podate", Postgrest.Constants.Ordering.Descending)
                         .Range(offset, offset + limit - 1)
                         .Get();

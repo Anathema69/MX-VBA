@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,6 +30,7 @@ namespace SistemaGestionProyectos2.Views
         private List<OrderViewModel> _allOrdersCache;
         private DateTime _lastFullLoadTime = DateTime.MinValue;
         private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+        private CancellationTokenSource _cts = new();
 
         public OrdersManagementWindow(UserSession user)
         {
@@ -48,7 +50,7 @@ namespace SistemaGestionProyectos2.Views
             ConfigurePermissions();
 
             // Cargar datos iniciales
-            _ = LoadInitialDataAsync();
+            _ = SafeLoadAsync(() => LoadInitialDataAsync());
         }
 
         private void MaximizeWithTaskbar()
@@ -1136,6 +1138,26 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 }

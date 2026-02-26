@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -42,6 +43,7 @@ namespace SistemaGestionProyectos2.Views
         private List<int> _gastosIndirectosEliminados = new List<int>();
         private int _tempIdCounterIndirecto = -1;
         private Border _currentEditingRowIndirecto = null;
+        private CancellationTokenSource _cts = new();
 
 
         public EditOrderWindow(OrderViewModel order, UserSession currentUser)
@@ -52,7 +54,7 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
 
             ConfigurePermissions();
-            _ = LoadDataAsync();
+            _ = SafeLoadAsync(() => LoadDataAsync());
         }
 
         private async Task LoadDataAsync()
@@ -2236,6 +2238,26 @@ namespace SistemaGestionProyectos2.Views
                 DeleteOrderButton.IsEnabled = true;
                 DeleteOrderButton.Content = "ELIMINAR ORDEN";
             }
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 }

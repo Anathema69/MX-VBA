@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -25,6 +26,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly string _clientName;
         private ObservableCollection<InvoiceDetailViewModel> _invoices;
         private ClientDb _client;
+        private CancellationTokenSource _cts = new();
 
         public PendingIncomesDetailView(UserSession currentUser, int clientId, string clientName)
         {
@@ -52,7 +54,7 @@ namespace SistemaGestionProyectos2.Views
             ShowLoadingState();
 
             // Cargar datos
-            _ = LoadClientInvoicesAsync();
+            _ = SafeLoadAsync(() => LoadClientInvoicesAsync());
         }
 
         private void ShowLoadingState()
@@ -176,7 +178,25 @@ namespace SistemaGestionProyectos2.Views
             Close();
         }
 
-        
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
+        }
     }
 
     // ViewModel para el detalle de facturas

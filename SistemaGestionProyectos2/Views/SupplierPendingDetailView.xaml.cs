@@ -9,6 +9,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -30,6 +31,7 @@ namespace SistemaGestionProyectos2.Views
         private bool _isSupplierSelectionMode = false;
         private string _currentStatusFilter = "PENDIENTE"; // Filtro actual: PENDIENTE, PAGADO, TODOS
         private bool _supplierSelectionConfirmed = false; // Para evitar selección automática al escribir
+        private CancellationTokenSource _cts = new();
 
         // Lista de órdenes disponibles para el ComboBox
         private ObservableCollection<OrderDisplayItem> _availableOrders;
@@ -90,9 +92,9 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             // Cargar datos del proveedor, órdenes y gastos
-            _ = LoadSupplierDataAsync();
-            _ = LoadAvailableOrdersAsync();
-            _ = InitializeWithFilterAsync();
+            _ = SafeLoadAsync(() => LoadSupplierDataAsync());
+            _ = SafeLoadAsync(() => LoadAvailableOrdersAsync());
+            _ = SafeLoadAsync(() => InitializeWithFilterAsync());
 
             // Manejar teclas Enter/Escape
             this.PreviewKeyDown += SupplierPendingDetailView_KeyDown;
@@ -139,8 +141,8 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             // Cargar proveedores y órdenes disponibles
-            _ = LoadAvailableSuppliersAsync();
-            _ = LoadAvailableOrdersAsync();
+            _ = SafeLoadAsync(() => LoadAvailableSuppliersAsync());
+            _ = SafeLoadAsync(() => LoadAvailableOrdersAsync());
 
             // Manejar teclas Enter/Escape
             this.PreviewKeyDown += SupplierPendingDetailView_KeyDown;
@@ -1421,6 +1423,26 @@ namespace SistemaGestionProyectos2.Views
         }
 
         #endregion
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
+        }
     }
 
     // ViewModel para el detalle de gastos

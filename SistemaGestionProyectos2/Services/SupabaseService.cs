@@ -686,8 +686,30 @@ namespace SistemaGestionProyectos2.Services
         {
             try
             {
-                var expenses = await _expenseService.GetExpenses();
+                var result = await _supabaseClient.Rpc<Dictionary<string, object>>(
+                    "get_expense_statistics",
+                    new Dictionary<string, object>());
 
+                if (result != null)
+                {
+                    return new ExpenseStatistics
+                    {
+                        TotalExpenses = Convert.ToDecimal(result.GetValueOrDefault("TotalExpenses", 0m)),
+                        PendingExpenses = Convert.ToDecimal(result.GetValueOrDefault("PendingExpenses", 0m)),
+                        PaidExpenses = Convert.ToDecimal(result.GetValueOrDefault("PaidExpenses", 0m)),
+                        OverdueExpenses = Convert.ToDecimal(result.GetValueOrDefault("OverdueExpenses", 0m)),
+                        ExpenseCount = Convert.ToInt32(result.GetValueOrDefault("ExpenseCount", 0)),
+                        AverageExpense = Convert.ToDecimal(result.GetValueOrDefault("AverageExpense", 0m))
+                    };
+                }
+
+                throw new Exception("RPC get_expense_statistics returned null");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error via RPC, fallback a client-side: {ex.Message}");
+                // Fallback: client-side aggregation
+                var expenses = await _expenseService.GetExpenses();
                 return new ExpenseStatistics
                 {
                     TotalExpenses = expenses.Sum(e => e.TotalExpense),
@@ -697,11 +719,6 @@ namespace SistemaGestionProyectos2.Services
                     ExpenseCount = expenses.Count,
                     AverageExpense = expenses.Count > 0 ? expenses.Average(e => e.TotalExpense) : 0
                 };
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error calculando estadísticas de gastos: {ex.Message}");
-                throw;
             }
         }
 
@@ -872,49 +889,14 @@ namespace SistemaGestionProyectos2.Services
         // MÉTODOS DE ORDER STATUS (mantener aquí por ahora)
         // ===============================================
 
-        public async Task<List<OrderStatusDb>> GetOrderStatuses()
-        {
-            try
-            {
-                var response = await _supabaseClient
-                    .From<OrderStatusDb>()
-                    .Order("display_order", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+        public Task<List<OrderStatusDb>> GetOrderStatuses()
+            => _orderService.GetOrderStatuses();
 
-                return response?.Models ?? new List<OrderStatusDb>();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo estados: {ex.Message}");
-                throw;
-            }
-        }
+        public Task<string> GetStatusName(int statusId)
+            => _orderService.GetStatusName(statusId);
 
-        public async Task<string> GetStatusName(int statusId)
-        {
-            try
-            {
-                var statuses = await GetOrderStatuses();
-                return statuses.FirstOrDefault(s => s.Id == statusId)?.Name ?? "Desconocido";
-            }
-            catch
-            {
-                return "Desconocido";
-            }
-        }
-
-        public async Task<int> GetStatusIdByName(string statusName)
-        {
-            try
-            {
-                var statuses = await GetOrderStatuses();
-                return statuses.FirstOrDefault(s => s.Name.Equals(statusName, StringComparison.OrdinalIgnoreCase))?.Id ?? 1;
-            }
-            catch
-            {
-                return 1;
-            }
-        }
+        public Task<int> GetStatusIdByName(string statusName)
+            => _orderService.GetStatusIdByName(statusName);
 
         // ===============================================
         // MÉTODOS DE HISTORY (mantener aquí por ahora)

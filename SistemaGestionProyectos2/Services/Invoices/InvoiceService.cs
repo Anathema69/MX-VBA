@@ -198,24 +198,29 @@ namespace SistemaGestionProyectos2.Services.Invoices
             }
         }
 
+        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(30);
+
         public async Task<List<InvoiceStatusDb>> GetInvoiceStatuses()
         {
-            try
+            return await Cache.GetOrLoadAsync("invoicestatuses:all", async () =>
             {
-                var response = await SupabaseClient
-                    .From<InvoiceStatusDb>()
-                    .Order("display_order", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<InvoiceStatusDb>()
+                        .Order("display_order", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var statuses = response?.Models ?? new List<InvoiceStatusDb>();
-                LogSuccess($"Estados de factura obtenidos: {statuses.Count}");
-                return statuses;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo estados de factura", ex);
-                throw;
-            }
+                    var statuses = response?.Models ?? new List<InvoiceStatusDb>();
+                    LogSuccess($"Estados de factura obtenidos: {statuses.Count}");
+                    return statuses;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo estados de factura", ex);
+                    throw;
+                }
+            }, StatusCacheTtl);
         }
     }
 }

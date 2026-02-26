@@ -17,79 +17,59 @@ namespace SistemaGestionProyectos2.Services.Vendors
         /// </summary>
         public async Task<List<VendorTableDb>> GetActiveVendors()
         {
-            try
+            return await Cache.GetOrLoadAsync("vendors:active", async () =>
             {
-                var response = await SupabaseClient
-                    .From<VendorTableDb>()
-                    .Where(x => x.IsActive == true)
-                    .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<VendorTableDb>()
+                        .Where(x => x.IsActive == true)
+                        .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var vendors = response?.Models ?? new List<VendorTableDb>();
-                LogSuccess($"Vendedores activos obtenidos: {vendors.Count}");
-                return vendors;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo vendedores activos", ex);
-                throw;
-            }
+                    var vendors = response?.Models ?? new List<VendorTableDb>();
+                    LogSuccess($"Vendedores activos obtenidos: {vendors.Count}");
+                    return vendors;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo vendedores activos", ex);
+                    throw;
+                }
+            });
         }
 
-        /// <summary>
-        /// Obtiene todos los vendedores (activos e inactivos)
-        /// </summary>
         public async Task<List<VendorTableDb>> GetAllVendors()
         {
-            try
+            return await Cache.GetOrLoadAsync("vendors:all", async () =>
             {
-                var response = await SupabaseClient
-                    .From<VendorTableDb>()
-                    .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<VendorTableDb>()
+                        .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var vendors = response?.Models ?? new List<VendorTableDb>();
-                LogSuccess($"Todos los vendedores obtenidos: {vendors.Count}");
-                return vendors;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo todos los vendedores", ex);
-                throw;
-            }
+                    var vendors = response?.Models ?? new List<VendorTableDb>();
+                    LogSuccess($"Todos los vendedores obtenidos: {vendors.Count}");
+                    return vendors;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo todos los vendedores", ex);
+                    throw;
+                }
+            });
         }
 
-        /// <summary>
-        /// Obtiene vendedores como VendorDb (para compatibilidad)
-        /// </summary>
         public async Task<List<VendorDb>> GetVendors()
         {
-            try
+            var activeVendors = await GetActiveVendors();
+            return activeVendors.Select(v => new VendorDb
             {
-                LogDebug("Obteniendo vendedores de t_vendor...");
-
-                var response = await SupabaseClient
-                    .From<VendorTableDb>()
-                    .Where(x => x.IsActive == true)
-                    .Order("f_vendorname", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
-
-                var vendors = response?.Models ?? new List<VendorTableDb>();
-
-                LogSuccess($"Vendedores encontrados: {vendors.Count}");
-
-                // Convertir VendorTableDb a VendorDb para compatibilidad
-                return vendors.Select(v => new VendorDb
-                {
-                    Id = v.Id,
-                    VendorName = v.VendorName
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo vendedores", ex);
-                throw new Exception($"Error al cargar vendedores: {ex.Message}", ex);
-            }
+                Id = v.Id,
+                VendorName = v.VendorName
+            }).ToList();
         }
 
         /// <summary>
@@ -134,6 +114,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
 
                 if (response?.Models?.Count > 0)
                 {
+                    Cache.InvalidatePrefix("vendors:");
                     LogSuccess($"Vendedor creado: {vendor.VendorName}");
                     return response.Models.First();
                 }
@@ -171,6 +152,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
 
                 if (response?.Models?.Count > 0)
                 {
+                    Cache.InvalidatePrefix("vendors:");
                     LogSuccess($"Vendedor actualizado: {vendor.VendorName}");
                     return response.Models.First();
                 }
@@ -199,7 +181,11 @@ namespace SistemaGestionProyectos2.Services.Vendors
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Vendedor eliminado: {vendorId}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("vendors:");
+                    LogSuccess($"Vendedor eliminado: {vendorId}");
+                }
                 return success;
             }
             catch (Exception ex)
@@ -224,7 +210,11 @@ namespace SistemaGestionProyectos2.Services.Vendors
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Vendedor desactivado: {vendorId}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("vendors:");
+                    LogSuccess($"Vendedor desactivado: {vendorId}");
+                }
                 return success;
             }
             catch (Exception ex)
@@ -249,7 +239,11 @@ namespace SistemaGestionProyectos2.Services.Vendors
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Vendedor reactivado: {vendorId}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("vendors:");
+                    LogSuccess($"Vendedor reactivado: {vendorId}");
+                }
                 return success;
             }
             catch (Exception ex)
@@ -352,7 +346,11 @@ namespace SistemaGestionProyectos2.Services.Vendors
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Tasa de comisión actualizada para vendedor {vendorId}: {commissionRate}%");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("vendors:");
+                    LogSuccess($"Tasa de comisión actualizada para vendedor {vendorId}: {commissionRate}%");
+                }
                 return success;
             }
             catch (Exception ex)

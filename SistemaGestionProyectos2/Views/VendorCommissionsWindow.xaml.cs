@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,6 +27,7 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<CommissionDetailViewModel> _vendorCommissions;
         private VendorSummaryViewModel _selectedVendor;
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
+        private CancellationTokenSource _cts = new();
 
         public VendorCommissionsWindow(UserSession currentUser)
         {
@@ -40,7 +42,7 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             InitializeUI();
-            _ = LoadVendorsWithCommissions();
+            _ = SafeLoadAsync(() => LoadVendorsWithCommissions());
         }
 
         private void MaximizeWithTaskbar()
@@ -777,6 +779,26 @@ namespace SistemaGestionProyectos2.Views
                 "#00b894", "#00cec9", "#0984e3", "#74b9ff"
             };
             return colors[Math.Abs(seed) % colors.Length];
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

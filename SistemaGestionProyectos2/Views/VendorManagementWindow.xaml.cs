@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -25,6 +26,7 @@ namespace SistemaGestionProyectos2.Views
         private TextBox _currentEditingTextBox;
         private VendorViewModel _selectedVendor;
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
+        private CancellationTokenSource _cts = new();
 
         public VendorManagementWindow(UserSession user)
         {
@@ -38,7 +40,7 @@ namespace SistemaGestionProyectos2.Views
             MaximizeWithTaskbar();
 
             InitializeUI();
-            _ = LoadActiveVendorsAsync();
+            _ = SafeLoadAsync(() => LoadActiveVendorsAsync());
         }
 
         private void MaximizeWithTaskbar()
@@ -491,6 +493,26 @@ namespace SistemaGestionProyectos2.Views
             };
 
             ToastNotification.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

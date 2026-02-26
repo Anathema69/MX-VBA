@@ -311,10 +311,13 @@
         <!-- Lista de usuarios -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
                       Margin="24,0,24,12">
-            <ItemsControl Name="UsersItemsControl">
+            <ItemsControl Name="UsersItemsControl"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel/>
+                        <VirtualizingStackPanel/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

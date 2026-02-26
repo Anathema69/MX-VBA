@@ -205,7 +205,17 @@
             <!-- Footer Info -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0">
                 <TextBlock Name="txtLastUpdate" Text="Actualizado: --"
-                          FontSize="12" Foreground="#A1A1AA"/>
+                          FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Center"/>
+                <Button Name="btnRefreshBalance" Content="Actualizar Datos"
+                        Margin="16,0,0,0" Padding="12,4" FontSize="12"
+                        Background="#3B82F6" Foreground="White" BorderThickness="0"
+                        Cursor="Hand" Click="BtnRefreshBalance_Click">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
 
                 <!-- Leyenda del semáforo -->
                 <StackPanel Orientation="Horizontal" Margin="32,0,0,0">

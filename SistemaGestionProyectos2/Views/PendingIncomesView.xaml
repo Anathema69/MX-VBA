@@ -477,10 +477,13 @@
 
                 <!-- ItemsControl para las Cards -->
                 <ItemsControl x:Name="ClientsItemsControl"
-                              ItemTemplate="{StaticResource ClientPendingCardTemplate}">
+                              ItemTemplate="{StaticResource ClientPendingCardTemplate}"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              ScrollViewer.CanContentScroll="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <StackPanel/>
+                            <VirtualizingStackPanel/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>

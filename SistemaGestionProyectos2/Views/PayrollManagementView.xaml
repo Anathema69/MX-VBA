@@ -389,10 +389,13 @@
 
                     <!-- Lista de empleados con diseño de tarjetas - REDUCIDO -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl Name="PayrollItemsControl" Margin="0,0,0,12">
+                        <ItemsControl Name="PayrollItemsControl" Margin="0,0,0,12"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel/>
+                                    <VirtualizingStackPanel/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
@@ -533,10 +536,13 @@
 
                     <!-- Lista de gastos con diseño de tarjetas - REDUCIDO -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl Name="ExpensesItemsControl" Margin="0,0,0,12">
+                        <ItemsControl Name="ExpensesItemsControl" Margin="0,0,0,12"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <StackPanel/>
+                                    <VirtualizingStackPanel/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>

@@ -246,10 +246,13 @@
         <!-- Lista de proveedores con tarjetas -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" 
                       Margin="24,0,24,12">
-            <ItemsControl Name="SuppliersItemsControl">
+            <ItemsControl Name="SuppliersItemsControl"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel/>
+                        <VirtualizingStackPanel/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>

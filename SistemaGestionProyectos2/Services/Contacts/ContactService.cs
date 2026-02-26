@@ -133,28 +133,22 @@ namespace SistemaGestionProyectos2.Services.Contacts
         {
             try
             {
-                // Si el contacto se marca como principal, desmarcar todos los otros contactos del cliente primero
+                // Si el contacto se marca como principal, desmarcar todos los otros del mismo cliente en una sola query
                 if (contact.IsPrimary)
                 {
-                    // Desmarcar todos los contactos del cliente como no principales
-                    var allContacts = await GetContactsByClient(contact.ClientId);
-                    var otherPrimaryContacts = allContacts.Where(c => c.Id != contact.Id && c.IsPrimary).ToList();
-
-                    foreach (var c in otherPrimaryContacts)
+                    try
                     {
-                        try
-                        {
-                            await SupabaseClient
-                                .From<ContactDb>()
-                                .Filter("f_contact", Postgrest.Constants.Operator.Equals, c.Id)
-                                .Set(x => x.IsPrimary, false)
-                                .Update();
-                        }
-                        catch (Exception ex)
-                        {
-                            LogError($"Error desmarcando contacto {c.Id} como principal", ex);
-                            // Continuar con los demás contactos
-                        }
+                        await SupabaseClient
+                            .From<ContactDb>()
+                            .Filter("f_client", Postgrest.Constants.Operator.Equals, contact.ClientId)
+                            .Filter("f_contact", Postgrest.Constants.Operator.NotEqual, contact.Id)
+                            .Filter("is_primary", Postgrest.Constants.Operator.Equals, true)
+                            .Set(x => x.IsPrimary, false)
+                            .Update();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError($"Error desmarcando otros contactos como principal para cliente {contact.ClientId}", ex);
                     }
                 }
 

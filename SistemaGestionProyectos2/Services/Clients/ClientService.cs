@@ -15,45 +15,29 @@ namespace SistemaGestionProyectos2.Services.Clients
 
         public async Task<List<ClientDb>> GetClients()
         {
-            try
+            return await Cache.GetOrLoadAsync("clients:active", async () =>
             {
-                var response = await SupabaseClient
-                    .From<ClientDb>()
-                    .Where(c => c.IsActive == true)
-                    .Order("f_name", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
+                try
+                {
+                    var response = await SupabaseClient
+                        .From<ClientDb>()
+                        .Where(c => c.IsActive == true)
+                        .Order("f_name", Postgrest.Constants.Ordering.Ascending)
+                        .Get();
 
-                var clients = response?.Models ?? new List<ClientDb>();
-                LogSuccess($"Clientes obtenidos: {clients.Count}");
-                return clients;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo clientes", ex);
-                return new List<ClientDb>();
-            }
+                    var clients = response?.Models ?? new List<ClientDb>();
+                    LogSuccess($"Clientes obtenidos: {clients.Count}");
+                    return clients;
+                }
+                catch (Exception ex)
+                {
+                    LogError("Error obteniendo clientes", ex);
+                    return new List<ClientDb>();
+                }
+            });
         }
 
-        public async Task<List<ClientDb>> GetActiveClients()
-        {
-            try
-            {
-                var response = await SupabaseClient
-                    .From<ClientDb>()
-                    .Where(c => c.IsActive == true)
-                    .Order("f_name", Postgrest.Constants.Ordering.Ascending)
-                    .Get();
-
-                var clients = response?.Models ?? new List<ClientDb>();
-                LogSuccess($"Clientes activos: {clients.Count}");
-                return clients;
-            }
-            catch (Exception ex)
-            {
-                LogError("Error obteniendo clientes activos", ex);
-                return new List<ClientDb>();
-            }
-        }
+        public Task<List<ClientDb>> GetActiveClients() => GetClients();
 
         public async Task<ClientDb> GetClientById(int clientId)
         {
@@ -117,6 +101,7 @@ namespace SistemaGestionProyectos2.Services.Clients
 
                 if (response?.Models?.Count > 0)
                 {
+                    Cache.InvalidatePrefix("clients:");
                     LogSuccess($"Cliente creado: {client.Name}");
                     return response.Models.First();
                 }
@@ -149,7 +134,11 @@ namespace SistemaGestionProyectos2.Services.Clients
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
-                if (success) LogSuccess($"Cliente actualizado: {client.Name}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("clients:");
+                    LogSuccess($"Cliente actualizado: {client.Name}");
+                }
                 return success;
             }
             catch (Exception ex)
@@ -173,7 +162,11 @@ namespace SistemaGestionProyectos2.Services.Clients
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
-                if (success) LogSuccess($"Cliente desactivado: {clientId}");
+                if (success)
+                {
+                    Cache.InvalidatePrefix("clients:");
+                    LogSuccess($"Cliente desactivado: {clientId}");
+                }
                 return success;
             }
             catch (Exception ex)

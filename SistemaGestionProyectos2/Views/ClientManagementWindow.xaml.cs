@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -27,6 +28,7 @@ namespace SistemaGestionProyectos2.Views
         // Estado para manejo de creación/edición de contactos
         private bool _isCreatingNewContact = false;
         private bool _hasUnsavedContactChanges = false;
+        private CancellationTokenSource _cts = new();
 
         public ClientManagementWindow(UserSession currentUser)
         {
@@ -45,7 +47,7 @@ namespace SistemaGestionProyectos2.Views
             ContactsDataGrid.ItemsSource = _contacts;
 
             // Cargar datos iniciales
-            _ = LoadClientsAsync();
+            _ = SafeLoadAsync(() => LoadClientsAsync());
         }
 
         private void MaximizeWithTaskbar()
@@ -635,6 +637,26 @@ namespace SistemaGestionProyectos2.Views
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 

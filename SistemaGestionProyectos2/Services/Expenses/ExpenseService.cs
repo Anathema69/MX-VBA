@@ -258,22 +258,39 @@ namespace SistemaGestionProyectos2.Services.Expenses
         {
             try
             {
-                var expenses = await GetExpenses();
+                var result = await SupabaseClient.Rpc<List<Dictionary<string, object>>>(
+                    "get_expense_stats_by_status",
+                    new Dictionary<string, object>());
 
-                var stats = expenses
-                    .GroupBy(e => e.Status ?? "SIN_ESTADO")
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.Sum(e => e.TotalExpense)
-                    );
+                var stats = new Dictionary<string, decimal>();
+                if (result != null)
+                {
+                    foreach (var row in result)
+                    {
+                        var status = row.ContainsKey("status") ? row["status"]?.ToString() ?? "SIN_ESTADO" : "SIN_ESTADO";
+                        var total = row.ContainsKey("total") ? Convert.ToDecimal(row["total"]) : 0m;
+                        stats[status] = total;
+                    }
+                }
 
-                LogSuccess($"Estadísticas de gastos calculadas: {stats.Count} estados");
+                LogSuccess($"Estadísticas de gastos calculadas (server-side): {stats.Count} estados");
                 return stats;
             }
             catch (Exception ex)
             {
-                LogError("Error calculando estadísticas de gastos", ex);
-                throw;
+                LogError("Error calculando estadísticas de gastos via RPC, fallback a client-side", ex);
+                // Fallback: client-side aggregation
+                try
+                {
+                    var expenses = await GetExpenses();
+                    return expenses
+                        .GroupBy(e => e.Status ?? "SIN_ESTADO")
+                        .ToDictionary(g => g.Key, g => g.Sum(e => e.TotalExpense));
+                }
+                catch
+                {
+                    throw;
+                }
             }
         }
     }

@@ -79,8 +79,11 @@
 
                 <!-- Lista de Vendedores -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                    <ListBox Name="VendorsListBox" BorderThickness="0" Background="Transparent" 
-                             SelectionChanged="VendorsList_SelectionChanged" Padding="15">
+                    <ListBox Name="VendorsListBox" BorderThickness="0" Background="Transparent"
+                             SelectionChanged="VendorsList_SelectionChanged" Padding="15"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             ScrollViewer.CanContentScroll="True">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Margin" Value="0,0,0,10"/>
@@ -349,7 +352,15 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
 
                 <!-- Lista de Comisiones -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
-                    <ItemsControl Name="CommissionsItemsControl">
+                    <ItemsControl Name="CommissionsItemsControl"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15">

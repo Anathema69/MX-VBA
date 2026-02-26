@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,6 +25,7 @@ namespace SistemaGestionProyectos2.Views
         private ObservableCollection<SupplierViewModel> _filteredSuppliers;
         private TextBox _currentEditingTextBox;
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
+        private CancellationTokenSource _cts = new();
 
         // Caché de datos
         private DateTime _lastSuppliersLoad = DateTime.MinValue;
@@ -37,7 +39,7 @@ namespace SistemaGestionProyectos2.Views
             _filteredSuppliers = new ObservableCollection<SupplierViewModel>();
 
             SuppliersItemsControl.ItemsSource = _filteredSuppliers;
-            _ = LoadSuppliers();
+            _ = SafeLoadAsync(() => LoadSuppliers());
         }
 
         private async Task LoadSuppliers(bool forceReload = false)
@@ -696,6 +698,28 @@ namespace SistemaGestionProyectos2.Views
 
             StatusText.Text = "Listo";
             StatusText.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+        }
+
+        private async Task SafeLoadAsync(Func<Task> loadAction)
+        {
+            try
+            {
+                await loadAction();
+            }
+            catch (OperationCanceledException) { /* Window closed during load */ }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{GetType().Name}] Error in async load: {ex.Message}");
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            foreach (var vm in _suppliers)
+                vm.PropertyChanged -= OnSupplierPropertyChanged;
+            _cts.Cancel();
+            _cts.Dispose();
+            base.OnClosed(e);
         }
     }
 
