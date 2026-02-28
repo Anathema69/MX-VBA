@@ -74,6 +74,8 @@ namespace SistemaGestionProyectos2.Views
         public BalanceWindowPro(UserSession currentUser)
         {
             InitializeComponent();
+            MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
@@ -87,6 +89,12 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos
             _ = SafeLoadAsync(() => LoadBalanceData());
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private async Task LoadBalanceData()

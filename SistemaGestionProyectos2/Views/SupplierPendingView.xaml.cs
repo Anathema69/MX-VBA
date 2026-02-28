@@ -42,6 +42,7 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
 
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             SuppliersItemsControl.ItemsSource = _displayedSuppliers;
 
@@ -52,11 +53,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private void ShowLoadingState()

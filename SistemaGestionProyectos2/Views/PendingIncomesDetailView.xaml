@@ -5,7 +5,7 @@
         Height="700" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize">
 
@@ -169,7 +169,7 @@
                         </Button.Template>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="←" FontSize="16" Margin="0,0,5,0"/>
-                            <TextBlock Text="Regresar"/>
+                            <TextBlock Text="Volver"/>
                         </StackPanel>
                     </Button>
 
@@ -300,17 +300,18 @@
                             <Setter Property="BorderThickness" Value="0,0,0,1"/>
                             <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
                             <Setter Property="Padding" Value="20,0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Center"/>
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
 
                     <DataGrid.Columns>
                         <!-- Folio -->
-                        <DataGridTextColumn Header="FOLIO" 
-                                          Binding="{Binding Folio}" 
+                        <DataGridTextColumn Header="FOLIO"
+                                          Binding="{Binding Folio}"
                                           Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="Medium"/>
                                 </Style>
@@ -318,24 +319,24 @@
                         </DataGridTextColumn>
 
                         <!-- Orden -->
-                        <DataGridTextColumn Header="ORDEN" 
-                                          Binding="{Binding OrderPO}" 
+                        <DataGridTextColumn Header="ORDEN"
+                                          Binding="{Binding OrderPO}"
                                           Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Total -->
-                        <DataGridTextColumn Header="TOTAL" 
-                                          Binding="{Binding Total, StringFormat='{}{0:C}'}" 
+                        <DataGridTextColumn Header="TOTAL"
+                                          Binding="{Binding Total, StringFormat='{}{0:C}'}"
                                           Width="130">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="Bold"/>
                                     <Setter Property="FontSize" Value="14"/>
@@ -344,36 +345,36 @@
                         </DataGridTextColumn>
 
                         <!-- Fecha Factura -->
-                        <DataGridTextColumn Header="FECHA FACTURA" 
-                                          Binding="{Binding InvoiceDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
+                        <DataGridTextColumn Header="FECHA FACTURA"
+                                          Binding="{Binding InvoiceDate, StringFormat='{}{0:dd/MM/yyyy}'}"
                                           Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Fecha Recepción -->
-                        <DataGridTextColumn Header="RECEPCIÓN" 
-                                          Binding="{Binding ReceptionDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
+                        <DataGridTextColumn Header="RECEPCIÓN"
+                                          Binding="{Binding ReceptionDate, StringFormat='{}{0:dd/MM/yyyy}'}"
                                           Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
                         <!-- Fecha Vencimiento -->
-                        <DataGridTextColumn Header="VENCIMIENTO" 
-                                          Binding="{Binding DueDate, StringFormat='{}{0:dd/MM/yyyy}'}" 
+                        <DataGridTextColumn Header="VENCIMIENTO"
+                                          Binding="{Binding DueDate, StringFormat='{}{0:dd/MM/yyyy}'}"
                                           Width="140">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Margin" Value="20,0"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Setter Property="FontWeight" Value="Medium"/>
                                 </Style>
@@ -397,8 +398,8 @@
                         <DataGridTemplateColumn Header="ESTADO" Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Margin="20,8" CornerRadius="6" 
-                                            HorizontalAlignment="Left">
+                                    <Border Margin="20,8" CornerRadius="6"
+                                            HorizontalAlignment="Center">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Style.Triggers>

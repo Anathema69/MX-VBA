@@ -88,17 +88,32 @@
                         <Setter Property="Padding" Value="10,12"/>
                         <Setter Property="BorderThickness" Value="0,0,0,1"/>
                         <Setter Property="BorderBrush" Value="{StaticResource BorderGray}"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Center"/>
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
 
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="FECHA" 
-                                      Binding="{Binding EffectiveDate, StringFormat={}{0:dd/MM/yyyy}}" 
-                                      Width="100"/>
+                    <DataGridTextColumn Header="FECHA"
+                                      Binding="{Binding EffectiveDate, StringFormat={}{0:dd/MM/yyyy}}"
+                                      Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
-                    <DataGridTextColumn Header="EMPLEADO" 
-                                      Binding="{Binding Employee}" 
-                                      Width="200"/>
+                    <DataGridTextColumn Header="EMPLEADO"
+                                      Binding="{Binding Employee}"
+                                      Width="200">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="8,0,0,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Reemplazar el DataGridTemplateColumn de TIPO DE CAMBIO con este -->
                     <DataGridTemplateColumn Header="TIPO DE CAMBIO" Width="150">
@@ -164,20 +179,29 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="RESUMEN DE CAMBIOS" 
-                                      Binding="{Binding ChangeSummary}" 
-                                      Width="*"/>
-
+                    <DataGridTextColumn Header="RESUMEN DE CAMBIOS"
+                                      Binding="{Binding ChangeSummary}"
+                                      Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="8,0,0,0"/>
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
 
                     <!-- Columna de NÓMINA NUEVA -->
-                    <DataGridTextColumn Header="NÓMINA NUEVA" 
-                  Binding="{Binding MonthlyPayroll, StringFormat={}{0:C}, ConverterCulture=es-MX}" 
+                    <DataGridTextColumn Header="NÓMINA NUEVA"
+                  Binding="{Binding MonthlyPayroll, StringFormat={}{0:C}, ConverterCulture=es-MX}"
                   Width="120">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="Bold"/>
                                 <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
-                                <Setter Property="TextAlignment" Value="Right"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Padding" Value="0,0,8,0"/>
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>

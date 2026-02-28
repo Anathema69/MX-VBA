@@ -42,6 +42,7 @@ namespace SistemaGestionProyectos2.Views
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             // IMPORTANTE: Establecer el DataContext para los bindings
             this.DataContext = this;
@@ -55,15 +56,11 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            // Obtener el área de trabajo (sin incluir la barra de tareas)
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
-        
+
 
         private void InitializeUI()
         {
@@ -107,9 +104,15 @@ namespace SistemaGestionProyectos2.Views
                 .OrderByDescending(y => y)
                 .ToList();
 
-            // Guardar selección actual
+            // Guardar selección actual (si ya había una)
             var currentYearItem = YearFilter.SelectedItem as ComboBoxItem;
             var currentYear = currentYearItem?.Tag as int?;
+
+            // Si no hay selección previa, usar el año actual como default
+            if (!currentYear.HasValue && availableYears.Contains(DateTime.Now.Year))
+            {
+                currentYear = DateTime.Now.Year;
+            }
 
             var currentMonthItem = MonthFilter.SelectedItem as ComboBoxItem;
             var currentMonth = currentMonthItem?.Tag as int?;

@@ -90,7 +90,7 @@
                 </StackPanel>
 
                 <!-- Botón Volver a la derecha (responsivo) -->
-                <Button Content="⬅ Volver"
+                <Button Content="← Volver"
                         Click="BackButton_Click"
                         Background="Transparent"
                         BorderBrush="White"

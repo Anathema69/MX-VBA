@@ -208,7 +208,7 @@
                         </Button>
 
 
-                        <!-- PORTAL DEL VENDEDOR -->
+                        <!-- PORTAL VENTAS -->
                         <Button x:Name="VendorPortalButton" 
         Click="VendorPortal_Click"
         Width="200"
@@ -235,7 +235,7 @@
                               Foreground="#1976D2"/>
 
                                             <TextBlock Grid.Row="1"
-                              Text="PORTAL DEL VENDEDOR"
+                              Text="PORTAL VENTAS"
                               FontWeight="Bold"
                               FontSize="12"
                               HorizontalAlignment="Center"
@@ -350,7 +350,7 @@
                             </Button.Template>
                         </Button>
 
-                        <!-- PORTAL DE PROVEEDORES - Cambiar a estilo azul uniforme -->
+                        <!-- PORTAL PROVEEDORES -->
                         <Button Click="OpenExpensePortal_Click"
                                 IsEnabled="True"
                                 Width="200"
@@ -377,7 +377,7 @@
                                                          Foreground="#1976D2"/>
 
                                             <TextBlock Grid.Row="1"
-                                                     Text="PORTAL DE PROVEEDORES"
+                                                     Text="PORTAL PROVEEDORES"
                                                      FontWeight="Bold"
                                                      FontSize="12"
                                                      HorizontalAlignment="Center"

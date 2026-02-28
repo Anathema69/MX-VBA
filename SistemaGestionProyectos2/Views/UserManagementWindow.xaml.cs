@@ -32,10 +32,17 @@ namespace SistemaGestionProyectos2.Views
         public UserManagementWindow(UserSession currentUser)
         {
             InitializeComponent();
+            MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
             _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
             _toastTimer.Tick += (s, e) => { ToastNotification.Visibility = Visibility.Collapsed; _toastTimer.Stop(); };
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)

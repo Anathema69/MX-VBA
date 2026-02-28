@@ -76,7 +76,7 @@
                             Cursor="Hand">
                         <Button.Style>
                             <Style TargetType="Button">
-                                <Setter Property="Content" Value="⬅ Volver"/>
+                                <Setter Property="Content" Value="← Volver"/>
                                 <Setter Property="ToolTip" Value="Volver al menu principal"/>
                                 <Style.Triggers>
                                     <!-- Coordinacion: no tiene menu principal, cierra sesion -->
@@ -250,7 +250,6 @@
                             Height="35"
                             Margin="0,0,10,0"
                             SelectionChanged="YearFilter_SelectionChanged">
-                        <ComboBoxItem Content="Todos" IsSelected="True"/>
                     </ComboBox>
 
                     <!-- Filtro por Mes (segundo) -->
@@ -320,6 +319,7 @@
                      IsReadOnly="True"
                      SelectionMode="Extended"
                      SelectionUnit="Cell"
+                     CanUserResizeColumns="True"
                      GridLinesVisibility="Horizontal"
                      HeadersVisibility="Column"
                      VirtualizingPanel.IsVirtualizing="True"
@@ -386,30 +386,78 @@
 
                     <DataGrid.Columns>
                         <!-- Columnas visibles para todos -->
-                        <DataGridTextColumn Header="O.C." 
-                                       Binding="{Binding OrderNumber}" 
-                                       Width="100"/>
+                        <DataGridTextColumn Header="O.C."
+                                       Binding="{Binding OrderNumber}"
+                                       Width="85"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="FECHA O.C." 
-                                       Binding="{Binding OrderDate, StringFormat=dd/MM/yyyy}" 
-                                       Width="100"/>
+                        <DataGridTextColumn Header="FECHA O.C."
+                                       Binding="{Binding OrderDate, StringFormat=dd/MM/yyyy}"
+                                       Width="100"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="EMPRESA" 
-                                       Binding="{Binding ClientName}" 
-                                       Width="200"/>
+                        <DataGridTextColumn Header="EMPRESA"
+                                       Binding="{Binding ClientName}"
+                                       Width="180">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="8,0,0,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="DESCRIPCIÓN" 
-                                       Binding="{Binding Description}" 
-                                       Width="*"/>
+                        <DataGridTextColumn Header="DESCRIPCIÓN"
+                                       Binding="{Binding Description}"
+                                       Width="*"
+                                       MinWidth="150">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="8,0,0,0"/>
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
                         <DataGridTextColumn x:Name="VendorColumn"
                                        Header="VENDEDOR"
                                        Binding="{Binding VendorName}"
-                                       Width="150"/>
+                                       Width="120"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
-                        <DataGridTextColumn Header="FECHA PROMESA" 
-                                       Binding="{Binding PromiseDate, StringFormat=dd/MM/yyyy}" 
-                                       Width="110"/>
+                        <DataGridTextColumn Header="FECHA PROMESA"
+                                       Binding="{Binding PromiseDate, StringFormat=dd/MM/yyyy}"
+                                       Width="100"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
 
                         <DataGridTextColumn Header="% AVANCE" 
                                        Binding="{Binding ProgressPercentage, StringFormat={}{0}%}" 
@@ -427,7 +475,7 @@
                         <DataGridTextColumn x:Name="SubtotalColumn"
                                        Header="SUBTOTAL" 
                                        Binding="{Binding Subtotal, StringFormat=C}" 
-                                       Width="110"
+                                       Width="95"
                                        Visibility="Collapsed"
                                        HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTextColumn.ElementStyle>
@@ -442,7 +490,7 @@
                         <DataGridTextColumn x:Name="TotalColumn"
                                        Header="TOTAL" 
                                        Binding="{Binding Total, StringFormat=C}" 
-                                       Width="110"
+                                       Width="95"
                                        Visibility="Collapsed"
                                        HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTextColumn.ElementStyle>
@@ -459,7 +507,7 @@
                         <DataGridTextColumn x:Name="InvoicedColumn"
                    Header="FACTURADO"
                    Binding="{Binding InvoicedAmount, StringFormat=C}"
-                   Width="110"
+                   Width="95"
                    HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
@@ -476,7 +524,7 @@
                         <DataGridTextColumn x:Name="GastoMaterialColumn"
                                        Header="GASTO MAT."
                                        Binding="{Binding GastoMaterial, StringFormat=C}"
-                                       Width="110"
+                                       Width="95"
                                        Visibility="Collapsed"
                                        HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTextColumn.ElementStyle>
@@ -491,7 +539,7 @@
 
                         <DataGridTemplateColumn x:Name="GastoOperativoColumn"
                                        Header="GASTO OP."
-                                       Width="110"
+                                       Width="95"
                                        Visibility="Collapsed"
                                        HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTemplateColumn.CellTemplate>
@@ -509,7 +557,7 @@
                         <DataGridTextColumn x:Name="GastoIndirectoColumn"
                                        Header="GASTO IND."
                                        Binding="{Binding GastoIndirecto, StringFormat=C}"
-                                       Width="110"
+                                       Width="95"
                                        Visibility="Collapsed"
                                        HeaderStyle="{StaticResource RightAlignedHeader}">
                             <DataGridTextColumn.ElementStyle>
@@ -582,7 +630,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <DataGridTemplateColumn Header="ACCIONES" Width="150"
+                        <DataGridTemplateColumn Header="ACCIONES" Width="120"
                                            HeaderStyle="{StaticResource CenterAlignedHeader}">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

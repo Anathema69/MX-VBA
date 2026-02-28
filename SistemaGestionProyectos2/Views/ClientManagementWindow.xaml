@@ -171,7 +171,7 @@
                        VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="←" FontSize="16" Margin="0,0,8,0"/>
-                        <TextBlock Text="Volver al menú" FontSize="14"/>
+                        <TextBlock Text="Volver" FontSize="14"/>
                     </StackPanel>
                 </Button>
             </Grid>
@@ -918,39 +918,42 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- Nombre -->
-                                <DataGridTextColumn Header="NOMBRE COMPLETO" 
-                                                  Binding="{Binding Name}" 
+                                <DataGridTextColumn Header="NOMBRE COMPLETO"
+                                                  Binding="{Binding Name}"
                                                   Width="*"
                                                   MinWidth="200">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="FontWeight" Value="SemiBold"/>
-                                            <Setter Property="HorizontalAlignment" Value="Left"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                            <Setter Property="Padding" Value="8,0,0,0"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
                                 <!-- Cargo -->
-                                <DataGridTextColumn Header="CARGO" 
-                                                  Binding="{Binding Position}" 
+                                <DataGridTextColumn Header="CARGO"
+                                                  Binding="{Binding Position}"
                                                   Width="200">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Left"/>
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
                                             <Setter Property="Foreground" Value="{StaticResource TextGray}"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
                                 <!-- Email -->
-                                <DataGridTextColumn Header="EMAIL" 
-                                                  Binding="{Binding Email}" 
+                                <DataGridTextColumn Header="EMAIL"
+                                                  Binding="{Binding Email}"
                                                   Width="*"
                                                   MinWidth="250">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="Foreground" Value="{StaticResource InfoColor}"/>
-                                            <Setter Property="HorizontalAlignment" Value="Left"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                            <Setter Property="Padding" Value="8,0,0,0"/>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
@@ -959,7 +962,9 @@
                                 <DataGridTemplateColumn Header="TELÉFONO" Width="160">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
+                                            <StackPanel Orientation="Horizontal"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center">
                                                 <TextBlock Text="📱 " Margin="0,0,4,0"/>
                                                 <TextBlock Text="{Binding Phone}"/>
                                             </StackPanel>

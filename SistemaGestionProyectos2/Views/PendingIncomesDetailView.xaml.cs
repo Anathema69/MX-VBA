@@ -31,6 +31,8 @@ namespace SistemaGestionProyectos2.Views
         public PendingIncomesDetailView(UserSession currentUser, int clientId, string clientName)
         {
             InitializeComponent();
+            MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             _currentUser = currentUser;
             _clientId = clientId;
@@ -55,6 +57,11 @@ namespace SistemaGestionProyectos2.Views
 
             // Cargar datos
             _ = SafeLoadAsync(() => LoadClientInvoicesAsync());
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private void ShowLoadingState()

@@ -60,7 +60,14 @@ namespace SistemaGestionProyectos2.Views
         public StressTestWindow()
         {
             InitializeComponent();
+            MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
             lvResults.ItemsSource = _displayResults;
+        }
+
+        private void MaximizeWithTaskbar()
+        {
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private async void BtnRun_Click(object sender, RoutedEventArgs e)

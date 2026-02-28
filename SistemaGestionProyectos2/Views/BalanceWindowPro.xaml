@@ -3,11 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Balance Anual"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="NoResize"
-        Background="#FAFAFA"
-        MaxHeight="{x:Static SystemParameters.MaximizedPrimaryScreenHeight}">
+        Background="#FAFAFA">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -90,7 +89,7 @@
 
                 <!-- Botón Cerrar -->
                 <Button Name="btnClose" Grid.Column="2"
-                       Content="Cerrar" FontSize="13"
+                       Content="← Volver" FontSize="13"
                        Padding="16,8"
                        Background="Transparent"
                        Foreground="#71717A"

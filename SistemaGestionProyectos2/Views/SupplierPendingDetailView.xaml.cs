@@ -90,6 +90,7 @@ namespace SistemaGestionProyectos2.Views
 
             // Maximizar ventana respetando la barra de tareas
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             // Cargar datos del proveedor, órdenes y gastos
             _ = SafeLoadAsync(() => LoadSupplierDataAsync());
@@ -139,6 +140,7 @@ namespace SistemaGestionProyectos2.Views
 
             // Maximizar ventana respetando la barra de tareas
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             // Cargar proveedores y órdenes disponibles
             _ = SafeLoadAsync(() => LoadAvailableSuppliersAsync());
@@ -559,11 +561,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private void SetSupplierInitials(string name)

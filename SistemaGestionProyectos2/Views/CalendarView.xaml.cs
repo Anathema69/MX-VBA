@@ -54,6 +54,8 @@ namespace SistemaGestionProyectos2.Views
 
             var supabaseClient = SupabaseService.Instance.GetClient();
             _attendanceService = new AttendanceService(supabaseClient);
+
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -64,11 +66,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private async void InitializeUI()

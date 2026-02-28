@@ -211,7 +211,7 @@
                                Foreground="{StaticResource DarkText}" VerticalAlignment="Center"/>
 
                     <!-- Botón Volver siempre visible -->
-                    <Button HorizontalAlignment="Right" Content="← Volver al menú"
+                    <Button HorizontalAlignment="Right" Content="← Volver"
                             Background="White" BorderBrush="{StaticResource BorderGray}"
                             BorderThickness="2" Padding="16,8" Cursor="Hand"
                             Click="CloseButton_Click">

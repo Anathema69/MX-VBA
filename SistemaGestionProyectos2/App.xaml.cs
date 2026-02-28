@@ -273,7 +273,7 @@ namespace SistemaGestionProyectos2
             loginWindow.Activate();
             loginWindow.Focus();
 
-            // AHORA cerrar todas las ventanas excepto Login
+            // Recopilar ventanas a cerrar
             var windowsToClose = new System.Collections.Generic.List<Window>();
             foreach (Window window in Windows)
             {
@@ -283,10 +283,22 @@ namespace SistemaGestionProyectos2
                 }
             }
 
+            // Primero OCULTAR las ventanas (sin destruir el handle inmediatamente)
+            // Esto evita que Meet pierda el screen share al cerrar la ventana compartida
             foreach (var window in windowsToClose)
             {
-                window.Close();
+                window.Hide();
             }
+
+            // Cerrar las ventanas con un delay para que LoginWindow se estabilice
+            // y Meet pueda re-enfocar sin interrumpir el screen share
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                foreach (var window in windowsToClose)
+                {
+                    window.Close();
+                }
+            }), System.Windows.Threading.DispatcherPriority.Background);
 
             // Mostrar mensaje si se proporcionó (con delay para permitir que la ventana se renderice)
             if (!string.IsNullOrEmpty(userMessage))

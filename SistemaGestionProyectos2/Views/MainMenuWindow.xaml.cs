@@ -18,6 +18,7 @@ namespace SistemaGestionProyectos2.Views
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             InitializeUI();
             StartClock();
@@ -26,12 +27,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            // Obtener el área de trabajo (sin incluir la barra de tareas)
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
 
@@ -175,6 +172,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 // Abrir ventana de órdenes
                 OrdersManagementWindow ordersWindow = new OrdersManagementWindow(_currentUser);
+                ordersWindow.Owner = this;
                 ordersWindow.Show();
 
                 // Opcional: Cerrar menú principal o dejarlo abierto
@@ -243,7 +241,7 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                StatusText.Text = "Abriendo Portal del Vendedor...";
+                StatusText.Text = "Abriendo Portal Ventas...";
 
                 // Determinar qué ventana abrir según el rol
                 // direccion tiene acceso completo al portal de vendedores
@@ -253,6 +251,7 @@ namespace SistemaGestionProyectos2.Views
                 {
                     // Dirección ve la ventana completa con edición
                     var vendorWindow = new VendorCommissionsWindow(_currentUser);
+                    vendorWindow.Owner = this;
                     vendorWindow.Show();
                 }
                 else if (_currentUser.Role == "ventas")
@@ -260,7 +259,7 @@ namespace SistemaGestionProyectos2.Views
                     // Vendedor ve solo sus comisiones
                     // Por ahora usar la misma ventana, luego crearemos la específica
                     MessageBox.Show(
-                        "Portal del vendedor en desarrollo. Por favor contacte al administrador.",
+                        "Portal Ventas en desarrollo. Por favor contacte al administrador.",
                         "En desarrollo",
                         MessageBoxButton.OK,
                         MessageBoxImage.Information);
@@ -270,19 +269,19 @@ namespace SistemaGestionProyectos2.Views
                 {
                     // administracion, coordinacion, proyectos no tienen acceso
                     MessageBox.Show(
-                        "No tiene permisos para acceder al Portal del Vendedor.",
+                        "No tiene permisos para acceder al Portal Ventas.",
                         "Acceso Denegado",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;
                 }
 
-                StatusText.Text = "Portal del Vendedor abierto";
+                StatusText.Text = "Portal Ventas abierto";
             }
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Error al abrir el Portal del Vendedor:\n{ex.Message}",
+                    $"Error al abrir el Portal Ventas:\n{ex.Message}",
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -301,7 +300,7 @@ namespace SistemaGestionProyectos2.Views
                 if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion")
                 {
                     MessageBox.Show(
-                        "No tiene permisos para acceder al Portal de Proveedores.",
+                        "No tiene permisos para acceder al Portal Proveedores.",
                         "Acceso Denegado",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
@@ -310,6 +309,7 @@ namespace SistemaGestionProyectos2.Views
 
                 // Abrir la nueva vista de Cuentas por Pagar (pivoteada por proveedor)
                 var supplierPendingWindow = new SupplierPendingView(_currentUser);
+                supplierPendingWindow.Owner = this;
                 supplierPendingWindow.ShowDialog();
 
                 StatusText.Text = "Cuentas por Pagar cerrado";
@@ -337,6 +337,7 @@ namespace SistemaGestionProyectos2.Views
             }
 
             var pendingIncomesWindow = new PendingIncomesView(_currentUser);
+            pendingIncomesWindow.Owner = this;
             pendingIncomesWindow.ShowDialog();
         }
 
@@ -348,6 +349,7 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
             var payrollWindow = new PayrollManagementView(_currentUser);
+            payrollWindow.Owner = this;
             payrollWindow.ShowDialog();
         }
 
@@ -360,6 +362,7 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
             var balanceWindow = new BalanceWindowPro(_currentUser);
+            balanceWindow.Owner = this;
             balanceWindow.ShowDialog();
         }
 
@@ -370,6 +373,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusText.Text = "Abriendo Calendario de Personal...";
                 var calendarWindow = new CalendarView(_currentUser);
+                calendarWindow.Owner = this;
                 calendarWindow.ShowDialog();
                 StatusText.Text = "Sistema listo";
             }
@@ -391,6 +395,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusText.Text = "Abriendo Gestión de Usuarios...";
                 var userWindow = new UserManagementWindow(_currentUser);
+                userWindow.Owner = this;
                 userWindow.ShowDialog();
                 StatusText.Text = "Sistema listo";
             }

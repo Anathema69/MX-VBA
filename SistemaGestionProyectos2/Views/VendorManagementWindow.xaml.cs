@@ -38,6 +38,7 @@ namespace SistemaGestionProyectos2.Views
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
+            this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
 
             InitializeUI();
             _ = SafeLoadAsync(() => LoadActiveVendorsAsync());
@@ -45,12 +46,8 @@ namespace SistemaGestionProyectos2.Views
 
         private void MaximizeWithTaskbar()
         {
-            // Obtener el área de trabajo (sin incluir la barra de tareas)
-            var workingArea = SystemParameters.WorkArea;
-            this.Left = workingArea.Left;
-            this.Top = workingArea.Top;
-            this.Width = workingArea.Width;
-            this.Height = workingArea.Height;
+            // Usar helper multi-monitor (detecta el monitor actual, no solo el primario)
+            Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
         }
 
         private void InitializeUI()
