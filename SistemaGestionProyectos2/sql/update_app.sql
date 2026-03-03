@@ -20,36 +20,39 @@ DECLARE
     -- ┌────────────────────────────────────────────────────────┐
     -- │                    DATOS BÁSICOS                       │
     -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '2.0.4';
+    v_version       VARCHAR := '2.0.5';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 49.67;
+    v_file_size_mb  NUMERIC := 49.83;
     v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIO
     v_min_version   VARCHAR := NULL;   -- NULL = cualquier versión puede actualizar
 
     -- ┌────────────────────────────────────────────────────────┐
     -- │                   RELEASE NOTES                        │
     -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 2.0.4 - Corrección fórmula gasto operativo
+    v_release_notes TEXT := 'Versión 2.0.5 - Fase 4 Bloque 1: Ajustes cosméticos + Soporte multi-monitor
 
-CORRECCIÓN DE FÓRMULA:
-- Fórmula anterior: SUM(monto * (1 + commission_rate/100)) - comisión por gasto individual
-- Fórmula nueva: SUM(monto) + SUM(commission_amount) - gastos base + comisión vendedor
-- commission_amount proviene de t_vendor_commission_payment (ya existente)
+AJUSTES COSMÉTICOS (Fase 3 pendientes):
+- Centrado de valores en todas las tablas DataGrid (6 vistas corregidas)
+- Filtro de Año en Manejo de Órdenes ahora abre con el año actual seleccionado
+- Renombrado "Portal del Vendedor" a "Portal Ventas" en toda la aplicación
+- Renombrado "Portal de Proveedores" a "Portal Proveedores" en toda la aplicación
+- Columnas en Manejo de Órdenes ajustadas para mejor visibilidad, resize manual habilitado
+- Botones de regreso estandarizados a "← Volver" en todas las ventanas
 
-CAMBIOS EN BD:
-- Trigger recalcular_gasto_operativo() modificado con nueva fórmula
-- Nuevo trigger trg_recalcular_gasto_op_por_comision en t_vendor_commission_payment
-- Eliminado trigger trg_sync_commission_rate y función sync_commission_rate_to_gastos
-- 21 órdenes recalculadas y verificadas OK
+SOPORTE MULTI-MONITOR:
+- Nuevo WindowHelper con Win32 API (MonitorFromWindow + GetMonitorInfo)
+- Las ventanas ahora se adaptan al monitor donde se abren, no solo al primario
+- Corregido bug donde ventanas hijas abrían en monitor equivocado
+- Eliminado WindowState=Maximized nativo (causaba maximizar en monitor primario)
+- 17 ventanas migradas al nuevo sistema de posicionamiento
 
-CAMBIOS EN APLICACIÓN:
-- Removido CommissionRate de modelo de gastos operativos
-- Simplificadas firmas de Add/UpdateGastoOperativo (sin parámetro commissionRate)
-- Removido preview desglosado de comisión (Base + Comisión + Total)
-- Header cambiado a Subtotal con línea informativa: comisión vendedor | gasto operativo
-- Alineación corregida en lista de gastos (altura fija, botones centrados)
+CORRECCIONES:
+- Fix: cerrar sesión ya no interrumpe screen share de Google Meet
+- Fix: eliminado MessageBox al cerrar sesión como vendedor
+- Fix: barra de tareas ya no queda cubierta en ninguna ventana
+- Fix: PendingIncomesDetailView respeta barra de tareas correctamente
 
-ACTUALIZACIÓN OBLIGATORIA - Corrección de cálculo de gastos operativos';
+ACTUALIZACIÓN OBLIGATORIA - Mejoras de interfaz y soporte multi-monitor';
 
     -- ════════════════════════════════════════════════════════
     -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
@@ -61,24 +64,31 @@ BEGIN
     v_download_url := 'https://wjozxqldvypdtfmkamud.supabase.co/storage/v1/object/public/app-installers/releases/v'
                       || v_version || '/SistemaGestionProyectos-v' || v_version || '-Setup.exe';
 
-    -- Changelog estructurado (opcional, para futuras implementaciones)
+    -- Changelog estructurado
     v_changelog := '{
         "Fixed": [
-            "Fórmula gasto operativo: SUM(monto) + SUM(commission_amount)",
-            "Alineación vertical en lista de gastos operativos"
+            "Cerrar sesión ya no interrumpe screen share de Google Meet",
+            "Eliminado MessageBox al cerrar sesión como vendedor",
+            "Barra de tareas ya no queda cubierta en ninguna ventana",
+            "Ventanas hijas ya no abren en monitor equivocado en setup multi-monitor"
         ],
         "Added": [
-            "Trigger trg_recalcular_gasto_op_por_comision en t_vendor_commission_payment",
-            "Línea informativa de comisión vendedor en edición de orden"
+            "WindowHelper con Win32 API para detección correcta de monitor",
+            "Hook SourceInitialized para re-posicionamiento con handle real",
+            "Owner establecido en ventanas hijas para herencia de monitor",
+            "CanUserResizeColumns en DataGrid de Órdenes"
         ],
         "Improved": [
-            "Header Subtotal con info de comisión y gasto operativo total",
-            "Firmas simplificadas de Add/UpdateGastoOperativo"
+            "Centrado de valores en 6 DataGrids (columnas numéricas, fechas, estados)",
+            "Filtro de Año default al año actual en Manejo de Órdenes",
+            "Anchos de columnas optimizados para mejor visibilidad",
+            "Botones estandarizados: ← Volver (navegación), Cancelar (diálogos), Cerrar Sesión (logout)"
         ],
-        "Removed": [
-            "Trigger trg_sync_commission_rate y función sync_commission_rate_to_gastos",
-            "Preview desglosado de comisión (Base + Comisión + Total)",
-            "CommissionRate de modelo OrderGastoOperativoDb"
+        "Changed": [
+            "Portal del Vendedor renombrado a Portal Ventas",
+            "Portal de Proveedores renombrado a Portal Proveedores",
+            "17 ventanas migradas de SystemParameters.WorkArea a WindowHelper multi-monitor",
+            "4 ventanas migradas de WindowState=Maximized a MaximizeWithTaskbar()"
         ]
     }'::jsonb;
 

@@ -1,8 +1,8 @@
 # Proceso de Release - Sistema de Gestión de Proyectos
 
-**Última actualización:** 27 de Enero de 2026
-**Último release documentado:** v2.0.2
-**Último commit registrado:** `0357d8073eaaf181dbfdfe2791b48a9627d67c21`
+**Última actualización:** 3 de Marzo de 2026
+**Último release documentado:** v2.0.5
+**Último commit registrado:** `67fb681`
 
 ---
 
@@ -276,7 +276,9 @@ ls -la bin/Release/net8.0-windows/win-x64/publish/SistemaGestionProyectos2.exe
 
 | Versión | Fecha | Commit Hash | Notas |
 |---------|-------|-------------|-------|
-| 2.0.2 | 2026-01-27 | `0357d8073eaaf181dbfdfe2791b48a9627d67c21` | Nueva fórmula utilidad, fix versión Assembly |
+| 2.0.5 | 2026-03-03 | `67fb681` | Fase 4 Bloque 1: cosméticos + multi-monitor |
+| 2.0.4 | 2026-02-09 | `9855288` | Corrección fórmula gasto operativo |
+| 2.0.2 | 2026-01-27 | `0357d80` | Nueva fórmula utilidad, fix versión Assembly |
 | 2.0.1 | 2026-01-27 | `d93ebff` | Gastos de órdenes en balance |
 | 2.0.0 | 2026-01-26 | - | Auditoría de gastos |
 
