@@ -14,6 +14,7 @@
     <Window.Resources>
         <local:AdminVisibilityConverter x:Key="AdminVisibilityConverter"/>
         <local:IsNegativeConverter x:Key="IsNegativeConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -446,6 +447,94 @@
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
+
+                        <!-- Ejecutor(es) asignados - 1 chip + badge "+N" -->
+                        <DataGridTemplateColumn x:Name="EjecutorColumn"
+                                       Header="EJECUTOR"
+                                       Width="170"
+                                       HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid ToolTip="{Binding EjecutoresNombre}">
+                                        <StackPanel Orientation="Horizontal"
+                                                    VerticalAlignment="Center"
+                                                    Margin="4,0,24,0">
+                                            <!-- Chip del primer ejecutor -->
+                                            <Border Background="{Binding EjecutorChipFirst.Background}"
+                                                    CornerRadius="10"
+                                                    Padding="4,2,7,2"
+                                                    Visibility="{Binding TieneEjecutores,
+                                                        Converter={StaticResource BoolToVisConverter}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Border Width="16" Height="16"
+                                                            CornerRadius="8"
+                                                            Background="{Binding EjecutorChipFirst.Foreground}"
+                                                            Margin="0,0,4,0">
+                                                        <TextBlock Text="{Binding EjecutorChipFirst.Initials}"
+                                                                   FontSize="7.5" FontWeight="Bold"
+                                                                   Foreground="White"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding EjecutorChipFirst.ShortName}"
+                                                               FontSize="10"
+                                                               Foreground="{Binding EjecutorChipFirst.Foreground}"
+                                                               VerticalAlignment="Center"
+                                                               FontWeight="Medium"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Badge "+N" si hay mas ejecutores -->
+                                            <Border Background="#E5E7EB"
+                                                    CornerRadius="8"
+                                                    Padding="5,2"
+                                                    Margin="3,0,0,0"
+                                                    Visibility="{Binding HasEjecutorExtra,
+                                                        Converter={StaticResource BoolToVisConverter}}">
+                                                <TextBlock Text="{Binding EjecutorExtraText}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="#4B5563"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <!-- Boton + para asignar -->
+                                        <Button Click="EditEjecutor_Click"
+                                                Tag="{Binding}"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Center"
+                                                Width="20" Height="20"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Cursor="Hand"
+                                                ToolTip="Asignar ejecutores"
+                                                Margin="0,0,2,0">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="btnBorder"
+                                                            Width="20" Height="20"
+                                                            CornerRadius="10"
+                                                            Background="#F3F4F6">
+                                                        <TextBlock Text="+"
+                                                                   FontSize="14"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="#6B7280"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"
+                                                                   Margin="0,-2,0,0"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="btnBorder" Property="Background" Value="#E5E7EB"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
                         <DataGridTextColumn Header="FECHA PROMESA"
                                        Binding="{Binding PromiseDate, StringFormat=dd/MM/yyyy}"

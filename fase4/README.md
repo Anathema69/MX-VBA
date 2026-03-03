@@ -10,14 +10,14 @@
 
 | Bloque | Nombre | Complejidad | Estado | Progreso |
 |--------|--------|-------------|--------|----------|
-| 1 | Cosmeticos pendientes Fase 3 | Baja | EN PROGRESO | 6/7 |
+| 1 | Cosmeticos pendientes Fase 3 | Baja | COMPLETADO | 7/7 |
 | 2 | Optimizacion de rendimiento | Media | COMPLETADO | 6/6 |
 | 3 | Portal Ventas | Media | PENDIENTE | 0/4 |
-| 4 | Columna Ejecutor | Baja | PENDIENTE | 0/3 |
+| 4 | Columna Ejecutor | Baja | COMPLETADO (falta deploy SQL) | 3/3 |
 | 5 | Carpetas por Orden | Alta | PENDIENTE | 0/5 |
 | 6 | Modulo Inventario | Alta | PENDIENTE | 0/4 |
 
-**Progreso global:** 12/28 items (43%)
+**Progreso global:** 16/28 items (57%)
 
 ---
 

@@ -234,6 +234,8 @@ namespace SistemaGestionProyectos2.Views
                     _paidSuppliers.Add(viewModel);
                 }
 
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierPending] Procesamiento: {stopwatch.ElapsedMilliseconds}ms ({_allSuppliers.Count} pendientes, {_paidSuppliers.Count} pagados)");
+
                 // Actualizar UI
                 TotalPendingText.Text = totalPending.ToString("C", _cultureMX);
                 TotalOverdueText.Text = totalOverdue.ToString("C", _cultureMX);
@@ -243,7 +245,7 @@ namespace SistemaGestionProyectos2.Views
                 ApplyFilters();
 
                 stopwatch.Stop();
-                System.Diagnostics.Debug.WriteLine($"⏱️ TOTAL carga: {stopwatch.ElapsedMilliseconds}ms");
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierPending] Render total: {stopwatch.ElapsedMilliseconds}ms");
 
                 LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
                 StatusText.Text = $"Listo ({stopwatch.ElapsedMilliseconds}ms)";
@@ -325,12 +327,11 @@ namespace SistemaGestionProyectos2.Views
                     .ThenByDescending(s => s.TotalPending);
             }
 
-            // Actualizar colección mostrada
-            _displayedSuppliers.Clear();
-            foreach (var supplier in filtered.ToList())
-            {
-                _displayedSuppliers.Add(supplier);
-            }
+            // Batch update: swap ItemsSource to avoid N individual Add notifications
+            var filteredList = filtered.ToList();
+            SuppliersItemsControl.ItemsSource = null;
+            _displayedSuppliers = new ObservableCollection<SupplierPendingViewModel>(filteredList);
+            SuppliersItemsControl.ItemsSource = _displayedSuppliers;
 
             // Actualizar contador
             var suffix = _showingPaid ? " (pagados)" : "";

@@ -77,19 +77,19 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 // Mostrar estado de carga
                 DetailStatusText.Text = "Cargando facturas...";
 
                 // Llamada optimizada
                 var data = await _supabaseService.GetClientInvoicesDetail(_clientId);
+                System.Diagnostics.Debug.WriteLine($"⏱️ [IncomesDetail] Query datos: {sw.ElapsedMilliseconds}ms");
 
                 if (data.Client != null)
                 {
                     _client = data.Client;
                     CreditDaysText.Text = _client.Credit.ToString();
                 }
-
-                _invoices.Clear();
 
                 decimal totalPending = 0;
                 decimal totalOverdue = 0;
@@ -100,6 +100,8 @@ namespace SistemaGestionProyectos2.Views
                 DateTime today = DateTime.Today;
                 DateTime dueSoonDate = today.AddDays(7);
 
+                var tempList = new List<InvoiceDetailViewModel>();
+
                 foreach (var invoiceInfo in data.Invoices)
                 {
                     var invoice = invoiceInfo.Invoice;
@@ -108,7 +110,7 @@ namespace SistemaGestionProyectos2.Views
                     {
                         InvoiceId = invoice.Id,
                         Folio = invoice.Folio,
-                        OrderPO = invoiceInfo.OrderPO, // Ahora sí tenemos el PO correcto
+                        OrderPO = invoiceInfo.OrderPO,
                         Total = invoice.Total ?? 0,
                         InvoiceDate = invoice.InvoiceDate,
                         ReceptionDate = invoice.ReceptionDate,
@@ -150,10 +152,15 @@ namespace SistemaGestionProyectos2.Views
                     }
 
                     totalPending += viewModel.Total;
-                    _invoices.Add(viewModel);
+                    tempList.Add(viewModel);
                 }
 
-                // Ya están ordenadas desde el servicio, no necesitamos ordenar de nuevo
+                System.Diagnostics.Debug.WriteLine($"⏱️ [IncomesDetail] Procesamiento: {sw.ElapsedMilliseconds}ms");
+
+                // Batch update - evita N re-renders
+                InvoicesDataGrid.ItemsSource = null;
+                _invoices = new ObservableCollection<InvoiceDetailViewModel>(tempList);
+                InvoicesDataGrid.ItemsSource = _invoices;
 
                 // Actualizar totales
                 var culture = new CultureInfo("es-MX");
@@ -162,6 +169,7 @@ namespace SistemaGestionProyectos2.Views
                 DetailTotalDueSoonText.Text = totalDueSoon.ToString("C", culture);
                 DetailInvoiceCountText.Text = _invoices.Count.ToString();
 
+                System.Diagnostics.Debug.WriteLine($"⏱️ [IncomesDetail] Render total: {sw.ElapsedMilliseconds}ms ({_invoices.Count} facturas)");
                 DetailLastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
                 DetailStatusText.Text = $"{_invoices.Count} facturas cargadas";
             }

@@ -21,34 +21,24 @@
         <SolidColorBrush x:Key="TextGray" Color="#718096"/>
         <SolidColorBrush x:Key="DarkText" Color="#2D3748"/>
 
+        <!-- Frozen gradient brushes for item templates (avoid N allocations) -->
+        <LinearGradientBrush x:Key="ClientIconGradient" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#667EEA" Offset="0"/>
+            <GradientStop Color="#764BA2" Offset="1"/>
+        </LinearGradientBrush>
+
         <!-- DataTemplate para las Cards de Clientes con Pendientes -->
         <DataTemplate x:Key="ClientPendingCardTemplate">
-            <Border Margin="0,0,0,15" Background="White" 
+            <Border Margin="0,0,0,15" Background="White"
                     CornerRadius="12" Padding="0"
                     Cursor="Hand">
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" Direction="270" 
-                                    ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
-                </Border.Effect>
-
-                <!-- Trigger para hover effect -->
-                
                 <Border.Style>
                     <Style TargetType="Border">
-                        <Setter Property="Effect">
-                            <Setter.Value>
-                                <DropShadowEffect Color="#000000" Direction="270" 
-                                ShadowDepth="2" Opacity="0.12" BlurRadius="8"/>
-                            </Setter.Value>
-                        </Setter>
+                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                        <Setter Property="BorderThickness" Value="1"/>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Effect">
-                                    <Setter.Value>
-                                        <DropShadowEffect Color="#000000" Direction="270" 
-                                        ShadowDepth="4" Opacity="0.20" BlurRadius="12"/>
-                                    </Setter.Value>
-                                </Setter>
+                                <Setter Property="BorderBrush" Value="#6366F1"/>
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -72,14 +62,9 @@
                     
 
                     <!-- Icono del cliente -->
-                    <Border Grid.Column="1" Width="56" Height="56" 
-                            CornerRadius="12" Margin="20,20,16,20">
-                        <Border.Background>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#667EEA" Offset="0"/>
-                                <GradientStop Color="#764BA2" Offset="1"/>
-                            </LinearGradientBrush>
-                        </Border.Background>
+                    <Border Grid.Column="1" Width="56" Height="56"
+                            CornerRadius="12" Margin="20,20,16,20"
+                            Background="{StaticResource ClientIconGradient}">
                         <TextBlock Text="{Binding ClientInitials}" 
                                  FontSize="20" FontWeight="Bold" 
                                  Foreground="White"

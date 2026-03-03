@@ -205,6 +205,16 @@ namespace SistemaGestionProyectos2.Services
         public Task<bool> DeleteGastoOperativo(int gastoId, int orderId, int userId)
             => _orderService.DeleteGastoOperativo(gastoId, orderId, userId);
 
+        // Ejecutores v2.0.5
+        public Task<List<OrderEjecutorDb>> GetEjecutores(int orderId)
+            => _orderService.GetEjecutores(orderId);
+
+        public Task<Dictionary<int, string>> GetEjecutoresNombresBatch(List<int> orderIds)
+            => _orderService.GetEjecutoresNombresBatch(orderIds);
+
+        public Task<bool> SetEjecutores(int orderId, List<int> payrollIds, int assignedBy)
+            => _orderService.SetEjecutores(orderId, payrollIds, assignedBy);
+
         public Task<bool> UpdateGastoOperativo(int gastoId, decimal monto, string descripcion, int orderId, int userId)
             => _orderService.UpdateGastoOperativo(gastoId, monto, descripcion, orderId, userId);
 

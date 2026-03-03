@@ -771,5 +771,122 @@ namespace SistemaGestionProyectos2.Services.Orders
         }
 
         #endregion
+
+        #region Ejecutores
+
+        /// <summary>
+        /// Obtiene los ejecutores asignados a una orden
+        /// </summary>
+        public async Task<List<OrderEjecutorDb>> GetEjecutores(int orderId)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<OrderEjecutorDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.Equals, orderId.ToString())
+                    .Get();
+
+                return response.Models;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error obteniendo ejecutores de orden {orderId}", ex);
+                return new List<OrderEjecutorDb>();
+            }
+        }
+
+        /// <summary>
+        /// Obtiene nombres concatenados de ejecutores para un batch de ordenes (optimizado)
+        /// </summary>
+        public async Task<Dictionary<int, string>> GetEjecutoresNombresBatch(List<int> orderIds)
+        {
+            var result = new Dictionary<int, string>();
+            if (orderIds == null || orderIds.Count == 0) return result;
+
+            try
+            {
+                // Obtener todos los ejecutores de las ordenes en una sola query
+                var response = await SupabaseClient
+                    .From<OrderEjecutorDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.In, orderIds)
+                    .Get();
+
+                if (response.Models.Count == 0) return result;
+
+                // Obtener los payroll IDs unicos
+                var payrollIds = response.Models.Select(e => e.PayrollId).Distinct().ToList();
+
+                // Obtener nombres de empleados en una sola query
+                var payrollResponse = await SupabaseClient
+                    .From<PayrollTable>()
+                    .Filter("f_payroll", Postgrest.Constants.Operator.In, payrollIds)
+                    .Select("f_payroll,f_employee")
+                    .Get();
+
+                var employeeNames = payrollResponse.Models.ToDictionary(p => p.Id, p => p.Employee ?? "");
+
+                // Agrupar por orden y concatenar nombres
+                var grouped = response.Models.GroupBy(e => e.OrderId);
+                foreach (var group in grouped)
+                {
+                    var names = group
+                        .Where(e => employeeNames.ContainsKey(e.PayrollId))
+                        .Select(e => employeeNames[e.PayrollId])
+                        .OrderBy(n => n)
+                        .ToList();
+
+                    result[group.Key] = string.Join(", ", names);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Error obteniendo ejecutores batch", ex);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Asigna ejecutores a una orden (reemplaza la lista completa)
+        /// </summary>
+        public async Task<bool> SetEjecutores(int orderId, List<int> payrollIds, int assignedBy)
+        {
+            try
+            {
+                // Eliminar ejecutores actuales
+                await SupabaseClient
+                    .From<OrderEjecutorDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.Equals, orderId.ToString())
+                    .Delete();
+
+                // Insertar nuevos ejecutores
+                if (payrollIds != null && payrollIds.Count > 0)
+                {
+                    foreach (var payrollId in payrollIds)
+                    {
+                        var ejecutor = new OrderEjecutorDb
+                        {
+                            OrderId = orderId,
+                            PayrollId = payrollId,
+                            AssignedBy = assignedBy
+                        };
+
+                        await SupabaseClient
+                            .From<OrderEjecutorDb>()
+                            .Insert(ejecutor);
+                    }
+                }
+
+                LogDebug($"Ejecutores de orden {orderId} actualizados: [{string.Join(", ", payrollIds ?? new List<int>())}]");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error asignando ejecutores a orden {orderId}", ex);
+                return false;
+            }
+        }
+
+        #endregion
     }
 }

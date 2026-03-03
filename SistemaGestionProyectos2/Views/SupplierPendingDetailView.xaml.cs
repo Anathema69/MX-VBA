@@ -584,6 +584,7 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 DetailStatusText.Text = "Cargando gastos...";
 
                 var supabaseClient = _supabaseService.GetClient();
@@ -619,6 +620,7 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 var expenses = expensesResponse?.Models ?? new List<ExpenseDb>();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierDetail] Query gastos: {sw.ElapsedMilliseconds}ms ({expenses.Count} items)");
 
                 // Obtener órdenes para mostrar el PO
                 var orderIds = expenses.Where(e => e.OrderId.HasValue).Select(e => e.OrderId.Value).Distinct().ToList();
@@ -635,7 +637,7 @@ namespace SistemaGestionProyectos2.Views
                     orderPoDict = orders.ToDictionary(o => o.Id, o => o.Po ?? $"ORD-{o.Id}");
                 }
 
-                _expenses.Clear();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierDetail] Query ordenes: {sw.ElapsedMilliseconds}ms (total queries done)");
 
                 decimal totalPending = 0;
                 decimal totalOverdue = 0;
@@ -643,6 +645,8 @@ namespace SistemaGestionProyectos2.Views
 
                 DateTime today = DateTime.Today;
                 DateTime dueSoonDate = today.AddDays(7);
+
+                var tempList = new List<ExpenseDetailViewModel>();
 
                 foreach (var expense in expenses)
                 {
@@ -694,20 +698,22 @@ namespace SistemaGestionProyectos2.Views
                     }
 
                     totalPending += expense.TotalExpense;
-                    _expenses.Add(viewModel);
+                    tempList.Add(viewModel);
                 }
 
-                // Ordenar por estado (vencidos primero) y luego por días
-                var sorted = _expenses
+                // Ordenar y asignar en batch (evita N re-renders)
+                var sorted = tempList
                     .OrderBy(e => e.Status == "VENCIDO" ? 0 : e.Status == "POR VENCER" ? 1 : 2)
                     .ThenBy(e => e.DueDate)
                     .ToList();
 
-                _expenses.Clear();
-                foreach (var item in sorted)
-                {
-                    _expenses.Add(item);
-                }
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierDetail] Procesamiento: {sw.ElapsedMilliseconds}ms");
+
+                ExpensesDataGrid.ItemsSource = null;
+                _expenses = new ObservableCollection<ExpenseDetailViewModel>(sorted);
+                ExpensesDataGrid.ItemsSource = _expenses;
+
+                System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierDetail] Render total: {sw.ElapsedMilliseconds}ms ({sorted.Count} items)");
 
                 // Actualizar totales
                 DetailTotalPendingText.Text = totalPending.ToString("C", _cultureMX);

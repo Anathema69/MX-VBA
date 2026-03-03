@@ -79,10 +79,12 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 StatusText.Text = "Cargando información...";
 
                 // Una sola llamada optimizada
                 var data = await _supabaseService.GetAllPendingIncomesData();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [PendingIncomes] Query datos: {sw.ElapsedMilliseconds}ms");
 
                 _allClients.Clear();
 
@@ -153,7 +155,9 @@ namespace SistemaGestionProyectos2.Views
                 TotalDueSoonText.Text = totalDueSoon.ToString("C", culture);
                 ClientCountText.Text = _allClients.Count.ToString();
 
+                System.Diagnostics.Debug.WriteLine($"⏱️ [PendingIncomes] Procesamiento: {sw.ElapsedMilliseconds}ms ({_allClients.Count} clientes)");
                 ApplyFilters();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [PendingIncomes] Render total: {sw.ElapsedMilliseconds}ms");
 
                 LastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
                 StatusText.Text = "Listo";
@@ -226,22 +230,15 @@ namespace SistemaGestionProyectos2.Views
 
 
 
-            // Limpiar la colección mostrada y agregar los elementos filtrados
-            if (_displayedClients != null)
-            {
-                _displayedClients.Clear();
+            // Batch update: swap ItemsSource to avoid N individual Add notifications
+            var filteredList = filtered?.ToList() ?? new List<ClientPendingViewModel>();
 
-                // Convertir a lista para evitar múltiples enumeraciones
-                var filteredList = filtered?.ToList() ?? new List<ClientPendingViewModel>();
+            ClientsItemsControl.ItemsSource = null;
+            _displayedClients = new ObservableCollection<ClientPendingViewModel>(filteredList);
+            ClientsItemsControl.ItemsSource = _displayedClients;
 
-                foreach (var client in filteredList)
-                {
-                    _displayedClients.Add(client);
-                }
-
-                // Actualizar contador
-                ResultCountText.Text = $"{_displayedClients.Count} cliente{(_displayedClients.Count != 1 ? "s" : "")}";
-            }
+            // Actualizar contador
+            ResultCountText.Text = $"{_displayedClients.Count} cliente{(_displayedClients.Count != 1 ? "s" : "")}";
         }
         private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {

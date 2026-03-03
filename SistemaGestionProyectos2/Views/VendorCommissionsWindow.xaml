@@ -363,11 +363,8 @@ BorderThickness="1" CornerRadius="8" Padding="15,12" Margin="0,0,10,0">
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15">
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="2" 
-                                                          Opacity="0.08" BlurRadius="8"/>
-                                    </Border.Effect>
+                                <Border Background="White" CornerRadius="12" Padding="20" Margin="0,0,0,15"
+                                        BorderBrush="#E5E7EB" BorderThickness="1">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>

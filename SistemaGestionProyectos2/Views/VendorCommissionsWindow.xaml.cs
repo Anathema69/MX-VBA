@@ -29,6 +29,11 @@ namespace SistemaGestionProyectos2.Views
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
         private CancellationTokenSource _cts = new();
 
+        // Cache pre-cargado: ordenes y clientes para evitar queries al seleccionar vendedor
+        private List<VendorCommissionPaymentDb> _allCommissionsCache;
+        private Dictionary<int, OrderDb> _ordersCache;
+        private Dictionary<int, ClientDb> _clientsCache;
+
         public VendorCommissionsWindow(UserSession currentUser)
         {
             InitializeComponent();
@@ -63,17 +68,35 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 var supabaseClient = _supabaseService.GetClient();
 
-                // 1. Cargar TODAS las comisiones (draft y pending)
-                var commissionsResponse = await supabaseClient
+                // 1. Cargar comisiones + vendedores + ordenes + clientes EN PARALELO
+                var commissionsTask = supabaseClient
                     .From<VendorCommissionPaymentDb>()
                     .Where(c => c.PaymentStatus == "draft" || c.PaymentStatus == "pending")
                     .Select("*")
                     .Order("f_vendor", Postgrest.Constants.Ordering.Ascending)
                     .Get();
 
-                var allCommissions = commissionsResponse?.Models ?? new List<VendorCommissionPaymentDb>();
+                var ordersTask = supabaseClient
+                    .From<OrderDb>()
+                    .Select("f_order,f_po,f_podate,f_client,f_description,f_salesubtotal")
+                    .Get();
+
+                var clientsTask = supabaseClient
+                    .From<ClientDb>()
+                    .Select("f_client,f_name")
+                    .Get();
+
+                await Task.WhenAll(commissionsTask, ordersTask, clientsTask);
+
+                var allCommissions = commissionsTask.Result?.Models ?? new List<VendorCommissionPaymentDb>();
+                _allCommissionsCache = allCommissions;
+                _ordersCache = (ordersTask.Result?.Models ?? new List<OrderDb>()).ToDictionary(o => o.Id);
+                _clientsCache = (clientsTask.Result?.Models ?? new List<ClientDb>()).ToDictionary(c => c.Id);
+
+                System.Diagnostics.Debug.WriteLine($"⏱️ [VendorCommissions] Queries paralelas: {sw.ElapsedMilliseconds}ms ({allCommissions.Count} comisiones, {_ordersCache.Count} ordenes, {_clientsCache.Count} clientes)");
 
                 if (allCommissions.Count == 0)
                 {
@@ -108,10 +131,11 @@ namespace SistemaGestionProyectos2.Views
                     .Get();
 
                 var vendors = vendorsResponse?.Models?.ToDictionary(v => v.Id) ?? new Dictionary<int, VendorTableDb>();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [VendorCommissions] Query vendedores: {sw.ElapsedMilliseconds}ms");
 
                 // 4. Construir ViewModels de vendedores
-                _vendors.Clear();
                 decimal totalPendingGlobal = 0;
+                var tempVendors = new List<VendorSummaryViewModel>();
 
                 foreach (var group in vendorGroups)
                 {
@@ -150,23 +174,26 @@ namespace SistemaGestionProyectos2.Views
                         HasPendingPayments = pendingCommissions.Count > 0
                     };
 
-                    _vendors.Add(vendorVm);
+                    tempVendors.Add(vendorVm);
                 }
 
                 // 5. Ordenar: primero los que tienen comisiones pendientes, luego por monto total
-                var sortedVendors = _vendors
+                var sortedVendors = tempVendors
                     .OrderByDescending(v => v.HasPendingPayments)
                     .ThenByDescending(v => v.TotalPending)
                     .ThenByDescending(v => v.TotalAll)
                     .ToList();
 
-                _vendors.Clear();
-                foreach (var vendor in sortedVendors)
-                {
-                    _vendors.Add(vendor);
-                }
+                System.Diagnostics.Debug.WriteLine($"⏱️ [VendorCommissions] Procesamiento: {sw.ElapsedMilliseconds}ms");
+
+                // Batch update: swap ItemsSource to avoid N individual Add notifications
+                VendorsListBox.ItemsSource = null;
+                _vendors = new ObservableCollection<VendorSummaryViewModel>(sortedVendors);
+                VendorsListBox.ItemsSource = _vendors;
 
                 UpdateTotalPending(totalPendingGlobal);
+
+                System.Diagnostics.Debug.WriteLine($"⏱️ [VendorCommissions] Render vendedores: {sw.ElapsedMilliseconds}ms");
 
                 // Seleccionar el primer vendedor automáticamente
                 if (_vendors.Count > 0)
@@ -207,18 +234,15 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                var supabaseClient = _supabaseService.GetClient();
+                var sw = System.Diagnostics.Stopwatch.StartNew();
 
-                // 1. Cargar TODAS las comisiones del vendedor (draft y pending)
-                var commissionsResponse = await supabaseClient
-                    .From<VendorCommissionPaymentDb>()
+                // Usar cache pre-cargado (0 queries de red)
+                var commissions = _allCommissionsCache?
                     .Where(c => c.VendorId == vendorId)
-                    .Where(c => c.PaymentStatus == "draft" || c.PaymentStatus == "pending")
-                    .Select("*")
-                    .Order("f_order", Postgrest.Constants.Ordering.Descending)
-                    .Get();
+                    .OrderByDescending(c => c.OrderId)
+                    .ToList() ?? new List<VendorCommissionPaymentDb>();
 
-                var commissions = commissionsResponse?.Models ?? new List<VendorCommissionPaymentDb>();
+                System.Diagnostics.Debug.WriteLine($"⏱️ [LoadCommissions] Filtrado local: {sw.ElapsedMilliseconds}ms ({commissions.Count} items, 0 queries)");
 
                 if (commissions.Count == 0)
                 {
@@ -227,32 +251,10 @@ namespace SistemaGestionProyectos2.Views
                     return;
                 }
 
-                // 2. Cargar información de órdenes
-                var orderIds = commissions.Select(c => c.OrderId).Distinct().ToList();
-                var ordersResponse = await supabaseClient
-                    .From<OrderDb>()
-                    .Filter("f_order", Postgrest.Constants.Operator.In, orderIds)
-                    .Get();
-
-                var orders = ordersResponse?.Models?.ToDictionary(o => o.Id) ?? new Dictionary<int, OrderDb>();
-
-                // 3. Cargar información de clientes
-                var clientIds = orders.Values.Where(o => o.ClientId.HasValue)
-                    .Select(o => o.ClientId.Value).Distinct().ToList();
-
-                Dictionary<int, ClientDb> clients = new Dictionary<int, ClientDb>();
-                if (clientIds.Count > 0)
-                {
-                    var clientsResponse = await supabaseClient
-                        .From<ClientDb>()
-                        .Filter("f_client", Postgrest.Constants.Operator.In, clientIds)
-                        .Get();
-
-                    clients = clientsResponse?.Models?.ToDictionary(c => c.Id) ?? new Dictionary<int, ClientDb>();
-                }
+                var orders = _ordersCache ?? new Dictionary<int, OrderDb>();
+                var clients = _clientsCache ?? new Dictionary<int, ClientDb>();
 
                 // 4. Construir ViewModels de comisiones
-                _vendorCommissions.Clear();
                 decimal totalPending = 0;
                 decimal totalDraft = 0;
                 decimal totalAll = 0;
@@ -308,11 +310,12 @@ namespace SistemaGestionProyectos2.Views
                     .ThenByDescending(c => c.OrderDate)
                     .ToList();
 
-                foreach (var commission in sortedCommissions)
-                {
-                    _vendorCommissions.Add(commission);
-                }
+                // Batch update
+                CommissionsItemsControl.ItemsSource = null;
+                _vendorCommissions = new ObservableCollection<CommissionDetailViewModel>(sortedCommissions);
+                CommissionsItemsControl.ItemsSource = _vendorCommissions;
 
+                System.Diagnostics.Debug.WriteLine($"⏱️ [LoadCommissions] Total (local): {sw.ElapsedMilliseconds}ms ({sortedCommissions.Count} items)");
                 totalAll = totalPending + totalDraft;
 
                 // 6. Actualizar resúmenes

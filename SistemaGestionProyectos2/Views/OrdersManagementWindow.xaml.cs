@@ -452,6 +452,9 @@ namespace SistemaGestionProyectos2.Views
 
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
+                    // Cargar ejecutores en background (no bloquea la vista)
+                    _ = LoadEjecutoresBatch();
+
                     // Cargar el resto en segundo plano si hay más de 100
                     if (ordersLoadedCount == 100)
                     {
@@ -490,6 +493,46 @@ namespace SistemaGestionProyectos2.Views
                     MessageBoxImage.Error);
 
                 System.Diagnostics.Debug.WriteLine($"Error completo: {ex}");
+            }
+        }
+
+        private async Task LoadEjecutoresBatch()
+        {
+            try
+            {
+                var orderIds = _allOrdersCache.Select(o => o.Id).ToList();
+                if (orderIds.Count == 0) return;
+
+                var ejecutoresMap = await _supabaseService.GetEjecutoresNombresBatch(orderIds);
+
+                // Actualizar en UI thread
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    foreach (var order in _allOrdersCache)
+                    {
+                        if (ejecutoresMap.TryGetValue(order.Id, out var nombres))
+                        {
+                            order.EjecutoresNombre = nombres;
+                        }
+                    }
+
+                    foreach (var order in _orders)
+                    {
+                        if (ejecutoresMap.TryGetValue(order.Id, out var nombres))
+                        {
+                            order.EjecutoresNombre = nombres;
+                        }
+                    }
+
+                    // Refrescar vista para que los chips aparezcan
+                    _ordersViewSource?.View?.Refresh();
+                });
+
+                System.Diagnostics.Debug.WriteLine($"✅ Ejecutores cargados para {ejecutoresMap.Count} órdenes");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Error cargando ejecutores: {ex.Message}");
             }
         }
 
@@ -907,6 +950,56 @@ namespace SistemaGestionProyectos2.Views
 
             // Aplicar filtro inicial usando el método combinado
             ReapplyFilters(SearchBox.Text?.Trim());
+        }
+
+        private async void EditEjecutor_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var order = button?.Tag as OrderViewModel;
+            if (order == null) return;
+
+            try
+            {
+                // Obtener ejecutores actuales de la orden
+                var ejecutoresActuales = await _supabaseService.GetEjecutores(order.Id);
+                var currentIds = ejecutoresActuales.Select(ej => ej.PayrollId).ToList();
+
+                var dialog = new EjecutorSelectionDialog(
+                    order.Id, order.OrderNumber, currentIds, _currentUser.Id);
+                dialog.Owner = this;
+
+                if (dialog.ShowDialog() == true)
+                {
+                    // Guardar en BD
+                    var success = await _supabaseService.SetEjecutores(
+                        order.Id, dialog.SelectedPayrollIds, _currentUser.Id);
+
+                    if (success)
+                    {
+                        // Actualizar UI local
+                        order.EjecutoresNombre = dialog.SelectedNames;
+
+                        // Actualizar en cache
+                        var cached = _allOrdersCache.FirstOrDefault(o => o.Id == order.Id);
+                        if (cached != null) cached.EjecutoresNombre = dialog.SelectedNames;
+
+                        // Forzar refresh visual del DataGrid
+                        _ordersViewSource?.View?.Refresh();
+
+                        StatusText.Text = $"Ejecutores de {order.OrderNumber} actualizados";
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error al guardar ejecutores.", "Error",
+                            MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al editar ejecutores:\n{ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async void EditButton_Click(object sender, RoutedEventArgs e)

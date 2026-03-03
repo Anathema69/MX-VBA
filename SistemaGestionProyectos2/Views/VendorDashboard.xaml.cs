@@ -145,7 +145,6 @@ namespace SistemaGestionProyectos2.Views
                     .ToDictionary(c => c.Id);
 
                 // 4. Construir los ViewModels
-                _allCommissions.Clear();
                 decimal totalPending = 0;
                 decimal totalPaid = 0;
                 decimal totalDraft = 0;
@@ -153,6 +152,8 @@ namespace SistemaGestionProyectos2.Views
                 int paidCount = 0;
                 int draftCount = 0;
                 int totalCount = 0;
+
+                var tempCommissions = new List<VendorCommissionCardViewModel>();
 
                 foreach (var commission in commissions)
                 {
@@ -178,7 +179,7 @@ namespace SistemaGestionProyectos2.Views
                         PaymentDate = commission.PaymentDate
                     };
 
-                    _allCommissions.Add(cardVm);
+                    tempCommissions.Add(cardVm);
 
                     if (commission.PaymentStatus == "pending")
                     {
@@ -196,6 +197,9 @@ namespace SistemaGestionProyectos2.Views
                         draftCount++;
                     }
                 }
+
+                // Batch update: replace collection at once
+                _allCommissions = new ObservableCollection<VendorCommissionCardViewModel>(tempCommissions);
 
                 // paidCount + draftCount+ draftCount será una sola variable
                 totalCount = pendingCount + paidCount + draftCount;
@@ -224,18 +228,16 @@ namespace SistemaGestionProyectos2.Views
 
         private void ApplyFilters()
         {
-            _filteredCommissions.Clear();
-
             // Ordenar: draft primero, luego pending, luego paid
             var sorted = _allCommissions
                 .OrderBy(c => c.Status == "draft" ? 0 : c.Status == "pending" ? 1 : 2)
                 .ThenByDescending(c => c.OrderDate)
                 .ToList();
 
-            foreach (var commission in sorted)
-            {
-                _filteredCommissions.Add(commission);
-            }
+            // Batch update: swap ItemsSource to avoid N individual Add notifications
+            CommissionsItemsControl.ItemsSource = null;
+            _filteredCommissions = new ObservableCollection<VendorCommissionCardViewModel>(sorted);
+            CommissionsItemsControl.ItemsSource = _filteredCommissions;
 
             if (_filteredCommissions.Count == 0)
             {

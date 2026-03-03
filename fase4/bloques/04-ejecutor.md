@@ -1,7 +1,7 @@
 # Bloque 4: Columna "Ejecutor" en Ordenes
 
 **Complejidad:** Baja
-**Estado:** PENDIENTE
+**Estado:** COMPLETADO (falta deploy SQL)
 **Dependencias:** Tabla `t_payroll` (lista de empleados/nomina)
 
 ---
@@ -149,17 +149,18 @@ public async Task SetEjecutores(int orderId, List<int> payrollIds, int assignedB
 
 ## Checklist de Implementacion
 
-- [ ] Crear script SQL para tabla order_ejecutores + vista + indexes
-- [ ] Ejecutar script en BD
-- [ ] Crear modelo OrderEjecutorDb
-- [ ] Agregar propiedades a OrderViewModel
-- [ ] Implementar GetEjecutores() en OrderService
-- [ ] Implementar SetEjecutores() en OrderService
-- [ ] Integrar en GetOrders() para cargar ejecutores con ordenes
-- [ ] Agregar columna EJECUTOR en OrdersManagementWindow.xaml
-- [ ] Crear popup/dialog de seleccion multiple
-- [ ] Implementar logica de permisos por rol
-- [ ] Registrar en SupabaseService facade
+- [x] Crear script SQL para tabla order_ejecutores + vista + indexes
+- [ ] Ejecutar script en BD (pendiente deploy)
+- [x] Crear modelo OrderEjecutorDb
+- [x] Agregar propiedades a OrderViewModel (EjecutoresNombre, EjecutoresIds)
+- [x] Implementar GetEjecutores() en OrderService
+- [x] Implementar SetEjecutores() en OrderService
+- [x] Implementar GetEjecutoresNombresBatch() para carga optimizada
+- [x] Integrar en GetOrders() para cargar ejecutores con ordenes (LoadEjecutoresBatch)
+- [x] Agregar columna EJECUTOR en OrdersManagementWindow.xaml (160px, con boton editar)
+- [x] Crear EjecutorSelectionDialog con checkboxes, busqueda, contador
+- [x] Permisos: todos los roles que ven ordenes pueden editar ejecutores
+- [x] Registrar en SupabaseService facade (3 metodos)
 - [ ] QA: Probar asignacion, edicion, visualizacion por rol
 
 ---
