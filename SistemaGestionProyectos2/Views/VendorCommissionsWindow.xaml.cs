@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
@@ -13,9 +14,12 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Storage;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -254,6 +258,21 @@ namespace SistemaGestionProyectos2.Views
                 var orders = _ordersCache ?? new Dictionary<int, OrderDb>();
                 var clients = _clientsCache ?? new Dictionary<int, ClientDb>();
 
+                // Load all files for these commissions
+                var commissionIds = commissions.Select(c => c.Id).ToList();
+
+                var supabaseClient2 = _supabaseService.GetClient();
+                var allFilesResponse = await supabaseClient2
+                    .From<OrderFileDb>()
+                    .Filter("commission_id", Postgrest.Constants.Operator.In, commissionIds)
+                    .Order("created_at", Postgrest.Constants.Ordering.Descending)
+                    .Get();
+                var allFiles = allFilesResponse?.Models ?? new List<OrderFileDb>();
+                var filesByCommission = allFiles
+                    .Where(f => f.CommissionId.HasValue)
+                    .GroupBy(f => f.CommissionId.Value)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
                 // 4. Construir ViewModels de comisiones
                 decimal totalPending = 0;
                 decimal totalDraft = 0;
@@ -273,6 +292,28 @@ namespace SistemaGestionProyectos2.Views
                         client = clients[order.ClientId.Value];
                     }
 
+                    var commissionFiles = filesByCommission.ContainsKey(commission.Id)
+                        ? filesByCommission[commission.Id] : new List<OrderFileDb>();
+
+                    var filesVm = new ObservableCollection<FileItemViewModel>(
+                        commissionFiles.Select(f =>
+                        {
+                            var ext = Path.GetExtension(f.FileName)?.ToLowerInvariant() ?? "";
+                            var colorHex = ExtColors.ContainsKey(ext) ? ExtColors[ext] : "#F4F4F5";
+                            var isImage = StorageService.IsImageFile(f.FileName);
+                            return new FileItemViewModel
+                            {
+                                FileId = f.Id, FileName = f.FileName, StoragePath = f.StoragePath,
+                                FileSize = f.FileSize, FileSizeFormatted = StorageService.FormatFileSize(f.FileSize),
+                                ContentType = f.ContentType, CreatedAt = f.CreatedAt,
+                                IsImage = isImage, CanDelete = false,
+                                FileIcon = isImage ? "🖼" : "📄",
+                                FileExt = ext.TrimStart('.').ToUpperInvariant(),
+                                PlaceholderColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex)),
+                                HasThumbnail = false
+                            };
+                        }));
+
                     var commissionVm = new CommissionDetailViewModel
                     {
                         CommissionPaymentId = commission.Id,
@@ -287,7 +328,11 @@ namespace SistemaGestionProyectos2.Views
                         CommissionRate = commission.CommissionRate,
                         CommissionAmount = commission.CommissionAmount,
                         CommissionAmountFormatted = commission.CommissionAmount.ToString("C", _cultureMX),
-                        PaymentStatus = commission.PaymentStatus
+                        PaymentStatus = commission.PaymentStatus,
+                        FileCount = filesVm.Count,
+                        HasFiles = filesVm.Count > 0,
+                        IsFilesExpanded = false,
+                        Files = filesVm
                     };
 
                     commissionViewModels.Add(commissionVm);
@@ -325,6 +370,9 @@ namespace SistemaGestionProyectos2.Views
 
                 // Mostrar/ocultar botón de pagar todas (solo si hay pendientes)
                 PayAllButton.Visibility = pendingCount > 1 ? Visibility.Visible : Visibility.Collapsed;
+
+                // Load thumbnails in background
+                _ = LoadCommissionThumbnailsAsync(sortedCommissions);
             }
             catch (Exception ex)
             {
@@ -368,6 +416,227 @@ namespace SistemaGestionProyectos2.Views
                 await MarkAllCommissionsAsPaid(pendingCommissions);
             }
         }
+
+        private void ToggleFiles_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var commission = button?.Tag as CommissionDetailViewModel;
+            if (commission != null)
+                commission.IsFilesExpanded = !commission.IsFilesExpanded;
+        }
+
+        private void PreviewFile_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var fileVm = button?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+
+            // Find parent commission
+            var parent = _vendorCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
+            var fileList = parent?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
+            int idx = fileList.IndexOf(fileVm);
+            ShowAdminPreviewModal(fileList, idx);
+        }
+
+        private async void DownloadFileInline_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var fileVm = button?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+
+            var saveDialog = new SaveFileDialog { FileName = fileVm.FileName };
+            if (saveDialog.ShowDialog() != true) return;
+
+            try
+            {
+                var bytes = await _supabaseService.DownloadOrderFile(fileVm.StoragePath);
+                File.WriteAllBytes(saveDialog.FileName, bytes);
+                ShowTemporaryNotification("Archivo descargado");
+            }
+            catch { ShowTemporaryNotification("Error al descargar"); }
+        }
+
+        private static readonly Dictionary<string, string> ExtColors = new()
+        {
+            { ".pdf", "#FEF3C7" }, { ".doc", "#DBEAFE" }, { ".docx", "#DBEAFE" },
+            { ".xls", "#D1FAE5" }, { ".xlsx", "#D1FAE5" }, { ".jpg", "#F3E8FF" },
+            { ".jpeg", "#F3E8FF" }, { ".png", "#FEE2E2" }, { ".gif", "#DBEAFE" }
+        };
+
+        private void ShowAdminPreviewModal(List<FileItemViewModel> fileList, int startIndex)
+        {
+            if (fileList == null || fileList.Count == 0) return;
+            int currentIndex = Math.Max(0, Math.Min(startIndex, fileList.Count - 1));
+
+            var modal = new Window
+            {
+                WindowStyle = WindowStyle.None,
+                AllowsTransparency = true,
+                Background = new SolidColorBrush(Color.FromArgb(204, 24, 24, 27)),
+                WindowState = WindowState.Maximized,
+                Topmost = true
+            };
+
+            var mainGrid = new Grid();
+            mainGrid.MouseLeftButtonDown += (s, ev) => modal.Close();
+
+            var contentPanel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 800
+            };
+            contentPanel.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+
+            var filenameText = new TextBlock { Foreground = Brushes.White, FontSize = 14, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center };
+            var counterText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(179, 255, 255, 255)), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            var previewContainer = new Border { MinHeight = 300 };
+
+            Action updatePreview = () =>
+            {
+                var file = fileList[currentIndex];
+                filenameText.Text = file.FileName;
+                counterText.Text = $"{currentIndex + 1} / {fileList.Count}";
+
+                if (file.IsImage && file.ThumbnailSource != null)
+                {
+                    previewContainer.Child = new Border
+                    {
+                        CornerRadius = new CornerRadius(12), ClipToBounds = true,
+                        Child = new Image { Source = file.ThumbnailSource, MaxHeight = 600, Stretch = Stretch.Uniform }
+                    };
+                }
+                else
+                {
+                    var ph = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+                    ph.Children.Add(new TextBlock { Text = file.FileIcon, FontSize = 64, HorizontalAlignment = HorizontalAlignment.Center });
+                    ph.Children.Add(new TextBlock { Text = "Vista previa del documento", FontSize = 18, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 16, 0, 0) });
+                    ph.Children.Add(new TextBlock { Text = $"{file.FileName} — {file.FileSizeFormatted}", FontSize = 13, Foreground = new SolidColorBrush(Color.FromRgb(161, 161, 170)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) });
+                    previewContainer.Child = new Border { Background = new SolidColorBrush(Color.FromRgb(244, 244, 245)), CornerRadius = new CornerRadius(12), Padding = new Thickness(120, 80, 120, 80), Child = ph };
+                }
+            };
+
+            // Header
+            var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var headerLeft = new StackPanel { Orientation = Orientation.Horizontal };
+            headerLeft.Children.Add(filenameText);
+            headerLeft.Children.Add(counterText);
+            Grid.SetColumn(headerLeft, 0);
+            headerGrid.Children.Add(headerLeft);
+
+            // Download button in modal
+            var dlBtn = new Button { Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0) };
+            var dlTemplate = new ControlTemplate(typeof(Button));
+            var dlBorder = new FrameworkElementFactory(typeof(Border));
+            dlBorder.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)));
+            dlBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(6));
+            dlBorder.SetValue(Border.PaddingProperty, new Thickness(16, 8, 16, 8));
+            dlBorder.SetValue(Border.BorderBrushProperty, new SolidColorBrush(Color.FromArgb(51, 255, 255, 255)));
+            dlBorder.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+            var dlTb = new FrameworkElementFactory(typeof(TextBlock));
+            dlTb.SetValue(TextBlock.TextProperty, "⬇ Descargar");
+            dlTb.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            dlTb.SetValue(TextBlock.FontSizeProperty, 13.0);
+            dlTb.SetValue(TextBlock.FontWeightProperty, FontWeights.Medium);
+            dlBorder.AppendChild(dlTb);
+            dlTemplate.VisualTree = dlBorder;
+            dlBtn.Template = dlTemplate;
+            dlBtn.Click += async (s, ev) =>
+            {
+                var file = fileList[currentIndex];
+                var saveDialog = new SaveFileDialog { FileName = file.FileName };
+                if (saveDialog.ShowDialog() == true)
+                {
+                    try
+                    {
+                        var bytes = await _supabaseService.DownloadOrderFile(file.StoragePath);
+                        File.WriteAllBytes(saveDialog.FileName, bytes);
+                        ShowTemporaryNotification("Archivo descargado");
+                    }
+                    catch { ShowTemporaryNotification("Error al descargar"); }
+                }
+            };
+            Grid.SetColumn(dlBtn, 1);
+            headerGrid.Children.Add(dlBtn);
+
+            contentPanel.Children.Add(headerGrid);
+            contentPanel.Children.Add(previewContainer);
+            mainGrid.Children.Add(contentPanel);
+
+            // Navigation arrows
+            if (fileList.Count > 1)
+            {
+                var leftArrow = CreateNavButton("←", HorizontalAlignment.Left);
+                leftArrow.Click += (s, ev) => { ev.Handled = true; currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); };
+                mainGrid.Children.Add(leftArrow);
+
+                var rightArrow = CreateNavButton("→", HorizontalAlignment.Right);
+                rightArrow.Click += (s, ev) => { ev.Handled = true; currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); };
+                mainGrid.Children.Add(rightArrow);
+            }
+
+            // Close
+            var closeBtn = new Button { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 20, 20, 0), Cursor = System.Windows.Input.Cursors.Hand };
+            var closeTemplate = new ControlTemplate(typeof(Button));
+            var closeBorder = new FrameworkElementFactory(typeof(Border));
+            closeBorder.SetValue(Border.WidthProperty, 36.0);
+            closeBorder.SetValue(Border.HeightProperty, 36.0);
+            closeBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(18));
+            closeBorder.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)));
+            var closeTb = new FrameworkElementFactory(typeof(TextBlock));
+            closeTb.SetValue(TextBlock.TextProperty, "✕");
+            closeTb.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            closeTb.SetValue(TextBlock.FontSizeProperty, 18.0);
+            closeTb.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            closeTb.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            closeBorder.AppendChild(closeTb);
+            closeTemplate.VisualTree = closeBorder;
+            closeBtn.Template = closeTemplate;
+            closeBtn.Click += (s, ev) => modal.Close();
+            mainGrid.Children.Add(closeBtn);
+
+            // Keyboard nav
+            modal.KeyDown += (s, ev) =>
+            {
+                if (ev.Key == System.Windows.Input.Key.Left) { currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); }
+                else if (ev.Key == System.Windows.Input.Key.Right) { currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); }
+                else if (ev.Key == System.Windows.Input.Key.Escape) modal.Close();
+            };
+
+            updatePreview();
+            modal.Content = mainGrid;
+            modal.ShowDialog();
+        }
+
+        private Button CreateNavButton(string text, HorizontalAlignment alignment)
+        {
+            var btn = new Button
+            {
+                HorizontalAlignment = alignment, VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(30, 0, 30, 0), Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0)
+            };
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.WidthProperty, 48.0);
+            border.SetValue(Border.HeightProperty, 48.0);
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(24));
+            border.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(51, 255, 255, 255)));
+            var tb = new FrameworkElementFactory(typeof(TextBlock));
+            tb.SetValue(TextBlock.TextProperty, text);
+            tb.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            tb.SetValue(TextBlock.FontSizeProperty, 22.0);
+            tb.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            tb.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            border.AppendChild(tb);
+            template.VisualTree = border;
+            btn.Template = template;
+            btn.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            return btn;
+        }
+
 
         private async Task MarkCommissionAsPaid(int commissionPaymentId, Button button = null)
         {
@@ -739,6 +1008,37 @@ namespace SistemaGestionProyectos2.Views
             _selectedVendor.TotalAllFormatted = _selectedVendor.TotalAll.ToString("C", _cultureMX);
         }
 
+        private async Task LoadCommissionThumbnailsAsync(List<CommissionDetailViewModel> commissions)
+        {
+            foreach (var commission in commissions)
+            {
+                foreach (var file in commission.Files)
+                {
+                    if (!file.IsImage) continue;
+                    try
+                    {
+                        var bytes = await _supabaseService.DownloadOrderFile(file.StoragePath);
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            var bitmap = new BitmapImage();
+                            using (var ms = new MemoryStream(bytes))
+                            {
+                                bitmap.BeginInit();
+                                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                                bitmap.DecodePixelWidth = 120;
+                                bitmap.StreamSource = ms;
+                                bitmap.EndInit();
+                                bitmap.Freeze();
+                            }
+                            file.ThumbnailSource = bitmap;
+                            file.HasThumbnail = true;
+                        });
+                    }
+                    catch { }
+                }
+            }
+        }
+
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
@@ -835,6 +1135,10 @@ namespace SistemaGestionProyectos2.Views
         private decimal _commissionAmount;
         private string _commissionAmountFormatted;
         private string _paymentStatus;
+        private int _fileCount;
+        private bool _hasFiles;
+        private bool _isFilesExpanded;
+        private ObservableCollection<FileItemViewModel> _files = new();
 
         public int CommissionPaymentId { get; set; }
         public int OrderId { get; set; }
@@ -894,6 +1198,30 @@ namespace SistemaGestionProyectos2.Views
                 _isEditingRate = value;
                 OnPropertyChanged();
             }
+        }
+
+        public int FileCount
+        {
+            get => _fileCount;
+            set { _fileCount = value; OnPropertyChanged(); }
+        }
+
+        public bool HasFiles
+        {
+            get => _hasFiles;
+            set { _hasFiles = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFilesExpanded
+        {
+            get => _isFilesExpanded;
+            set { _isFilesExpanded = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<FileItemViewModel> Files
+        {
+            get => _files;
+            set { _files = value; OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

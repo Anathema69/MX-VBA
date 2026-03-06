@@ -11,6 +11,7 @@ using SistemaGestionProyectos2.Services.Orders;
 using SistemaGestionProyectos2.Services.Payroll;
 using SistemaGestionProyectos2.Services.Suppliers;
 using SistemaGestionProyectos2.Services.Users;
+using SistemaGestionProyectos2.Services.Storage;
 using SistemaGestionProyectos2.Services.Vendors;
 using SistemaGestionProyectos2.ViewModels;
 using Supabase;
@@ -45,6 +46,7 @@ namespace SistemaGestionProyectos2.Services
         private FixedExpenseService _fixedExpenseService;
         private VendorService _vendorService;
         private UserService _userService;
+        private StorageService _storageService;
 
         // Singleton Pattern
         public static SupabaseService Instance
@@ -108,6 +110,7 @@ namespace SistemaGestionProyectos2.Services
                 _fixedExpenseService = new FixedExpenseService(_supabaseClient);
                 _vendorService = new VendorService(_supabaseClient);
                 _userService = new UserService(_supabaseClient);
+                _storageService = new StorageService(_supabaseClient);
 
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("✅ SupabaseService (Facade) inicializado correctamente");
@@ -967,5 +970,29 @@ namespace SistemaGestionProyectos2.Services
                 return false;
             }
         }
+        // ===============================================
+        // DELEGACION A StorageService
+        // ===============================================
+
+        public Task<OrderFileDb> UploadOrderFile(string localFilePath, int orderId, int uploadedBy, int? vendorId = null, int? commissionId = null)
+            => _storageService.UploadFile(localFilePath, orderId, uploadedBy, vendorId, commissionId);
+
+        public Task<byte[]> DownloadOrderFile(string storagePath)
+            => _storageService.DownloadFile(storagePath);
+
+        public Task<string> GetOrderFileSignedUrl(string storagePath, int expiresInSeconds = 3600)
+            => _storageService.GetSignedUrl(storagePath, expiresInSeconds);
+
+        public Task<List<OrderFileDb>> GetOrderFiles(int orderId)
+            => _storageService.GetFilesByOrder(orderId);
+
+        public Task<List<OrderFileDb>> GetCommissionFiles(int commissionId)
+            => _storageService.GetFilesByCommission(commissionId);
+
+        public Task<bool> DeleteOrderFile(int fileId, string storagePath)
+            => _storageService.DeleteFile(fileId, storagePath);
+
+        public Task<Dictionary<int, int>> GetFileCountsByCommissions(List<int> commissionIds)
+            => _storageService.GetFileCountsByCommissions(commissionIds);
     }
 }

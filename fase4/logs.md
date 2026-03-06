@@ -115,4 +115,24 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 - `fase4/propuesta_vacaciones_calendario.md` - 3 opciones de diseño para integrar vacaciones desde calendario, con estimaciones y plan de integridad de datos
 **Origen:** Caso Cesar Vidales 3-Mar (asistencia + vacacion simultanea). Pendiente definir con cliente cual prevalece.
 
+### 2026-03-06 - Bloque 3 - Portal Ventas con subida de archivos (Storage)
+**Tipo:** implementacion
+**Version:** v2.0.6
+
+**Archivos creados:**
+- `sql/bloque3_storage.sql` - Tabla order_files + indexes
+- `Models/Database/OrderFileDb.cs` - Modelo Postgrest
+- `Services/Storage/StorageService.cs` - Upload, download, list, delete via Supabase Storage
+
+**Archivos modificados:**
+- `Services/SupabaseService.cs` - StorageService en facade (7 delegaciones)
+- `Views/VendorDashboard.xaml` + `.cs` - Rediseno completo con galeria inline, thumbnails, preview con navegacion
+- `Views/VendorCommissionsWindow.xaml` + `.cs` - Galeria inline para admin, preview fullscreen
+
+**Decisiones:** Supabase Storage (free tier 1GB). CRUD por estado: draft/pending = todo, paid = solo ver/descargar. Thumbnails lazy. Toggle collapsible con hover.
+
+**Pendiente:** Confirmar si "Solicitar Liberacion" debe cambiar estado de la orden a LIBERADA(2).
+
+**Compilacion:** 0 errores.
+
 ---

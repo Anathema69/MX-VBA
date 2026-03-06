@@ -1,154 +1,105 @@
 -- ============================================================
--- SCRIPT: Insertar nueva versión en app_versions
+-- SCRIPT: Insertar nueva version en app_versions
 -- ============================================================
 -- INSTRUCCIONES:
 --   1. Subir el instalador a Supabase Storage ANTES de ejecutar
 --      Ruta: app-installers/releases/v{VERSION}/SistemaGestionProyectos-v{VERSION}-Setup.exe
---   2. Modificar SOLO la sección "CONFIGURACIÓN" abajo
+--   2. Modificar SOLO la seccion "CONFIGURACION" abajo
 --   3. Ejecutar en Supabase SQL Editor
 --   4. Verificar con el SELECT final
 -- ============================================================
 
 
 -- ============================================================
--- CONFIGURACIÓN DE LA NUEVA VERSIÓN
+-- CONFIGURACION DE LA NUEVA VERSION
 -- ============================================================
 -- >> MODIFICAR SOLO ESTOS VALORES <<
 
 DO $$
 DECLARE
-    -- ┌────────────────────────────────────────────────────────┐
-    -- │                    DATOS BÁSICOS                       │
-    -- └────────────────────────────────────────────────────────┘
-    v_version       VARCHAR := '2.0.5';
+    v_version       VARCHAR := '2.0.6';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 49.83;
-    v_is_mandatory  BOOLEAN := true;   -- OBLIGATORIO
-    v_min_version   VARCHAR := NULL;   -- NULL = cualquier versión puede actualizar
+    v_file_size_mb  NUMERIC := 49.96;
+    v_is_mandatory  BOOLEAN := true;
+    v_min_version   VARCHAR := NULL;
 
-    -- ┌────────────────────────────────────────────────────────┐
-    -- │                   RELEASE NOTES                        │
-    -- └────────────────────────────────────────────────────────┘
-    v_release_notes TEXT := 'Versión 2.0.5 - Fase 4 Bloque 1: Ajustes cosméticos + Soporte multi-monitor
+    v_release_notes TEXT := 'Version 2.0.6 - Fase 4: Bloque 3 (Portal Ventas + Storage) + Bloque 4 (Ejecutor) + Bugfixes
 
-AJUSTES COSMÉTICOS (Fase 3 pendientes):
-- Centrado de valores en todas las tablas DataGrid (6 vistas corregidas)
-- Filtro de Año en Manejo de Órdenes ahora abre con el año actual seleccionado
-- Renombrado "Portal del Vendedor" a "Portal Ventas" en toda la aplicación
-- Renombrado "Portal de Proveedores" a "Portal Proveedores" en toda la aplicación
-- Columnas en Manejo de Órdenes ajustadas para mejor visibilidad, resize manual habilitado
-- Botones de regreso estandarizados a "← Volver" en todas las ventanas
+PORTAL VENTAS CON SUBIDA DE ARCHIVOS (Bloque 3):
+- Vendedor: subida multiple de archivos (jpg, png, pdf, doc, xls) por comision
+- Galeria inline con thumbnails, collapsible por comision
+- Preview fullscreen con navegacion entre archivos (flechas + teclado)
+- Acciones CRUD: subir, ver, descargar, eliminar (draft/pending)
+- Comisiones pagadas: solo visualizar y descargar (read-only)
+- Boton "Solicitar Liberacion" (draft -> pending) con archivos adjuntos
+- Admin: galeria inline en panel de comisiones con preview y descarga
+- Infraestructura: Supabase Storage (bucket order-files) + tabla order_files
+- StorageService reutilizable para Bloque 5 (carpetas por orden)
 
-SOPORTE MULTI-MONITOR:
-- Nuevo WindowHelper con Win32 API (MonitorFromWindow + GetMonitorInfo)
-- Las ventanas ahora se adaptan al monitor donde se abren, no solo al primario
-- Corregido bug donde ventanas hijas abrían en monitor equivocado
-- Eliminado WindowState=Maximized nativo (causaba maximizar en monitor primario)
-- 17 ventanas migradas al nuevo sistema de posicionamiento
+COLUMNA EJECUTOR (Bloque 4):
+- Nueva columna "Ejecutor" en tabla de ordenes con selector multiple
+- Tabla t_order_ejecutor para asignacion N:N
+- Batch loading optimizado para nombres de ejecutores
 
 CORRECCIONES:
-- Fix: cerrar sesión ya no interrumpe screen share de Google Meet
-- Fix: eliminado MessageBox al cerrar sesión como vendedor
-- Fix: barra de tareas ya no queda cubierta en ninguna ventana
-- Fix: PendingIncomesDetailView respeta barra de tareas correctamente
+- BUG-005: Correccion en facturacion de pagos a proveedores - el boton eliminar no aparecia para gastos ya pagados (afectaba proveedores con 0 dias de credito cuyo pago se registraba automaticamente). Status visual corregido, headers dinamicos por tab, auditoria de eliminacion
+- BUG-006: Correccion en edicion de asistencia en calendario - no se podian modificar registros de asistencia una vez guardados. Reescrito el metodo de guardado, soporte para desmarcar registros y boton de actualizar agregado
 
-ACTUALIZACIÓN OBLIGATORIA - Mejoras de interfaz y soporte multi-monitor';
+ACTUALIZACION OBLIGATORIA - Portal de ventas con gestion de archivos';
 
-    -- ════════════════════════════════════════════════════════
-    -- NO MODIFICAR DEBAJO DE ESTA LÍNEA
-    -- ════════════════════════════════════════════════════════
     v_download_url TEXT;
     v_changelog JSONB;
 BEGIN
-    -- Construir URL del instalador (patrón estándar)
     v_download_url := 'https://wjozxqldvypdtfmkamud.supabase.co/storage/v1/object/public/app-installers/releases/v'
                       || v_version || '/SistemaGestionProyectos-v' || v_version || '-Setup.exe';
 
-    -- Changelog estructurado
     v_changelog := '{
         "Fixed": [
-            "Cerrar sesión ya no interrumpe screen share de Google Meet",
-            "Eliminado MessageBox al cerrar sesión como vendedor",
-            "Barra de tareas ya no queda cubierta en ninguna ventana",
-            "Ventanas hijas ya no abren en monitor equivocado en setup multi-monitor"
+            "BUG-005: Portal Proveedores permite eliminar gastos pagados",
+            "BUG-006: Calendario permite modificar asistencia registrada",
+            "Desmarcar asistencia elimina registro con auditoria",
+            "Boton vacaciones convertido a indicador visual sin conflicto"
         ],
         "Added": [
-            "WindowHelper con Win32 API para detección correcta de monitor",
-            "Hook SourceInitialized para re-posicionamiento con handle real",
-            "Owner establecido en ventanas hijas para herencia de monitor",
-            "CanUserResizeColumns en DataGrid de Órdenes"
+            "Portal Ventas: subida multiple de archivos por comision",
+            "Galeria inline con thumbnails y preview fullscreen",
+            "Navegacion entre archivos con flechas y teclado",
+            "StorageService para Supabase Storage (bucket order-files)",
+            "Tabla order_files para registro de archivos",
+            "Boton Solicitar Liberacion (draft -> pending)",
+            "Admin: galeria inline en panel de comisiones",
+            "Columna Ejecutor con selector multiple en ordenes",
+            "Tabla t_order_ejecutor para asignacion N:N"
         ],
         "Improved": [
-            "Centrado de valores en 6 DataGrids (columnas numéricas, fechas, estados)",
-            "Filtro de Año default al año actual en Manejo de Órdenes",
-            "Anchos de columnas optimizados para mejor visibilidad",
-            "Botones estandarizados: ← Volver (navegación), Cancelar (diálogos), Cerrar Sesión (logout)"
-        ],
-        "Changed": [
-            "Portal del Vendedor renombrado a Portal Ventas",
-            "Portal de Proveedores renombrado a Portal Proveedores",
-            "17 ventanas migradas de SystemParameters.WorkArea a WindowHelper multi-monitor",
-            "4 ventanas migradas de WindowState=Maximized a MaximizeWithTaskbar()"
+            "Acciones CRUD contextuales: upload/delete en draft+pending, read-only en paid",
+            "Toggle collapsible para archivos con hover interactivo y chevron visual",
+            "Notificaciones toast en lugar de MessageBox en portal vendedor",
+            "Diseño unificado con SupplierPendingView (colores, cards, status bar)"
         ]
     }'::jsonb;
 
-    -- ════════════════════════════════════════════════════════
-    -- PASO 1: Marcar versiones anteriores como NO latest
-    -- ════════════════════════════════════════════════════════
-    UPDATE app_versions
-    SET is_latest = false
-    WHERE is_latest = true;
+    UPDATE app_versions SET is_latest = false WHERE is_latest = true;
+    RAISE NOTICE 'Versiones anteriores marcadas como is_latest = false';
 
-    RAISE NOTICE '✓ Versiones anteriores marcadas como is_latest = false';
-
-    -- ════════════════════════════════════════════════════════
-    -- PASO 2: Insertar nueva versión
-    -- ════════════════════════════════════════════════════════
     INSERT INTO app_versions (
-        version,
-        release_date,
-        is_latest,
-        is_mandatory,
-        download_url,
-        file_size_mb,
-        release_notes,
-        min_version,
-        created_by,
-        is_active,
-        downloads_count,
-        changelog
+        version, release_date, is_latest, is_mandatory, download_url,
+        file_size_mb, release_notes, min_version, created_by,
+        is_active, downloads_count, changelog
     ) VALUES (
-        v_version,
-        NOW(),
-        true,
-        v_is_mandatory,
-        v_download_url,
-        v_file_size_mb,
-        v_release_notes,
-        v_min_version,
-        v_created_by,
-        true,
-        0,
-        v_changelog
+        v_version, NOW(), true, v_is_mandatory, v_download_url,
+        v_file_size_mb, v_release_notes, v_min_version, v_created_by,
+        true, 0, v_changelog
     );
 
-    RAISE NOTICE '✓ Nueva versión % insertada correctamente', v_version;
-    RAISE NOTICE '✓ URL: %', v_download_url;
-    RAISE NOTICE '✓ Tamaño: % MB', v_file_size_mb;
+    RAISE NOTICE 'Nueva version % insertada correctamente', v_version;
+    RAISE NOTICE 'URL: %', v_download_url;
 END $$;
 
 
 -- ============================================================
--- VERIFICACIÓN: Mostrar últimas versiones
+-- VERIFICACION
 -- ============================================================
-SELECT
-    id,
-    version,
-    is_latest,
-    is_active,
-    release_date::date as fecha,
-    file_size_mb,
-    downloads_count
-FROM app_versions
-ORDER BY id DESC
-LIMIT 5;
+SELECT id, version, is_latest, is_active, release_date::date as fecha,
+       file_size_mb, downloads_count
+FROM app_versions ORDER BY id DESC LIMIT 5;
