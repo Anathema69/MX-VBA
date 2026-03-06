@@ -323,7 +323,7 @@
                                     ShadowDepth="1" Opacity="0.08" BlurRadius="4"/>
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="TOTAL PENDIENTE" FontSize="11"
+                    <TextBlock x:Name="DetailTotalPendingLabel" Text="TOTAL PENDIENTE" FontSize="11"
                              Foreground="{StaticResource TextGray}"
                              FontWeight="Medium" Margin="0,0,0,4"/>
                     <TextBlock x:Name="DetailTotalPendingText" Text="$0.00"
@@ -340,7 +340,7 @@
                                     ShadowDepth="1" Opacity="0.08" BlurRadius="4"/>
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="TOTAL VENCIDO" FontSize="11"
+                    <TextBlock x:Name="DetailTotalOverdueLabel" Text="TOTAL VENCIDO" FontSize="11"
                              Foreground="{StaticResource TextGray}"
                              FontWeight="Medium" Margin="0,0,0,4"/>
                     <TextBlock x:Name="DetailTotalOverdueText" Text="$0.00"
@@ -357,7 +357,7 @@
                                     ShadowDepth="1" Opacity="0.08" BlurRadius="4"/>
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="POR VENCER" FontSize="11"
+                    <TextBlock x:Name="DetailTotalDueSoonLabel" Text="POR VENCER" FontSize="11"
                              Foreground="{StaticResource TextGray}"
                              FontWeight="Medium" Margin="0,0,0,4"/>
                     <TextBlock x:Name="DetailTotalDueSoonText" Text="$0.00"
@@ -575,6 +575,39 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Mensaje cuando el filtro no tiene resultados -->
+                <Border x:Name="NoResultsMessage" Grid.Row="1"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Margin="0,40,0,0">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="72" Height="72" CornerRadius="36"
+                                HorizontalAlignment="Center" Margin="0,0,0,16">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#FEF3C7" Offset="0"/>
+                                    <GradientStop Color="#FDE68A" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="📋" FontSize="32"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="NoResultsTitle"
+                                 Text="Sin gastos pendientes"
+                                 FontSize="18" FontWeight="SemiBold"
+                                 Foreground="{StaticResource DarkText}"
+                                 HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="NoResultsSubtitle"
+                                 Text="Este proveedor no tiene gastos en esta categoría"
+                                 FontSize="13"
+                                 Foreground="{StaticResource TextGray}"
+                                 HorizontalAlignment="Center"
+                                 Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- DataGrid -->
                 <DataGrid Grid.Row="1" x:Name="ExpensesDataGrid"
                           AutoGenerateColumns="False"
@@ -602,10 +635,12 @@
                             <Setter Property="BorderThickness" Value="0"/>
                             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                             <Setter Property="Focusable" Value="False"/>
+                            <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                             <Style.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="Transparent"/>
                                     <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="{StaticResource DarkText}"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -1045,6 +1080,9 @@
                                                     <DataTrigger Binding="{Binding Status}" Value="AL CORRIENTE">
                                                         <Setter Property="Background" Value="#D1FAE5"/>
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="PAGADO">
+                                                        <Setter Property="Background" Value="#DBEAFE"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -1065,6 +1103,9 @@
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="AL CORRIENTE">
                                                             <Setter Property="Foreground" Value="#065F46"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="PAGADO">
+                                                            <Setter Property="Foreground" Value="#1E40AF"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -1200,7 +1241,7 @@
                                                 <TextBlock Text="✏" FontWeight="Bold" Foreground="White" FontSize="12"/>
                                             </Button>
 
-                                            <!-- Boton Eliminar (solo para no pagados) -->
+                                            <!-- Boton Eliminar (visible siempre que no esté editando) -->
                                             <Button Tag="{Binding ExpenseId}"
                                                     Click="DeleteButton_Click"
                                                     Width="38" Height="30"
@@ -1208,7 +1249,7 @@
                                                     BorderThickness="0"
                                                     Cursor="Hand"
                                                     ToolTip="Eliminar gasto"
-                                                    Visibility="{Binding IsPayable, Converter={StaticResource BoolToVis}}">
+                                                    Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVis}}">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
                                                         <Border Background="{TemplateBinding Background}"

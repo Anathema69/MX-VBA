@@ -135,7 +135,7 @@ namespace SistemaGestionProyectos2.Views
             ExpensesDataGrid.Visibility = Visibility.Collapsed;
 
             // Inicializar cards con valores vacíos
-            UpdateSummaryCards(0, 0, 0, 0);
+            UpdateSummaryLabels(0, 0, 0, 0, 0, 0);
             CreditDaysText.Text = "--";
 
             // Maximizar ventana respetando la barra de tareas
@@ -342,7 +342,7 @@ namespace SistemaGestionProyectos2.Views
                 _supplierCreditDays = 0;
                 NewExpenseButton.IsEnabled = false;
                 _expenses.Clear();
-                UpdateSummaryCards(0, 0, 0, 0);
+                UpdateSummaryLabels(0, 0, 0, 0, 0, 0);
                 CreditDaysText.Text = "--";
 
                 // Ocultar info del proveedor seleccionado
@@ -411,12 +411,60 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private void UpdateSummaryCards(decimal totalPending, decimal totalOverdue, decimal totalDueSoon, int expenseCount)
+        private void UpdateSummaryLabels(decimal totalPending, decimal totalOverdue, decimal totalDueSoon, decimal totalPaid, decimal totalPaidLate, int expenseCount)
         {
-            DetailTotalPendingText.Text = totalPending.ToString("C", _cultureMX);
-            DetailTotalOverdueText.Text = totalOverdue.ToString("C", _cultureMX);
-            DetailTotalDueSoonText.Text = totalDueSoon.ToString("C", _cultureMX);
+            if (_currentStatusFilter == "PAGADO")
+            {
+                DetailTotalPendingLabel.Text = "TOTAL PAGADO";
+                DetailTotalPendingText.Text = totalPaid.ToString("C", _cultureMX);
+                DetailTotalPendingText.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E40AF"));
+                DetailTotalOverdueLabel.Text = "PAGADOS TARDE";
+                DetailTotalOverdueText.Text = totalPaidLate.ToString("C", _cultureMX);
+                DetailTotalDueSoonLabel.Text = "PAGADOS A TIEMPO";
+                DetailTotalDueSoonText.Text = (totalPaid - totalPaidLate).ToString("C", _cultureMX);
+            }
+            else
+            {
+                DetailTotalPendingLabel.Text = "TOTAL PENDIENTE";
+                DetailTotalPendingText.Text = totalPending.ToString("C", _cultureMX);
+                DetailTotalPendingText.Foreground = (System.Windows.Media.Brush)FindResource("InfoColor");
+                DetailTotalOverdueLabel.Text = "TOTAL VENCIDO";
+                DetailTotalOverdueText.Text = totalOverdue.ToString("C", _cultureMX);
+                DetailTotalDueSoonLabel.Text = "POR VENCER";
+                DetailTotalDueSoonText.Text = totalDueSoon.ToString("C", _cultureMX);
+            }
             DetailExpenseCountText.Text = expenseCount.ToString();
+        }
+
+        private void UpdateEmptyState(int count)
+        {
+            if (count == 0 && _supplierId > 0)
+            {
+                ExpensesDataGrid.Visibility = System.Windows.Visibility.Collapsed;
+                NoResultsMessage.Visibility = System.Windows.Visibility.Visible;
+
+                switch (_currentStatusFilter)
+                {
+                    case "PENDIENTE":
+                        NoResultsTitle.Text = "Sin gastos pendientes";
+                        NoResultsSubtitle.Text = "Este proveedor no tiene gastos pendientes de pago";
+                        break;
+                    case "PAGADO":
+                        NoResultsTitle.Text = "Sin gastos pagados";
+                        NoResultsSubtitle.Text = "Este proveedor aún no tiene gastos registrados como pagados";
+                        break;
+                    default:
+                        NoResultsTitle.Text = "Sin gastos registrados";
+                        NoResultsSubtitle.Text = "Usa el botón \"+ Nuevo Gasto\" para agregar el primero";
+                        break;
+                }
+            }
+            else
+            {
+                ExpensesDataGrid.Visibility = System.Windows.Visibility.Visible;
+                NoResultsMessage.Visibility = System.Windows.Visibility.Collapsed;
+            }
         }
 
         private void FilterPendiente_Click(object sender, RoutedEventArgs e)
@@ -642,9 +690,9 @@ namespace SistemaGestionProyectos2.Views
                 decimal totalPending = 0;
                 decimal totalOverdue = 0;
                 decimal totalDueSoon = 0;
+                decimal totalPaidLate = 0;
 
                 DateTime today = DateTime.Today;
-                DateTime dueSoonDate = today.AddDays(7);
 
                 var tempList = new List<ExpenseDetailViewModel>();
 
@@ -679,7 +727,17 @@ namespace SistemaGestionProyectos2.Views
                     int daysDiff = (dueDate.Value.Date - today).Days;
                     viewModel.DaysRemaining = daysDiff;
 
-                    if (daysDiff < 0)
+                    // Si el gasto ya está pagado, mostrar status PAGADO
+                    if (expense.PaidDate.HasValue)
+                    {
+                        viewModel.Status = "PAGADO";
+                        int daysSincePaid = (today - expense.PaidDate.Value).Days;
+                        viewModel.DaysText = daysSincePaid == 0 ? "Hoy" : $"hace {daysSincePaid} días";
+                        // Rastrear si se pagó tarde (fecha pago posterior a vencimiento)
+                        if (expense.PaidDate.Value > dueDate.Value.Date)
+                            totalPaidLate += expense.TotalExpense;
+                    }
+                    else if (daysDiff < 0)
                     {
                         viewModel.DaysText = $"{Math.Abs(daysDiff)} días vencido";
                         viewModel.Status = "VENCIDO";
@@ -697,13 +755,15 @@ namespace SistemaGestionProyectos2.Views
                         viewModel.Status = "AL CORRIENTE";
                     }
 
-                    totalPending += expense.TotalExpense;
+                    if (!expense.PaidDate.HasValue)
+                        totalPending += expense.TotalExpense;
+
                     tempList.Add(viewModel);
                 }
 
                 // Ordenar y asignar en batch (evita N re-renders)
                 var sorted = tempList
-                    .OrderBy(e => e.Status == "VENCIDO" ? 0 : e.Status == "POR VENCER" ? 1 : 2)
+                    .OrderBy(e => e.Status == "VENCIDO" ? 0 : e.Status == "POR VENCER" ? 1 : e.Status == "AL CORRIENTE" ? 2 : 3)
                     .ThenBy(e => e.DueDate)
                     .ToList();
 
@@ -715,11 +775,12 @@ namespace SistemaGestionProyectos2.Views
 
                 System.Diagnostics.Debug.WriteLine($"⏱️ [SupplierDetail] Render total: {sw.ElapsedMilliseconds}ms ({sorted.Count} items)");
 
-                // Actualizar totales
-                DetailTotalPendingText.Text = totalPending.ToString("C", _cultureMX);
-                DetailTotalOverdueText.Text = totalOverdue.ToString("C", _cultureMX);
-                DetailTotalDueSoonText.Text = totalDueSoon.ToString("C", _cultureMX);
-                DetailExpenseCountText.Text = _expenses.Count.ToString();
+                // Mostrar/ocultar empty state
+                UpdateEmptyState(sorted.Count);
+
+                // Actualizar totales y labels según el filtro activo
+                decimal totalPaid = tempList.Where(e => e.Status == "PAGADO").Sum(e => e.Total);
+                UpdateSummaryLabels(totalPending, totalOverdue, totalDueSoon, totalPaid, totalPaidLate, _expenses.Count);
 
                 DetailLastUpdateText.Text = $"Última actualización: {DateTime.Now:HH:mm:ss}";
                 DetailStatusText.Text = "Listo";
@@ -1149,6 +1210,15 @@ namespace SistemaGestionProyectos2.Views
                 DetailStatusText.Text = "Eliminando gasto...";
 
                 var supabaseClient = _supabaseService.GetClient();
+                string deletedBy = _currentUser?.Username ?? "unknown";
+
+                // Registrar quién elimina (el trigger de auditoría captura old_updated_by)
+                await supabaseClient
+                    .From<ExpenseDb>()
+                    .Where(ex => ex.Id == expenseId)
+                    .Set(ex => ex.UpdatedBy, deletedBy)
+                    .Set(ex => ex.UpdatedAt, DateTime.UtcNow)
+                    .Update();
 
                 await supabaseClient
                     .From<ExpenseDb>()
@@ -1160,18 +1230,20 @@ namespace SistemaGestionProyectos2.Views
                 // Actualizar totales
                 await LoadExpensesAsync();
 
-                Toast.Show("Gasto eliminado", expense.Description, ToastNotification.ToastType.Success);
+                Toast.Show("Gasto eliminado",
+                    $"{expense.Description} - {expense.TotalFormatted}",
+                    ToastNotification.ToastType.Success);
             }
             catch (Exception ex)
             {
-                // Log detallado para debugging
-                System.Diagnostics.Debug.WriteLine($"❌ ERROR al eliminar gasto: {ex.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"ERROR al eliminar gasto #{expenseId}: {ex.GetType().Name}");
                 System.Diagnostics.Debug.WriteLine($"   Mensaje: {ex.Message}");
                 if (ex.InnerException != null)
                     System.Diagnostics.Debug.WriteLine($"   Inner: {ex.InnerException.Message}");
 
-                Toast.Show("Error al eliminar", "No se pudo eliminar el gasto. Intente de nuevo.", ToastNotification.ToastType.Error);
-                DetailStatusText.Text = "Error al eliminar";
+                string errorDetail = ex.InnerException?.Message ?? ex.Message;
+                Toast.Show("Error al eliminar", $"No se pudo eliminar: {errorDetail}", ToastNotification.ToastType.Error);
+                DetailStatusText.Text = $"Error al eliminar: {errorDetail}";
             }
         }
 

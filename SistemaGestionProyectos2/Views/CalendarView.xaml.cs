@@ -459,7 +459,25 @@ namespace SistemaGestionProyectos2.Views
             buttonsPanel.Children.Add(CreateStatusButton("ASISTENCIA", "✓", emp, isOnVacation));
             buttonsPanel.Children.Add(CreateStatusButton("RETARDO", "🕐", emp, isOnVacation));
             buttonsPanel.Children.Add(CreateStatusButton("FALTA", "✗", emp, isOnVacation));
-            buttonsPanel.Children.Add(CreateStatusButton("VACACIONES", "🏖", emp, false));
+
+            // Ícono de vacaciones: solo indicador visual (sin acción, las vacaciones se gestionan desde el botón superior)
+            var vacationIndicator = new Border
+            {
+                Width = 36, Height = 36, CornerRadius = new CornerRadius(8),
+                Margin = new Thickness(0, 0, 6, 0),
+                Background = isOnVacation ? VacationColor : BorderGray,
+                Opacity = isOnVacation ? 1 : 0.4,
+                ToolTip = isOnVacation ? "En vacaciones (gestionar desde el botón superior)" : "Sin vacaciones programadas",
+                Child = new TextBlock
+                {
+                    Text = "🏖", FontSize = 14,
+                    FontWeight = isOnVacation ? FontWeights.Bold : FontWeights.Normal,
+                    Foreground = isOnVacation ? Brushes.White : TextGray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            buttonsPanel.Children.Add(vacationIndicator);
             Grid.SetColumn(buttonsPanel, 2);
 
             grid.Children.Add(avatar);
@@ -525,38 +543,36 @@ namespace SistemaGestionProyectos2.Views
             string newStatus = tag.Status;
             AttendanceViewModel currentAtt = tag.CurrentAttendance;
 
-            if (currentAtt.Status == newStatus) return;
+            // Vacaciones se gestionan desde el botón superior, no desde la fila
+            if (newStatus == "VACACIONES") return;
 
-            // Verificar si el empleado está de vacaciones (excepto si se marca como vacaciones)
-            if (newStatus != "VACACIONES" && (currentAtt.OnVacation || currentAtt.Status == "VACACIONES"))
-            {
-                MessageBox.Show(
-                    "Este empleado está de vacaciones en esta fecha.\nNo se puede registrar asistencia, retardo o falta.",
-                    "Empleado en Vacaciones",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return;
-            }
+            // Si toca el mismo botón, desmarcar (volver a SIN_REGISTRO)
+            bool isUncheck = currentAtt.Status == newStatus;
+            if (isUncheck && currentAtt.Id == 0) return; // No hay registro que desmarcar
 
             string oldStatus = currentAtt.Status;
+            string effectiveStatus = isUncheck ? "SIN_REGISTRO" : newStatus;
             TimeSpan? checkInTime = null;
             int lateMinutes = 0;
 
-            if (newStatus == "RETARDO")
+            if (!isUncheck)
             {
-                var result = ShowCheckInTimeDialog();
-                if (result == null) return;
-                checkInTime = result.Value;
-                lateMinutes = _attendanceService.CalculateLateMinutes(checkInTime.Value, _expectedStartTime);
-                if (lateMinutes <= 0)
+                if (newStatus == "RETARDO")
                 {
-                    MessageBox.Show($"La hora {checkInTime:hh\\:mm} no genera retardo.\nHora esperada: {_expectedStartTime:hh\\:mm}", "Sin Retardo", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
+                    var result = ShowCheckInTimeDialog();
+                    if (result == null) return;
+                    checkInTime = result.Value;
+                    lateMinutes = _attendanceService.CalculateLateMinutes(checkInTime.Value, _expectedStartTime);
+                    if (lateMinutes <= 0)
+                    {
+                        MessageBox.Show($"La hora {checkInTime:hh\\:mm} no genera retardo.\nHora esperada: {_expectedStartTime:hh\\:mm}", "Sin Retardo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
                 }
-            }
-            else if (newStatus == "ASISTENCIA")
-            {
-                checkInTime = _expectedStartTime;
+                else if (newStatus == "ASISTENCIA")
+                {
+                    checkInTime = _expectedStartTime;
+                }
             }
 
             try
@@ -565,26 +581,38 @@ namespace SistemaGestionProyectos2.Views
                 StatusText.Text = "Guardando...";
                 StatusText.Foreground = PrimaryColor;
 
-                var attendance = new AttendanceTable
+                int savedId;
+
+                if (isUncheck && currentAtt.Id > 0)
                 {
-                    Id = currentAtt.Id, EmployeeId = employeeId, AttendanceDate = _selectedDate,
-                    Status = newStatus, CheckInTime = checkInTime, LateMinutes = lateMinutes,
-                    CreatedBy = _currentUser.Id, UpdatedBy = _currentUser.Id
-                };
+                    // Desmarcar: eliminar registro de la BD
+                    await _attendanceService.DeleteAttendance(currentAtt.Id, _currentUser.Id);
+                    savedId = 0;
+                }
+                else
+                {
+                    var attendance = new AttendanceTable
+                    {
+                        Id = currentAtt.Id, EmployeeId = employeeId, AttendanceDate = _selectedDate,
+                        Status = effectiveStatus, CheckInTime = checkInTime, LateMinutes = lateMinutes,
+                        CreatedBy = _currentUser.Id, UpdatedBy = _currentUser.Id
+                    };
 
-                var saved = await _attendanceService.SaveAttendance(attendance);
+                    var saved = await _attendanceService.SaveAttendance(attendance);
+                    savedId = saved.Id;
+                }
 
-                // Actualizar el cache local en lugar de recargar todo
+                // Actualizar el cache local
                 var updatedViewModel = new AttendanceViewModel
                 {
-                    Id = saved.Id,
+                    Id = savedId,
                     EmployeeId = currentAtt.EmployeeId,
                     EmployeeName = currentAtt.EmployeeName,
                     EmployeeCode = currentAtt.EmployeeCode,
                     Title = currentAtt.Title,
                     Initials = currentAtt.Initials,
                     AttendanceDate = _selectedDate,
-                    Status = newStatus,
+                    Status = isUncheck ? "SIN_REGISTRO" : effectiveStatus,
                     CheckInTime = checkInTime,
                     LateMinutes = lateMinutes,
                     IsJustified = false,
@@ -606,10 +634,11 @@ namespace SistemaGestionProyectos2.Views
                 UpdateEmployeeCard(employeeId, updatedViewModel);
 
                 // Actualizar estadísticas localmente
-                UpdateStatsLocally(oldStatus, newStatus);
+                UpdateStatsLocally(oldStatus, isUncheck ? "SIN_REGISTRO" : effectiveStatus);
 
-                StatusText.Text = $"✓ {currentAtt.EmployeeName}: {newStatus}";
-                StatusText.Foreground = AttendanceColor;
+                string statusMsg = isUncheck ? "Desmarcado" : effectiveStatus;
+                StatusText.Text = $"✓ {currentAtt.EmployeeName}: {statusMsg}";
+                StatusText.Foreground = isUncheck ? (System.Windows.Media.Brush)FindResource("TextGray") : AttendanceColor;
             }
             catch (Exception ex)
             {
@@ -978,6 +1007,24 @@ namespace SistemaGestionProyectos2.Views
                 return ShowCheckInTimeDialog(); // Reintentar
             }
             return null;
+        }
+
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            _attendanceCache.Clear();
+            _currentMonthStats = null;
+            StatusText.Text = "Actualizando...";
+            try
+            {
+                var statsTask = LoadMonthlyStats();
+                var attendanceTask = LoadAttendanceForDate(_selectedDate);
+                await System.Threading.Tasks.Task.WhenAll(statsTask, attendanceTask);
+                StatusText.Text = $"✓ Actualizado {DateTime.Now:HH:mm:ss}";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Error al actualizar: {ex.Message}";
+            }
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e) => Close();

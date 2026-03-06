@@ -35,6 +35,53 @@ Bugs encontrados durante el desarrollo de Fase 4, tanto los contemplados por el 
 3. Cerrar sesion
 4. Observar que Meet deja de compartir la pantalla
 
+### BUG-005: Portal Proveedores - No se puede eliminar gasto pagado
+**Bloque:** General (no contemplado en Fase 4)
+**Severidad:** alta
+**Estado:** resuelto
+**Reportado por:** cliente
+**Descripcion:** Al registrar una factura/gasto para un proveedor, no se podia eliminar. El boton de eliminar (X rojo) estaba oculto para gastos con estado PAGADO. Proveedores con 0 dias de credito (ej: VCM) se veian especialmente afectados porque el trigger `auto_pay_zero_credit_expense` marca automaticamente el gasto como PAGADO al momento de crearlo.
+**Problemas adicionales encontrados:**
+- Status visual incoherente: gastos pagados mostraban "VENCIDO" (rojo) en vez de "PAGADO", porque el calculo comparaba fecha_vencimiento vs hoy sin considerar si ya estaba pagado.
+- Header "TOTAL PENDIENTE" no cambiaba segun el tab activo (Pendiente/Pagado/Todos).
+- Texto de fila seleccionada se volvia blanco e ilegible.
+- Sin empty state cuando un filtro no tenia resultados (pantalla en blanco).
+- Auditoria de DELETE no registraba quien eliminaba.
+**Causa raiz:** Visibilidad del boton eliminar atada a `IsPayable = !IsPaid && IsReadOnly`, ocultandolo para gastos pagados.
+**Solucion:**
+1. Boton eliminar visible para todos los gastos (atado a `IsReadOnly` en vez de `IsPayable`), sin dialogo de confirmacion, con toast de notificacion.
+2. Status visual corregido: gastos pagados muestran "PAGADO" (azul) con texto "hace X dias".
+3. Headers dinamicos segun tab: "TOTAL PAGADO"/"PAGADOS TARDE"/"PAGADOS A TIEMPO" en tab Pagado.
+4. Foreground forzado a DarkText en celdas seleccionadas.
+5. Empty state con icono y mensaje contextual por filtro.
+6. Auditoria: UPDATE de `updated_by` previo al DELETE para capturar quien elimina en el audit trail.
+**Verificado con:** Comparacion BD antes/despues (consultas en `fase4/sql/`). Balance, audit trail y sumas cuadran correctamente.
+**Pasos para reproducir:**
+1. Abrir Portal de Proveedores
+2. Seleccionar proveedor con 0 dias credito (ej: VCM)
+3. Registrar un gasto
+4. Intentar eliminarlo - boton X no aparecia
+
+### BUG-006: Calendario - No se puede modificar asistencia registrada
+**Bloque:** General (no contemplado en Fase 4)
+**Severidad:** alta
+**Estado:** resuelto
+**Reportado por:** cliente
+**Descripcion:** Una vez registrada la asistencia de un trabajador, al intentar cambiarla (ej: de Asistencia a Falta o Retardo) no se aplicaba el cambio. El usuario veia error o simplemente no pasaba nada.
+**Causa raiz:** Dos problemas:
+1. `SaveAttendance` usaba `.Update()` con `.Set()` encadenado de Supabase Postgrest. El `.Update()` ejecutaba el SQL pero no retornaba modelos, y el check `response.Models.Count > 0` fallaba, disparando `throw "No se pudo guardar"`. Confirmado: query 3 del diagnostico mostro CERO registros con `updated_at != created_at` en toda la historia.
+2. Al cambiar a FALTA (sin hora de entrada), `.Set(x => x.CheckInTime, null)` crasheaba con `ArgumentException: Expected Value to be of Type: String` porque Postgrest no puede serializar `null TimeSpan?`.
+**Problemas adicionales encontrados:**
+- Boton VACACIONES en fila marcaba status directamente, causando conflicto con el modulo de vacaciones (caso Cesar Vidales 3-Mar: tenia asistencia + vacacion aprobada simultaneamente).
+- No habia forma de desmarcar un registro (tocar el mismo boton no hacia nada).
+- Sin boton de actualizar/refrescar en el calendario.
+**Solucion:**
+1. Reemplazado `.Set()` encadenado por read-modify-write con modelo completo (`existing.Update<AttendanceTable>()`). Maneja null TimeSpan correctamente via serializacion JSON.
+2. Desmarcar: tocar el mismo boton elimina el registro de la BD (nuevo `DeleteAttendance()` con auditoria).
+3. Boton VACACIONES en fila convertido a icono indicador visual (sin accion). Vacaciones se gestionan exclusivamente desde el boton superior.
+4. Agregado boton "Actualizar" al header del calendario (limpia cache, recarga desde BD).
+**Verificado con:** Audit trail del 9-Mar confirma 18 operaciones (8 INSERT + 10 UPDATE) todas con `changed_by_user = "caaj"`. Updates entre status ASISTENCIA/FALTA/RETARDO/VACACIONES funcionan correctamente.
+
 ---
 
 ## Bugs Descubiertos en Desarrollo

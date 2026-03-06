@@ -214,27 +214,30 @@ namespace SistemaGestionProyectos2.Services.Attendance
 
                 if (attendance.Id > 0)
                 {
-                    // Actualizar existente
-                    attendance.UpdatedAt = now;
-
-                    var response = await SupabaseClient
+                    // Actualizar existente: leer, modificar y guardar
+                    // (Postgrest .Set() crashea con null TimeSpan?, usar modelo completo)
+                    var existing = await SupabaseClient
                         .From<AttendanceTable>()
                         .Where(x => x.Id == attendance.Id)
-                        .Set(x => x.Status, attendance.Status)
-                        .Set(x => x.CheckInTime, attendance.CheckInTime)
-                        .Set(x => x.CheckOutTime, attendance.CheckOutTime)
-                        .Set(x => x.LateMinutes, attendance.LateMinutes)
-                        .Set(x => x.Notes, attendance.Notes)
-                        .Set(x => x.IsJustified, attendance.IsJustified)
-                        .Set(x => x.Justification, attendance.Justification)
-                        .Set(x => x.UpdatedBy, attendance.UpdatedBy)
-                        .Set(x => x.UpdatedAt, attendance.UpdatedAt)
-                        .Update();
+                        .Single();
 
-                    if (response?.Models?.Count > 0)
-                    {
-                        return response.Models.First();
-                    }
+                    if (existing == null)
+                        throw new Exception($"No se encontró registro de asistencia ID={attendance.Id}");
+
+                    existing.Status = attendance.Status;
+                    existing.CheckInTime = attendance.CheckInTime;
+                    existing.CheckOutTime = attendance.CheckOutTime;
+                    existing.LateMinutes = attendance.LateMinutes;
+                    existing.Notes = attendance.Notes;
+                    existing.IsJustified = attendance.IsJustified;
+                    existing.Justification = attendance.Justification;
+                    existing.UpdatedBy = attendance.UpdatedBy;
+                    existing.UpdatedAt = now;
+
+                    await existing.Update<AttendanceTable>();
+
+                    LogSuccess($"Asistencia actualizada: ID={attendance.Id}, Status={attendance.Status}");
+                    return existing;
                 }
                 else
                 {
@@ -257,6 +260,35 @@ namespace SistemaGestionProyectos2.Services.Attendance
             catch (Exception ex)
             {
                 LogError("Error guardando asistencia", ex);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Elimina un registro de asistencia (para desmarcar)
+        /// </summary>
+        public async Task DeleteAttendance(int attendanceId, int userId)
+        {
+            try
+            {
+                // Registrar quién elimina (el trigger de auditoría captura updated_by)
+                await SupabaseClient
+                    .From<AttendanceTable>()
+                    .Where(x => x.Id == attendanceId)
+                    .Set(x => x.UpdatedBy, userId)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow)
+                    .Update();
+
+                await SupabaseClient
+                    .From<AttendanceTable>()
+                    .Where(x => x.Id == attendanceId)
+                    .Delete();
+
+                LogSuccess($"Asistencia eliminada: ID={attendanceId} por usuario {userId}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error eliminando asistencia {attendanceId}", ex);
                 throw;
             }
         }

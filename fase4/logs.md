@@ -88,4 +88,31 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 
 **Compilacion:** 0 errores.
 
+### 2026-03-05 - General - BUG-005: Portal Proveedores no permite eliminar gasto pagado
+**Tipo:** bugfix (reportado por cliente)
+**Archivos modificados:**
+- `Views/SupplierPendingDetailView.xaml` - Boton eliminar visible para todos (IsReadOnly vs IsPayable), labels con x:Name para headers dinamicos, DataTrigger para status PAGADO (azul), fix foreground en celdas seleccionadas, empty state para filtros sin resultados
+- `Views/SupplierPendingDetailView.xaml.cs` - Status PAGADO para gastos con PaidDate, headers dinamicos segun tab (TOTAL PAGADO/PAGADOS TARDE/PAGADOS A TIEMPO), delete con auditoria (updated_by antes de delete), empty state handler, separacion de totalPending vs totalPaid vs totalPaidLate
+
+**Diagnostico:** Consultas SQL en `fase4/sql/` confirmaron: trigger `auto_pay_zero_credit_expense` auto-paga gastos de proveedores con 0 dias credito, ocultando el boton eliminar. Verificacion antes/despues con balance confirmó integridad.
+**Compilacion:** 0 errores.
+
+### 2026-03-05 - General - BUG-006: Calendario no permite modificar asistencia
+**Tipo:** bugfix (reportado por cliente)
+**Archivos modificados:**
+- `Services/Attendance/AttendanceService.cs` - Update reescrito con read-modify-write (modelo completo) en vez de .Set() encadenado. Nuevo metodo DeleteAttendance() para desmarcar con auditoria.
+- `Views/CalendarView.xaml` - Boton Actualizar agregado al header
+- `Views/CalendarView.xaml.cs` - Desmarcar (mismo boton = eliminar registro), boton VACACIONES convertido a icono indicador visual, guard para status VACACIONES, handler RefreshButton_Click
+- `Models/Database/AttendanceDb.cs` - Sin cambios (modelo ya correcto)
+
+**Causa raiz:** Postgrest .Set() no acepta null TimeSpan? (crash al cambiar a FALTA). Ademas .Update() no retornaba modelos, disparando throw falso.
+**Diagnostico:** Query mostro 0 UPDATEs en toda la historia. Post-fix: 16 UPDATEs exitosos confirmados en audit trail.
+**Compilacion:** 0 errores.
+
+### 2026-03-05 - General - Propuesta mejora modulo vacaciones
+**Tipo:** documentacion
+**Archivos creados:**
+- `fase4/propuesta_vacaciones_calendario.md` - 3 opciones de diseño para integrar vacaciones desde calendario, con estimaciones y plan de integridad de datos
+**Origen:** Caso Cesar Vidales 3-Mar (asistencia + vacacion simultanea). Pendiente definir con cliente cual prevalece.
+
 ---
