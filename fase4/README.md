@@ -14,10 +14,10 @@
 | 2 | Optimizacion de rendimiento | Media | COMPLETADO | 6/6 |
 | 3 | Portal Ventas + Storage | Media | COMPLETADO | 4/4 |
 | 4 | Columna Ejecutor | Baja | COMPLETADO (falta deploy SQL) | 3/3 |
-| 5 | Carpetas por Orden | Alta | PENDIENTE | 0/5 |
+| 5 | Archivos (Drive IMA) | Alta | EN PROGRESO | 3/5 |
 | 6 | Modulo Inventario | Alta | PENDIENTE | 0/4 |
 
-**Progreso global:** 20/28 items (71%)
+**Progreso global:** 23/28 items (82%)
 
 ---
 
@@ -46,7 +46,8 @@ Bloque 2 (deploy SQL) ──> Bloque 1 ──> Bloque 4 ──> Bloque 3 ──>
 | [bloques/02-rendimiento.md](bloques/02-rendimiento.md) | Spec: optimizacion de rendimiento (estado actual + deploy) |
 | [bloques/03-portal-ventas.md](bloques/03-portal-ventas.md) | Spec: mejoras Portal Ventas + gestion archivos |
 | [bloques/04-ejecutor.md](bloques/04-ejecutor.md) | Spec: nueva columna Ejecutor en ordenes |
-| [bloques/05-carpetas.md](bloques/05-carpetas.md) | Spec: carpetas en la nube por orden |
+| [bloques/05-carpetas.md](bloques/05-carpetas.md) | Spec original: carpetas en la nube por orden |
+| [bloques/05-archivos-drive.md](bloques/05-archivos-drive.md) | Spec v2: modulo ARCHIVOS con Cloudflare R2 |
 | [bloques/06-inventario.md](bloques/06-inventario.md) | Spec: modulo de inventario completo |
 | [logs.md](logs.md) | Registro de implementacion y decisiones tecnicas |
 | [bugs.md](bugs.md) | Bugs encontrados durante desarrollo |

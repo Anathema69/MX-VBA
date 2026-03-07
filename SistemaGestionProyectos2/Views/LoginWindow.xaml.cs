@@ -213,6 +213,12 @@ namespace SistemaGestionProyectos2.Views
                         CalendarView calendarView = new CalendarView(currentUser);
                         calendarView.Show();
                     }
+                    else if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && autoOpenModule == "archivos")
+                    {
+                        // DevMode: Abrir archivos directamente
+                        DriveWindow driveWindow = new DriveWindow(currentUser);
+                        driveWindow.Show();
+                    }
                     else if (user.Role == "direccion" || user.Role == "administracion")
                     {
                         // Dirección y Administración abren el menú principal

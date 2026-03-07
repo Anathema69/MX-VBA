@@ -135,4 +135,39 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 
 **Compilacion:** 0 errores.
 
+### 2026-03-07 - Bloque 5 - Modulo ARCHIVOS (Drive IMA) con Cloudflare R2
+**Tipo:** implementacion
+**Version:** v2.0.7
+
+**Decision arquitectonica:** Se descarto Supabase Storage (1GB free, 50MB/archivo) en favor de Cloudflare R2 (10GB free, 5GB/archivo, sin egress fees). Bucket `ima-drive` separado de `order-files` (Portal Ventas). Estructura hibrida: BD para arbol de carpetas + metadatos, R2 solo para blobs.
+
+**Archivos creados:**
+- `sql/bloque5_drive.sql` - Tablas drive_folders + drive_files, indexes, trigger updated_at, funciones breadcrumb/child_count, seed raiz
+- `sql/bloque5_audit.sql` - Tabla drive_audit + 6 triggers (INSERT/UPDATE/DELETE en folders y files) + fix timestamps NULL
+- `sql/consulta_drive_audit.sql` - Consultas de auditoria (cronologia, resumen, por usuario, estado actual)
+- `Models/Database/DriveFolderDb.cs` - Modelo Postgrest carpeta
+- `Models/Database/DriveFileDb.cs` - Modelo Postgrest archivo
+- `Services/Drive/DriveService.cs` - Servicio completo: CRUD carpetas, CRUD archivos (R2 via AWSSDK.S3), vinculacion a ordenes, breadcrumb, batch delete, purge
+- `Views/DriveWindow.xaml` + `.cs` - UI tipo Google Drive: breadcrumb clickeable, cards por tipo, menu contextual, upload con indicador de progreso, mouse back/forward (XButton1/XButton2), modo seleccion para vincular ordenes
+
+**Archivos modificados:**
+- `SistemaGestionProyectos2.csproj` - Agregado AWSSDK.S3
+- `appsettings.json` - Seccion CloudflareR2 (AccountId, AccessKeyId, SecretAccessKey, BucketName)
+- `Services/SupabaseService.cs` - DriveService registrado en facade (17 delegaciones)
+- `Views/MainMenuWindow.xaml` + `.cs` - Boton ARCHIVOS (naranja, badge BETA, al final del menu)
+- `Views/LoginWindow.xaml.cs` - Soporte AutoOpenModule "archivos"
+
+**Decisiones tecnicas:**
+- R2 requiere `DisablePayloadSigning = true` en PutObjectRequest (no soporta STREAMING-AWS4-HMAC-SHA256-PAYLOAD)
+- Delete de carpetas con contenido: primero recolecta todos los storage paths recursivamente, luego DELETE en BD (CASCADE), luego batch delete en R2 (fire-and-forget en background thread)
+- Vinculacion orden-carpeta: solo carpetas del primer nivel (hijos directos de raiz), relacion 1:1 (ordenes ya vinculadas se excluyen del ComboBox)
+- Breadcrumb: handler separado `BreadcrumbItem_Click` en vez de async lambda (evita problemas de closure)
+- Timestamps NULL: Postgrest envia campos como null explicito anulando el DEFAULT. Solucion: trigger BEFORE INSERT que fuerza CURRENT_TIMESTAMP
+
+**Pendiente Bloque 5:**
+- Fase 5D: Columna CARPETA en OrdersManagementWindow (icono gris/azul por orden)
+- Fase 5E: Drag & drop, busqueda, quitar boton Purgar R2 temporal
+
+**Compilacion:** 0 errores.
+
 ---

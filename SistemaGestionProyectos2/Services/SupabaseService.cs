@@ -11,6 +11,7 @@ using SistemaGestionProyectos2.Services.Orders;
 using SistemaGestionProyectos2.Services.Payroll;
 using SistemaGestionProyectos2.Services.Suppliers;
 using SistemaGestionProyectos2.Services.Users;
+using SistemaGestionProyectos2.Services.Drive;
 using SistemaGestionProyectos2.Services.Storage;
 using SistemaGestionProyectos2.Services.Vendors;
 using SistemaGestionProyectos2.ViewModels;
@@ -47,6 +48,7 @@ namespace SistemaGestionProyectos2.Services
         private VendorService _vendorService;
         private UserService _userService;
         private StorageService _storageService;
+        private DriveService _driveService;
 
         // Singleton Pattern
         public static SupabaseService Instance
@@ -111,6 +113,13 @@ namespace SistemaGestionProyectos2.Services
                 _vendorService = new VendorService(_supabaseClient);
                 _userService = new UserService(_supabaseClient);
                 _storageService = new StorageService(_supabaseClient);
+
+                // Drive (R2 Storage)
+                var r2AccountId = _configuration["CloudflareR2:AccountId"] ?? "";
+                var r2AccessKey = _configuration["CloudflareR2:AccessKeyId"] ?? "";
+                var r2SecretKey = _configuration["CloudflareR2:SecretAccessKey"] ?? "";
+                var r2Bucket = _configuration["CloudflareR2:BucketName"] ?? "ima-drive";
+                _driveService = new DriveService(_supabaseClient, r2AccountId, r2AccessKey, r2SecretKey, r2Bucket);
 
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("✅ SupabaseService (Facade) inicializado correctamente");
@@ -994,5 +1003,62 @@ namespace SistemaGestionProyectos2.Services
 
         public Task<Dictionary<int, int>> GetFileCountsByCommissions(List<int> commissionIds)
             => _storageService.GetFileCountsByCommissions(commissionIds);
+
+        // ===============================================
+        // DELEGACION A DriveService
+        // ===============================================
+
+        public bool IsDriveStorageConfigured => _driveService.IsStorageConfigured;
+
+        public Task<List<DriveFolderDb>> GetDriveChildFolders(int? parentId, CancellationToken ct = default)
+            => _driveService.GetChildFolders(parentId, ct);
+
+        public Task<DriveFolderDb> GetDriveFolderById(int folderId, CancellationToken ct = default)
+            => _driveService.GetFolderById(folderId, ct);
+
+        public Task<DriveFolderDb> CreateDriveFolder(string name, int? parentId, int userId, CancellationToken ct = default)
+            => _driveService.CreateFolder(name, parentId, userId, ct);
+
+        public Task<bool> RenameDriveFolder(int folderId, string newName, CancellationToken ct = default)
+            => _driveService.RenameFolder(folderId, newName, ct);
+
+        public Task<bool> DeleteDriveFolder(int folderId, CancellationToken ct = default)
+            => _driveService.DeleteFolder(folderId, ct);
+
+        public Task<List<DriveFolderDb>> GetDriveBreadcrumb(int folderId, CancellationToken ct = default)
+            => _driveService.GetBreadcrumb(folderId, ct);
+
+        public Task<bool> LinkDriveFolderToOrder(int folderId, int orderId, CancellationToken ct = default)
+            => _driveService.LinkFolderToOrder(folderId, orderId, ct);
+
+        public Task<bool> UnlinkDriveFolder(int folderId, CancellationToken ct = default)
+            => _driveService.UnlinkFolder(folderId, ct);
+
+        public Task<DriveFolderDb> GetDriveFolderByOrder(int orderId, CancellationToken ct = default)
+            => _driveService.GetFolderByOrder(orderId, ct);
+
+        public Task<Dictionary<int, int>> GetDriveLinkedFolderIds(List<int> orderIds, CancellationToken ct = default)
+            => _driveService.GetLinkedFolderIds(orderIds, ct);
+
+        public Task<List<DriveFileDb>> GetDriveFilesByFolder(int folderId, CancellationToken ct = default)
+            => _driveService.GetFilesByFolder(folderId, ct);
+
+        public Task<DriveFileDb> UploadDriveFile(string localPath, int folderId, int userId, CancellationToken ct = default)
+            => _driveService.UploadFile(localPath, folderId, userId, ct);
+
+        public Task<byte[]> DownloadDriveFile(int fileId, CancellationToken ct = default)
+            => _driveService.DownloadFile(fileId, ct);
+
+        public Task<bool> DownloadDriveFileToLocal(int fileId, string localPath, CancellationToken ct = default)
+            => _driveService.DownloadFileToLocal(fileId, localPath, ct);
+
+        public Task<bool> RenameDriveFile(int fileId, string newName, CancellationToken ct = default)
+            => _driveService.RenameFile(fileId, newName, ct);
+
+        public Task<bool> DeleteDriveFile(int fileId, CancellationToken ct = default)
+            => _driveService.DeleteFile(fileId, ct);
+
+        public Task<int> PurgeDriveR2Files()
+            => _driveService.PurgeAllR2Files();
     }
 }

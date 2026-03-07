@@ -9,9 +9,9 @@
     <UseWPF>true</UseWPF>
 
     <!-- Información de versión -->
-    <Version>2.0.5</Version>
-    <AssemblyVersion>2.0.5.0</AssemblyVersion>
-    <FileVersion>2.0.5.0</FileVersion>
+    <Version>2.0.7</Version>
+    <AssemblyVersion>2.0.7.0</AssemblyVersion>
+    <FileVersion>2.0.7.0</FileVersion>
     <Company>IMA Mecatrónica</Company>
     <Product>Sistema de Gestión de Proyectos</Product>
     <Copyright>Copyright © 2026 IMA Mecatrónica</Copyright>
@@ -31,6 +31,7 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.8" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.405.3" />
     <PackageReference Include="supabase-csharp" Version="0.16.2" />
   </ItemGroup>
 

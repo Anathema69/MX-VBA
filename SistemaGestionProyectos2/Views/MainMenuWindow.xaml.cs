@@ -151,6 +151,28 @@ namespace SistemaGestionProyectos2.Views
             _timer.Start();
         }
 
+        // MÉTODO: Click en ARCHIVOS (Drive)
+        private void Drive_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo Archivos...";
+                var driveWindow = new DriveWindow(_currentUser);
+                driveWindow.Owner = this;
+                driveWindow.Show();
+                StatusText.Text = "Archivos abierto";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir Archivos:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir Archivos";
+            }
+        }
+
         // MÉTODO IMPORTANTE: Click en el módulo de órdenes
         private void OrdersModule_Click(object sender, RoutedEventArgs e)
         {
