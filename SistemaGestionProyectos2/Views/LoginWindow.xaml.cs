@@ -219,6 +219,12 @@ namespace SistemaGestionProyectos2.Views
                         DriveWindow driveWindow = new DriveWindow(currentUser);
                         driveWindow.Show();
                     }
+                    else if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && autoOpenModule == "drivev2")
+                    {
+                        // DevMode: Abrir Drive v2 directamente
+                        DriveV2Window driveV2 = new DriveV2Window(currentUser);
+                        driveV2.Show();
+                    }
                     else if (user.Role == "direccion" || user.Role == "administracion")
                     {
                         // Dirección y Administración abren el menú principal

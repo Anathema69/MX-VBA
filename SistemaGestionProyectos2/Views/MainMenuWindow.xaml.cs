@@ -173,6 +173,28 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // MÉTODO: Click en IMA DRIVE v2
+        private void DriveV2_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo IMA Drive...";
+                var driveV2 = new DriveV2Window(_currentUser);
+                driveV2.Owner = this;
+                driveV2.Show();
+                StatusText.Text = "IMA Drive abierto";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Error al abrir IMA Drive:\n{ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                StatusText.Text = "Error al abrir IMA Drive";
+            }
+        }
+
         // MÉTODO IMPORTANTE: Click en el módulo de órdenes
         private void OrdersModule_Click(object sender, RoutedEventArgs e)
         {
