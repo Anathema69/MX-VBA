@@ -213,15 +213,9 @@ namespace SistemaGestionProyectos2.Views
                         CalendarView calendarView = new CalendarView(currentUser);
                         calendarView.Show();
                     }
-                    else if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && autoOpenModule == "archivos")
+                    else if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && (autoOpenModule == "archivos" || autoOpenModule == "drivev2"))
                     {
-                        // DevMode: Abrir archivos directamente
-                        DriveWindow driveWindow = new DriveWindow(currentUser);
-                        driveWindow.Show();
-                    }
-                    else if (devModeActive && !string.IsNullOrEmpty(autoOpenModule) && autoOpenModule == "drivev2")
-                    {
-                        // DevMode: Abrir Drive v2 directamente
+                        // DevMode: Abrir IMA Drive directamente
                         DriveV2Window driveV2 = new DriveV2Window(currentUser);
                         driveV2.Show();
                     }

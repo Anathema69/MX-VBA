@@ -287,6 +287,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -395,13 +396,39 @@
             <Border Grid.Row="1" Background="White"
                     BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,0,0,1"
                     Padding="24,12">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal"/>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal"/>
+                    </ScrollViewer>
+                    <TextBlock x:Name="StatusText" Text="" FontSize="12"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                </Grid>
+            </Border>
+
+            <!-- SELECTION BANNER (link-to-order mode) -->
+            <Border x:Name="SelectionBanner" Grid.Row="2" Background="#FFF3E0"
+                    BorderBrush="#FF9800" BorderThickness="0,0,0,2"
+                    Padding="24,10" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="SelectionBannerText" FontSize="14"
+                               Foreground="#E65100" VerticalAlignment="Center"
+                               Text="Seleccione una carpeta para vincular"/>
+                    <Button x:Name="LinkThisFolderButton" Content="Vincular esta carpeta"
+                            Margin="20,0,0,0" Click="LinkThisFolder_Click"
+                            Background="#FF9800" Foreground="White"
+                            BorderThickness="0" Padding="12,6" Cursor="Hand"
+                            FontWeight="Bold"/>
+                    <Button Content="Cancelar" Margin="10,0,0,0" Click="CancelSelection_Click"
+                            Background="Transparent" Foreground="#E65100"
+                            BorderBrush="#E65100" BorderThickness="1"
+                            Padding="12,6" Cursor="Hand"/>
+                </StackPanel>
             </Border>
 
             <!-- CONTENT AREA -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="24">
                     <!-- Back to folders button -->
@@ -441,8 +468,24 @@
                                    FontSize="13" Foreground="{StaticResource TextMutedBrush}"
                                    HorizontalAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
+
+                    <!-- Loading indicator -->
+                    <TextBlock x:Name="LoadingText" Text="Cargando..."
+                               HorizontalAlignment="Center" Margin="0,80,0,0"
+                               FontSize="16" Foreground="{StaticResource TextMutedBrush}"
+                               Visibility="Collapsed"/>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- UPLOAD PROGRESS PANEL -->
+            <Border x:Name="UploadPanel" Grid.Row="3" Background="#EFF6FF"
+                    BorderBrush="#93C5FD" BorderThickness="0,1,0,0"
+                    Padding="16,8" Visibility="Collapsed"
+                    VerticalAlignment="Bottom" MaxHeight="120">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="UploadItemsPanel"/>
+                </ScrollViewer>
+            </Border>
         </Grid>
 
         <!-- ============================================= -->
