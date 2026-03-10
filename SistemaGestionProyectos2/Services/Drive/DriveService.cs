@@ -582,7 +582,7 @@ namespace SistemaGestionProyectos2.Services.Drive
         public static bool IsImageFile(string fileName)
         {
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
-            return ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp";
+            return ext is ".jpg" or ".jpeg" or ".jfif" or ".png" or ".gif" or ".bmp" or ".webp";
         }
 
         public static string FormatFileSize(long? bytes)

@@ -460,13 +460,17 @@ namespace SistemaGestionProyectos2.Views
         {
             { ".pdf", "#FEF3C7" }, { ".doc", "#DBEAFE" }, { ".docx", "#DBEAFE" },
             { ".xls", "#D1FAE5" }, { ".xlsx", "#D1FAE5" }, { ".jpg", "#F3E8FF" },
-            { ".jpeg", "#F3E8FF" }, { ".png", "#FEE2E2" }, { ".gif", "#DBEAFE" }
+            { ".jpeg", "#F3E8FF" }, { ".jfif", "#F3E8FF" }, { ".png", "#FEE2E2" }, { ".gif", "#DBEAFE" }
         };
 
         private void ShowAdminPreviewModal(List<FileItemViewModel> fileList, int startIndex)
         {
             if (fileList == null || fileList.Count == 0) return;
             int currentIndex = Math.Max(0, Math.Min(startIndex, fileList.Count - 1));
+
+            double currentZoom = 1.0;
+            const double zoomStep = 0.15, minZoom = 0.5, maxZoom = 5.0;
+            var scaleTransform = new ScaleTransform(1, 1);
 
             var modal = new Window
             {
@@ -478,36 +482,129 @@ namespace SistemaGestionProyectos2.Views
             };
 
             var mainGrid = new Grid();
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.MouseLeftButtonDown += (s, ev) => modal.Close();
 
-            var contentPanel = new StackPanel
+            var contentGrid = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 800
+                MaxWidth = 900
             };
-            contentPanel.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            contentGrid.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
 
             var filenameText = new TextBlock { Foreground = Brushes.White, FontSize = 14, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center };
             var counterText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(179, 255, 255, 255)), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            var resolutionText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
+            var zoomPillText = new TextBlock { Text = "100%", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
+
+            var scrollViewer = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                MaxHeight = 700,
+                Background = Brushes.Transparent
+            };
+            scrollViewer.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            Grid.SetRow(scrollViewer, 1);
+
+            // Pan
+            Point? panStart = null;
+            double panOffsetH = 0, panOffsetV = 0;
+            scrollViewer.PreviewMouseLeftButtonDown += (s, ev) =>
+            {
+                if (currentZoom > 1.05)
+                {
+                    panStart = ev.GetPosition(scrollViewer);
+                    panOffsetH = scrollViewer.HorizontalOffset;
+                    panOffsetV = scrollViewer.VerticalOffset;
+                    scrollViewer.Cursor = Cursors.ScrollAll;
+                    scrollViewer.CaptureMouse();
+                    ev.Handled = true;
+                }
+            };
+            scrollViewer.PreviewMouseMove += (s, ev) =>
+            {
+                if (panStart.HasValue && scrollViewer.IsMouseCaptured)
+                {
+                    var pos = ev.GetPosition(scrollViewer);
+                    scrollViewer.ScrollToHorizontalOffset(panOffsetH - (pos.X - panStart.Value.X));
+                    scrollViewer.ScrollToVerticalOffset(panOffsetV - (pos.Y - panStart.Value.Y));
+                }
+            };
+            scrollViewer.PreviewMouseLeftButtonUp += (s, ev) =>
+            {
+                if (panStart.HasValue) { panStart = null; scrollViewer.Cursor = currentZoom > 1.05 ? Cursors.ScrollAll : Cursors.Arrow; scrollViewer.ReleaseMouseCapture(); }
+            };
+
             var previewContainer = new Border { MinHeight = 300 };
+            scrollViewer.Content = previewContainer;
+
+            Action updateZoomUI = () =>
+            {
+                zoomPillText.Text = $"{(int)(currentZoom * 100)}%";
+                scrollViewer.Cursor = currentZoom > 1.05 ? Cursors.ScrollAll : Cursors.Arrow;
+            };
+            Action<double> applyZoom = (newZoom) =>
+            {
+                currentZoom = Math.Max(minZoom, Math.Min(maxZoom, newZoom));
+                scaleTransform.ScaleX = currentZoom;
+                scaleTransform.ScaleY = currentZoom;
+                updateZoomUI();
+            };
+            scrollViewer.PreviewMouseWheel += (s, ev) => { ev.Handled = true; applyZoom(currentZoom + (ev.Delta > 0 ? zoomStep : -zoomStep)); };
+            scrollViewer.MouseDoubleClick += (s, ev) => { applyZoom(1.0); scrollViewer.ScrollToHorizontalOffset(0); scrollViewer.ScrollToVerticalOffset(0); ev.Handled = true; };
 
             Action updatePreview = () =>
             {
                 var file = fileList[currentIndex];
                 filenameText.Text = file.FileName;
                 counterText.Text = $"{currentIndex + 1} / {fileList.Count}";
+                resolutionText.Text = "";
+                currentZoom = 1.0;
+                scaleTransform = new ScaleTransform(1, 1);
+                updateZoomUI();
+                scrollViewer.ScrollToHorizontalOffset(0);
+                scrollViewer.ScrollToVerticalOffset(0);
 
-                if (file.IsImage && file.ThumbnailSource != null)
+                if (file.IsImage)
                 {
-                    previewContainer.Child = new Border
+                    var previewImage = new Image { Stretch = Stretch.Uniform, RenderTransformOrigin = new Point(0.5, 0.5), LayoutTransform = scaleTransform };
+                    Action<BitmapSource> showRes = (src) => { if (src != null) resolutionText.Text = $"{src.PixelWidth} x {src.PixelHeight} px  ·  {file.FileSizeFormatted}"; };
+
+                    if (file.FullImageSource != null)
                     {
-                        CornerRadius = new CornerRadius(12), ClipToBounds = true,
-                        Child = new Image { Source = file.ThumbnailSource, MaxHeight = 600, Stretch = Stretch.Uniform }
-                    };
+                        previewImage.Source = file.FullImageSource;
+                        showRes(file.FullImageSource);
+                    }
+                    else if (file.ThumbnailSource != null)
+                    {
+                        previewImage.Source = file.ThumbnailSource;
+                        var capturedFile = file;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var bytes = await _supabaseService.DownloadOrderFile(capturedFile.StoragePath);
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    var fullBitmap = new BitmapImage();
+                                    using (var ms = new MemoryStream(bytes)) { fullBitmap.BeginInit(); fullBitmap.CacheOption = BitmapCacheOption.OnLoad; fullBitmap.StreamSource = ms; fullBitmap.EndInit(); fullBitmap.Freeze(); }
+                                    capturedFile.FullImageSource = fullBitmap;
+                                    if (fileList.Count > 0 && currentIndex < fileList.Count && fileList[currentIndex] == capturedFile) { previewImage.Source = fullBitmap; showRes(fullBitmap); }
+                                });
+                            }
+                            catch { }
+                        });
+                    }
+                    previewContainer.Child = new Border { CornerRadius = new CornerRadius(12), ClipToBounds = true, Child = previewImage };
                 }
                 else
                 {
+                    resolutionText.Text = file.FileSizeFormatted;
                     var ph = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
                     ph.Children.Add(new TextBlock { Text = file.FileIcon, FontSize = 64, HorizontalAlignment = HorizontalAlignment.Center });
                     ph.Children.Add(new TextBlock { Text = "Vista previa del documento", FontSize = 18, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 16, 0, 0) });
@@ -520,15 +617,15 @@ namespace SistemaGestionProyectos2.Views
             var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
             var headerLeft = new StackPanel { Orientation = Orientation.Horizontal };
             headerLeft.Children.Add(filenameText);
             headerLeft.Children.Add(counterText);
+            headerLeft.Children.Add(resolutionText);
             Grid.SetColumn(headerLeft, 0);
             headerGrid.Children.Add(headerLeft);
 
-            // Download button in modal
-            var dlBtn = new Button { Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0) };
+            // Download button
+            var dlBtn = new Button { Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
             var dlTemplate = new ControlTemplate(typeof(Button));
             var dlBorder = new FrameworkElementFactory(typeof(Border));
             dlBorder.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)));
@@ -550,60 +647,108 @@ namespace SistemaGestionProyectos2.Views
                 var saveDialog = new SaveFileDialog { FileName = file.FileName };
                 if (saveDialog.ShowDialog() == true)
                 {
-                    try
-                    {
-                        var bytes = await _supabaseService.DownloadOrderFile(file.StoragePath);
-                        File.WriteAllBytes(saveDialog.FileName, bytes);
-                        ShowTemporaryNotification("Archivo descargado");
-                    }
+                    try { var bytes = await _supabaseService.DownloadOrderFile(file.StoragePath); File.WriteAllBytes(saveDialog.FileName, bytes); ShowTemporaryNotification("Archivo descargado"); }
                     catch { ShowTemporaryNotification("Error al descargar"); }
                 }
             };
             Grid.SetColumn(dlBtn, 1);
             headerGrid.Children.Add(dlBtn);
 
-            contentPanel.Children.Add(headerGrid);
-            contentPanel.Children.Add(previewContainer);
-            mainGrid.Children.Add(contentPanel);
+            Grid.SetRow(headerGrid, 0);
+            contentGrid.Children.Add(headerGrid);
+            contentGrid.Children.Add(scrollViewer);
+            mainGrid.Children.Add(contentGrid);
 
-            // Navigation arrows
+            // Navigation
             if (fileList.Count > 1)
             {
                 var leftArrow = CreateNavButton("←", HorizontalAlignment.Left);
                 leftArrow.Click += (s, ev) => { ev.Handled = true; currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); };
                 mainGrid.Children.Add(leftArrow);
-
                 var rightArrow = CreateNavButton("→", HorizontalAlignment.Right);
                 rightArrow.Click += (s, ev) => { ev.Handled = true; currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); };
                 mainGrid.Children.Add(rightArrow);
             }
 
             // Close
-            var closeBtn = new Button { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 20, 20, 0), Cursor = System.Windows.Input.Cursors.Hand };
+            var closeBtn = new Button { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 20, 20, 0), Cursor = Cursors.Hand };
             var closeTemplate = new ControlTemplate(typeof(Button));
             var closeBorder = new FrameworkElementFactory(typeof(Border));
-            closeBorder.SetValue(Border.WidthProperty, 36.0);
-            closeBorder.SetValue(Border.HeightProperty, 36.0);
+            closeBorder.SetValue(Border.WidthProperty, 36.0); closeBorder.SetValue(Border.HeightProperty, 36.0);
             closeBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(18));
             closeBorder.SetValue(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)));
             var closeTb = new FrameworkElementFactory(typeof(TextBlock));
-            closeTb.SetValue(TextBlock.TextProperty, "✕");
-            closeTb.SetValue(TextBlock.ForegroundProperty, Brushes.White);
-            closeTb.SetValue(TextBlock.FontSizeProperty, 18.0);
-            closeTb.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            closeTb.SetValue(TextBlock.TextProperty, "✕"); closeTb.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            closeTb.SetValue(TextBlock.FontSizeProperty, 18.0); closeTb.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             closeTb.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
-            closeBorder.AppendChild(closeTb);
-            closeTemplate.VisualTree = closeBorder;
-            closeBtn.Template = closeTemplate;
+            closeBorder.AppendChild(closeTb); closeTemplate.VisualTree = closeBorder; closeBtn.Template = closeTemplate;
             closeBtn.Click += (s, ev) => modal.Close();
             mainGrid.Children.Add(closeBtn);
 
-            // Keyboard nav
+            // Zoom pill
+            var zoomPill = new Border { Background = new SolidColorBrush(Color.FromArgb(140, 30, 30, 35)), CornerRadius = new CornerRadius(16), Padding = new Thickness(4), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 30, 50) };
+            zoomPill.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            var zoomPillStack = new StackPanel { Orientation = Orientation.Horizontal };
+            Action<string, RoutedEventHandler> addZoomBtn = (label, handler) =>
+            {
+                var b = new Button { Width = 28, Height = 28, Cursor = Cursors.Hand, BorderThickness = new Thickness(0) };
+                var t = new ControlTemplate(typeof(Button));
+                var bd = new FrameworkElementFactory(typeof(Border));
+                bd.SetValue(Border.WidthProperty, 28.0); bd.SetValue(Border.HeightProperty, 28.0);
+                bd.SetValue(Border.CornerRadiusProperty, new CornerRadius(14)); bd.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+                var tx = new FrameworkElementFactory(typeof(TextBlock));
+                tx.SetValue(TextBlock.TextProperty, label); tx.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+                tx.SetValue(TextBlock.FontSizeProperty, 16.0); tx.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+                tx.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center); tx.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+                bd.AppendChild(tx); t.VisualTree = bd; b.Template = t; b.Click += handler;
+                zoomPillStack.Children.Add(b);
+            };
+            addZoomBtn("−", (s, ev) => { applyZoom(currentZoom - zoomStep); ev.Handled = true; });
+            var zoomResetBtn = new Button { Cursor = Cursors.Hand, BorderThickness = new Thickness(0), MinWidth = 44 };
+            var zrt = new ControlTemplate(typeof(Button)); var zrb = new FrameworkElementFactory(typeof(Border));
+            zrb.SetValue(Border.BackgroundProperty, Brushes.Transparent); zrb.SetValue(Border.PaddingProperty, new Thickness(2, 4, 2, 4));
+            var zrc = new FrameworkElementFactory(typeof(ContentPresenter));
+            zrc.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center); zrc.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            zrb.AppendChild(zrc); zrt.VisualTree = zrb; zoomResetBtn.Template = zrt; zoomResetBtn.Content = zoomPillText;
+            zoomResetBtn.Click += (s, ev) => { applyZoom(1.0); scrollViewer.ScrollToHorizontalOffset(0); scrollViewer.ScrollToVerticalOffset(0); ev.Handled = true; };
+            zoomPillStack.Children.Add(zoomResetBtn);
+            addZoomBtn("+", (s, ev) => { applyZoom(currentZoom + zoomStep); ev.Handled = true; });
+            zoomPill.Child = zoomPillStack;
+            mainGrid.Children.Add(zoomPill);
+
+            // Hints (auto-fade)
+            var hintsPanel = new Border { Background = new SolidColorBrush(Color.FromArgb(50, 0, 0, 0)), CornerRadius = new CornerRadius(20), Padding = new Thickness(20, 8, 20, 8), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 16) };
+            Grid.SetRow(hintsPanel, 0);
+            var hintsStack = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            var hc = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255));
+            var hkc = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255));
+            Action<string, string> addHint = (key, desc) =>
+            {
+                if (hintsStack.Children.Count > 0) hintsStack.Children.Add(new TextBlock { Text = "  ·  ", FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)), VerticalAlignment = VerticalAlignment.Center });
+                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                sp.Children.Add(new Border { Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)), CornerRadius = new CornerRadius(4), Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 5, 0), Child = new TextBlock { Text = key, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = hkc } });
+                sp.Children.Add(new TextBlock { Text = desc, FontSize = 11, Foreground = hc, VerticalAlignment = VerticalAlignment.Center });
+                hintsStack.Children.Add(sp);
+            };
+            addHint("Scroll", "Zoom");
+            addHint("Doble clic", "Restablecer");
+            if (fileList.Count > 1) addHint("← →", "Navegar");
+            addHint("Esc", "Cerrar");
+            hintsPanel.Child = hintsStack;
+            mainGrid.Children.Add(hintsPanel);
+            var fadeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            fadeTimer.Tick += (s, ev) => { fadeTimer.Stop(); hintsPanel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(600))); };
+            fadeTimer.Start();
+
+            // Keyboard
             modal.KeyDown += (s, ev) =>
             {
-                if (ev.Key == System.Windows.Input.Key.Left) { currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); }
-                else if (ev.Key == System.Windows.Input.Key.Right) { currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); }
-                else if (ev.Key == System.Windows.Input.Key.Escape) modal.Close();
+                if (ev.Key == Key.Left) { currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); }
+                else if (ev.Key == Key.Right) { currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); }
+                else if (ev.Key == Key.Escape) modal.Close();
+                else if (ev.Key == Key.Add || ev.Key == Key.OemPlus) applyZoom(currentZoom + zoomStep);
+                else if (ev.Key == Key.Subtract || ev.Key == Key.OemMinus) applyZoom(currentZoom - zoomStep);
+                else if (ev.Key == Key.D0 || ev.Key == Key.NumPad0) { applyZoom(1.0); scrollViewer.ScrollToHorizontalOffset(0); scrollViewer.ScrollToVerticalOffset(0); }
             };
 
             updatePreview();

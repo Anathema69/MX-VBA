@@ -451,13 +451,20 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
 
-                                                <!-- Empty state -->
+                                                <!-- Empty state (solo cuando expanded + sin archivos) -->
                                                 <TextBlock Text="Sin archivos adjuntos" FontSize="12" Foreground="{StaticResource TextGray}" FontStyle="Italic"
-                                                           Margin="0,8,0,0" Visibility="{Binding IsFilesExpanded, Converter={StaticResource BoolToVis}}">
+                                                           Margin="0,8,0,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding HasFiles}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding IsFilesExpanded}" Value="True"/>
+                                                                        <Condition Binding="{Binding HasFiles}" Value="False"/>
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </MultiDataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </TextBlock.Style>

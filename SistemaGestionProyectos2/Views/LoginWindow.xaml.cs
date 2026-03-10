@@ -233,9 +233,9 @@ namespace SistemaGestionProyectos2.Views
                     }
                     else if (user.Role == "ventas")
                     {
-                        // Ventas abre el portal del vendedor
-                        VendorDashboard vendorPortal = new VendorDashboard(currentUser);
-                        vendorPortal.Show();
+                        // Ventas abre el portal del vendedor V2
+                        VendorDashboard_V2 vendorV2 = new VendorDashboard_V2(currentUser);
+                        vendorV2.Show();
                     }
                     else
                     {

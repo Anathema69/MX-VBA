@@ -544,7 +544,7 @@
                             </Button.Template>
                         </Button>
 
-                    <!-- IMA DRIVE -->
+                    <!-- IMA DRIVE (fase de pruebas) -->
                         <Button x:Name="DriveV2Button"
                                 Click="DriveV2_Click"
                                 Width="200"
@@ -554,8 +554,8 @@
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border x:Name="border"
-                                           Background="#EFF6FF"
-                                           BorderBrush="#1D4ED8"
+                                           Background="#FFFBEB"
+                                           BorderBrush="#D97706"
                                            BorderThickness="2"
                                            CornerRadius="5">
                                         <Grid>
@@ -569,36 +569,39 @@
                                                      FontSize="36"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center"
-                                                     Foreground="#1D4ED8"/>
+                                                     Foreground="#D97706"/>
 
                                             <TextBlock Grid.Row="1"
                                                      Text="IMA DRIVE"
                                                      FontWeight="Bold"
                                                      FontSize="12"
                                                      HorizontalAlignment="Center"
-                                                     Foreground="#1D4ED8"
+                                                     Foreground="#92400E"
                                                      Margin="0,2,0,0"/>
 
-                                            <TextBlock Grid.Row="2"
-                                                     Text="v2"
-                                                     FontSize="9"
-                                                     FontWeight="Bold"
-                                                     HorizontalAlignment="Center"
-                                                     Foreground="White"
-                                                     Margin="0,2,0,8">
-                                                <TextBlock.Background>
-                                                    <SolidColorBrush Color="#1D4ED8"/>
-                                                </TextBlock.Background>
-                                            </TextBlock>
+                                            <Border Grid.Row="2" CornerRadius="4" Padding="8,2"
+                                                    HorizontalAlignment="Center" Margin="0,2,0,8">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                        <GradientStop Color="#F59E0B" Offset="0"/>
+                                                        <GradientStop Color="#D97706" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <TextBlock Text="EN PRUEBAS"
+                                                         FontSize="9"
+                                                         FontWeight="Bold"
+                                                         Foreground="White"
+                                                         HorizontalAlignment="Center"/>
+                                            </Border>
                                         </Grid>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="border" Property="Background" Value="#DBEAFE"/>
+                                            <Setter TargetName="border" Property="Background" Value="#FEF3C7"/>
                                             <Setter TargetName="border" Property="BorderThickness" Value="3"/>
                                         </Trigger>
                                         <Trigger Property="IsPressed" Value="True">
-                                            <Setter TargetName="border" Property="Background" Value="#BFDBFE"/>
+                                            <Setter TargetName="border" Property="Background" Value="#FDE68A"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

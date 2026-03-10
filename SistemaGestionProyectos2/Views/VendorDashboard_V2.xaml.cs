@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using SistemaGestionProyectos2.Models;
@@ -19,7 +20,7 @@ using SistemaGestionProyectos2.Services.Storage;
 
 namespace SistemaGestionProyectos2.Views
 {
-    public partial class VendorDashboard : Window
+    public partial class VendorDashboard_V2 : Window
     {
         private readonly SupabaseService _supabaseService;
         private readonly UserSession _currentUser;
@@ -28,7 +29,6 @@ namespace SistemaGestionProyectos2.Views
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
         private int? _vendorId;
 
-        // Colors for file type placeholders
         private static readonly Dictionary<string, string> ExtColors = new()
         {
             { ".pdf", "#FEF3C7" }, { ".doc", "#DBEAFE" }, { ".docx", "#DBEAFE" },
@@ -36,7 +36,7 @@ namespace SistemaGestionProyectos2.Views
             { ".jpeg", "#F3E8FF" }, { ".jfif", "#F3E8FF" }, { ".png", "#FEE2E2" }, { ".gif", "#DBEAFE" }
         };
 
-        public VendorDashboard(UserSession currentUser)
+        public VendorDashboard_V2(UserSession currentUser)
         {
             InitializeComponent();
             _currentUser = currentUser;
@@ -243,7 +243,7 @@ namespace SistemaGestionProyectos2.Views
                             {
                                 bitmap.BeginInit();
                                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                                bitmap.DecodePixelWidth = 130;
+                                bitmap.DecodePixelWidth = 120;
                                 bitmap.StreamSource = ms;
                                 bitmap.EndInit();
                                 bitmap.Freeze();
@@ -335,7 +335,7 @@ namespace SistemaGestionProyectos2.Views
                                         {
                                             bitmap.BeginInit();
                                             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                                            bitmap.DecodePixelWidth = 130;
+                                            bitmap.DecodePixelWidth = 120;
                                             bitmap.StreamSource = ms;
                                             bitmap.EndInit();
                                             bitmap.Freeze();
@@ -363,19 +363,11 @@ namespace SistemaGestionProyectos2.Views
         {
             var button = sender as Button;
             var fileVm = button?.Tag as FileItemViewModel;
-            if (fileVm == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[VendorDashboard] DeleteFile: fileVm is null (Tag binding failed)");
-                return;
-            }
-
-            System.Diagnostics.Debug.WriteLine($"[VendorDashboard] DeleteFile: id={fileVm.FileId}, path={fileVm.StoragePath}");
+            if (fileVm == null) return;
 
             try
             {
                 var deleted = await _supabaseService.DeleteOrderFile(fileVm.FileId, fileVm.StoragePath);
-                System.Diagnostics.Debug.WriteLine($"[VendorDashboard] DeleteFile result: {deleted}");
-
                 if (deleted)
                 {
                     foreach (var commission in _filteredCommissions)
@@ -396,7 +388,6 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[VendorDashboard] DeleteFile error: {ex.Message}\n{ex.StackTrace}");
                 ShowTemporaryNotification("Error al eliminar archivo");
             }
         }
@@ -428,7 +419,6 @@ namespace SistemaGestionProyectos2.Views
             var fileVm = button?.Tag as FileItemViewModel;
             if (fileVm == null) return;
 
-            // Find the parent commission to get the full file list
             var parentCommission = _filteredCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
             var fileList = parentCommission?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
             int currentIndex = fileList.IndexOf(fileVm);
@@ -441,6 +431,14 @@ namespace SistemaGestionProyectos2.Views
             if (fileList.Count == 0) return;
             int currentIndex = Math.Max(0, Math.Min(startIndex, fileList.Count - 1));
 
+            // Zoom state
+            double currentZoom = 1.0;
+            const double zoomStep = 0.15;
+            const double minZoom = 0.5;
+            const double maxZoom = 5.0;
+            var scaleTransform = new ScaleTransform(1, 1);
+            Image activeImage = null;
+
             var modal = new Window
             {
                 WindowStyle = WindowStyle.None,
@@ -451,21 +449,109 @@ namespace SistemaGestionProyectos2.Views
             };
 
             var mainGrid = new Grid();
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.MouseLeftButtonDown += (s, ev) => modal.Close();
 
-            // Content area (blocks click-through)
-            var contentPanel = new StackPanel
+            // Content area
+            var contentGrid = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 800
+                MaxWidth = 900
             };
-            contentPanel.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            contentGrid.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
 
-            // Elements that update on navigation
+            // Header
             var filenameText = new TextBlock { Foreground = Brushes.White, FontSize = 14, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center };
             var counterText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(179, 255, 255, 255)), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            var zoomText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(179, 255, 255, 255)), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+
+            // ScrollViewer for pan when zoomed
+            var scrollViewer = new ScrollViewer
+            {
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                MaxHeight = 700,
+                Background = Brushes.Transparent
+            };
+            scrollViewer.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+            Grid.SetRow(scrollViewer, 1);
+
+            // Pan with middle-click or left-click drag when zoomed
+            Point? panStart = null;
+            double panOffsetH = 0, panOffsetV = 0;
+            scrollViewer.PreviewMouseLeftButtonDown += (s, ev) =>
+            {
+                if (currentZoom > 1.05)
+                {
+                    panStart = ev.GetPosition(scrollViewer);
+                    panOffsetH = scrollViewer.HorizontalOffset;
+                    panOffsetV = scrollViewer.VerticalOffset;
+                    scrollViewer.Cursor = System.Windows.Input.Cursors.ScrollAll;
+                    scrollViewer.CaptureMouse();
+                    ev.Handled = true;
+                }
+            };
+            scrollViewer.PreviewMouseMove += (s, ev) =>
+            {
+                if (panStart.HasValue && scrollViewer.IsMouseCaptured)
+                {
+                    var pos = ev.GetPosition(scrollViewer);
+                    scrollViewer.ScrollToHorizontalOffset(panOffsetH - (pos.X - panStart.Value.X));
+                    scrollViewer.ScrollToVerticalOffset(panOffsetV - (pos.Y - panStart.Value.Y));
+                }
+            };
+            scrollViewer.PreviewMouseLeftButtonUp += (s, ev) =>
+            {
+                if (panStart.HasValue)
+                {
+                    panStart = null;
+                    scrollViewer.Cursor = currentZoom > 1.05 ? System.Windows.Input.Cursors.ScrollAll : System.Windows.Input.Cursors.Arrow;
+                    scrollViewer.ReleaseMouseCapture();
+                }
+            };
+
             var previewContainer = new Border { MinHeight = 300 };
+            scrollViewer.Content = previewContainer;
+
+            // Zoom pill text (persistente bottom-right)
+            var zoomPillText = new TextBlock { Text = "100%", FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
+            // Resolution text (en header)
+            var resolutionText = new TextBlock { Foreground = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
+
+            Action updateZoomUI = () =>
+            {
+                zoomPillText.Text = $"{(int)(currentZoom * 100)}%";
+                scrollViewer.Cursor = currentZoom > 1.05 ? System.Windows.Input.Cursors.ScrollAll : System.Windows.Input.Cursors.Arrow;
+            };
+
+            Action<double> applyZoom = (newZoom) =>
+            {
+                currentZoom = Math.Max(minZoom, Math.Min(maxZoom, newZoom));
+                scaleTransform.ScaleX = currentZoom;
+                scaleTransform.ScaleY = currentZoom;
+                updateZoomUI();
+            };
+
+            // Mouse wheel zoom
+            scrollViewer.PreviewMouseWheel += (s, ev) =>
+            {
+                ev.Handled = true;
+                double delta = ev.Delta > 0 ? zoomStep : -zoomStep;
+                applyZoom(currentZoom + delta);
+            };
+
+            // Double-click to reset zoom
+            scrollViewer.MouseDoubleClick += (s, ev) =>
+            {
+                applyZoom(1.0);
+                scrollViewer.ScrollToHorizontalOffset(0);
+                scrollViewer.ScrollToVerticalOffset(0);
+                ev.Handled = true;
+            };
 
             Action updatePreview = () =>
             {
@@ -473,16 +559,81 @@ namespace SistemaGestionProyectos2.Views
                 filenameText.Text = file.FileName;
                 counterText.Text = $"{currentIndex + 1} / {fileList.Count}";
 
-                if (file.IsImage && file.ThumbnailSource != null)
+                // Reset zoom on navigation
+                currentZoom = 1.0;
+                scaleTransform = new ScaleTransform(1, 1);
+                updateZoomUI();
+                scrollViewer.ScrollToHorizontalOffset(0);
+                scrollViewer.ScrollToVerticalOffset(0);
+
+                // Resolution info
+                resolutionText.Text = "";
+
+                if (file.IsImage)
                 {
+                    var previewImage = new Image
+                    {
+                        Stretch = Stretch.Uniform,
+                        RenderTransformOrigin = new Point(0.5, 0.5),
+                        LayoutTransform = scaleTransform
+                    };
+                    activeImage = previewImage;
+
+                    Action<BitmapSource> showResolution = (src) =>
+                    {
+                        if (src != null)
+                            resolutionText.Text = $"{src.PixelWidth} x {src.PixelHeight} px  ·  {file.FileSizeFormatted}";
+                    };
+
+                    if (file.FullImageSource != null)
+                    {
+                        previewImage.Source = file.FullImageSource;
+                        showResolution(file.FullImageSource);
+                    }
+                    else if (file.ThumbnailSource != null)
+                    {
+                        previewImage.Source = file.ThumbnailSource;
+
+                        var capturedFile = file;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var bytes = await _supabaseService.DownloadOrderFile(capturedFile.StoragePath);
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    var fullBitmap = new BitmapImage();
+                                    using (var ms = new MemoryStream(bytes))
+                                    {
+                                        fullBitmap.BeginInit();
+                                        fullBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                                        fullBitmap.StreamSource = ms;
+                                        fullBitmap.EndInit();
+                                        fullBitmap.Freeze();
+                                    }
+                                    capturedFile.FullImageSource = fullBitmap;
+                                    if (fileList.Count > 0 && currentIndex < fileList.Count && fileList[currentIndex] == capturedFile)
+                                    {
+                                        previewImage.Source = fullBitmap;
+                                        showResolution(fullBitmap);
+                                    }
+                                });
+                            }
+                            catch { }
+                        });
+                    }
+
                     previewContainer.Child = new Border
                     {
-                        CornerRadius = new CornerRadius(12), ClipToBounds = true,
-                        Child = new Image { Source = file.ThumbnailSource, MaxHeight = 600, Stretch = Stretch.Uniform }
+                        CornerRadius = new CornerRadius(12),
+                        ClipToBounds = true,
+                        Child = previewImage
                     };
                 }
                 else
                 {
+                    activeImage = null;
+                    resolutionText.Text = file.FileSizeFormatted;
                     var ph = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
                     ph.Children.Add(new TextBlock { Text = file.FileIcon, FontSize = 64, HorizontalAlignment = HorizontalAlignment.Center });
                     ph.Children.Add(new TextBlock { Text = "Vista previa del documento", FontSize = 18, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 16, 0, 0) });
@@ -491,7 +642,7 @@ namespace SistemaGestionProyectos2.Views
                 }
             };
 
-            // Header
+            // ========== Header bar ==========
             var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -499,6 +650,7 @@ namespace SistemaGestionProyectos2.Views
             var headerLeft = new StackPanel { Orientation = Orientation.Horizontal };
             headerLeft.Children.Add(filenameText);
             headerLeft.Children.Add(counterText);
+            headerLeft.Children.Add(resolutionText);
             Grid.SetColumn(headerLeft, 0);
             headerGrid.Children.Add(headerLeft);
 
@@ -550,11 +702,12 @@ namespace SistemaGestionProyectos2.Views
             Grid.SetColumn(actionsPanel, 1);
             headerGrid.Children.Add(actionsPanel);
 
-            contentPanel.Children.Add(headerGrid);
-            contentPanel.Children.Add(previewContainer);
-            mainGrid.Children.Add(contentPanel);
+            Grid.SetRow(headerGrid, 0);
+            contentGrid.Children.Add(headerGrid);
+            contentGrid.Children.Add(scrollViewer);
+            mainGrid.Children.Add(contentGrid);
 
-            // Navigation arrows (left)
+            // ========== Navigation arrows ==========
             if (fileList.Count > 1)
             {
                 var leftArrow = CreateNavArrow("←", HorizontalAlignment.Left);
@@ -576,18 +729,145 @@ namespace SistemaGestionProyectos2.Views
                 mainGrid.Children.Add(rightArrow);
             }
 
-            // Close button
+            // ========== Close button ==========
             var closeBtn = new Button { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 20, 20, 0), Cursor = System.Windows.Input.Cursors.Hand };
             closeBtn.Template = CreateCloseButtonTemplate();
             closeBtn.Click += (s, ev) => modal.Close();
             mainGrid.Children.Add(closeBtn);
 
-            // Keyboard navigation
+            // ========== Zoom pill (persistente bottom-right) ==========
+            var zoomPill = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(140, 30, 30, 35)),
+                CornerRadius = new CornerRadius(16),
+                Padding = new Thickness(4),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 30, 50)
+            };
+            zoomPill.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
+
+            var zoomPillStack = new StackPanel { Orientation = Orientation.Horizontal };
+
+            // [−] button
+            var zoomOutBtn = new Button { Width = 28, Height = 28, Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0) };
+            var zoomOutTemplate = new ControlTemplate(typeof(Button));
+            var zoomOutBorder = new FrameworkElementFactory(typeof(Border));
+            zoomOutBorder.SetValue(Border.WidthProperty, 28.0);
+            zoomOutBorder.SetValue(Border.HeightProperty, 28.0);
+            zoomOutBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(14));
+            zoomOutBorder.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+            var zoomOutText = new FrameworkElementFactory(typeof(TextBlock));
+            zoomOutText.SetValue(TextBlock.TextProperty, "−");
+            zoomOutText.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            zoomOutText.SetValue(TextBlock.FontSizeProperty, 16.0);
+            zoomOutText.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+            zoomOutText.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            zoomOutText.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            zoomOutBorder.AppendChild(zoomOutText);
+            zoomOutTemplate.VisualTree = zoomOutBorder;
+            zoomOutBtn.Template = zoomOutTemplate;
+            zoomOutBtn.Click += (s, ev) => { applyZoom(currentZoom - zoomStep); ev.Handled = true; };
+            zoomPillStack.Children.Add(zoomOutBtn);
+
+            // [100%] text (clickable to reset)
+            var zoomResetBtn = new Button { Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0), MinWidth = 44 };
+            var zoomResetTemplate = new ControlTemplate(typeof(Button));
+            var zoomResetBorder = new FrameworkElementFactory(typeof(Border));
+            zoomResetBorder.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+            zoomResetBorder.SetValue(Border.PaddingProperty, new Thickness(2, 4, 2, 4));
+            var zoomResetContent = new FrameworkElementFactory(typeof(ContentPresenter));
+            zoomResetContent.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            zoomResetContent.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            zoomResetBorder.AppendChild(zoomResetContent);
+            zoomResetTemplate.VisualTree = zoomResetBorder;
+            zoomResetBtn.Template = zoomResetTemplate;
+            zoomResetBtn.Content = zoomPillText;
+            zoomResetBtn.Click += (s, ev) => { applyZoom(1.0); scrollViewer.ScrollToHorizontalOffset(0); scrollViewer.ScrollToVerticalOffset(0); ev.Handled = true; };
+            zoomPillStack.Children.Add(zoomResetBtn);
+
+            // [+] button
+            var zoomInBtn = new Button { Width = 28, Height = 28, Cursor = System.Windows.Input.Cursors.Hand, BorderThickness = new Thickness(0) };
+            var zoomInTemplate = new ControlTemplate(typeof(Button));
+            var zoomInBorder = new FrameworkElementFactory(typeof(Border));
+            zoomInBorder.SetValue(Border.WidthProperty, 28.0);
+            zoomInBorder.SetValue(Border.HeightProperty, 28.0);
+            zoomInBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(14));
+            zoomInBorder.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+            var zoomInText = new FrameworkElementFactory(typeof(TextBlock));
+            zoomInText.SetValue(TextBlock.TextProperty, "+");
+            zoomInText.SetValue(TextBlock.ForegroundProperty, Brushes.White);
+            zoomInText.SetValue(TextBlock.FontSizeProperty, 16.0);
+            zoomInText.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
+            zoomInText.SetValue(TextBlock.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            zoomInText.SetValue(TextBlock.VerticalAlignmentProperty, VerticalAlignment.Center);
+            zoomInBorder.AppendChild(zoomInText);
+            zoomInTemplate.VisualTree = zoomInBorder;
+            zoomInBtn.Template = zoomInTemplate;
+            zoomInBtn.Click += (s, ev) => { applyZoom(currentZoom + zoomStep); ev.Handled = true; };
+            zoomPillStack.Children.Add(zoomInBtn);
+
+            zoomPill.Child = zoomPillStack;
+            mainGrid.Children.Add(zoomPill);
+
+            // ========== Hints bar (auto-fade after 4s) ==========
+            var hintsPanel = new Border
+            {
+                Background = new SolidColorBrush(Color.FromArgb(50, 0, 0, 0)),
+                CornerRadius = new CornerRadius(20),
+                Padding = new Thickness(20, 8, 20, 8),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, 16),
+                Opacity = 1
+            };
+            Grid.SetRow(hintsPanel, 0);
+            var hintsStack = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            var hintColor = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255));
+            var hintKeyColor = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255));
+            Action<string, string> addHint = (key, desc) =>
+            {
+                if (hintsStack.Children.Count > 0)
+                    hintsStack.Children.Add(new TextBlock { Text = "  ·  ", FontSize = 11, Foreground = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)), VerticalAlignment = VerticalAlignment.Center });
+                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                sp.Children.Add(new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(7, 2, 7, 2),
+                    Margin = new Thickness(0, 0, 5, 0),
+                    Child = new TextBlock { Text = key, FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = hintKeyColor }
+                });
+                sp.Children.Add(new TextBlock { Text = desc, FontSize = 11, Foreground = hintColor, VerticalAlignment = VerticalAlignment.Center });
+                hintsStack.Children.Add(sp);
+            };
+            addHint("Scroll", "Zoom");
+            addHint("Doble clic", "Restablecer");
+            if (fileList.Count > 1)
+                addHint("← →", "Navegar");
+            addHint("Esc", "Cerrar");
+            hintsPanel.Child = hintsStack;
+            mainGrid.Children.Add(hintsPanel);
+
+            // Auto-fade hints after 4 seconds
+            var fadeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            fadeTimer.Tick += (s, ev) =>
+            {
+                fadeTimer.Stop();
+                var fadeAnim = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(600));
+                hintsPanel.BeginAnimation(UIElement.OpacityProperty, fadeAnim);
+            };
+            fadeTimer.Start();
+
+            // ========== Keyboard ==========
             modal.KeyDown += (s, ev) =>
             {
                 if (ev.Key == System.Windows.Input.Key.Left) { currentIndex = (currentIndex - 1 + fileList.Count) % fileList.Count; updatePreview(); }
                 else if (ev.Key == System.Windows.Input.Key.Right) { currentIndex = (currentIndex + 1) % fileList.Count; updatePreview(); }
                 else if (ev.Key == System.Windows.Input.Key.Escape) modal.Close();
+                else if (ev.Key == System.Windows.Input.Key.Add || ev.Key == System.Windows.Input.Key.OemPlus) applyZoom(currentZoom + zoomStep);
+                else if (ev.Key == System.Windows.Input.Key.Subtract || ev.Key == System.Windows.Input.Key.OemMinus) applyZoom(currentZoom - zoomStep);
+                else if (ev.Key == System.Windows.Input.Key.D0 || ev.Key == System.Windows.Input.Key.NumPad0) { applyZoom(1.0); scrollViewer.ScrollToHorizontalOffset(0); scrollViewer.ScrollToVerticalOffset(0); }
             };
 
             updatePreview();
@@ -671,8 +951,6 @@ namespace SistemaGestionProyectos2.Views
             var commission = button?.Tag as VendorCommissionCardViewModel;
             if (commission == null || commission.Status != "draft") return;
 
-            // TODO: Pendiente confirmacion admin - "Liberar" podria cambiar el estado de la orden a LIBERADA(2)
-            // Por ahora solo cambia payment_status de la comision: draft -> pending
             try
             {
                 var supabaseClient = _supabaseService.GetClient();
@@ -738,103 +1016,5 @@ namespace SistemaGestionProyectos2.Views
             if (words.Length >= 2) return $"{words[0][0]}{words[1][0]}".ToUpper();
             return name.Length >= 2 ? name.Substring(0, 2).ToUpper() : name.ToUpper();
         }
-    }
-
-    // ========== VIEW MODELS ==========
-
-    public class FileItemViewModel : INotifyPropertyChanged
-    {
-        private BitmapSource _thumbnailSource;
-        private bool _hasThumbnail;
-        private BitmapSource _fullImageSource;
-
-        public int FileId { get; set; }
-        public string FileName { get; set; }
-        public string StoragePath { get; set; }
-        public long? FileSize { get; set; }
-        public string FileSizeFormatted { get; set; }
-        public string ContentType { get; set; }
-        public DateTime? CreatedAt { get; set; }
-        public bool IsImage { get; set; }
-        public bool CanDelete { get; set; }
-        public string FileIcon { get; set; }
-        public string FileExt { get; set; }
-        public Brush PlaceholderColor { get; set; }
-
-        public BitmapSource ThumbnailSource
-        {
-            get => _thumbnailSource;
-            set { _thumbnailSource = value; OnPropertyChanged(); }
-        }
-
-        public bool HasThumbnail
-        {
-            get => _hasThumbnail;
-            set { _hasThumbnail = value; OnPropertyChanged(); }
-        }
-
-        /// <summary>Full resolution image for preview modal (lazy-loaded, cached)</summary>
-        public BitmapSource FullImageSource
-        {
-            get => _fullImageSource;
-            set { _fullImageSource = value; OnPropertyChanged(); }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    public class VendorCommissionCardViewModel : INotifyPropertyChanged
-    {
-        private int _fileCount;
-        private bool _hasFiles;
-        private string _status;
-        private bool _isFilesExpanded;
-        private ObservableCollection<FileItemViewModel> _files = new();
-
-        public int OrderId { get; set; }
-        public int CommissionId { get; set; }
-        public string OrderNumber { get; set; }
-        public string OrderDescription { get; set; }
-        public DateTime OrderDate { get; set; }
-        public string ClientName { get; set; }
-        public decimal CommissionAmount { get; set; }
-        public string CommissionAmountFormatted { get; set; }
-        public DateTime? PaymentDate { get; set; }
-
-        public string Status
-        {
-            get => _status;
-            set { _status = value; OnPropertyChanged(); }
-        }
-
-        public int FileCount
-        {
-            get => _fileCount;
-            set { _fileCount = value; OnPropertyChanged(); }
-        }
-
-        public bool HasFiles
-        {
-            get => _hasFiles;
-            set { _hasFiles = value; OnPropertyChanged(); }
-        }
-
-        public bool IsFilesExpanded
-        {
-            get => _isFilesExpanded;
-            set { _isFilesExpanded = value; OnPropertyChanged(); }
-        }
-
-        public ObservableCollection<FileItemViewModel> Files
-        {
-            get => _files;
-            set { _files = value; OnPropertyChanged(); }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

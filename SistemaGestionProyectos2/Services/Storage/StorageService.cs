@@ -45,7 +45,8 @@ namespace SistemaGestionProyectos2.Services.Storage
                 ContentType = contentType,
                 UploadedBy = uploadedBy,
                 VendorId = vendorId,
-                CommissionId = commissionId
+                CommissionId = commissionId,
+                CreatedAt = DateTime.UtcNow
             };
 
             var result = await SupabaseClient
@@ -145,7 +146,7 @@ namespace SistemaGestionProyectos2.Services.Storage
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
             return ext switch
             {
-                ".jpg" or ".jpeg" => "image/jpeg",
+                ".jpg" or ".jpeg" or ".jfif" => "image/jpeg",
                 ".png" => "image/png",
                 ".gif" => "image/gif",
                 ".pdf" => "application/pdf",
@@ -160,7 +161,7 @@ namespace SistemaGestionProyectos2.Services.Storage
         public static bool IsImageFile(string fileName)
         {
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
-            return ext is ".jpg" or ".jpeg" or ".png" or ".gif";
+            return ext is ".jpg" or ".jpeg" or ".jfif" or ".png" or ".gif";
         }
 
         public static string FormatFileSize(long? bytes)
