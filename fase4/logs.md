@@ -170,4 +170,44 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 
 **Compilacion:** 0 errores.
 
+### 2026-03-08 - Bloque 5 - Drive V2 Mockup (solo UI)
+**Tipo:** implementacion
+**Archivos creados:**
+- `Views/DriveV2Window.xaml` + `.cs` - Rediseno completo basado en Figma: sidebar con nav + filtros + indicador storage, topbar con busqueda + toggle grid/list, breadcrumb, cards de carpeta con accent color + stats + orden vinculada, cards de archivo con preview + badge extension, panel de detalle lateral, panel de upload con progreso, drag & drop overlay, empty state con spinner animado
+
+**Detalle:** Mockup UI sin logica de BD. Layout tipo Google Drive profesional con 3 columnas (sidebar 256px + contenido + panel derecho 320px).
+
+### 2026-03-09 - Bloque 5 - Drive V2 Logica completa + eliminar V1
+**Tipo:** implementacion
+**Archivos eliminados:**
+- `Views/DriveWindow.xaml` + `.cs` - Version 1 del Drive eliminada
+
+**Archivos modificados:**
+- `Views/DriveV2Window.xaml` + `.cs` - Logica completa conectada a BD + R2. Caches de stats/ordenes/usuarios. Navegacion con historial back/forward. Creacion inline de carpetas. Upload con panel de progreso. Busqueda con debounce. Vista grid/list toggle.
+- `Views/MainMenuWindow.xaml` + `.cs` - Actualizado para abrir DriveV2Window
+- `Views/LoginWindow.xaml.cs` - AutoOpenModule apunta a DriveV2Window
+
+**Decision:** Se elimino DriveWindow v1 completamente. DriveV2Window usa el mismo DriveService sin cambios.
+
+### 2026-03-09 - Bloque 5 - Drive V2 Rediseno UI + correcciones UX
+**Tipo:** implementacion
+**Archivos modificados:**
+- `Views/DriveV2Window.xaml` - Ajustes de layout y estilos
+- `Views/DriveV2Window.xaml.cs` - Correcciones UX, limpieza de codigo
+
+### 2026-03-10 - Bloque 3 - Portal Ventas V2 dashboard vendedor
+**Tipo:** implementacion
+**Archivos creados:**
+- `Views/VendorDashboard_V2.xaml` + `.cs` - Rediseno completo del dashboard vendedor
+
+**Archivos modificados:**
+- `Views/VendorCommissionsWindow.xaml` + `.cs` - Mejoras preview + galeria admin
+- `Views/VendorDashboard.xaml` + `.cs` - Ajustes menores
+- `Views/MainMenuWindow.xaml` - Actualizado
+- `Views/LoginWindow.xaml.cs` - Actualizado
+- `Services/Drive/DriveService.cs` - Fix menor
+- `Services/Storage/StorageService.cs` - Fix menor
+
+**Compilacion:** 0 errores.
+
 ---

@@ -44,6 +44,15 @@ namespace SistemaGestionProyectos2.Views
         private readonly Dictionary<int, (int fileCount, int subCount, long totalSize)> _statsCache = new();
         private readonly Dictionary<int, (string Po, string Client, string Detail)> _orderInfoCache = new();
 
+        // Benchmark
+        private bool _benchmarkActive;
+        private BenchmarkPhaseResult? _lastPhaseResult;
+
+        // Navigation cache (stale-while-revalidate)
+        private readonly Dictionary<int, FolderSnapshot> _folderCache = new();
+        record FolderSnapshot(List<DriveFolderDb> Folders, List<DriveFileDb> Files,
+            List<DriveFolderDb> Breadcrumb, DateTime CachedAt);
+
         // Theme
         private static readonly SolidColorBrush Primary = Fr(0x1D, 0x4E, 0xD8);
         private static readonly SolidColorBrush BorderColor = Fr(0xE2, 0xE8, 0xF0);
@@ -115,6 +124,39 @@ namespace SistemaGestionProyectos2.Views
             SetNav("all");
             foreach (var (id, clr, lbl) in new[] { ("pdf", "#EF4444", "PDFs"), ("img", "#10B981", "Imagenes"), ("cad", "#8B5CF6", "Archivos CAD"), ("xls", "#10B981", "Hojas de calculo"), ("vid", "#EC4899", "Videos") })
                 FilterPanel.Children.Add(MkFilter(clr, lbl, "--"));
+
+            // Temporal: boton Purgar R2 para limpieza durante desarrollo
+            var purgeBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 24, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)) };
+            var psp = new StackPanel { Orientation = Orientation.Horizontal };
+            psp.Children.Add(new TextBlock { Text = "\uE74D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            psp.Children.Add(new TextBlock { Text = "Purgar R2 (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center });
+            purgeBtn.Child = psp;
+            purgeBtn.MouseEnter += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xE2, 0xE2));
+            purgeBtn.MouseLeave += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2));
+            purgeBtn.MouseLeftButtonDown += async (s, e) =>
+            {
+                if (MessageBox.Show("ATENCION: Esto eliminara TODOS los archivos del bucket R2.\nLos registros en BD NO se eliminan.\n\nContinuar?",
+                    "Purgar R2", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+                await SafeLoad(async () =>
+                {
+                    StatusText.Text = "Purgando R2...";
+                    var count = await SupabaseService.Instance.PurgeDriveR2Files();
+                    StatusText.Text = count >= 0 ? $"R2 purgado: {count} archivos eliminados" : "Error purgando R2";
+                    if (count >= 0) { _statsCache.Clear(); await LoadFolder(); }
+                });
+            };
+            NavPanel.Children.Add(purgeBtn);
+
+            // Temporal: boton Benchmark para medir rendimiento
+            var benchBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF)) };
+            var bsp = new StackPanel { Orientation = Orientation.Horizontal };
+            bsp.Children.Add(new TextBlock { Text = "\uE9D2", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            bsp.Children.Add(new TextBlock { Text = "Benchmark (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center });
+            benchBtn.Child = bsp;
+            benchBtn.MouseEnter += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xDB, 0xEA, 0xFE));
+            benchBtn.MouseLeave += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
+            benchBtn.MouseLeftButtonDown += RunBenchmark_Click;
+            NavPanel.Children.Add(benchBtn);
         }
 
         Border MkNav(string id, string ico, string lbl)
@@ -163,20 +205,64 @@ namespace SistemaGestionProyectos2.Views
         // ===============================================
         // NAVIGATION
         // ===============================================
-        async Task NavigateToRoot() { var r = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token); if (r.Any()) await NavTo(r.First().Id); else { _currentFolderId = null; _breadcrumb.Clear(); await LoadFolder(); } }
-        async Task NavTo(int fId, bool hist = true) { if (hist && _currentFolderId.HasValue && _currentFolderId.Value != fId) { _backHistory.Push(_currentFolderId.Value); _forwardHistory.Clear(); } _currentFolderId = fId; _selectedFile = null; HideDetail(); _breadcrumb = await SupabaseService.Instance.GetDriveBreadcrumb(fId, _cts.Token); await LoadFolder(); }
+        async Task NavigateToRoot() { var r = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token); if (r.Any()) await NavTo(r.First().Id); else { _currentFolderId = null; _breadcrumb.Clear(); await LoadFolderFull(0); } }
+        async Task NavTo(int fId, bool hist = true)
+        {
+            if (hist && _currentFolderId.HasValue && _currentFolderId.Value != fId) { _backHistory.Push(_currentFolderId.Value); _forwardHistory.Clear(); }
+            _currentFolderId = fId; _selectedFile = null; HideDetail();
+
+            // Stale-while-revalidate: if we have cached data, render it INSTANTLY then refresh in background
+            if (!_benchmarkActive && _folderCache.TryGetValue(fId, out var snap))
+            {
+                Debug.WriteLine($"[DriveV2] CACHE HIT folder={fId}, age={(DateTime.Now - snap.CachedAt).TotalSeconds:F1}s");
+                _breadcrumb = snap.Breadcrumb;
+                _currentFolders = snap.Folders;
+                _currentFiles = snap.Files;
+                RenderFolderUI();
+                // Revalidate silently in background
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var bcT = SupabaseService.Instance.GetDriveBreadcrumb(fId, _cts.Token);
+                        var fT = SupabaseService.Instance.GetDriveChildFolders(fId, _cts.Token);
+                        var fiT = SupabaseService.Instance.GetDriveFilesByFolder(fId, _cts.Token);
+                        var stT = SupabaseService.Instance.GetDriveFolderStats(fId, _cts.Token);
+                        await Task.WhenAll(bcT, fT, fiT, stT);
+                        foreach (var kv in stT.Result) _statsCache[kv.Key] = kv.Value;
+                        var changed = fT.Result.Count != snap.Folders.Count || fiT.Result.Count != snap.Files.Count;
+                        _folderCache[fId] = new FolderSnapshot(fT.Result, fiT.Result, bcT.Result, DateTime.Now);
+                        if (changed && _currentFolderId == fId)
+                        {
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                _breadcrumb = bcT.Result; _currentFolders = fT.Result; _currentFiles = fiT.Result;
+                                RenderFolderUI();
+                                Debug.WriteLine($"[DriveV2] REVALIDATED folder={fId} (content changed)");
+                            });
+                        }
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"[DriveV2] Revalidate err: {ex.Message}"); }
+                });
+                return;
+            }
+
+            // Cold path: fetch breadcrumb + full load with spinner
+            await LoadFolderFull(fId);
+        }
         async Task NavBack() { if (_backHistory.Count == 0) return; if (_currentFolderId.HasValue) _forwardHistory.Push(_currentFolderId.Value); await NavTo(_backHistory.Pop(), hist: false); }
         async Task NavFwd() { if (_forwardHistory.Count == 0) return; if (_currentFolderId.HasValue) _backHistory.Push(_currentFolderId.Value); await NavTo(_forwardHistory.Pop(), hist: false); }
 
         // ===============================================
         // LOAD FOLDER (P2 spinner, P5 storage, P12 filters)
         // ===============================================
-        async Task LoadFolder()
+
+        /// <summary>Full cold load: breadcrumb + folders + files + stats in parallel</summary>
+        async Task LoadFolderFull(int folderId)
         {
             var sw0 = Stopwatch.StartNew();
-            Debug.WriteLine($"[DriveV2] === LoadFolder START (id={_currentFolderId}) ===");
+            Debug.WriteLine($"[DriveV2] === LoadFolderFull START (id={folderId}) ===");
 
-            // P2: Show spinner
             LoadingPanel.Visibility = Visibility.Visible;
             ((Storyboard)FindResource("SpinnerStoryboard")).Begin();
             EmptyState.Visibility = Visibility.Collapsed;
@@ -184,51 +270,56 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Phase 1: folders + files
+                // Phase 1: breadcrumb + folders + files + stats (ALL parallel)
                 var sw = Stopwatch.StartNew();
-                var ft = SupabaseService.Instance.GetDriveChildFolders(_currentFolderId, _cts.Token);
-                var fit = _currentFolderId.HasValue ? SupabaseService.Instance.GetDriveFilesByFolder(_currentFolderId.Value, _cts.Token) : Task.FromResult(new List<DriveFileDb>());
-                await Task.WhenAll(ft, fit); _currentFolders = ft.Result; _currentFiles = fit.Result;
-                Debug.WriteLine($"[DriveV2]   P1 Folders+Files: {sw.ElapsedMilliseconds}ms ({_currentFolders.Count}f, {_currentFiles.Count}fi)");
+                var bcTask = SupabaseService.Instance.GetDriveBreadcrumb(folderId, _cts.Token);
+                var ft = SupabaseService.Instance.GetDriveChildFolders(folderId, _cts.Token);
+                var fit = SupabaseService.Instance.GetDriveFilesByFolder(folderId, _cts.Token);
+                var stTask = SupabaseService.Instance.GetDriveFolderStats(folderId, _cts.Token);
+                await Task.WhenAll(bcTask, ft, fit, stTask);
+                _breadcrumb = bcTask.Result; _currentFolders = ft.Result; _currentFiles = fit.Result;
+                foreach (var kv in stTask.Result) _statsCache[kv.Key] = kv.Value;
+                var p1Ms = sw.ElapsedMilliseconds;
+                Debug.WriteLine($"[DriveV2]   P1 Breadcrumb+Folders+Files+Stats: {p1Ms}ms ({_currentFolders.Count}f, {_currentFiles.Count}fi, {stTask.Result.Count}st)");
 
-                // Phase 2: stats (only uncached)
-                sw.Restart();
-                var unc = _currentFolders.Where(f => !_statsCache.ContainsKey(f.Id)).ToList();
-                if (unc.Count > 0)
-                {
-                    var tasks = unc.Select(async f => { var fi = await SupabaseService.Instance.GetDriveFilesByFolder(f.Id, _cts.Token); var su = await SupabaseService.Instance.GetDriveChildFolders(f.Id, _cts.Token); return (f.Id, fi.Count, su.Count, fi.Sum(x => x.FileSize ?? 0)); });
-                    foreach (var r in await Task.WhenAll(tasks)) _statsCache[r.Id] = (r.Item2, r.Item3, r.Item4);
-                }
-                Debug.WriteLine($"[DriveV2]   P2 Stats: {sw.ElapsedMilliseconds}ms (q={unc.Count}, cached={_currentFolders.Count - unc.Count})");
-
-                // Phase 3: order info (only uncached)
+                // Phase 2: order info (batch RPC, only uncached)
                 sw.Restart();
                 var lids = _currentFolders.Where(f => f.LinkedOrderId.HasValue).Select(f => f.LinkedOrderId!.Value).Distinct().ToList();
                 var uncO = lids.Where(id => !_orderInfoCache.ContainsKey(id)).ToList();
                 if (uncO.Count > 0)
                 {
-                    var cl = await SupabaseService.Instance.GetClients();
-                    var cm = cl?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<int, string>();
-                    var ot = uncO.Select(async oid => { try { var o = await SupabaseService.Instance.GetOrderById(oid); if (o != null) { var cn = o.ClientId.HasValue && cm.ContainsKey(o.ClientId.Value) ? cm[o.ClientId.Value] : ""; _orderInfoCache[oid] = (o.Po ?? $"#{oid}", cn, Tr(o.Description, 40)); } else _orderInfoCache[oid] = ($"#{oid}", "", ""); } catch { _orderInfoCache[oid] = ($"#{oid}", "", ""); } });
-                    await Task.WhenAll(ot);
+                    // Batch: 1 RPC for all orders + 1 query for clients (parallel)
+                    var ordTask = SupabaseService.Instance.GetDriveOrdersByIds(uncO, _cts.Token);
+                    var clTask = SupabaseService.Instance.GetClients();
+                    await Task.WhenAll(ordTask, clTask);
+                    var cm = clTask.Result?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<int, string>();
+                    foreach (var o in ordTask.Result)
+                    {
+                        var cn = o.F_client.HasValue && cm.ContainsKey(o.F_client.Value) ? cm[o.F_client.Value] : "";
+                        _orderInfoCache[o.F_order] = (o.F_po ?? $"#{o.F_order}", cn, Tr(o.F_description, 40));
+                    }
+                    // Mark any missing orders
+                    foreach (var oid in uncO.Where(id => !_orderInfoCache.ContainsKey(id)))
+                        _orderInfoCache[oid] = ($"#{oid}", "", "");
                 }
-                Debug.WriteLine($"[DriveV2]   P3 Orders: {sw.ElapsedMilliseconds}ms (q={uncO.Count}, cached={lids.Count - uncO.Count})");
+                var p2Ms = sw.ElapsedMilliseconds;
+                Debug.WriteLine($"[DriveV2]   P2 Orders: {p2Ms}ms (q={uncO.Count}, cached={lids.Count - uncO.Count})");
 
-                // Phase 4: Render
+                // Phase 3: Render
                 sw.Restart();
-                RenderBreadcrumb();
-                BackToFoldersBtn.Visibility = _breadcrumb.Count <= 1 ? Visibility.Collapsed : Visibility.Visible;
-                SectionTitle.Text = _breadcrumb.LastOrDefault()?.Name ?? "IMA Drive";
-                var tot = _currentFolders.Count + _currentFiles.Count;
-                var pts = new List<string>();
-                if (_currentFolders.Count > 0) pts.Add($"{_currentFolders.Count} carpeta{(_currentFolders.Count != 1 ? "s" : "")}");
-                if (_currentFiles.Count > 0) pts.Add($"{_currentFiles.Count} archivo{(_currentFiles.Count != 1 ? "s" : "")}");
-                SectionSubtitle.Text = pts.Count > 0 ? string.Join(" - ", pts) : "Sin contenido";
-                StatusText.Text = $"{tot} elemento{(tot != 1 ? "s" : "")}";
-                RenderContent();
-                if (tot == 0) EmptyState.Visibility = Visibility.Visible;
-                UpdateFilterCounts(); // P12
-                Debug.WriteLine($"[DriveV2]   P4 Render: {sw.ElapsedMilliseconds}ms");
+                RenderFolderUI();
+                var p3Ms = sw.ElapsedMilliseconds;
+                Debug.WriteLine($"[DriveV2]   P3 Render: {p3Ms}ms");
+
+                // Capture phase timings for benchmark
+                if (_benchmarkActive)
+                    _lastPhaseResult = new BenchmarkPhaseResult(p1Ms, p2Ms, p3Ms, sw0.ElapsedMilliseconds,
+                        _currentFolders.Count, _currentFiles.Count, uncO.Count);
+
+                // Save to navigation cache
+                if (_currentFolderId.HasValue)
+                    _folderCache[_currentFolderId.Value] = new FolderSnapshot(
+                        _currentFolders, _currentFiles, _breadcrumb, DateTime.Now);
 
                 // P5: Storage indicator (non-blocking)
                 _ = Task.Run(async () =>
@@ -258,7 +349,33 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        void InvalidateStats(int? fId = null) { if (fId.HasValue) _statsCache.Remove(fId.Value); else _statsCache.Clear(); if (_currentFolderId.HasValue) _statsCache.Remove(_currentFolderId.Value); }
+        /// <summary>Reload current folder (convenience wrapper after CRUD operations)</summary>
+        async Task LoadFolder() { if (_currentFolderId.HasValue) await LoadFolderFull(_currentFolderId.Value); }
+
+        /// <summary>Render current folder state to UI (used by both LoadFolderFull and cache-hit path)</summary>
+        void RenderFolderUI()
+        {
+            RenderBreadcrumb();
+            BackToFoldersBtn.Visibility = _breadcrumb.Count <= 1 ? Visibility.Collapsed : Visibility.Visible;
+            SectionTitle.Text = _breadcrumb.LastOrDefault()?.Name ?? "IMA Drive";
+            var tot = _currentFolders.Count + _currentFiles.Count;
+            var pts = new List<string>();
+            if (_currentFolders.Count > 0) pts.Add($"{_currentFolders.Count} carpeta{(_currentFolders.Count != 1 ? "s" : "")}");
+            if (_currentFiles.Count > 0) pts.Add($"{_currentFiles.Count} archivo{(_currentFiles.Count != 1 ? "s" : "")}");
+            SectionSubtitle.Text = pts.Count > 0 ? string.Join(" - ", pts) : "Sin contenido";
+            StatusText.Text = $"{tot} elemento{(tot != 1 ? "s" : "")}";
+            RenderContent();
+            EmptyState.Visibility = tot == 0 ? Visibility.Visible : Visibility.Collapsed;
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            UpdateFilterCounts();
+        }
+
+        void InvalidateStats(int? fId = null)
+        {
+            if (fId.HasValue) { _statsCache.Remove(fId.Value); _folderCache.Remove(fId.Value); }
+            else { _statsCache.Clear(); _folderCache.Clear(); }
+            if (_currentFolderId.HasValue) { _statsCache.Remove(_currentFolderId.Value); _folderCache.Remove(_currentFolderId.Value); }
+        }
 
         // ===============================================
         // BREADCRUMB
@@ -681,12 +798,29 @@ namespace SistemaGestionProyectos2.Views
                 tr[fp] = (sT, sBadge, pb);
             }
             int ok = 0, fail = 0;
-            foreach (var fp in filePaths)
+            // Parallel upload: up to 3 concurrent uploads
+            var semaphore = new SemaphoreSlim(3);
+            var uploadTasks = filePaths.Select(async fp =>
             {
-                var (sT, sBadge, pb) = tr[fp];
-                try { sT.Text = "Subiendo..."; sT.Foreground = Primary; sBadge.Background = ActiveBg; pb.IsIndeterminate = true; await SupabaseService.Instance.UploadDriveFile(fp, _currentFolderId.Value, _currentUser.Id, _cts.Token); pb.IsIndeterminate = false; pb.Value = 100; pb.Foreground = GreenOk; sT.Text = "Listo"; sT.Foreground = GreenOk; sBadge.Background = new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4)); ok++; }
-                catch (Exception ex) { Debug.WriteLine($"Upload err: {ex.Message}"); pb.IsIndeterminate = false; pb.Value = 100; pb.Foreground = Destructive; sT.Text = "Error"; sT.Foreground = Destructive; sBadge.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)); fail++; }
-            }
+                await semaphore.WaitAsync(_cts.Token);
+                try
+                {
+                    var (sT, sBadge, pb) = tr[fp];
+                    await Dispatcher.InvokeAsync(() => { sT.Text = "Subiendo..."; sT.Foreground = Primary; sBadge.Background = ActiveBg; pb.IsIndeterminate = true; });
+                    await SupabaseService.Instance.UploadDriveFile(fp, _currentFolderId.Value, _currentUser.Id, _cts.Token);
+                    await Dispatcher.InvokeAsync(() => { pb.IsIndeterminate = false; pb.Value = 100; pb.Foreground = GreenOk; sT.Text = "Listo"; sT.Foreground = GreenOk; sBadge.Background = new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4)); });
+                    Interlocked.Increment(ref ok);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Upload err: {ex.Message}");
+                    var (sT, sBadge, pb) = tr[fp];
+                    await Dispatcher.InvokeAsync(() => { pb.IsIndeterminate = false; pb.Value = 100; pb.Foreground = Destructive; sT.Text = "Error"; sT.Foreground = Destructive; sBadge.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)); });
+                    Interlocked.Increment(ref fail);
+                }
+                finally { semaphore.Release(); }
+            });
+            await Task.WhenAll(uploadTasks);
             UploadHeaderText.Text = fail > 0 ? $"{ok} subido(s), {fail} fallido(s)" : $"{ok} archivo(s) subido(s)";
             StatusText.Text = UploadHeaderText.Text;
             InvalidateStats(); await SafeLoad(() => LoadFolder());
@@ -724,6 +858,323 @@ namespace SistemaGestionProyectos2.Views
         static MenuItem MI(string h, RoutedEventHandler hnd) { var m = new MenuItem { Header = h }; m.Click += hnd; return m; }
         static Color CH(string h) { h = h.TrimStart('#'); return Color.FromRgb(Convert.ToByte(h[..2], 16), Convert.ToByte(h[2..4], 16), Convert.ToByte(h[4..6], 16)); }
         static SolidColorBrush BH(string h) => new(CH(h));
+
+        // ===============================================
+        // BENCHMARK
+        // ===============================================
+        record BenchmarkPhaseResult(long P1_DataMs, long P2_OrdersMs, long P3_RenderMs, long TotalMs,
+            int FolderCount, int FileCount, int OrderQueriesCount);
+
+        record BenchmarkEntry(string Scenario, string FolderName, int? FolderId, int Iteration,
+            long P1_DataMs, long P2_OrdersMs, long P3_RenderMs, long TotalMs,
+            int Folders, int Files, int OrderQueries, bool CacheWarm);
+
+        void ClearAllCaches()
+        {
+            _statsCache.Clear();
+            _orderInfoCache.Clear();
+            _userNameCache.Clear();
+            _folderCache.Clear();
+            // Also clear ServiceCache (clients, etc.)
+            var cacheField = typeof(Services.Core.BaseSupabaseService)
+                .GetField("Cache", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var cache = cacheField?.GetValue(null) as Services.Core.ServiceCache;
+            cache?.Clear();
+        }
+
+        async void RunBenchmark_Click(object sender, MouseButtonEventArgs e)
+        {
+            const int ITERATIONS = 3;
+            const int MAX_DEPTH = 3;
+
+            if (MessageBox.Show(
+                $"Ejecutar benchmark de rendimiento:\n\n" +
+                $"- {ITERATIONS} iteraciones por escenario\n" +
+                $"- Profundidad maxima: {MAX_DEPTH} niveles\n" +
+                $"- Escenarios: cold, warm (network), cache-hit (instant)\n" +
+                $"- Recorre TODO el arbol de carpetas\n" +
+                $"- Simula navegacion back/forward\n\n" +
+                $"Al terminar copia el reporte al portapapeles.\nContinuar?",
+                "Benchmark Drive V2", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            _benchmarkActive = true;
+            var results = new List<BenchmarkEntry>();
+            var totalSw = Stopwatch.StartNew();
+
+            try
+            {
+                // Phase 0: Discover full tree structure
+                ClearAllCaches();
+                StatusText.Text = "Benchmark: descubriendo arbol de carpetas...";
+                var rootFolders = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token);
+                var rootId = rootFolders.FirstOrDefault()?.Id;
+                if (rootId == null) { MessageBox.Show("No hay carpeta raiz."); return; }
+
+                var allFolders = new List<(int id, string name, int depth, string path)>();
+                await DiscoverTree(rootId.Value, "IMA MECATRONICA", 0, MAX_DEPTH, allFolders);
+                StatusText.Text = $"Benchmark: {allFolders.Count} carpetas encontradas, {ITERATIONS} iteraciones...";
+
+                for (int i = 0; i < ITERATIONS; i++)
+                {
+                    // === COLD: every folder (cache cleared) ===
+                    foreach (var (fId, fName, depth, path) in allFolders)
+                    {
+                        ClearAllCaches();
+                        await Task.Delay(30);
+                        _lastPhaseResult = null;
+                        await NavTo(fId, hist: false);
+                        if (_lastPhaseResult != null)
+                            results.Add(new BenchmarkEntry($"L{depth} cold", fName, fId, i + 1,
+                                _lastPhaseResult.P1_DataMs, _lastPhaseResult.P2_OrdersMs, _lastPhaseResult.P3_RenderMs,
+                                _lastPhaseResult.TotalMs, _lastPhaseResult.FolderCount, _lastPhaseResult.FileCount,
+                                _lastPhaseResult.OrderQueriesCount, false));
+
+                        // WARM (network): same folder, caches populated but _folderCache skipped by benchmark
+                        _lastPhaseResult = null;
+                        await NavTo(fId, hist: false);
+                        if (_lastPhaseResult != null)
+                            results.Add(new BenchmarkEntry($"L{depth} warm", fName, fId, i + 1,
+                                _lastPhaseResult.P1_DataMs, _lastPhaseResult.P2_OrdersMs, _lastPhaseResult.P3_RenderMs,
+                                _lastPhaseResult.TotalMs, _lastPhaseResult.FolderCount, _lastPhaseResult.FileCount,
+                                _lastPhaseResult.OrderQueriesCount, true));
+                    }
+
+                    // === CACHE HIT: first populate cache for ALL folders, then measure ===
+                    // Step 1: Navigate all folders to populate _folderCache (not measured)
+                    _benchmarkActive = false;
+                    foreach (var (fId, _, _, _) in allFolders)
+                        await NavTo(fId, hist: false);
+
+                    // Step 2: Now measure cache hits (all folders should be in _folderCache)
+                    var cacheResults = new List<(int fId, string name, long ms)>();
+                    foreach (var (fId, fName, depth, path) in allFolders)
+                    {
+                        var csw = Stopwatch.StartNew();
+                        await NavTo(fId, hist: false);
+                        csw.Stop();
+                        cacheResults.Add((fId, fName, csw.ElapsedMilliseconds));
+                    }
+                    _benchmarkActive = true;
+
+                    foreach (var (fId, fName, ms) in cacheResults)
+                    {
+                        var depth = allFolders.First(f => f.id == fId).depth;
+                        results.Add(new BenchmarkEntry($"L{depth} cache-hit", fName, fId, i + 1,
+                            0, 0, ms, ms, 0, 0, 0, true));
+                    }
+
+                    // === BACK/FORWARD stress: navigate forward then rapid back ===
+                    _benchmarkActive = false;
+                    var navOrder = allFolders.Take(Math.Min(10, allFolders.Count)).ToList();
+                    foreach (var (fId, _, _, _) in navOrder)
+                        await NavTo(fId, hist: true);
+
+                    // Rapid back navigation (should all be cache hits)
+                    var backSw = Stopwatch.StartNew();
+                    int backCount = 0;
+                    while (_backHistory.Count > 0)
+                    {
+                        await NavTo(_backHistory.Pop(), hist: false);
+                        backCount++;
+                    }
+                    backSw.Stop();
+                    _benchmarkActive = true;
+                    if (backCount > 0)
+                        results.Add(new BenchmarkEntry("Back nav (avg)", $"{backCount}x back", null, i + 1,
+                            0, 0, backSw.ElapsedMilliseconds / backCount, backSw.ElapsedMilliseconds / backCount,
+                            backCount, 0, 0, true));
+
+                    StatusText.Text = $"Benchmark: iteracion {i + 1}/{ITERATIONS} completada ({allFolders.Count} carpetas)";
+                }
+
+                totalSw.Stop();
+
+                // Generate report
+                var report = GenerateBenchmarkReport(results, ITERATIONS, allFolders.Count, totalSw.ElapsedMilliseconds);
+                Clipboard.SetText(report);
+                StatusText.Text = $"Benchmark completado en {totalSw.ElapsedMilliseconds:N0}ms - Reporte copiado al portapapeles";
+
+                var coldAvg = results.Where(r => r.Scenario.Contains("cold")).Select(r => r.TotalMs).DefaultIfEmpty(0).Average();
+                var cacheAvg = results.Where(r => r.Scenario.Contains("cache-hit")).Select(r => r.TotalMs).DefaultIfEmpty(0).Average();
+
+                MessageBox.Show(
+                    $"Benchmark completado!\n\n" +
+                    $"Carpetas: {allFolders.Count} (hasta {MAX_DEPTH} niveles)\n" +
+                    $"Iteraciones: {ITERATIONS}\n" +
+                    $"Total mediciones: {results.Count}\n" +
+                    $"Tiempo total: {totalSw.ElapsedMilliseconds:N0}ms\n\n" +
+                    $"Cold promedio: {coldAvg:F0}ms\n" +
+                    $"Cache-hit promedio: {cacheAvg:F0}ms\n" +
+                    $"Mejora cache: {(coldAvg > 0 ? (1 - cacheAvg / coldAvg) * 100 : 0):F1}%\n\n" +
+                    $"Reporte copiado al portapapeles.",
+                    "Benchmark Drive V2", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Benchmark] ERR: {ex.Message}");
+                StatusText.Text = $"Benchmark error: {ex.Message}";
+                MessageBox.Show($"Error en benchmark:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _benchmarkActive = false;
+                ClearAllCaches();
+                await SafeLoad(() => NavigateToRoot());
+            }
+        }
+
+        async Task DiscoverTree(int parentId, string parentName, int depth, int maxDepth,
+            List<(int id, string name, int depth, string path)> result)
+        {
+            result.Add((parentId, parentName, depth, parentName));
+            if (depth >= maxDepth) return;
+            var children = await SupabaseService.Instance.GetDriveChildFolders(parentId, _cts.Token);
+            foreach (var c in children)
+                await DiscoverTree(c.Id, c.Name, depth + 1, maxDepth, result);
+        }
+
+        string GenerateBenchmarkReport(List<BenchmarkEntry> results, int iterations, int folderCount, long totalMs)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("# Drive V2 - Benchmark de Rendimiento");
+            sb.AppendLine($"Fecha: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"Iteraciones: {iterations}");
+            sb.AppendLine($"Carpetas testeadas: {folderCount} (arbol completo)");
+            sb.AppendLine($"Total mediciones: {results.Count}");
+            sb.AppendLine($"Tiempo total benchmark: {totalMs:N0}ms");
+            sb.AppendLine();
+
+            // Summary table by scenario
+            sb.AppendLine("## Resumen por Escenario (promedios en ms)");
+            sb.AppendLine();
+            sb.AppendLine("| Escenario | N | P1 Data | P2 Orders | P3/Total | **TOTAL** | Carpetas | Archivos |");
+            sb.AppendLine("|-----------|---|---------|-----------|----------|-----------|----------|----------|");
+
+            foreach (var grp in results.GroupBy(r => r.Scenario).OrderBy(g => g.Key))
+            {
+                var items = grp.ToList();
+                sb.AppendLine($"| {grp.Key} | {items.Count} " +
+                    $"| {items.Average(r => r.P1_DataMs):F0} " +
+                    $"| {items.Average(r => r.P2_OrdersMs):F0} " +
+                    $"| {items.Average(r => r.P3_RenderMs):F0} " +
+                    $"| **{items.Average(r => r.TotalMs):F0}** " +
+                    $"| {items.Average(r => r.Folders):F0} " +
+                    $"| {items.Average(r => r.Files):F0} |");
+            }
+
+            sb.AppendLine();
+
+            // Cold vs Warm vs Cache-hit
+            sb.AppendLine("## Comparativa: Cold vs Warm vs Cache-hit");
+            sb.AppendLine();
+            var cold = results.Where(r => r.Scenario.Contains("cold")).ToList();
+            var warm = results.Where(r => r.Scenario.Contains("warm")).ToList();
+            var cached = results.Where(r => r.Scenario.Contains("cache-hit")).ToList();
+            var back = results.Where(r => r.Scenario.Contains("Back")).ToList();
+
+            if (cold.Count > 0)
+            {
+                var coldAvg = cold.Average(r => r.TotalMs);
+                var warmAvg = warm.Count > 0 ? warm.Average(r => r.TotalMs) : 0;
+                var cacheAvg = cached.Count > 0 ? cached.Average(r => r.TotalMs) : 0;
+                var backAvg = back.Count > 0 ? back.Average(r => r.TotalMs) : 0;
+
+                sb.AppendLine("| Tipo | Promedio (ms) | vs Cold |");
+                sb.AppendLine("|------|---------------|---------|");
+                sb.AppendLine($"| Cold (sin cache, HTTP) | **{coldAvg:F0}** | - |");
+                if (warm.Count > 0) sb.AppendLine($"| Warm (caches parciales) | **{warmAvg:F0}** | {(coldAvg > 0 ? (1 - warmAvg / coldAvg) * 100 : 0):F1}% |");
+                if (cached.Count > 0) sb.AppendLine($"| Cache-hit (instantaneo) | **{cacheAvg:F0}** | {(coldAvg > 0 ? (1 - cacheAvg / coldAvg) * 100 : 0):F1}% |");
+                if (back.Count > 0) sb.AppendLine($"| Back nav (promedio) | **{backAvg:F0}** | {(coldAvg > 0 ? (1 - backAvg / coldAvg) * 100 : 0):F1}% |");
+            }
+
+            sb.AppendLine();
+
+            // Phase breakdown (cold only)
+            if (cold.Count > 0)
+            {
+                sb.AppendLine("## Desglose por Fase (cold)");
+                sb.AppendLine();
+                var p1 = cold.Average(r => r.P1_DataMs);
+                var p2 = cold.Average(r => r.P2_OrdersMs);
+                var p3 = cold.Average(r => r.P3_RenderMs);
+                var tot = cold.Average(r => r.TotalMs);
+                sb.AppendLine($"| Fase | Promedio | % del total |");
+                sb.AppendLine($"|------|---------|-------------|");
+                sb.AppendLine($"| P1 Data (BD+RPC) | {p1:F0}ms | {(tot > 0 ? p1 / tot * 100 : 0):F1}% |");
+                sb.AppendLine($"| P2 Orders (batch) | {p2:F0}ms | {(tot > 0 ? p2 / tot * 100 : 0):F1}% |");
+                sb.AppendLine($"| P3 Render (UI) | {p3:F0}ms | {(tot > 0 ? p3 / tot * 100 : 0):F1}% |");
+                sb.AppendLine($"| Overhead (breadcrumb+nav) | {tot - p1 - p2 - p3:F0}ms | {(tot > 0 ? (tot - p1 - p2 - p3) / tot * 100 : 0):F1}% |");
+                sb.AppendLine();
+            }
+
+            // Per-level summary
+            sb.AppendLine("## Rendimiento por Nivel de Profundidad (cold)");
+            sb.AppendLine();
+            sb.AppendLine("| Nivel | Carpetas | P1 avg | TOTAL avg | Min | Max |");
+            sb.AppendLine("|-------|----------|--------|-----------|-----|-----|");
+            foreach (var grp in cold.GroupBy(r => r.Scenario).OrderBy(g => g.Key))
+            {
+                var items = grp.ToList();
+                sb.AppendLine($"| {grp.Key} | {items.Count / iterations} " +
+                    $"| {items.Average(r => r.P1_DataMs):F0} " +
+                    $"| **{items.Average(r => r.TotalMs):F0}** " +
+                    $"| {items.Min(r => r.TotalMs)} " +
+                    $"| {items.Max(r => r.TotalMs)} |");
+            }
+            sb.AppendLine();
+
+            // Per-folder detail (cold only, top 20 slowest)
+            sb.AppendLine("## Top 20 Carpetas mas Lentas (cold, promedio)");
+            sb.AppendLine();
+            sb.AppendLine("| Carpeta | P1 Data | P2 Orders | P3 Render | TOTAL | Carpetas | Archivos |");
+            sb.AppendLine("|---------|---------|-----------|-----------|-------|----------|----------|");
+
+            foreach (var grp in cold.GroupBy(r => r.FolderName)
+                .Select(g => new { Name = g.Key, Items = g.ToList(), Avg = g.Average(r => r.TotalMs) })
+                .OrderByDescending(g => g.Avg).Take(20))
+            {
+                sb.AppendLine($"| {Tr(grp.Name, 25)} " +
+                    $"| {grp.Items.Average(r => r.P1_DataMs):F0} " +
+                    $"| {grp.Items.Average(r => r.P2_OrdersMs):F0} " +
+                    $"| {grp.Items.Average(r => r.P3_RenderMs):F0} " +
+                    $"| **{grp.Avg:F0}** " +
+                    $"| {grp.Items.Average(r => r.Folders):F0} " +
+                    $"| {grp.Items.Average(r => r.Files):F0} |");
+            }
+
+            sb.AppendLine();
+
+            // Percentiles
+            if (cold.Count >= 5)
+            {
+                sb.AppendLine("## Percentiles (cold, TOTAL ms)");
+                sb.AppendLine();
+                var sorted = cold.Select(r => r.TotalMs).OrderBy(x => x).ToList();
+                sb.AppendLine($"- P50 (mediana): **{sorted[sorted.Count / 2]}ms**");
+                sb.AppendLine($"- P75: **{sorted[(int)(sorted.Count * 0.75)]}ms**");
+                sb.AppendLine($"- P90: **{sorted[(int)(sorted.Count * 0.90)]}ms**");
+                sb.AppendLine($"- P95: **{sorted[(int)(sorted.Count * 0.95)]}ms**");
+                sb.AppendLine($"- P99: **{sorted[Math.Min(sorted.Count - 1, (int)(sorted.Count * 0.99))]}ms**");
+                sb.AppendLine();
+            }
+
+            // Raw data (abbreviated - only first iteration)
+            sb.AppendLine("## Datos Crudos (iteracion 1)");
+            sb.AppendLine();
+            sb.AppendLine("| # | Escenario | Carpeta | P1 | P2 | P3 | Total | F | A | OQ |");
+            sb.AppendLine("|---|-----------|---------|----|----|-------|-------|---|---|----|");
+            int idx = 0;
+            foreach (var r in results.Where(r => r.Iteration == 1))
+            {
+                idx++;
+                sb.AppendLine($"| {idx} | {r.Scenario} | {Tr(r.FolderName, 18)} " +
+                    $"| {r.P1_DataMs} | {r.P2_OrdersMs} | {r.P3_RenderMs} | **{r.TotalMs}** " +
+                    $"| {r.Folders} | {r.Files} | {r.OrderQueries} |");
+            }
+
+            return sb.ToString();
+        }
     }
 
     static class DriveV2Ext { public static T Also<T>(this T o, Action<T> a) { a(o); return o; } }

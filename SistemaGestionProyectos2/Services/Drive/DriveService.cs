@@ -183,19 +183,123 @@ namespace SistemaGestionProyectos2.Services.Drive
 
         public async Task<List<DriveFolderDb>> GetBreadcrumb(int folderId, CancellationToken ct = default)
         {
+            try
+            {
+                // Use RPC with recursive CTE - 1 query instead of N sequential queries
+                var result = await SupabaseClient.Rpc("get_folder_breadcrumb_full",
+                    new Dictionary<string, object> { { "p_folder_id", folderId } });
+
+                if (result?.Content != null)
+                {
+                    var items = System.Text.Json.JsonSerializer.Deserialize<List<BreadcrumbRpcResult>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (items != null)
+                        return items.Select(i => new DriveFolderDb
+                        {
+                            Id = i.Id, ParentId = i.Parent_id, Name = i.Name,
+                            LinkedOrderId = i.Linked_order_id, CreatedBy = i.Created_by,
+                            CreatedAt = i.Created_at, UpdatedAt = i.Updated_at
+                        }).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"RPC breadcrumb fallback to sequential: {ex.Message}");
+            }
+
+            // Fallback: sequential queries (pre-RPC behavior)
             var breadcrumb = new List<DriveFolderDb>();
             var current = await GetFolderById(folderId, ct);
-
             while (current != null)
             {
                 breadcrumb.Insert(0, current);
-                if (current.ParentId.HasValue)
-                    current = await GetFolderById(current.ParentId.Value, ct);
-                else
-                    current = null;
+                current = current.ParentId.HasValue ? await GetFolderById(current.ParentId.Value, ct) : null;
             }
-
             return breadcrumb;
+        }
+
+        /// <summary>
+        /// Get stats (file_count, subfolder_count, total_size) for all child folders of a parent.
+        /// Uses a single SQL RPC instead of 2*N individual queries.
+        /// </summary>
+        public async Task<Dictionary<int, (int fileCount, int subCount, long totalSize)>> GetFolderStats(int parentId, CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.Rpc("get_folder_stats",
+                    new Dictionary<string, object> { { "p_parent_id", parentId } });
+
+                if (result?.Content != null)
+                {
+                    var items = System.Text.Json.JsonSerializer.Deserialize<List<FolderStatsRpcResult>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (items != null)
+                        return items.ToDictionary(
+                            i => i.Folder_id,
+                            i => ((int)i.File_count, (int)i.Subfolder_count, i.Total_size));
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Error getting folder stats via RPC", ex);
+            }
+            return new Dictionary<int, (int fileCount, int subCount, long totalSize)>();
+        }
+
+        /// <summary>
+        /// Get basic order info for multiple order IDs in a single query.
+        /// Returns (f_order, f_po, f_client, f_description).
+        /// </summary>
+        public async Task<List<OrderInfoRpc>> GetOrdersByIds(List<int> orderIds, CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.Rpc("get_orders_by_ids",
+                    new Dictionary<string, object> { { "p_order_ids", orderIds.ToArray() } });
+
+                if (result?.Content != null)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<OrderInfoRpc>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                        ?? new List<OrderInfoRpc>();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Error getting orders by IDs via RPC", ex);
+            }
+            return new List<OrderInfoRpc>();
+        }
+
+        // RPC result DTOs (internal, only used for deserialization)
+        internal class BreadcrumbRpcResult
+        {
+            public int Id { get; set; }
+            public int? Parent_id { get; set; }
+            public string Name { get; set; } = "";
+            public int? Linked_order_id { get; set; }
+            public int? Created_by { get; set; }
+            public DateTime? Created_at { get; set; }
+            public DateTime? Updated_at { get; set; }
+            public int Depth { get; set; }
+        }
+
+        internal class FolderStatsRpcResult
+        {
+            public int Folder_id { get; set; }
+            public long File_count { get; set; }
+            public long Subfolder_count { get; set; }
+            public long Total_size { get; set; }
+        }
+
+        public class OrderInfoRpc
+        {
+            public int F_order { get; set; }
+            public string? F_po { get; set; }
+            public int? F_client { get; set; }
+            public string? F_description { get; set; }
         }
 
         // ===============================================

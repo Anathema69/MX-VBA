@@ -1060,5 +1060,11 @@ namespace SistemaGestionProyectos2.Services
 
         public Task<int> PurgeDriveR2Files()
             => _driveService.PurgeAllR2Files();
+
+        public Task<Dictionary<int, (int fileCount, int subCount, long totalSize)>> GetDriveFolderStats(int parentId, CancellationToken ct = default)
+            => _driveService.GetFolderStats(parentId, ct);
+
+        public Task<List<Services.Drive.DriveService.OrderInfoRpc>> GetDriveOrdersByIds(List<int> orderIds, CancellationToken ct = default)
+            => _driveService.GetOrdersByIds(orderIds, ct);
     }
 }

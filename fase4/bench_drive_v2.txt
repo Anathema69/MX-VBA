@@ -1,0 +1,110 @@
+# Drive V2 - Benchmark de Rendimiento
+Fecha: 2026-03-10 20:02:24
+Iteraciones: 3
+Carpetas testeadas: 11 (arbol completo)
+Total mediciones: 102
+Tiempo total benchmark: 27,204ms
+
+## Resumen por Escenario (promedios en ms)
+
+| Escenario | N | P1 Data | P2 Orders | P3/Total | **TOTAL** | Carpetas | Archivos |
+|-----------|---|---------|-----------|----------|-----------|----------|----------|
+| Back nav (avg) | 3 | 0 | 0 | 9 | **9** | 10 | 0 |
+| L0 cache-hit | 3 | 0 | 0 | 5 | **5** | 0 | 0 |
+| L0 cold | 3 | 434 | 201 | 1 | **650** | 5 | 1 |
+| L0 warm | 3 | 213 | 0 | 1 | **227** | 5 | 1 |
+| L1 cache-hit | 15 | 0 | 0 | 10 | **10** | 0 | 0 |
+| L1 cold | 15 | 200 | 0 | 1 | **212** | 1 | 10 |
+| L1 warm | 15 | 207 | 0 | 1 | **218** | 1 | 10 |
+| L2 cache-hit | 15 | 0 | 0 | 8 | **8** | 0 | 0 |
+| L2 cold | 15 | 213 | 0 | 0 | **224** | 0 | 3 |
+| L2 warm | 15 | 209 | 0 | 0 | **219** | 0 | 3 |
+
+## Comparativa: Cold vs Warm vs Cache-hit
+
+| Tipo | Promedio (ms) | vs Cold |
+|------|---------------|---------|
+| Cold (sin cache, HTTP) | **258** | - |
+| Warm (caches parciales) | **219** | 14.9% |
+| Cache-hit (instantaneo) | **9** | 96.6% |
+| Back nav (promedio) | **9** | 96.6% |
+
+## Desglose por Fase (cold)
+
+| Fase | Promedio | % del total |
+|------|---------|-------------|
+| P1 Data (BD+RPC) | 227ms | 88.3% |
+| P2 Orders (batch) | 18ms | 7.1% |
+| P3 Render (UI) | 0ms | 0.2% |
+| Overhead (breadcrumb+nav) | 11ms | 4.4% |
+
+## Rendimiento por Nivel de Profundidad (cold)
+
+| Nivel | Carpetas | P1 avg | TOTAL avg | Min | Max |
+|-------|----------|--------|-----------|-----|-----|
+| L0 cold | 1 | 434 | **650** | 415 | 1063 |
+| L1 cold | 5 | 200 | **212** | 185 | 293 |
+| L2 cold | 5 | 213 | **224** | 182 | 342 |
+
+## Top 20 Carpetas mas Lentas (cold, promedio)
+
+| Carpeta | P1 Data | P2 Orders | P3 Render | TOTAL | Carpetas | Archivos |
+|---------|---------|-----------|-----------|-------|----------|----------|
+| IMA MECATRONICA | 434 | 201 | 1 | **650** | 5 | 1 |
+| PE | 244 | 0 | 0 | **255** | 0 | 5 |
+| Nueva carpeta | 240 | 0 | 0 | **251** | 0 | 9 |
+| BR | 218 | 0 | 1 | **229** | 0 | 9 |
+| PY | 213 | 0 | 0 | **223** | 0 | 0 |
+| zuri | 205 | 0 | 0 | **217** | 0 | 0 |
+| Test 4 | 200 | 0 | 1 | **212** | 1 | 9 |
+| New2 | 188 | 0 | 0 | **201** | 3 | 2 |
+| TEst5 | 186 | 0 | 1 | **198** | 1 | 19 |
+| Test 3 | 185 | 0 | 1 | **198** | 0 | 13 |
+| test_hilo | 185 | 0 | 0 | **197** | 0 | 0 |
+
+## Percentiles (cold, TOTAL ms)
+
+- P50 (mediana): **212ms**
+- P75: **230ms**
+- P90: **342ms**
+- P95: **472ms**
+- P99: **1063ms**
+
+## Datos Crudos (iteracion 1)
+
+| # | Escenario | Carpeta | P1 | P2 | P3 | Total | F | A | OQ |
+|---|-----------|---------|----|----|-------|-------|---|---|----|
+| 1 | L0 cold | IMA MECATRONICA | 255 | 204 | 2 | **472** | 5 | 1 | 4 |
+| 2 | L0 warm | IMA MECATRONICA | 205 | 0 | 1 | **217** | 5 | 1 | 0 |
+| 3 | L1 cold | New2 | 182 | 0 | 0 | **192** | 3 | 2 | 0 |
+| 4 | L1 warm | New2 | 212 | 0 | 1 | **221** | 3 | 2 | 0 |
+| 5 | L2 cold | BR | 197 | 0 | 0 | **205** | 0 | 9 | 0 |
+| 6 | L2 warm | BR | 177 | 0 | 0 | **186** | 0 | 9 | 0 |
+| 7 | L2 cold | PE | 194 | 0 | 0 | **203** | 0 | 5 | 0 |
+| 8 | L2 warm | PE | 190 | 0 | 1 | **199** | 0 | 5 | 0 |
+| 9 | L2 cold | PY | 227 | 0 | 0 | **234** | 0 | 0 | 0 |
+| 10 | L2 warm | PY | 209 | 0 | 0 | **217** | 0 | 0 | 0 |
+| 11 | L1 cold | Nueva carpeta | 211 | 0 | 0 | **219** | 0 | 9 | 0 |
+| 12 | L1 warm | Nueva carpeta | 192 | 0 | 0 | **200** | 0 | 9 | 0 |
+| 13 | L1 cold | Test 3 | 186 | 0 | 1 | **196** | 0 | 13 | 0 |
+| 14 | L1 warm | Test 3 | 186 | 0 | 1 | **195** | 0 | 13 | 0 |
+| 15 | L1 cold | Test 4 | 205 | 0 | 1 | **215** | 1 | 9 | 0 |
+| 16 | L1 warm | Test 4 | 181 | 0 | 0 | **191** | 1 | 9 | 0 |
+| 17 | L2 cold | test_hilo | 173 | 0 | 0 | **182** | 0 | 0 | 0 |
+| 18 | L2 warm | test_hilo | 186 | 0 | 0 | **194** | 0 | 0 | 0 |
+| 19 | L1 cold | TEst5 | 175 | 0 | 1 | **185** | 1 | 19 | 0 |
+| 20 | L1 warm | TEst5 | 182 | 0 | 1 | **190** | 1 | 19 | 0 |
+| 21 | L2 cold | zuri | 221 | 0 | 0 | **230** | 0 | 0 | 0 |
+| 22 | L2 warm | zuri | 196 | 0 | 0 | **203** | 0 | 0 | 0 |
+| 23 | L0 cache-hit | IMA MECATRONICA | 0 | 0 | 3 | **3** | 0 | 0 | 0 |
+| 24 | L1 cache-hit | New2 | 0 | 0 | 5 | **5** | 0 | 0 | 0 |
+| 25 | L2 cache-hit | BR | 0 | 0 | 6 | **6** | 0 | 0 | 0 |
+| 26 | L2 cache-hit | PE | 0 | 0 | 43 | **43** | 0 | 0 | 0 |
+| 27 | L2 cache-hit | PY | 0 | 0 | 3 | **3** | 0 | 0 | 0 |
+| 28 | L1 cache-hit | Nueva carpeta | 0 | 0 | 14 | **14** | 0 | 0 | 0 |
+| 29 | L1 cache-hit | Test 3 | 0 | 0 | 31 | **31** | 0 | 0 | 0 |
+| 30 | L1 cache-hit | Test 4 | 0 | 0 | 12 | **12** | 0 | 0 | 0 |
+| 31 | L2 cache-hit | test_hilo | 0 | 0 | 17 | **17** | 0 | 0 | 0 |
+| 32 | L1 cache-hit | TEst5 | 0 | 0 | 20 | **20** | 0 | 0 | 0 |
+| 33 | L2 cache-hit | zuri | 0 | 0 | 5 | **5** | 0 | 0 | 0 |
+| 34 | Back nav (avg) | 10x back | 0 | 0 | 11 | **11** | 10 | 0 | 0 |

@@ -21,6 +21,29 @@
 
 ---
 
+## Bloque 5 - Control de Pasos (Drive V2)
+
+### Fases completadas
+- [x] **5A** BD + Modelos (tablas, indexes, triggers, seed)
+- [x] **5B** DriveService (CRUD carpetas, archivos, vinculacion, R2)
+- [x] **5C** DriveV2Window UI + logica completa (rediseno basado en Figma)
+
+### En progreso
+- [ ] **5-PERF** Optimizacion de rendimiento (pasos 1-4)
+  - [x] Paso 1: SQL RPC `get_folder_stats` (1 query reemplaza 2*N) - `sql/drive_perf.sql`
+  - [x] Paso 2: SQL RPC `get_folder_breadcrumb_full` (1 CTE reemplaza N secuenciales) - `sql/drive_perf.sql`
+  - [x] Paso 3: SQL RPC `get_orders_by_ids` (batch load ordenes) - `sql/drive_perf.sql`
+  - [x] Paso 4: Boton Purgar R2 re-agregado (temporal, para pruebas con carpeta real 2026)
+  - [x] Upload paralelo con SemaphoreSlim(3) - hasta 3 archivos simultaneos
+  - [ ] **PENDIENTE: Ejecutar `sql/drive_perf.sql` en Supabase SQL Editor**
+  - [ ] **PENDIENTE: Pruebas con carpeta real 2026**
+
+### Pendiente
+- [ ] **5D** Columna CARPETA en OrdersManagementWindow (icono gris/azul, clic abre Drive)
+- [ ] **5E** Polish: busqueda global, quitar Purgar R2, validacion duplicados
+
+---
+
 ## Orden de Ejecucion Recomendado
 
 ```
