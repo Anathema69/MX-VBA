@@ -378,19 +378,25 @@ namespace SistemaGestionProyectos2.Services.Drive
                 if (orderIds == null || orderIds.Count == 0)
                     return new Dictionary<int, int>();
 
+                // Postgrest In filter needs a list of objects, not List<int>
+                var idList = orderIds.Select(id => (object)id).ToList();
                 var response = await SupabaseClient
                     .From<DriveFolderDb>()
-                    .Filter("linked_order_id", Postgrest.Constants.Operator.In, orderIds)
+                    .Filter("linked_order_id", Postgrest.Constants.Operator.In, idList)
                     .Get();
 
                 var folders = response?.Models ?? new List<DriveFolderDb>();
-                return folders
-                    .Where(f => f.LinkedOrderId.HasValue)
-                    .ToDictionary(f => f.LinkedOrderId.Value, f => f.Id);
+                // Use first folder per order (handles 1:N edge cases like Rack V2.0/V2.1 → same order)
+                var result = new Dictionary<int, int>();
+                foreach (var f in folders.Where(f => f.LinkedOrderId.HasValue))
+                    result.TryAdd(f.LinkedOrderId.Value, f.Id);
+
+                LogDebug($"GetLinkedFolderIds: {orderIds.Count} orders queried, {result.Count} linked found");
+                return result;
             }
             catch (Exception ex)
             {
-                LogError("Error getting linked folder IDs", ex);
+                LogError($"Error getting linked folder IDs (count={orderIds?.Count})", ex);
                 return new Dictionary<int, int>();
             }
         }
@@ -557,6 +563,40 @@ namespace SistemaGestionProyectos2.Services.Drive
                 LogError($"Error deleting file {fileId}", ex);
                 return false;
             }
+        }
+
+        // ===============================================
+        // SEARCH (global)
+        // ===============================================
+
+        public async Task<List<DriveFolderDb>> SearchFolders(string query, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<DriveFolderDb>()
+                    .Filter("name", Postgrest.Constants.Operator.ILike, $"%{query}%")
+                    .Order("name", Postgrest.Constants.Ordering.Ascending)
+                    .Limit(30)
+                    .Get();
+                return response?.Models ?? new List<DriveFolderDb>();
+            }
+            catch (Exception ex) { LogError("Error searching folders", ex); return new List<DriveFolderDb>(); }
+        }
+
+        public async Task<List<DriveFileDb>> SearchFiles(string query, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<DriveFileDb>()
+                    .Filter("file_name", Postgrest.Constants.Operator.ILike, $"%{query}%")
+                    .Order("uploaded_at", Postgrest.Constants.Ordering.Descending)
+                    .Limit(50)
+                    .Get();
+                return response?.Models ?? new List<DriveFileDb>();
+            }
+            catch (Exception ex) { LogError("Error searching files", ex); return new List<DriveFileDb>(); }
         }
 
         // ===============================================

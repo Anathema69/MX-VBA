@@ -1,0 +1,5 @@
+venv/
+__pycache__/
+*.pyc
+2026/
+upload_report.json

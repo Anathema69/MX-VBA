@@ -452,8 +452,9 @@ namespace SistemaGestionProyectos2.Views
 
                     System.Diagnostics.Debug.WriteLine($"✅ {_orders.Count} órdenes cargadas correctamente");
 
-                    // Cargar ejecutores en background (no bloquea la vista)
+                    // Cargar ejecutores y carpetas vinculadas en background (no bloquea la vista)
                     _ = LoadEjecutoresBatch();
+                    _ = LoadLinkedFoldersBatch();
 
                     // Cargar el resto en segundo plano si hay más de 100
                     if (ordersLoadedCount == 100)
@@ -533,6 +534,51 @@ namespace SistemaGestionProyectos2.Views
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"⚠️ Error cargando ejecutores: {ex.Message}");
+            }
+        }
+
+        private async Task LoadLinkedFoldersBatch()
+        {
+            try
+            {
+                var orderIds = _allOrdersCache.Select(o => o.Id).ToList();
+                System.Diagnostics.Debug.WriteLine($"[FOLDERS] LoadLinkedFoldersBatch: querying {orderIds.Count} orders");
+                if (orderIds.Count == 0) return;
+
+                var linkedMap = await _supabaseService.GetDriveLinkedFolderIds(orderIds, _cts?.Token ?? default);
+                System.Diagnostics.Debug.WriteLine($"[FOLDERS] LinkedMap returned: {linkedMap.Count} entries");
+                foreach (var kv in linkedMap)
+                    System.Diagnostics.Debug.WriteLine($"[FOLDERS]   order={kv.Key} -> folder={kv.Value}");
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    int updated = 0;
+                    foreach (var order in _allOrdersCache)
+                    {
+                        var prev = order.LinkedFolderId;
+                        order.LinkedFolderId = linkedMap.TryGetValue(order.Id, out var fid) ? fid : null;
+                        if (order.LinkedFolderId.HasValue) updated++;
+                    }
+                    foreach (var order in _orders)
+                        order.LinkedFolderId = linkedMap.TryGetValue(order.Id, out var fid) ? fid : null;
+
+                    System.Diagnostics.Debug.WriteLine($"[FOLDERS] Updated {updated} orders with folder links, refreshing DataGrid...");
+
+                    // Force DataGrid to re-read all bindings
+                    var currentFilter = _ordersViewSource?.View?.Filter;
+                    var currentSort = _ordersViewSource?.SortDescriptions.ToList();
+                    _ordersViewSource = new CollectionViewSource { Source = _orders };
+                    if (currentSort != null)
+                        foreach (var sd in currentSort) _ordersViewSource.SortDescriptions.Add(sd);
+                    if (currentFilter != null) _ordersViewSource.View.Filter = currentFilter;
+                    OrdersDataGrid.ItemsSource = _ordersViewSource.View;
+
+                    System.Diagnostics.Debug.WriteLine($"[FOLDERS] DataGrid ItemsSource reset done");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FOLDERS] ERROR: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -999,6 +1045,41 @@ namespace SistemaGestionProyectos2.Views
             {
                 MessageBox.Show($"Error al editar ejecutores:\n{ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void FolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var order = button?.Tag as OrderViewModel;
+            if (order == null) return;
+
+            try
+            {
+                // Re-check linked status from BD (in case it was linked outside this session)
+                var freshCheck = await _supabaseService.GetDriveLinkedFolderIds(new List<int> { order.Id });
+                if (freshCheck.TryGetValue(order.Id, out var folderId))
+                {
+                    order.LinkedFolderId = folderId;
+                    // Open Drive navigating directly to the linked folder
+                    var driveWindow = new DriveV2Window(_currentUser, folderId);
+                    driveWindow.Show();
+                }
+                else
+                {
+                    // Open Drive in selection mode so user can pick a folder to link
+                    var driveWindow = new DriveV2Window(_currentUser, order.Id, order.OrderNumber ?? $"#{order.Id}");
+                    driveWindow.Owner = this;
+                    if (driveWindow.ShowDialog() == true)
+                    {
+                        // Refresh all folder links
+                        await LoadLinkedFoldersBatch();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error abriendo Drive: {ex.Message}");
             }
         }
 

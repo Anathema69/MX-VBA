@@ -98,6 +98,12 @@ namespace SistemaGestionProyectos2.Models
         public string EjecutorExtraText => $"+{EjecutorExtraCount}";
         public bool TieneEjecutores => !string.IsNullOrWhiteSpace(EjecutoresNombre);
 
+        // Carpeta vinculada en Drive
+        public int? LinkedFolderId { get; set; }
+        public bool HasLinkedFolder => LinkedFolderId.HasValue;
+        public string FolderIconSource => HasLinkedFolder ? "/ico-ima/folder_on.png" : "/ico-ima/folder_off.png";
+        public string FolderTooltip => HasLinkedFolder ? "Abrir carpeta en Drive" : "Sin carpeta — clic para vincular";
+
         // Comisión del vendedor (porcentaje decimal, ej: 5.00 = 5%)
         public decimal CommissionRate { get; set; }
 

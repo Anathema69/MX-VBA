@@ -14,10 +14,10 @@
 | 2 | Optimizacion de rendimiento | Media | COMPLETADO | 6/6 |
 | 3 | Portal Ventas + Storage | Media | COMPLETADO | 4/4 |
 | 4 | Columna Ejecutor | Baja | COMPLETADO (falta deploy SQL) | 3/3 |
-| 5 | Archivos (Drive IMA) | Alta | EN PROGRESO | 3/5 |
+| 5 | Archivos (Drive IMA) | Alta | EN PROGRESO | 4/5 |
 | 6 | Modulo Inventario | Alta | PENDIENTE | 0/4 |
 
-**Progreso global:** 23/28 items (82%)
+**Progreso global:** 27/29 items (93%)
 
 ---
 
@@ -28,19 +28,31 @@
 - [x] **5B** DriveService (CRUD carpetas, archivos, vinculacion, R2)
 - [x] **5C** DriveV2Window UI + logica completa (rediseno basado en Figma)
 
-### En progreso
-- [ ] **5-PERF** Optimizacion de rendimiento (pasos 1-4)
-  - [x] Paso 1: SQL RPC `get_folder_stats` (1 query reemplaza 2*N) - `sql/drive_perf.sql`
-  - [x] Paso 2: SQL RPC `get_folder_breadcrumb_full` (1 CTE reemplaza N secuenciales) - `sql/drive_perf.sql`
-  - [x] Paso 3: SQL RPC `get_orders_by_ids` (batch load ordenes) - `sql/drive_perf.sql`
-  - [x] Paso 4: Boton Purgar R2 re-agregado (temporal, para pruebas con carpeta real 2026)
-  - [x] Upload paralelo con SemaphoreSlim(3) - hasta 3 archivos simultaneos
-  - [ ] **PENDIENTE: Ejecutar `sql/drive_perf.sql` en Supabase SQL Editor**
-  - [ ] **PENDIENTE: Pruebas con carpeta real 2026**
+### Completadas
+- [x] **5-PERF** Optimizacion de rendimiento
+  - [x] SQL RPCs: `get_folder_stats`, `get_folder_breadcrumb_full`, `get_orders_by_ids`
+  - [x] Upload paralelo SemaphoreSlim(3)
+  - [x] Cache de navegacion stale-while-revalidate (cache-hit ~9ms)
+  - [x] Benchmark automatizado (cold/warm/cache-hit/back-nav)
+  - [x] Deploy SQL RPCs en Supabase
+  - [x] Pruebas con carpeta real 2026 (520MB, 1268 archivos, 111 carpetas)
+  - [x] Script upload automatizado (`fase4/dirve_test/upload_to_drive.py`)
+  - [x] Vinculacion automatica de 23 carpetas a ordenes (`fase4/dirve_test/link_folders_to_orders.py`)
+- [x] **5D** Columna CARPETA en OrdersManagementWindow
+  - [x] Icono PNG (`folder_off`/`folder_on`) en columna separada
+  - [x] Clic en orden vinculada abre DriveV2Window directo en la carpeta
+  - [x] Clic en orden sin vincular abre Drive en modo seleccion
+  - [x] Modo seleccion bloquea carpetas ya vinculadas (opacity + badge VINCULADA)
+  - [x] Batch load de linked folders en background
+  - [x] Icono `folder_pin.png` como icono principal de carpetas en Drive
 
 ### Pendiente
-- [ ] **5D** Columna CARPETA en OrdersManagementWindow (icono gris/azul, clic abre Drive)
-- [ ] **5E** Polish: busqueda global, quitar Purgar R2, validacion duplicados
+- [ ] **5E** Polish
+  - [ ] **Busqueda global: requiere ajuste y revision** (busqueda actual con ILike funciona pero falta UX: no navega al resultado al hacer clic, no muestra ubicacion del resultado)
+  - [ ] Quitar botones temporales (Purgar R2, Benchmark)
+  - [ ] Quitar auto-login temporal (appsettings.json)
+  - [ ] Validacion nombres duplicados mejorada
+  - [ ] Confirmar si Shot&Shot/Rack V2.1 necesita orden nueva (actualmente sin vincular)
 
 ---
 

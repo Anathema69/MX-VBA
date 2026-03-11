@@ -1064,6 +1064,12 @@ namespace SistemaGestionProyectos2.Services
         public Task<Dictionary<int, (int fileCount, int subCount, long totalSize)>> GetDriveFolderStats(int parentId, CancellationToken ct = default)
             => _driveService.GetFolderStats(parentId, ct);
 
+        public Task<List<DriveFolderDb>> SearchDriveFolders(string query, CancellationToken ct = default)
+            => _driveService.SearchFolders(query, ct);
+
+        public Task<List<DriveFileDb>> SearchDriveFiles(string query, CancellationToken ct = default)
+            => _driveService.SearchFiles(query, ct);
+
         public Task<List<Services.Drive.DriveService.OrderInfoRpc>> GetDriveOrdersByIds(List<int> orderIds, CancellationToken ct = default)
             => _driveService.GetOrdersByIds(orderIds, ct);
     }

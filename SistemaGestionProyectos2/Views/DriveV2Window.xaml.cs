@@ -102,9 +102,17 @@ namespace SistemaGestionProyectos2.Views
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             MouseDown += OnMouseNav;
-            Loaded += async (s, e) => { InitSidebar(); UpdateViewToggle(); await SafeLoad(() => NavigateToRoot()); };
+            Loaded += async (s, e) => { InitSidebar(); UpdateViewToggle(); await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot()); };
         }
 
+        /// <summary>Open Drive navigating directly to a specific folder</summary>
+        public DriveV2Window(UserSession user, int folderId) : this(user)
+        {
+            _navigateToFolderId = folderId;
+        }
+        private int? _navigateToFolderId;
+
+        /// <summary>Open Drive in selection mode for linking a folder to an order</summary>
         public DriveV2Window(UserSession user, int orderId, string orderPo) : this(user)
         {
             _isSelectionMode = true; _selectionOrderId = orderId; _selectionOrderPo = orderPo;
@@ -513,10 +521,20 @@ namespace SistemaGestionProyectos2.Views
             var ft = new Border { BorderBrush = BorderLight, BorderThickness = new Thickness(0, 1, 0, 0), Margin = new Thickness(20, 16, 20, 0), Padding = new Thickness(0, 12, 0, 16) };
             ft.Child = new TextBlock { Text = $"Modificado {RelT(folder.UpdatedAt)}", FontSize = 11, Foreground = TextLight };
             Grid.SetRow(ft, 3); mg.Children.Add(ft);
+            // Selection mode: dim folders already linked to other orders
+            var blockedInSelection = _isSelectionMode && linked;
+            if (blockedInSelection)
+            {
+                card.Opacity = 0.5;
+                card.Cursor = Cursors.No;
+                // Add "VINCULADA" badge on the accent bar
+                var badge = new TextBlock { Text = "VINCULADA", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                acc.Child = badge; acc.Height = 18;
+            }
             card.Child = mg;
-            card.MouseEnter += (s, e) => { card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 4, Opacity = 0.08 }; nameT.Foreground = Primary; moreBtn.Visibility = Visibility.Visible; };
+            card.MouseEnter += (s, e) => { if (!blockedInSelection) { card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 4, Opacity = 0.08 }; nameT.Foreground = Primary; moreBtn.Visibility = Visibility.Visible; } };
             card.MouseLeave += (s, e) => { card.Effect = null; nameT.Foreground = TextPrimary; moreBtn.Visibility = Visibility.Collapsed; };
-            card.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
+            card.MouseLeftButtonDown += (s, e) => { if (blockedInSelection) return; if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
             card.MouseRightButtonDown += (s, e) => { var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); card.ContextMenu = m; };
             return card;
         }
@@ -696,7 +714,19 @@ namespace SistemaGestionProyectos2.Views
         // ===============================================
         async void LinkOrder(DriveFolderDb folder) { var roots = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token); var rid = roots.FirstOrDefault()?.Id; if (rid == null || folder.ParentId != rid) { MessageBox.Show("Solo carpetas de primer nivel.", "No permitido", MessageBoxButton.OK, MessageBoxImage.Information); return; } var orders = await SupabaseService.Instance.GetOrders(200); if (orders == null || orders.Count == 0) { MessageBox.Show("Sin ordenes.", "", MessageBoxButton.OK, MessageBoxImage.Information); return; } var allL = await SupabaseService.Instance.GetDriveChildFolders(rid, _cts.Token); var used = allL.Where(f => f.LinkedOrderId.HasValue && f.Id != folder.Id).Select(f => f.LinkedOrderId!.Value).ToHashSet(); var avail = orders.Where(o => !used.Contains(o.Id)).ToList(); if (avail.Count == 0) { MessageBox.Show("Todas vinculadas.", "", MessageBoxButton.OK, MessageBoxImage.Information); return; } var cl = await SupabaseService.Instance.GetClients(); var cn = cl?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<int, string>(); var sel = OrderDlg(avail, cn); if (sel == null) return; await SafeLoad(async () => { if (await SupabaseService.Instance.LinkDriveFolderToOrder(folder.Id, sel.Id, _cts.Token)) { _orderInfoCache.Remove(sel.Id); StatusText.Text = $"Vinculada a {sel.Po}"; await LoadFolder(); } }); }
         async Task Unlink(DriveFolderDb f) { await SafeLoad(async () => { if (await SupabaseService.Instance.UnlinkDriveFolder(f.Id, _cts.Token)) { StatusText.Text = "Desvinculada"; await LoadFolder(); } }); }
-        async void LinkThisFolder_Click(object sender, RoutedEventArgs e) { if (!_currentFolderId.HasValue || !_selectionOrderId.HasValue) return; await SafeLoad(async () => { if (await SupabaseService.Instance.LinkDriveFolderToOrder(_currentFolderId.Value, _selectionOrderId.Value, _cts.Token)) { MessageBox.Show($"Vinculada a {_selectionOrderPo}", "OK", MessageBoxButton.OK, MessageBoxImage.Information); DialogResult = true; Close(); } }); }
+        async void LinkThisFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_currentFolderId.HasValue || !_selectionOrderId.HasValue) return;
+            // Check if current folder is already linked to another order
+            var currentFolder = _breadcrumb.LastOrDefault();
+            if (currentFolder?.LinkedOrderId.HasValue == true)
+            {
+                var oi = _orderInfoCache.TryGetValue(currentFolder.LinkedOrderId.Value, out var info) ? info.Po : $"#{currentFolder.LinkedOrderId}";
+                MessageBox.Show($"Esta carpeta ya esta vinculada a la orden {oi}.\nSeleccione otra carpeta.", "Carpeta ocupada", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            await SafeLoad(async () => { if (await SupabaseService.Instance.LinkDriveFolderToOrder(_currentFolderId.Value, _selectionOrderId.Value, _cts.Token)) { MessageBox.Show($"Vinculada a {_selectionOrderPo}", "OK", MessageBoxButton.OK, MessageBoxImage.Information); DialogResult = true; Close(); } });
+        }
         void CancelSelection_Click(object sender, RoutedEventArgs e) { DialogResult = false; Close(); }
 
         // P7: Modern order dialog
@@ -729,22 +759,37 @@ namespace SistemaGestionProyectos2.Views
         // ===============================================
         void TopBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.Left) DragMove(); }
 
-        // P10: Search with debounce
+        // P10: Search with debounce - global search across all folders
         async void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
             var q = SearchBox.Text?.Trim().ToLowerInvariant() ?? "";
-            await Task.Delay(300);
+            await Task.Delay(400);
             if ((SearchBox.Text?.Trim().ToLowerInvariant() ?? "") != q) return;
-            if (string.IsNullOrEmpty(q)) { RenderContent(); return; }
-            var ff = _currentFolders.Where(f => f.Name.ToLowerInvariant().Contains(q) || (f.LinkedOrderId.HasValue && OrderTxt(f.LinkedOrderId).ToLowerInvariant().Contains(q))).ToList();
-            var ffi = _currentFiles.Where(f => f.FileName.ToLowerInvariant().Contains(q)).ToList();
-            var w = new WrapPanel();
-            foreach (var f in ff) { var c = MkFolderCard(f); c.Width = 280; c.Margin = new Thickness(6); w.Children.Add(c); }
-            foreach (var f in ffi) { var c = MkFileCard(f); c.Width = 220; c.Margin = new Thickness(6); w.Children.Add(c); }
-            ContentHost.Content = w;
-            StatusText.Text = $"{ff.Count + ffi.Count} resultado(s)";
-            EmptyState.Visibility = (ff.Count + ffi.Count) == 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (string.IsNullOrEmpty(q)) { RenderContent(); SectionTitle.Text = _breadcrumb.LastOrDefault()?.Name ?? "IMA Drive"; SectionSubtitle.Text = ""; return; }
+
+            try
+            {
+                // Search folders by name (global, using ilike)
+                var folderResults = await SupabaseService.Instance.SearchDriveFolders(q, _cts.Token);
+                // Search files by name (global, using ilike)
+                var fileResults = await SupabaseService.Instance.SearchDriveFiles(q, _cts.Token);
+
+                var w = new WrapPanel();
+                foreach (var f in folderResults) { var c = MkFolderCard(f); c.Width = 280; c.Margin = new Thickness(6); w.Children.Add(c); }
+                foreach (var f in fileResults) { var c = MkFileCard(f); c.Width = 220; c.Margin = new Thickness(6); w.Children.Add(c); }
+                ContentHost.Content = w;
+                var total = folderResults.Count + fileResults.Count;
+                SectionTitle.Text = $"Resultados: \"{q}\"";
+                SectionSubtitle.Text = $"{folderResults.Count} carpeta(s), {fileResults.Count} archivo(s)";
+                StatusText.Text = $"{total} resultado(s)";
+                EmptyState.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[DriveV2] Search error: {ex.Message}");
+                StatusText.Text = "Error en busqueda";
+            }
         }
 
         void GridView_Click(object sender, RoutedEventArgs e) { _viewMode = "grid"; UpdateViewToggle(); RenderContent(); }
@@ -834,7 +879,8 @@ namespace SistemaGestionProyectos2.Views
         async Task SafeLoad(Func<Task> a) { try { await a(); } catch (OperationCanceledException) { } catch (Exception ex) { Debug.WriteLine($"[DriveV2] ERR: {ex.Message}"); StatusText.Text = $"Error: {ex.Message}"; } }
         async Task<string> ResolveUser(int? uid) { if (!uid.HasValue) return "-"; if (_userNameCache.TryGetValue(uid.Value, out var c)) return c; try { var u = await SupabaseService.Instance.GetUserById(uid.Value); var n = u?.FullName ?? u?.Username ?? $"#{uid}"; _userNameCache[uid.Value] = n; return n; } catch { return $"#{uid}"; } }
         string OrderTxt(int? oid) { if (!oid.HasValue) return "-"; if (!_orderInfoCache.TryGetValue(oid.Value, out var oi)) return $"#{oid}"; return !string.IsNullOrEmpty(oi.Client) ? $"{oi.Po} | {Tr(oi.Client, 16)}" : oi.Po; }
-        static UIElement MkFolderIco(double sz, Brush fill) => new System.Windows.Shapes.Path { Data = FolderGeo, Fill = fill, Stretch = Stretch.Uniform, Width = sz, Height = sz, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        private static readonly System.Windows.Media.Imaging.BitmapImage _folderPinBmp = new(new Uri("pack://application:,,,/ico-ima/folder_pin.png"));
+        static UIElement MkFolderIco(double sz, Brush fill) => new System.Windows.Controls.Image { Source = _folderPinBmp, Width = sz, Height = sz, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
 
         // P7: Modern prompt dialog
         static string Prompt(string title, string label, string def)

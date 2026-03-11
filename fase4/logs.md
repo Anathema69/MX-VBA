@@ -210,4 +210,41 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 
 **Compilacion:** 0 errores.
 
+### 2026-03-10 - Bloque 5 - Fase 5D: Columna CARPETA + iconos PNG + datos reales
+**Tipo:** implementacion
+
+**Archivos creados:**
+- `ico-ima/folder_off.png` - Icono carpeta sin vincular (24x24 PNG)
+- `ico-ima/folder_on.png` - Icono carpeta vinculada (24x24 PNG)
+- `ico-ima/folder_pin.png` - Icono carpeta principal en Drive (24x24 PNG)
+- `fase4/dirve_test/upload_to_drive.py` - Script Python para subida masiva a R2 + BD
+- `fase4/dirve_test/link_folders_to_orders.py` - Script Python para vincular carpetas a ordenes
+- `fase4/dirve_test/.gitignore` - Excluye venv, 2026/, report
+
+**Archivos modificados:**
+- `Models/OrderViewModel.cs` - LinkedFolderId, HasLinkedFolder, FolderIconSource, FolderTooltip
+- `Views/OrdersManagementWindow.xaml` - Columna CARPETA separada con icono PNG (folder_off/folder_on)
+- `Views/OrdersManagementWindow.xaml.cs` - LoadLinkedFoldersBatch(), FolderButton_Click (consulta BD fresca), refresh DataGrid con CollectionViewSource reset
+- `Views/DriveV2Window.xaml.cs` - Constructor DriveV2Window(user, folderId) para navegacion directa, MkFolderIco usa folder_pin.png, modo seleccion bloquea carpetas vinculadas (opacity+badge), busqueda global con ILike (pendiente ajustes UX), LinkThisFolder valida carpeta no ocupada
+- `Services/Drive/DriveService.cs` - SearchFolders/SearchFiles (ILike global, limit 30/50), GetLinkedFolderIds fix ToDictionary crash con TryAdd (caso 1:N Rack V2.0/V2.1)
+- `Services/SupabaseService.cs` - SearchDriveFolders, SearchDriveFiles delegaciones
+- `SistemaGestionProyectos2.csproj` - Resource Include ico-ima/*.png
+- `appsettings.json` - AutoLogin temporal con usuario caaj
+
+**Datos reales subidos:**
+- 520MB, 1268 archivos, 111 carpetas (estructura 2026: Ene/Feb/Mar)
+- 23 carpetas vinculadas a ordenes automaticamente
+- 5 carpetas sin match (Junco/Mesa Servicios, Engicom/RFQ-47337, Lennox/Fixture planta2, Lennox/valvula reversible, Shot&Shot/Rack V2.1)
+
+**Bugs corregidos:**
+- ToDictionary crash cuando 2 carpetas vinculadas a misma orden (Rack V2.0 + V2.1 -> orden 1176)
+- Iconos siempre grises: View.Refresh() no re-evaluaba computed properties -> fix con CollectionViewSource reset
+- FolderButton_Click: ahora consulta BD fresca antes de decidir abrir vs vincular
+
+**Pendiente:**
+- Busqueda global requiere ajustes UX (no navega al resultado, no muestra ubicacion)
+- Quitar temporales: Purgar R2, Benchmark, auto-login
+
+**Compilacion:** 0 errores.
+
 ---

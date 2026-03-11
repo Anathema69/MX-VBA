@@ -719,13 +719,33 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
+                        <!-- Carpeta vinculada en Drive -->
+                        <DataGridTemplateColumn Header="📁" Width="45"
+                                                HeaderStyle="{StaticResource CenterAlignedHeader}">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Click="FolderButton_Click"
+                                            Tag="{Binding}"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Cursor="Hand"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Padding="2"
+                                            ToolTip="{Binding FolderTooltip}">
+                                        <Image Width="20" Height="20"
+                                               Source="{Binding FolderIconSource}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <DataGridTemplateColumn Header="ACCIONES" Width="120"
                                            HeaderStyle="{StaticResource CenterAlignedHeader}">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <!-- Botón Editar - Siempre visible -->
-                                        <Button    Content="✏" 
+                                        <Button Content="✏"
                                                Click="EditButton_Click"
                                                Tag="{Binding}"
                                                Background="Transparent"
@@ -734,10 +754,8 @@
                                                Cursor="Hand"
                                                ToolTip="Editar"
                                                Margin="5,0"/>
-
-                                        <!-- Botón Facturas - Solo visible para Admin usando Tag del Window -->
                                         <Button x:Name="InvoiceBtn"
-                                               Content="💰" 
+                                               Content="💰"
                                                Click="InvoiceButton_Click"
                                                Tag="{Binding}"
                                                Background="Transparent"
@@ -746,11 +764,9 @@
                                                Cursor="Hand"
                                                ToolTip="Gestionar Facturas"
                                                Margin="5,0"
-                                               Visibility="{Binding ElementName=OrdersWindow, 
-                                                           Path=Tag, 
+                                               Visibility="{Binding ElementName=OrdersWindow,
+                                                           Path=Tag,
                                                            Converter={StaticResource AdminVisibilityConverter}}"/>
-
-
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
