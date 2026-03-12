@@ -2,8 +2,8 @@
 -- SCRIPT: Insertar nueva version en app_versions
 -- ============================================================
 -- INSTRUCCIONES:
---   1. Subir el instalador a Supabase Storage ANTES de ejecutar
---      Ruta: app-installers/releases/v{VERSION}/SistemaGestionProyectos-v{VERSION}-Setup.exe
+--   1. Subir el instalador a GitHub Releases ANTES de ejecutar
+--      Comando: gh release create v{VERSION} installer.exe --title "v{VERSION}" --notes "..."
 --   2. Modificar SOLO la seccion "CONFIGURACION" abajo
 --   3. Ejecutar en Supabase SQL Editor
 --   4. Verificar con el SELECT final
@@ -17,65 +17,57 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.0.6';
+    v_version       VARCHAR := '2.0.8';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 49.96;
+    v_file_size_mb  NUMERIC := 50.5;
     v_is_mandatory  BOOLEAN := true;
-    v_min_version   VARCHAR := NULL;
+    v_min_version   VARCHAR := '2.0.7';
 
-    v_release_notes TEXT := 'Version 2.0.6 - Fase 4: Bloque 3 (Portal Ventas + Storage) + Bloque 4 (Ejecutor) + Bugfixes
+    v_release_notes TEXT := 'Version 2.0.8 - Portal Proveedores + Panel Vendedor + Correcciones
 
-PORTAL VENTAS CON SUBIDA DE ARCHIVOS (Bloque 3):
-- Vendedor: subida multiple de archivos (jpg, png, pdf, doc, xls) por comision
-- Galeria inline con thumbnails, collapsible por comision
-- Preview fullscreen con navegacion entre archivos (flechas + teclado)
-- Acciones CRUD: subir, ver, descargar, eliminar (draft/pending)
-- Comisiones pagadas: solo visualizar y descargar (read-only)
-- Boton "Solicitar Liberacion" (draft -> pending) con archivos adjuntos
-- Admin: galeria inline en panel de comisiones con preview y descarga
-- Infraestructura: Supabase Storage (bucket order-files) + tabla order_files
-- StorageService reutilizable para Bloque 5 (carpetas por orden)
+PORTAL PROVEEDORES (SupplierPendingDetailView):
+- Fix: Seleccionar proveedor sin gastos pendientes ya no bloquea la fila nueva
+- Fix: Orden seleccionada ya no desaparece visualmente al cambiar de campo
+- Alineacion corregida en boton Nuevo Gasto
 
-COLUMNA EJECUTOR (Bloque 4):
-- Nueva columna "Ejecutor" en tabla de ordenes con selector multiple
-- Tabla t_order_ejecutor para asignacion N:N
-- Batch loading optimizado para nombres de ejecutores
+PANEL VENDEDOR (VendorDashboard_V2):
+- Boton Liberar Orden ahora cambia el estado de la orden a LIBERADA (2) en la BD
+- El cambio queda registrado automaticamente en order_history via trigger
+- Comision pasa de draft a pending al liberar
+- Boton Subir Factura: unico punto de upload, sin duplicados
 
-CORRECCIONES:
-- BUG-005: Correccion en facturacion de pagos a proveedores - el boton eliminar no aparecia para gastos ya pagados (afectaba proveedores con 0 dias de credito cuyo pago se registraba automaticamente). Status visual corregido, headers dinamicos por tab, auditoria de eliminacion
-- BUG-006: Correccion en edicion de asistencia en calendario - no se podian modificar registros de asistencia una vez guardados. Reescrito el metodo de guardado, soporte para desmarcar registros y boton de actualizar agregado
+MODULO ORDENES (OrdersManagementWindow):
+- Boton Actualizar ahora invalida cache de catalogos (vendedores, clientes, estados)
+- Fix: vendedor activado manualmente en BD ahora aparece al refrescar sin reiniciar
 
-ACTUALIZACION OBLIGATORIA - Portal de ventas con gestion de archivos';
+INFRAESTRUCTURA:
+- Nuevo metodo BaseSupabaseService.InvalidateCatalogCaches() para invalidar caches de catalogos
+- Logging diagnostico en flujos criticos de creacion de gastos y liberacion de ordenes
+
+ACTUALIZACION OBLIGATORIA';
 
     v_download_url TEXT;
     v_changelog JSONB;
 BEGIN
-    v_download_url := 'https://wjozxqldvypdtfmkamud.supabase.co/storage/v1/object/public/app-installers/releases/v'
+    v_download_url := 'https://github.com/Anathema69/MX-VBA/releases/download/v'
                       || v_version || '/SistemaGestionProyectos-v' || v_version || '-Setup.exe';
 
     v_changelog := '{
         "Fixed": [
-            "BUG-005: Portal Proveedores permite eliminar gastos pagados",
-            "BUG-006: Calendario permite modificar asistencia registrada",
-            "Desmarcar asistencia elimina registro con auditoria",
-            "Boton vacaciones convertido a indicador visual sin conflicto"
+            "Portal Proveedores: proveedor sin gastos pendientes bloqueaba la fila nueva",
+            "Portal Proveedores: orden seleccionada desaparecia al cambiar de campo",
+            "Modulo Ordenes: vendedor activado en BD no aparecia al refrescar (cache)",
+            "Panel Vendedor: botones duplicados de subir factura"
         ],
         "Added": [
-            "Portal Ventas: subida multiple de archivos por comision",
-            "Galeria inline con thumbnails y preview fullscreen",
-            "Navegacion entre archivos con flechas y teclado",
-            "StorageService para Supabase Storage (bucket order-files)",
-            "Tabla order_files para registro de archivos",
-            "Boton Solicitar Liberacion (draft -> pending)",
-            "Admin: galeria inline en panel de comisiones",
-            "Columna Ejecutor con selector multiple en ordenes",
-            "Tabla t_order_ejecutor para asignacion N:N"
+            "Panel Vendedor: Liberar Orden cambia estado de orden a LIBERADA en BD",
+            "Panel Vendedor: cambio de estado registrado en order_history via trigger",
+            "Infraestructura: InvalidateCatalogCaches() para refrescar catalogos"
         ],
         "Improved": [
-            "Acciones CRUD contextuales: upload/delete en draft+pending, read-only en paid",
-            "Toggle collapsible para archivos con hover interactivo y chevron visual",
-            "Notificaciones toast en lugar de MessageBox en portal vendedor",
-            "Diseño unificado con SupplierPendingView (colores, cards, status bar)"
+            "Modulo Ordenes: boton Actualizar recarga catalogos completos desde BD",
+            "Panel Vendedor: unico boton Subir Factura segun contexto (con/sin archivos)",
+            "Portal Proveedores: alineacion visual del boton Nuevo Gasto"
         ]
     }'::jsonb;
 

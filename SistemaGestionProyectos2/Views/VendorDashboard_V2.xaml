@@ -486,20 +486,30 @@
                                                         </Button.Template>
                                                     </Button>
 
-                                                    <!-- Upload button (hidden when paid) -->
+                                                    <!-- Upload button (visible only when has files and not paid) -->
                                                     <Button Grid.Column="1" Tag="{Binding}" Click="UploadFile_Click">
                                                         <Button.Style>
                                                             <Style TargetType="Button" BasedOn="{StaticResource BtnOutline}">
-                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Status}" Value="paid"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding HasFiles}" Value="True"/>
+                                                                            <Condition Binding="{Binding Status}" Value="draft"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </MultiDataTrigger>
+                                                                    <MultiDataTrigger>
+                                                                        <MultiDataTrigger.Conditions>
+                                                                            <Condition Binding="{Binding HasFiles}" Value="True"/>
+                                                                            <Condition Binding="{Binding Status}" Value="pending"/>
+                                                                        </MultiDataTrigger.Conditions>
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </MultiDataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Button.Style>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="+" FontSize="14" FontWeight="Bold" Foreground="#5B3FF9" Margin="0,-2,4,0"/>
-                                                            <TextBlock Text="Subir" FontSize="11" FontWeight="SemiBold" Foreground="#5B3FF9" VerticalAlignment="Center"/>
-                                                        </StackPanel>
+                                                        <TextBlock Text="Subir Factura" FontSize="11" FontWeight="SemiBold" Foreground="#5B3FF9" VerticalAlignment="Center"/>
                                                     </Button>
                                                 </Grid>
 
@@ -663,13 +673,17 @@
                                                         <TextBlock Text="Sube las facturas escaneadas para solicitar la liberacion"
                                                                    FontSize="11" Foreground="{StaticResource TextLight}"
                                                                    HorizontalAlignment="Center" Margin="0,2,0,10"/>
-                                                        <Button Tag="{Binding}" Click="UploadFile_Click" Style="{StaticResource BtnOutline}">
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                                                           Foreground="#5B3FF9" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                                <TextBlock Text="Subir primera factura" FontSize="12" FontWeight="SemiBold"
-                                                                           Foreground="#5B3FF9" VerticalAlignment="Center"/>
-                                                            </StackPanel>
+                                                        <Button Tag="{Binding}" Click="UploadFile_Click">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource BtnOutline}">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Status}" Value="paid"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <TextBlock Text="Subir Factura" FontSize="12" FontWeight="SemiBold"
+                                                                       Foreground="#5B3FF9" VerticalAlignment="Center"/>
                                                         </Button>
                                                     </StackPanel>
                                                 </Border>
@@ -747,9 +761,10 @@
                                                 <Button Grid.Column="1" Style="{StaticResource BtnRelease}"
                                                         IsEnabled="False" Margin="16,0,0,0">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                                                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                                        <TextBlock Text="Suba facturas primero" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                                                   VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="Liberar Orden" VerticalAlignment="Center"/>
+                                                        <TextBlock Text=" &#x2192;" FontSize="14" Opacity="0.6" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
                                             </Grid>

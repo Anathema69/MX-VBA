@@ -877,7 +877,21 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Forzar recarga completa desde BD (ignorar caché)
+                // Invalidar caché de catálogos para obtener datos frescos
+                Services.Core.BaseSupabaseService.InvalidateCatalogCaches();
+
+                // Recargar catálogos desde BD (vendedores, clientes, estados)
+                var clientsTask = _supabaseService.GetClients();
+                var vendorsTask = _supabaseService.GetVendors();
+                var statusesTask = _supabaseService.GetOrderStatuses();
+                await Task.WhenAll(clientsTask, vendorsTask, statusesTask);
+                _clients = await clientsTask;
+                _vendors = await vendorsTask;
+                _orderStatuses = await statusesTask;
+
+                System.Diagnostics.Debug.WriteLine($"🔄 Catálogos recargados: {_clients.Count} clientes, {_vendors.Count} vendedores, {_orderStatuses.Count} estados");
+
+                // Forzar recarga completa de órdenes desde BD
                 await LoadOrders(forceReload: true);
 
                 // Reaplicar filtros después de cargar

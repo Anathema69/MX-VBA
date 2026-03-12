@@ -46,5 +46,18 @@ namespace SistemaGestionProyectos2.Services.Core
         {
             System.Diagnostics.Debug.WriteLine($"✅ [{GetType().Name}] {message}");
         }
+
+        /// <summary>
+        /// Invalida cachés de catálogos (vendedores, clientes, proveedores, statuses)
+        /// Llamar desde el botón Actualizar para forzar recarga desde BD
+        /// </summary>
+        public static void InvalidateCatalogCaches()
+        {
+            Cache.InvalidatePrefix("vendors:");
+            Cache.InvalidatePrefix("clients:");
+            Cache.InvalidatePrefix("suppliers:");
+            Cache.InvalidatePrefix("statuses:");
+            System.Diagnostics.Debug.WriteLine("🔄 Cachés de catálogos invalidados");
+        }
     }
 }

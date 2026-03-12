@@ -331,6 +331,8 @@ namespace SistemaGestionProyectos2.Views
 
             var selectedSupplier = SupplierComboBox.SelectedItem as SupplierDisplayItem;
 
+            System.Diagnostics.Debug.WriteLine($"[GASTOS] ConfirmSupplierSelection: supplier='{selectedSupplier?.SupplierName}' (Id={selectedSupplier?.Id})");
+
             // Cancelar cualquier edición en progreso al cambiar de proveedor
             CancelPendingEdit();
 
@@ -380,9 +382,12 @@ namespace SistemaGestionProyectos2.Views
             // Cargar gastos del proveedor (si los tiene)
             await LoadExpensesAsync();
 
-            // Si el proveedor no tiene gastos pendientes, iniciar automáticamente el modo creación
+            System.Diagnostics.Debug.WriteLine($"[GASTOS] Gastos cargados para '{_supplierName}': {_expenses.Count} (filtro={_currentStatusFilter})");
+
+            // Si el proveedor no tiene gastos, iniciar automáticamente el modo creación
             if (_expenses.Count == 0 && !_isCreatingNewExpense)
             {
+                System.Diagnostics.Debug.WriteLine("[GASTOS] 0 gastos -> auto-trigger NewExpenseButton_Click");
                 await Task.Delay(150);
                 Dispatcher.Invoke(() => NewExpenseButton_Click(null, null));
             }
@@ -842,9 +847,18 @@ namespace SistemaGestionProyectos2.Views
                 DaysText = $"{_supplierCreditDays} días"
             };
 
+            // BUG-007 FIX: Asegurar que el DataGrid es visible antes de insertar
+            // (UpdateEmptyState lo oculta cuando hay 0 gastos, bloqueando la fila nueva)
+            System.Diagnostics.Debug.WriteLine($"[GASTOS] NewExpenseButton_Click: DataGrid.Visibility={ExpensesDataGrid.Visibility}, NoResults.Visibility={NoResultsMessage.Visibility}");
+            ExpensesDataGrid.Visibility = Visibility.Visible;
+            NoResultsMessage.Visibility = Visibility.Collapsed;
+            NoSupplierSelectedMessage.Visibility = Visibility.Collapsed;
+
             // Insertar al inicio de la lista
             _expenses.Insert(0, newExpense);
             _isCreatingNewExpense = true;
+
+            System.Diagnostics.Debug.WriteLine($"[GASTOS] Nueva fila insertada. Supplier={_supplierName} (Id={_supplierId}), CreditDays={_supplierCreditDays}");
 
             // Deshabilitar botón mientras se edita
             NewExpenseButton.IsEnabled = false;
@@ -919,9 +933,14 @@ namespace SistemaGestionProyectos2.Views
         {
             // Buscar fila en edición (nueva o existente)
             var editingExpense = _expenses.FirstOrDefault(x => x.IsNew || x.IsEditing);
-            if (editingExpense == null) return;
+            if (editingExpense == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[GASTOS] SaveNewExpense_Click: No hay fila en edición");
+                return;
+            }
 
             bool isNewExpense = editingExpense.IsNew;
+            System.Diagnostics.Debug.WriteLine($"[GASTOS] SaveNewExpense_Click: IsNew={isNewExpense}, Desc='{editingExpense.Description}', Total='{editingExpense.TotalInput}', OrderId={editingExpense.SelectedOrderId}");
 
             // Validar descripción
             if (string.IsNullOrWhiteSpace(editingExpense.Description))
@@ -1472,6 +1491,8 @@ namespace SistemaGestionProyectos2.Views
             var comboBox = sender as ComboBox;
             if (comboBox == null) return;
 
+            var expense = comboBox.DataContext as ExpenseDetailViewModel;
+
             // Si no hay item seleccionado, seleccionar "Sin orden"
             if (comboBox.SelectedItem == null)
             {
@@ -1486,8 +1507,23 @@ namespace SistemaGestionProyectos2.Views
                 }
             }
 
+            // Guardar la selección actual y actualizar OrderPO
+            var selectedOrder = comboBox.SelectedItem as OrderDisplayItem;
+            int savedOrderId = selectedOrder?.Id ?? (expense?.SelectedOrderId ?? 0);
+
+            if (expense != null)
+            {
+                expense.OrderPO = selectedOrder?.DisplayText ?? "--";
+            }
+
             // Restaurar la lista completa para la próxima vez
             FilterOrders("");
+
+            // Restaurar la selección después de reconstruir la lista
+            if (expense != null)
+            {
+                expense.SelectedOrderId = savedOrderId;
+            }
         }
 
         /// <summary>

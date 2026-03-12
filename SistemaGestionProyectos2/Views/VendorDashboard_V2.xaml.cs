@@ -954,6 +954,18 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 var supabaseClient = _supabaseService.GetClient();
+
+                // 1. Cambiar estado de la ORDEN a LIBERADA (2)
+                //    El trigger record_order_history registra automáticamente en order_history
+                await supabaseClient.From<OrderDb>()
+                    .Filter("f_order", Postgrest.Constants.Operator.Equals, commission.OrderId)
+                    .Set(x => x.OrderStatus, 2) // LIBERADA
+                    .Set(x => x.UpdatedBy, _currentUser.Id)
+                    .Update();
+
+                System.Diagnostics.Debug.WriteLine($"[VENDOR] Orden {commission.OrderId} ({commission.OrderNumber}) -> LIBERADA (2)");
+
+                // 2. Cambiar comisión de draft → pending
                 await supabaseClient.From<VendorCommissionPaymentDb>()
                     .Where(x => x.Id == commission.CommissionId)
                     .Set(x => x.PaymentStatus, "pending")
@@ -961,12 +973,15 @@ namespace SistemaGestionProyectos2.Views
                     .Set(x => x.UpdatedAt, DateTime.Now)
                     .Update();
 
-                ShowTemporaryNotification($"Liberacion solicitada para orden {commission.OrderNumber}");
+                System.Diagnostics.Debug.WriteLine($"[VENDOR] Comisión {commission.CommissionId} -> pending");
+
+                ShowTemporaryNotification($"Orden {commission.OrderNumber} liberada exitosamente");
                 await LoadVendorCommissions();
             }
             catch (Exception ex)
             {
-                ShowTemporaryNotification($"Error al solicitar liberacion");
+                System.Diagnostics.Debug.WriteLine($"[VENDOR] Error en SolicitarLiberacion: {ex.Message}");
+                ShowTemporaryNotification($"Error al liberar orden: {ex.Message}");
             }
         }
 
