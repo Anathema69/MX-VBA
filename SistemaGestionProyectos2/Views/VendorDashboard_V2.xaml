@@ -421,273 +421,118 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <!-- ======== FILES ZONE (compacto) ======== -->
-                                        <Border Background="{StaticResource BgGray}" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0" Padding="16,8">
-                                            <StackPanel>
-                                                <!-- Files header (toggle + upload) -->
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <Button Grid.Column="0" Tag="{Binding}" Click="ToggleFiles_Click"
-                                                            Cursor="Hand" BorderThickness="0" HorizontalAlignment="Left"
-                                                            ToolTip="Clic para ver o colapsar los archivos adjuntos">
-                                                        <Button.Template>
-                                                            <ControlTemplate TargetType="Button">
-                                                                <Border Background="Transparent" CornerRadius="5"
-                                                                        Padding="8,4" Margin="-8,-4" Name="ToggleBg">
-                                                                    <StackPanel Orientation="Horizontal">
-                                                                        <TextBlock Text="&#xE723;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                                                                                   Foreground="{StaticResource TextMuted}" Margin="0,0,8,0"
-                                                                                   VerticalAlignment="Center"/>
-                                                                        <TextBlock Text="Facturas y comprobantes" FontSize="12"
-                                                                                   FontWeight="Medium" Foreground="{StaticResource TextBody}"
-                                                                                   VerticalAlignment="Center" Name="ToggleLabel"/>
-                                                                        <Border Background="{StaticResource BorderColor}" CornerRadius="8"
-                                                                                Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
-                                                                            <TextBlock Text="{Binding FileCount, Mode=OneWay}" FontSize="10"
-                                                                                       FontWeight="Bold" Foreground="{StaticResource TextMuted}"/>
-                                                                        </Border>
-                                                                        <!-- Chevron -->
-                                                                        <Border Background="White" CornerRadius="3" Width="20" Height="20"
-                                                                                Margin="8,0,0,0" VerticalAlignment="Center"
-                                                                                BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
-                                                                                Name="ChevronBg">
-                                                                            <TextBlock FontSize="8" FontWeight="Bold"
-                                                                                       Foreground="{StaticResource TextMuted}"
-                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                                       Name="ChevronIcon">
-                                                                                <TextBlock.Style>
-                                                                                    <Style TargetType="TextBlock">
-                                                                                        <Setter Property="Text" Value="▼"/>
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsFilesExpanded}" Value="True">
-                                                                                                <Setter Property="Text" Value="▲"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </TextBlock.Style>
-                                                                            </TextBlock>
-                                                                        </Border>
-                                                                    </StackPanel>
+                                        <!-- ======== FILES ZONE (inline chips) ======== -->
+                                        <Border Background="{StaticResource BgGray}" BorderBrush="{StaticResource BorderColor}" BorderThickness="0,1,0,0" Padding="12,8">
+                                            <ItemsControl ItemsSource="{Binding Files}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border CornerRadius="6" Margin="0,0,6,4" Cursor="Hand"
+                                                                Padding="8,5,10,5" Name="FileChip"
+                                                                Background="White" BorderThickness="1" BorderBrush="#E5E7EB"
+                                                                MouseLeftButtonDown="FileChip_Click"
+                                                                MouseRightButtonUp="FileChip_RightClick"
+                                                                Tag="{Binding}">
+                                                            <Border.ToolTip>
+                                                                <StackPanel MaxWidth="200">
+                                                                    <TextBlock Text="{Binding FileName}" FontWeight="Medium" FontSize="12"/>
+                                                                    <TextBlock Text="Clic para previsualizar · Clic derecho para opciones"
+                                                                               FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                                                </StackPanel>
+                                                            </Border.ToolTip>
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <!-- Extension badge -->
+                                                                <Border CornerRadius="4" Padding="4,2" Margin="0,0,6,0" VerticalAlignment="Center">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Background" Value="#64748B"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="JPG"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="JPEG"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="JFIF"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="PNG"><Setter Property="Background" Value="#8B5CF6"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="PDF"><Setter Property="Background" Value="#EF4444"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="XLS"><Setter Property="Background" Value="#10B981"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="XLSX"><Setter Property="Background" Value="#10B981"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="DOC"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
+                                                                                <DataTrigger Binding="{Binding FileExt}" Value="DOCX"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <TextBlock Text="{Binding FileExt}" FontSize="9" FontWeight="Bold" Foreground="White"/>
                                                                 </Border>
-                                                                <ControlTemplate.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter TargetName="ToggleBg" Property="Background" Value="#EDF2F7"/>
-                                                                        <Setter TargetName="ToggleLabel" Property="Foreground" Value="{StaticResource TextDark}"/>
-                                                                        <Setter TargetName="ChevronBg" Property="Background" Value="{StaticResource Primary}"/>
-                                                                        <Setter TargetName="ChevronBg" Property="BorderBrush" Value="{StaticResource Primary}"/>
-                                                                        <Setter TargetName="ChevronIcon" Property="Foreground" Value="White"/>
-                                                                    </Trigger>
-                                                                </ControlTemplate.Triggers>
-                                                            </ControlTemplate>
-                                                        </Button.Template>
-                                                    </Button>
-
-                                                    <!-- Upload button (visible only when has files and not paid) -->
-                                                    <Button Grid.Column="1" Tag="{Binding}" Click="UploadFile_Click">
-                                                        <Button.Style>
-                                                            <Style TargetType="Button" BasedOn="{StaticResource BtnOutline}">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <MultiDataTrigger>
-                                                                        <MultiDataTrigger.Conditions>
-                                                                            <Condition Binding="{Binding HasFiles}" Value="True"/>
-                                                                            <Condition Binding="{Binding Status}" Value="draft"/>
-                                                                        </MultiDataTrigger.Conditions>
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </MultiDataTrigger>
-                                                                    <MultiDataTrigger>
-                                                                        <MultiDataTrigger.Conditions>
-                                                                            <Condition Binding="{Binding HasFiles}" Value="True"/>
-                                                                            <Condition Binding="{Binding Status}" Value="pending"/>
-                                                                        </MultiDataTrigger.Conditions>
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </MultiDataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
-                                                        <TextBlock Text="Subir Factura" FontSize="11" FontWeight="SemiBold" Foreground="#5B3FF9" VerticalAlignment="Center"/>
-                                                    </Button>
-                                                </Grid>
-
-                                                <!-- ======== Gallery (120x120 thumbnails with badges) ======== -->
-                                                <ItemsControl ItemsSource="{Binding Files}" Margin="0,8,0,0"
-                                                              Visibility="{Binding IsFilesExpanded, Converter={StaticResource BoolToVis}}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border Width="120" Height="120" CornerRadius="8"
-                                                                    Background="White" BorderThickness="1"
-                                                                    Margin="0,0,8,8" ClipToBounds="True"
-                                                                    Name="GalleryItem" Cursor="Hand">
-                                                                <Border.Style>
-                                                                    <Style TargetType="Border">
-                                                                        <Setter Property="BorderBrush" Value="#E5E7EB"/>
-                                                                        <Style.Triggers>
-                                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                                <Setter Property="BorderBrush" Value="#6366F1"/>
-                                                                                <Setter Property="BorderThickness" Value="2"/>
-                                                                            </Trigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Border.Style>
-                                                                <Grid>
-                                                                    <!-- Placeholder background -->
-                                                                    <Border Background="{Binding PlaceholderColor}">
-                                                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                                                            <TextBlock Text="{Binding FileIcon}" FontSize="28" HorizontalAlignment="Center"/>
-                                                                            <TextBlock Text="{Binding FileExt}" FontSize="10" FontWeight="Bold"
-                                                                                       Foreground="{StaticResource TextMuted}" Opacity="0.6"
-                                                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                                                        </StackPanel>
-                                                                    </Border>
-
-                                                                    <!-- Image thumbnail -->
-                                                                    <Image Source="{Binding ThumbnailSource, Mode=OneWay}" Stretch="UniformToFill"
-                                                                           Visibility="{Binding HasThumbnail, Converter={StaticResource BoolToVis}}"/>
-
-                                                                    <!-- Extension badge (top-right) -->
-                                                                    <Border CornerRadius="4" Padding="5,2"
-                                                                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                                            Margin="0,6,6,0">
-                                                                        <Border.Style>
-                                                                            <Style TargetType="Border">
-                                                                                <Setter Property="Background" Value="#64748B"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="JPG"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="JPEG"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="JFIF"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="PNG"><Setter Property="Background" Value="#8B5CF6"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="PDF"><Setter Property="Background" Value="#EF4444"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="XLS"><Setter Property="Background" Value="#10B981"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="XLSX"><Setter Property="Background" Value="#10B981"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="DOC"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
-                                                                                    <DataTrigger Binding="{Binding FileExt}" Value="DOCX"><Setter Property="Background" Value="#3B82F6"/></DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </Border.Style>
-                                                                        <TextBlock Text="{Binding FileExt}" FontSize="9" FontWeight="Bold" Foreground="White"/>
-                                                                    </Border>
-
-                                                                    <!-- Gradient overlay bottom (name + size) -->
-                                                                    <Border VerticalAlignment="Bottom" Padding="8,16,8,6">
-                                                                        <Border.Background>
-                                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                                                <GradientStop Color="#00181818" Offset="0"/>
-                                                                                <GradientStop Color="#D9181818" Offset="1"/>
-                                                                            </LinearGradientBrush>
-                                                                        </Border.Background>
-                                                                        <StackPanel>
-                                                                            <TextBlock Text="{Binding FileName}" FontSize="10" FontWeight="Medium" Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                                                            <TextBlock Text="{Binding FileSizeFormatted}" FontSize="9" Foreground="#99FFFFFF" Margin="0,1,0,0"/>
-                                                                        </StackPanel>
-                                                                    </Border>
-
-                                                                    <!-- Hover overlay with actions -->
-                                                                    <Border Name="Overlay" Background="#A618181B" Visibility="Collapsed">
-                                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                                            <Button Tag="{Binding}" Click="PreviewFile_Click" Cursor="Hand" BorderThickness="0" ToolTip="Ver" Margin="0,0,4,0">
-                                                                                <Button.Template>
-                                                                                    <ControlTemplate TargetType="Button">
-                                                                                        <Border Width="32" Height="32" CornerRadius="6" Background="#44FFFFFF" Name="Bb">
-                                                                                            <TextBlock Text="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="White"
-                                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                                        </Border>
-                                                                                        <ControlTemplate.Triggers>
-                                                                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bb" Property="Background" Value="#66FFFFFF"/></Trigger>
-                                                                                        </ControlTemplate.Triggers>
-                                                                                    </ControlTemplate>
-                                                                                </Button.Template>
-                                                                            </Button>
-                                                                            <Button Tag="{Binding}" Click="DownloadFileInline_Click" Cursor="Hand" BorderThickness="0" ToolTip="Descargar" Margin="0,0,4,0">
-                                                                                <Button.Template>
-                                                                                    <ControlTemplate TargetType="Button">
-                                                                                        <Border Width="32" Height="32" CornerRadius="6" Background="#B33B82F6" Name="Bb">
-                                                                                            <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="White"
-                                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                                        </Border>
-                                                                                        <ControlTemplate.Triggers>
-                                                                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bb" Property="Background" Value="#E63B82F6"/></Trigger>
-                                                                                        </ControlTemplate.Triggers>
-                                                                                    </ControlTemplate>
-                                                                                </Button.Template>
-                                                                            </Button>
-                                                                            <Button Tag="{Binding}" Click="DeleteFileInline_Click" Cursor="Hand" BorderThickness="0" ToolTip="Eliminar"
-                                                                                    Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}">
-                                                                                <Button.Template>
-                                                                                    <ControlTemplate TargetType="Button">
-                                                                                        <Border Width="32" Height="32" CornerRadius="6" Background="#B3EF4444" Name="Bb">
-                                                                                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="White"
-                                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                                                        </Border>
-                                                                                        <ControlTemplate.Triggers>
-                                                                                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bb" Property="Background" Value="#E6EF4444"/></Trigger>
-                                                                                        </ControlTemplate.Triggers>
-                                                                                    </ControlTemplate>
-                                                                                </Button.Template>
-                                                                            </Button>
-                                                                        </StackPanel>
-                                                                    </Border>
-                                                                </Grid>
-                                                            </Border>
-                                                            <DataTemplate.Triggers>
-                                                                <Trigger SourceName="GalleryItem" Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Overlay" Property="Visibility" Value="Visible"/>
-                                                                </Trigger>
-                                                            </DataTemplate.Triggers>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-
-                                                <!-- ======== Empty state (solo cuando expanded + sin archivos) ======== -->
-                                                <Border Margin="0,8,0,0" Padding="16,16">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                            <Style.Triggers>
-                                                                <MultiDataTrigger>
-                                                                    <MultiDataTrigger.Conditions>
-                                                                        <Condition Binding="{Binding IsFilesExpanded}" Value="True"/>
-                                                                        <Condition Binding="{Binding HasFiles}" Value="False"/>
-                                                                    </MultiDataTrigger.Conditions>
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                </MultiDataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <StackPanel HorizontalAlignment="Center">
-                                                        <Border Width="44" Height="44" CornerRadius="22"
-                                                                Background="{StaticResource PrimaryLight}"
-                                                                HorizontalAlignment="Center" Margin="0,0,0,8">
-                                                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets"
-                                                                       FontSize="20" Foreground="{StaticResource Primary}" Opacity="0.6"
-                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                                <!-- Name + size -->
+                                                                <StackPanel VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding FileName}" FontSize="11" FontWeight="Medium"
+                                                                               Foreground="{StaticResource TextBody}" TextTrimming="CharacterEllipsis"
+                                                                               MaxWidth="120"/>
+                                                                    <TextBlock Text="{Binding FileSizeFormatted}" FontSize="9"
+                                                                               Foreground="{StaticResource TextLight}" Margin="0,-1,0,0"/>
+                                                                </StackPanel>
+                                                                <!-- More options hint (visible on hover) -->
+                                                                <TextBlock Text="&#xE712;" FontFamily="Segoe MDL2 Assets"
+                                                                           FontSize="10" Foreground="{StaticResource TextMuted}"
+                                                                           VerticalAlignment="Center" Margin="4,0,0,0"
+                                                                           Name="MoreIcon" Visibility="Collapsed"
+                                                                           ToolTip="Clic derecho para opciones"/>
+                                                            </StackPanel>
                                                         </Border>
-                                                        <TextBlock Text="Sin facturas adjuntas" FontSize="13" FontWeight="Medium"
-                                                                   Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center"/>
-                                                        <TextBlock Text="Sube las facturas escaneadas para solicitar la liberacion"
-                                                                   FontSize="11" Foreground="{StaticResource TextLight}"
-                                                                   HorizontalAlignment="Center" Margin="0,2,0,10"/>
-                                                        <Button Tag="{Binding}" Click="UploadFile_Click">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource BtnOutline}">
-                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Status}" Value="paid"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
-                                                            <TextBlock Text="Subir Factura" FontSize="12" FontWeight="SemiBold"
-                                                                       Foreground="#5B3FF9" VerticalAlignment="Center"/>
-                                                        </Button>
-                                                    </StackPanel>
-                                                </Border>
-                                            </StackPanel>
+                                                        <DataTemplate.Triggers>
+                                                            <Trigger SourceName="FileChip" Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="FileChip" Property="BorderBrush" Value="#6366F1"/>
+                                                                <Setter TargetName="FileChip" Property="Background" Value="#F5F3FF"/>
+                                                                <Setter TargetName="MoreIcon" Property="Visibility" Value="Visible"/>
+                                                            </Trigger>
+                                                        </DataTemplate.Triggers>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Border>
+                                        <!-- Upload [+] button (not paid) -->
+                                        <Border Background="{StaticResource BgGray}" Padding="12,0,12,8"
+                                                BorderBrush="{StaticResource BorderColor}" BorderThickness="0">
+                                            <Button Tag="{Binding}" Click="UploadFile_Click" Cursor="Hand"
+                                                    HorizontalAlignment="Left" BorderThickness="0">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Setter Property="Template">
+                                                            <Setter.Value>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border CornerRadius="6" Padding="8,4,10,4"
+                                                                            Background="White" BorderThickness="1"
+                                                                            BorderBrush="#D4D4D8" Name="AddBg"
+                                                                            Cursor="Hand">
+                                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                            <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets"
+                                                                                       FontSize="11" Foreground="{StaticResource Primary}"
+                                                                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                            <TextBlock Text="Subir Factura" FontSize="11" FontWeight="Medium"
+                                                                                       Foreground="{StaticResource Primary}"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </StackPanel>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="AddBg" Property="Background" Value="#EDE9FE"/>
+                                                                            <Setter TargetName="AddBg" Property="BorderBrush" Value="{StaticResource Primary}"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="paid">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                         </Border>
 
                                         <!-- ======== ACTION BAR: draft + hasFiles → "Liberar Orden" ======== -->

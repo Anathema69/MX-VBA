@@ -1082,6 +1082,7 @@ namespace SistemaGestionProyectos2.Views
                 else
                 {
                     // Open Drive in selection mode so user can pick a folder to link
+                    // Validation rules (R2/R3/R5) are enforced inside DriveV2Window.LinkThisFolder_Click
                     var driveWindow = new DriveV2Window(_currentUser, order.Id, order.OrderNumber ?? $"#{order.Id}");
                     driveWindow.Owner = this;
                     if (driveWindow.ShowDialog() == true)
@@ -1095,6 +1096,68 @@ namespace SistemaGestionProyectos2.Views
             {
                 System.Diagnostics.Debug.WriteLine($"Error abriendo Drive: {ex.Message}");
             }
+        }
+
+        private async void FolderButton_RightClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            var button = sender as Button;
+            var order = button?.Tag as OrderViewModel;
+            if (order == null) return;
+
+            var menu = new ContextMenu();
+
+            // Re-check linked status
+            var freshCheck = await _supabaseService.GetDriveLinkedFolderIds(new List<int> { order.Id });
+            var hasLink = freshCheck.TryGetValue(order.Id, out var folderId);
+            if (hasLink) order.LinkedFolderId = folderId;
+            else order.LinkedFolderId = null;
+
+            if (hasLink)
+            {
+                var unlinkItem = new MenuItem { Header = "Desvincular carpeta" };
+                unlinkItem.Click += async (s, args) =>
+                {
+                    try
+                    {
+                        if (await _supabaseService.UnlinkDriveFolder(folderId))
+                        {
+                            await LoadLinkedFoldersBatch();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error desvinculando: {ex.Message}");
+                    }
+                };
+                menu.Items.Add(unlinkItem);
+
+                var openItem = new MenuItem { Header = "Abrir carpeta en Drive" };
+                openItem.Click += (s, args) =>
+                {
+                    var driveWindow = new DriveV2Window(_currentUser, folderId);
+                    driveWindow.Show();
+                };
+                menu.Items.Add(openItem);
+            }
+            else
+            {
+                var linkItem = new MenuItem { Header = "Vincular carpeta" };
+                linkItem.Click += async (s, args) =>
+                {
+                    var driveWindow = new DriveV2Window(_currentUser, order.Id, order.OrderNumber ?? $"#{order.Id}");
+                    driveWindow.Owner = this;
+                    if (driveWindow.ShowDialog() == true)
+                    {
+                        await LoadLinkedFoldersBatch();
+                    }
+                };
+                menu.Items.Add(linkItem);
+            }
+
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
         }
 
         private async void EditButton_Click(object sender, RoutedEventArgs e)

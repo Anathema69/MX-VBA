@@ -14,10 +14,10 @@
 | 2 | Optimizacion de rendimiento | Media | COMPLETADO | 6/6 |
 | 3 | Portal Ventas + Storage | Media | COMPLETADO | 4/4 |
 | 4 | Columna Ejecutor | Baja | COMPLETADO (falta deploy SQL) | 3/3 |
-| 5 | Archivos (Drive IMA) | Alta | EN PROGRESO | 4/5 |
+| 5 | Archivos (Drive IMA) | Alta | COMPLETADO (falta deploy SQL) | 5/5 |
 | 6 | Modulo Inventario | Alta | PENDIENTE | 0/4 |
 
-**Progreso global:** 27/29 items (93%)
+**Progreso global:** 28/29 items (97%)
 
 ---
 
@@ -46,13 +46,26 @@
   - [x] Batch load de linked folders en background
   - [x] Icono `folder_pin.png` como icono principal de carpetas en Drive
 
+### Completadas
+- [x] **5E** Busqueda Scoped + Reglas Vinculacion + UX Polish
+  - [x] Busqueda scoped: busca dentro de carpeta actual y descendientes (global si esta en raiz)
+  - [x] Resultados agrupados por carpeta con headers clickables y zebra stripes
+  - [x] Clic en resultado navega a la carpeta, limpia buscador
+  - [x] Placeholder dinamico del buscador ("Buscar en Enero..." vs global)
+  - [x] Reglas de vinculacion R0-R5 con RPC `validate_folder_link`
+  - [x] R0: carpeta raiz no linkable, R2: ancestro bloqueado, R3: descendientes bloqueados, R5: warning subcarpetas
+  - [x] Toast notifications (reemplazo total de MessageBox en DriveV2Window)
+  - [x] Order picker rediseñado como Popup con busqueda inline y clic directo
+  - [x] Right-click en boton carpeta (Ordenes): Desvincular/Vincular/Abrir
+  - [x] VendorDashboard V2: archivos inline como chips horizontales (sin toggle colapsable)
+  - [x] VendorDashboard V2: menu contextual estilizado (popup custom, no nativo Windows)
+  - [x] VendorDashboard V2: cursor Hand en preview cuando zoom > 1x
+  - [x] SQL: `search_in_folder`, `validate_folder_link`, `get_folder_tree` (pendiente deploy)
+
 ### Pendiente
-- [ ] **5E** Polish
-  - [ ] **Busqueda global: requiere ajuste y revision** (busqueda actual con ILike funciona pero falta UX: no navega al resultado al hacer clic, no muestra ubicacion del resultado)
-  - [ ] Quitar botones temporales (Purgar R2, Benchmark)
-  - [ ] Quitar auto-login temporal (appsettings.json)
-  - [ ] Validacion nombres duplicados mejorada
-  - [ ] Confirmar si Shot&Shot/Rack V2.1 necesita orden nueva (actualmente sin vincular)
+- [ ] Quitar botones temporales (Purgar R2, Benchmark)
+- [ ] Quitar auto-login temporal (appsettings.json)
+- [ ] Confirmar si Shot&Shot/Rack V2.1 necesita orden nueva (actualmente sin vincular)
 
 ---
 

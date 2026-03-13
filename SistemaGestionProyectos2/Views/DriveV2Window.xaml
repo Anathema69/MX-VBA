@@ -435,6 +435,36 @@
                 </StackPanel>
             </Border>
 
+            <!-- MULTI-SELECT ACTION BAR -->
+            <Border x:Name="MultiSelectBar" Grid.Row="2" Background="{StaticResource ActiveBgBrush}"
+                    BorderBrush="{StaticResource PrimaryBrush}" BorderThickness="0,0,0,2"
+                    Padding="24,8" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="MultiSelectText" FontSize="14" FontWeight="Medium"
+                               Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <Button Style="{StaticResource SecondaryButton}" Click="MultiSelectDownload_Click"
+                            Margin="20,0,0,0" Padding="12,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Descargar" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource DestructiveButton}" Click="MultiSelectDelete_Click"
+                            Margin="8,0,0,0" Padding="12,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Eliminar" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource LinkButton}" Click="MultiSelectClear_Click"
+                            Margin="16,0,0,0" Padding="8,6">
+                        <TextBlock Text="Cancelar" FontSize="13"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+
             <!-- CONTENT AREA -->
             <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="24">
@@ -495,35 +525,7 @@
 
         </Grid>
 
-        <!-- ============================================= -->
-        <!-- UPLOAD PROGRESS PANEL (Column 2, right side)  -->
-        <!-- ============================================= -->
-        <Border x:Name="UploadPanel" Grid.Column="2" Width="320" Background="White"
-                BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="1,0,0,0"
-                Visibility="Collapsed">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Padding="16,12" Background="#F8FAFC"
-                        BorderBrush="#E2E8F0" BorderThickness="0,0,0,1">
-                    <Grid>
-                        <TextBlock x:Name="UploadHeaderText" Text="Subiendo archivos..."
-                                   FontSize="14" FontWeight="SemiBold" Foreground="#0F172A"
-                                   VerticalAlignment="Center"/>
-                        <Button Style="{StaticResource IconButton}" HorizontalAlignment="Right"
-                                Click="CloseUploadPanel_Click">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets"
-                                       FontSize="10" Foreground="#94A3B8"/>
-                        </Button>
-                    </Grid>
-                </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,8">
-                    <StackPanel x:Name="UploadItemsPanel"/>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+
 
         <!-- ============================================= -->
         <!-- DETAIL PANEL                                  -->
@@ -584,12 +586,6 @@
                                 <TextBlock Text="Descargar" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SecondaryButton}" Click="DetailLink_Click" Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE71B;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock Text="Copiar enlace" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
                         <Button Style="{StaticResource DestructiveButton}" Click="DetailDelete_Click">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -599,6 +595,24 @@
                     </StackPanel>
                 </Border>
             </Grid>
+        </Border>
+
+        <!-- TOAST NOTIFICATION -->
+        <Border x:Name="ToastPanel" Grid.ColumnSpan="3" Panel.ZIndex="90"
+                HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="0,12,0,0" Visibility="Collapsed" IsHitTestVisible="True">
+            <Border x:Name="ToastInner" Background="#0F172A" CornerRadius="10"
+                    Padding="16,10,16,10" MinWidth="280" MaxWidth="520">
+                <Border.Effect>
+                    <DropShadowEffect Color="#1E293B" BlurRadius="20" ShadowDepth="6" Opacity="0.18"/>
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="ToastIcon" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="ToastText" FontSize="13" Foreground="White"
+                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420"/>
+                </StackPanel>
+            </Border>
         </Border>
 
         <!-- DRAG & DROP OVERLAY -->

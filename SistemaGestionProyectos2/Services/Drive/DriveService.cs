@@ -294,6 +294,30 @@ namespace SistemaGestionProyectos2.Services.Drive
             public long Total_size { get; set; }
         }
 
+        internal class SearchResultRpc
+        {
+            public string Result_type { get; set; } = "";
+            public int Id { get; set; }
+            public int? Parent_id { get; set; }
+            public int? Folder_id { get; set; }
+            public string Name { get; set; } = "";
+            public int? Linked_order_id { get; set; }
+            public long? File_size { get; set; }
+            public string? Content_type { get; set; }
+            public int? Uploaded_by { get; set; }
+            public DateTime? Uploaded_at { get; set; }
+            public string? Storage_path { get; set; }
+            public DateTime? Created_at { get; set; }
+        }
+
+        public class FolderTreeItem
+        {
+            public int Id { get; set; }
+            public int? Parent_id { get; set; }
+            public string Name { get; set; } = "";
+            public int? Linked_order_id { get; set; }
+        }
+
         public class OrderInfoRpc
         {
             public int F_order { get; set; }
@@ -305,6 +329,54 @@ namespace SistemaGestionProyectos2.Services.Drive
         // ===============================================
         // VINCULACION CON ORDENES
         // ===============================================
+
+        /// <summary>
+        /// Validates whether a folder can be linked to an order.
+        /// Returns (canLink, blockReason, warningMessage).
+        /// R2: blocked if an ancestor is already linked.
+        /// R3: blocked if a descendant is already linked.
+        /// R5: warning if folder has subcarpetas (they'll be owned by this order).
+        /// </summary>
+        public async Task<FolderLinkValidation> ValidateFolderLink(int folderId, CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.Rpc("validate_folder_link",
+                    new Dictionary<string, object> { { "p_folder_id", folderId } });
+
+                if (result?.Content != null)
+                {
+                    var items = System.Text.Json.JsonSerializer.Deserialize<List<FolderLinkValidationRpc>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    var item = items?.FirstOrDefault();
+                    if (item != null)
+                        return new FolderLinkValidation(
+                            item.Can_link, item.Block_reason, item.Warning_message,
+                            item.Descendant_folder_count, item.Linked_descendant_count);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ValidateFolderLink RPC failed, allowing link: {ex.Message}");
+            }
+
+            // Fallback: allow (fail-open so linking doesn't break if RPC isn't deployed yet)
+            return new FolderLinkValidation(true, null, null, 0, 0);
+        }
+
+        public record FolderLinkValidation(
+            bool CanLink, string? BlockReason, string? WarningMessage,
+            int DescendantFolderCount, int LinkedDescendantCount);
+
+        internal class FolderLinkValidationRpc
+        {
+            public bool Can_link { get; set; }
+            public string? Block_reason { get; set; }
+            public string? Warning_message { get; set; }
+            public int Descendant_folder_count { get; set; }
+            public int Linked_descendant_count { get; set; }
+        }
 
         public async Task<bool> LinkFolderToOrder(int folderId, int orderId, CancellationToken ct = default)
         {
@@ -566,8 +638,104 @@ namespace SistemaGestionProyectos2.Services.Drive
         }
 
         // ===============================================
-        // SEARCH (global)
+        // SEARCH (scoped + global)
         // ===============================================
+
+        /// <summary>
+        /// Search folders and files within a folder and its descendants.
+        /// If folderId is null, searches globally (root).
+        /// </summary>
+        public async Task<(List<DriveFolderDb> Folders, List<DriveFileDb> Files)> SearchInFolder(int? folderId, string query, CancellationToken ct = default)
+        {
+            try
+            {
+                var rpcParams = new Dictionary<string, object> { { "p_query", query } };
+                if (folderId.HasValue)
+                    rpcParams["p_folder_id"] = folderId.Value;
+
+                var result = await SupabaseClient.Rpc("search_in_folder", rpcParams);
+
+                if (result?.Content != null)
+                {
+                    var items = System.Text.Json.JsonSerializer.Deserialize<List<SearchResultRpc>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (items != null)
+                    {
+                        var folders = items.Where(i => i.Result_type == "folder")
+                            .Select(i => new DriveFolderDb
+                            {
+                                Id = i.Id, ParentId = i.Parent_id, Name = i.Name,
+                                LinkedOrderId = i.Linked_order_id, CreatedAt = i.Created_at
+                            }).ToList();
+
+                        var files = items.Where(i => i.Result_type == "file")
+                            .Select(i => new DriveFileDb
+                            {
+                                Id = i.Id, FolderId = i.Folder_id ?? 0, FileName = i.Name,
+                                FileSize = i.File_size, ContentType = i.Content_type,
+                                UploadedBy = i.Uploaded_by, UploadedAt = i.Uploaded_at,
+                                StoragePath = i.Storage_path
+                            }).ToList();
+
+                        return (folders, files);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"SearchInFolder RPC failed, falling back to global: {ex.Message}");
+            }
+
+            // Fallback: global search using existing methods
+            var fallbackFolders = await SearchFolders(query, ct);
+            var fallbackFiles = await SearchFiles(query, ct);
+            return (fallbackFolders, fallbackFiles);
+        }
+
+        /// <summary>
+        /// Get all folders for building the folder tree (selection dialog).
+        /// Returns flat list with id, parent_id, name, linked_order_id.
+        /// </summary>
+        public async Task<List<FolderTreeItem>> GetFolderTree(CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.Rpc("get_folder_tree", new Dictionary<string, object>());
+
+                if (result?.Content != null)
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<FolderTreeItem>>(
+                        result.Content, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                        ?? new List<FolderTreeItem>();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError("Error getting folder tree via RPC", ex);
+            }
+
+            // Fallback: load all folders via Postgrest
+            try
+            {
+                var response = await SupabaseClient
+                    .From<DriveFolderDb>()
+                    .Order("name", Postgrest.Constants.Ordering.Ascending)
+                    .Get();
+
+                return (response?.Models ?? new List<DriveFolderDb>())
+                    .Select(f => new FolderTreeItem
+                    {
+                        Id = f.Id, Parent_id = f.ParentId, Name = f.Name,
+                        Linked_order_id = f.LinkedOrderId
+                    }).ToList();
+            }
+            catch (Exception ex)
+            {
+                LogError("Error getting folder tree fallback", ex);
+                return new List<FolderTreeItem>();
+            }
+        }
 
         public async Task<List<DriveFolderDb>> SearchFolders(string query, CancellationToken ct = default)
         {
@@ -597,6 +765,28 @@ namespace SistemaGestionProyectos2.Services.Drive
                 return response?.Models ?? new List<DriveFileDb>();
             }
             catch (Exception ex) { LogError("Error searching files", ex); return new List<DriveFileDb>(); }
+        }
+
+        /// <summary>
+        /// Get total storage used across ALL drive files (global, not per-folder).
+        /// </summary>
+        public async Task<long> GetTotalStorageBytes(CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<DriveFileDb>()
+                    .Select("file_size")
+                    .Get();
+
+                var files = response?.Models ?? new List<DriveFileDb>();
+                return files.Sum(f => f.FileSize ?? 0);
+            }
+            catch (Exception ex)
+            {
+                LogError("Error getting total storage", ex);
+                return -1;
+            }
         }
 
         // ===============================================

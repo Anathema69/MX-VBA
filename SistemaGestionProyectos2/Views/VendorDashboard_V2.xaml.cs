@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -280,6 +281,163 @@ namespace SistemaGestionProyectos2.Views
                 commission.IsFilesExpanded = !commission.IsFilesExpanded;
         }
 
+        // Chip click → preview
+        private void FileChip_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var chip = sender as Border;
+            var fileVm = chip?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+
+            var parentCommission = _filteredCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
+            var fileList = parentCommission?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
+            int currentIndex = fileList.IndexOf(fileVm);
+            ShowPreviewModal(fileList, currentIndex);
+        }
+
+        // Chip right-click → styled popup menu (matches V2 design)
+        private void FileChip_RightClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            var chip = sender as Border;
+            var fileVm = chip?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+
+            var popup = new System.Windows.Controls.Primitives.Popup
+            {
+                StaysOpen = false,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                PlacementTarget = chip,
+                AllowsTransparency = true
+            };
+
+            var card = new Border
+            {
+                Background = Brushes.White,
+                CornerRadius = new CornerRadius(10),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(4),
+                Margin = new Thickness(0, 4, 0, 0),
+                MinWidth = 160,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Color.FromRgb(0x1E, 0x29, 0x3B),
+                    BlurRadius = 16, ShadowDepth = 4, Opacity = 0.12
+                }
+            };
+
+            var sp = new StackPanel();
+
+            // File name header
+            var headerTb = new TextBlock
+            {
+                Text = fileVm.FileName,
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B)),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 180,
+                Margin = new Thickness(10, 6, 10, 4)
+            };
+            sp.Children.Add(headerTb);
+            sp.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)), Margin = new Thickness(4, 2, 4, 2) });
+
+            // Download option
+            var dlRow = MakePopupMenuItem("\uE896", "Descargar", Color.FromRgb(0x5B, 0x3F, 0xF9));
+            dlRow.MouseLeftButtonDown += async (s, args) =>
+            {
+                popup.IsOpen = false;
+                var saveDialog = new SaveFileDialog { FileName = fileVm.FileName, Filter = "Todos los archivos|*.*" };
+                if (saveDialog.ShowDialog() != true) return;
+                try
+                {
+                    var bytes = await _supabaseService.DownloadOrderFile(fileVm.StoragePath);
+                    File.WriteAllBytes(saveDialog.FileName, bytes);
+                    ShowTemporaryNotification("Archivo descargado");
+                }
+                catch { ShowTemporaryNotification("Error al descargar"); }
+            };
+            sp.Children.Add(dlRow);
+
+            // Preview option
+            var previewRow = MakePopupMenuItem("\uE7B3", "Vista previa", Color.FromRgb(0x47, 0x55, 0x69));
+            previewRow.MouseLeftButtonDown += (s, args) =>
+            {
+                popup.IsOpen = false;
+                var parentCommission = _filteredCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
+                var fileList = parentCommission?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
+                ShowPreviewModal(fileList, fileList.IndexOf(fileVm));
+            };
+            sp.Children.Add(previewRow);
+
+            // Delete option (only if allowed)
+            if (fileVm.CanDelete)
+            {
+                sp.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)), Margin = new Thickness(4, 2, 4, 2) });
+                var delRow = MakePopupMenuItem("\uE74D", "Eliminar", Color.FromRgb(0xEF, 0x44, 0x44));
+                delRow.MouseLeftButtonDown += async (s, args) =>
+                {
+                    popup.IsOpen = false;
+                    try
+                    {
+                        if (await _supabaseService.DeleteOrderFile(fileVm.FileId, fileVm.StoragePath))
+                        {
+                            foreach (var commission in _filteredCommissions)
+                            {
+                                if (commission.Files.Remove(fileVm))
+                                {
+                                    commission.FileCount = commission.Files.Count;
+                                    commission.HasFiles = commission.Files.Count > 0;
+                                    break;
+                                }
+                            }
+                            ShowTemporaryNotification("Archivo eliminado");
+                        }
+                    }
+                    catch { ShowTemporaryNotification("Error al eliminar"); }
+                };
+                sp.Children.Add(delRow);
+            }
+
+            card.Child = sp;
+            popup.Child = card;
+            popup.IsOpen = true;
+        }
+
+        /// <summary>Creates a styled popup menu row matching V2 design</summary>
+        Border MakePopupMenuItem(string icon, string label, Color accentColor)
+        {
+            var row = new Border
+            {
+                Padding = new Thickness(10, 7, 14, 7),
+                CornerRadius = new CornerRadius(6),
+                Cursor = Cursors.Hand,
+                Background = Brushes.Transparent
+            };
+            var rsp = new StackPanel { Orientation = Orientation.Horizontal };
+            rsp.Children.Add(new TextBlock
+            {
+                Text = icon,
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 13,
+                Foreground = new SolidColorBrush(accentColor),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            });
+            var labelTb = new TextBlock
+            {
+                Text = label,
+                FontSize = 12,
+                FontWeight = FontWeights.Medium,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            rsp.Children.Add(labelTb);
+            row.Child = rsp;
+            row.MouseEnter += (s, me) => { row.Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xFA, 0xFC)); labelTb.Foreground = new SolidColorBrush(accentColor); };
+            row.MouseLeave += (s, me) => { row.Background = Brushes.Transparent; labelTb.Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)); };
+            return row;
+        }
+
         // ========== FILE ACTIONS ==========
 
         private async void UploadFile_Click(object sender, RoutedEventArgs e)
@@ -480,7 +638,15 @@ namespace SistemaGestionProyectos2.Views
             scrollViewer.MouseLeftButtonDown += (s, ev) => ev.Handled = true;
             Grid.SetRow(scrollViewer, 1);
 
-            // Pan with middle-click or left-click drag when zoomed
+            // Helper: update cursor based on zoom level
+            Action updateCursor = () =>
+            {
+                scrollViewer.Cursor = currentZoom > 1.05
+                    ? System.Windows.Input.Cursors.Hand
+                    : System.Windows.Input.Cursors.Arrow;
+            };
+
+            // Pan with left-click drag when zoomed
             Point? panStart = null;
             double panOffsetH = 0, panOffsetV = 0;
             scrollViewer.PreviewMouseLeftButtonDown += (s, ev) =>
@@ -509,8 +675,8 @@ namespace SistemaGestionProyectos2.Views
                 if (panStart.HasValue)
                 {
                     panStart = null;
-                    scrollViewer.Cursor = currentZoom > 1.05 ? System.Windows.Input.Cursors.ScrollAll : System.Windows.Input.Cursors.Arrow;
                     scrollViewer.ReleaseMouseCapture();
+                    updateCursor();
                 }
             };
 
@@ -525,7 +691,7 @@ namespace SistemaGestionProyectos2.Views
             Action updateZoomUI = () =>
             {
                 zoomPillText.Text = $"{(int)(currentZoom * 100)}%";
-                scrollViewer.Cursor = currentZoom > 1.05 ? System.Windows.Input.Cursors.ScrollAll : System.Windows.Input.Cursors.Arrow;
+                updateCursor();
             };
 
             Action<double> applyZoom = (newZoom) =>

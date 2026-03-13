@@ -1028,6 +1028,9 @@ namespace SistemaGestionProyectos2.Services
         public Task<List<DriveFolderDb>> GetDriveBreadcrumb(int folderId, CancellationToken ct = default)
             => _driveService.GetBreadcrumb(folderId, ct);
 
+        public Task<Services.Drive.DriveService.FolderLinkValidation> ValidateDriveFolderLink(int folderId, CancellationToken ct = default)
+            => _driveService.ValidateFolderLink(folderId, ct);
+
         public Task<bool> LinkDriveFolderToOrder(int folderId, int orderId, CancellationToken ct = default)
             => _driveService.LinkFolderToOrder(folderId, orderId, ct);
 
@@ -1070,7 +1073,16 @@ namespace SistemaGestionProyectos2.Services
         public Task<List<DriveFileDb>> SearchDriveFiles(string query, CancellationToken ct = default)
             => _driveService.SearchFiles(query, ct);
 
+        public Task<(List<DriveFolderDb> Folders, List<DriveFileDb> Files)> SearchDriveInFolder(int? folderId, string query, CancellationToken ct = default)
+            => _driveService.SearchInFolder(folderId, query, ct);
+
+        public Task<List<Services.Drive.DriveService.FolderTreeItem>> GetDriveFolderTree(CancellationToken ct = default)
+            => _driveService.GetFolderTree(ct);
+
         public Task<List<Services.Drive.DriveService.OrderInfoRpc>> GetDriveOrdersByIds(List<int> orderIds, CancellationToken ct = default)
             => _driveService.GetOrdersByIds(orderIds, ct);
+
+        public Task<long> GetDriveTotalStorageBytes(CancellationToken ct = default)
+            => _driveService.GetTotalStorageBytes(ct);
     }
 }

@@ -248,3 +248,76 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 **Compilacion:** 0 errores.
 
 ---
+
+### 2026-03-13 - Bloque 5E - Busqueda Scoped + Reglas Vinculacion + VendorDashboard chips
+
+**Tipo:** implementacion
+**Archivos creados:**
+- `sql/drive_scoped_search.sql` - 3 RPCs: `search_in_folder`, `validate_folder_link`, `get_folder_tree` + data fix raiz
+
+**Archivos modificados:**
+- `Services/Drive/DriveService.cs` - +SearchInFolder(), +GetFolderTree(), +ValidateFolderLink() con DTOs y fallbacks
+- `Services/SupabaseService.cs` - +3 delegaciones facade (SearchDriveInFolder, GetDriveFolderTree, ValidateDriveFolderLink)
+- `Views/DriveV2Window.xaml` - Toast notification overlay, placeholder dinamico SearchBox
+- `Views/DriveV2Window.xaml.cs` - Busqueda scoped con resultados agrupados, toast system, order picker popup, reglas vinculacion R0-R5, limpieza MessageBox
+- `Views/DriveV2Window.xaml` - Toast panel XAML
+- `Views/OrdersManagementWindow.xaml` - MouseRightButtonDown en FolderButton
+- `Views/OrdersManagementWindow.xaml.cs` - FolderButton_RightClick: desvincular/vincular/abrir desde ordenes
+- `Views/VendorDashboard_V2.xaml` - Reemplazo gallery colapsable por chips inline horizontales + boton [+] Subir Factura
+- `Views/VendorDashboard_V2.xaml.cs` - FileChip_Click (preview), FileChip_RightClick (popup estilizado), MakePopupMenuItem(), cursor Hand en preview zoom
+
+**Detalle:**
+
+**Busqueda Scoped (Drive):**
+- RPC `search_in_folder(p_folder_id, p_query)` con CTE recursivo para buscar solo en carpeta actual y descendientes
+- Si `p_folder_id` es NULL, busqueda global (raiz)
+- Resultados agrupados por carpeta contenedora con headers clickables (breadcrumb path)
+- Zebra stripes alternas, separadores entre grupos
+- Clic en resultado navega a carpeta, limpia SearchBox automaticamente
+- Placeholder dinamico: "Buscar en Enero..." vs "Buscar archivos, carpetas y ordenes..."
+- Toast de error si la busqueda falla (antes era silencioso)
+
+**Reglas de Vinculacion:**
+- RPC `validate_folder_link(p_folder_id)` valida en 1 query con CTEs recursivos
+- R0: carpeta raiz (parent_id IS NULL) nunca linkable
+- R2: si un ancestro (no raiz) tiene linked_order_id → BLOQUEO
+- R3: si un descendiente tiene linked_order_id → BLOQUEO (muestra nombres)
+- R5: si tiene subcarpetas sin vinculos → WARNING con conteo + confirmacion
+- Data fix incluido: limpia linked_order_id de IMA MECATRONICA si estaba seteado por accidente
+- Fail-open: si RPC no desplegado, permite vincular (no rompe funcionalidad existente)
+- Aplicada en ambos flujos: LinkThisFolder_Click (modo seleccion) y LinkOrder (right-click)
+
+**Toast Notifications (Drive):**
+- Reemplazo completo de MessageBox.Show por toasts inline
+- 4 tipos: success (verde), error (rojo), warning (amber), info (oscuro)
+- Fade in/out animado, auto-dismiss 3-5s
+- Confirmaciones destructivas (eliminar) mantienen dialog modal via Confirm()
+
+**Order Picker Rediseñado:**
+- Popup centrado en Drive (no ventana flotante separada)
+- Sin botones Cancelar/Vincular: clic directo en orden vincula
+- Buscador inline, zebra stripes, badge OC azul
+- Datos cargados en paralelo (Task.WhenAll: ordenes + tree + clientes)
+
+**Right-click en Ordenes:**
+- Boton carpeta en OrdersManagementWindow tiene right-click
+- Si vinculada: "Desvincular carpeta" + "Abrir carpeta en Drive"
+- Si no vinculada: "Vincular carpeta" (abre modo seleccion)
+- Consulta fresca a BD al abrir menu
+
+**VendorDashboard V2 - Archivos inline:**
+- Reemplazo completo del toggle colapsable + gallery 120x120 por chips horizontales
+- Cada chip: badge extension coloreado + nombre truncado + tamano
+- Siempre visibles (sin clic para expandir)
+- Clic izquierdo = preview modal (misma funcionalidad)
+- Clic derecho = popup estilizado (Descargar/Vista previa/Eliminar) con colores V2
+- Tooltip enriquecido: nombre + "Clic para previsualizar · Clic derecho para opciones"
+- Icono "more" (⋯) aparece en hover como señal visual
+- Boton [+] "Subir Factura" siempre visible al final (oculto si status=paid)
+- Cursor Hand en preview cuando zoom > 1x, ScrollAll durante arrastre
+
+**SQL pendiente deploy:** `sql/drive_scoped_search.sql` (3 RPCs + data fix)
+
+**Compilacion:** 0 errores.
+
+---
