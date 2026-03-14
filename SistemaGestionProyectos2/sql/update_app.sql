@@ -17,34 +17,35 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.0.8';
+    v_version       VARCHAR := '2.0.9';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 50.5;
-    v_is_mandatory  BOOLEAN := true;
-    v_min_version   VARCHAR := '2.0.7';
+    v_file_size_mb  NUMERIC := 51.0;
+    v_is_mandatory  BOOLEAN := false;
+    v_min_version   VARCHAR := '2.0.8';
 
-    v_release_notes TEXT := 'Version 2.0.8 - Portal Proveedores + Panel Vendedor + Correcciones
+    v_release_notes TEXT := 'Version 2.0.9 - Modulo Inventario (Mockup en pruebas)
 
-PORTAL PROVEEDORES (SupplierPendingDetailView):
-- Fix: Seleccionar proveedor sin gastos pendientes ya no bloquea la fila nueva
-- Fix: Orden seleccionada ya no desaparece visualmente al cambiar de campo
-- Alineacion corregida en boton Nuevo Gasto
+NUEVO MODULO: INVENTARIO (fase de pruebas - datos de ejemplo)
+- Pantalla principal con cards de categorias (nombre, color, productos, stock, alertas)
+- KPI cards: total productos, por pedir, categorias activas
+- Detalle de categoria con tabla de productos (DataGrid)
+- Alertas de stock bajo: filas amber, icono warning, badge naranja
+- Formulario nuevo/editar producto (10 campos con validacion visual)
+- Formulario nueva categoria con color picker y preview en vivo
+- Busqueda en tiempo real + filtro stock bajo + filtro ubicacion
+- Toast notifications animadas (slide-in, auto-dismiss 3s)
+- Confirmacion de eliminacion via overlay modal
+- Boton INVENTARIO en MainMenu con badge EN PRUEBAS
 
-PANEL VENDEDOR (VendorDashboard_V2):
-- Boton Liberar Orden ahora cambia el estado de la orden a LIBERADA (2) en la BD
-- El cambio queda registrado automaticamente en order_history via trigger
-- Comision pasa de draft a pending al liberar
-- Boton Subir Factura: unico punto de upload, sin duplicados
+UX/UI:
+- Design system unificado con DriveV2 (azul #1D4ED8)
+- ComboBox custom estilo SupplierPendingView (popup redondeado)
+- Botones accion con fondo tintado (azul editar, rojo eliminar)
+- Layout responsivo centrado para pantallas grandes (MaxWidth)
+- Maximizar sin tapar barra de tareas
 
-MODULO ORDENES (OrdersManagementWindow):
-- Boton Actualizar ahora invalida cache de catalogos (vendedores, clientes, estados)
-- Fix: vendedor activado manualmente en BD ahora aparece al refrescar sin reiniciar
-
-INFRAESTRUCTURA:
-- Nuevo metodo BaseSupabaseService.InvalidateCatalogCaches() para invalidar caches de catalogos
-- Logging diagnostico en flujos criticos de creacion de gastos y liberacion de ordenes
-
-ACTUALIZACION OBLIGATORIA';
+NOTA: Este modulo usa datos hardcoded para validacion con el cliente.
+La implementacion con BD real sera en las fases 6B-6F.';
 
     v_download_url TEXT;
     v_changelog JSONB;
@@ -53,22 +54,23 @@ BEGIN
                       || v_version || '/SistemaGestionProyectos-v' || v_version || '-Setup.exe';
 
     v_changelog := '{
-        "Fixed": [
-            "Portal Proveedores: proveedor sin gastos pendientes bloqueaba la fila nueva",
-            "Portal Proveedores: orden seleccionada desaparecia al cambiar de campo",
-            "Modulo Ordenes: vendedor activado en BD no aparecia al refrescar (cache)",
-            "Panel Vendedor: botones duplicados de subir factura"
-        ],
         "Added": [
-            "Panel Vendedor: Liberar Orden cambia estado de orden a LIBERADA en BD",
-            "Panel Vendedor: cambio de estado registrado en order_history via trigger",
-            "Infraestructura: InvalidateCatalogCaches() para refrescar catalogos"
+            "Modulo Inventario: pantalla principal con cards de categorias",
+            "Modulo Inventario: detalle de categoria con DataGrid de productos",
+            "Modulo Inventario: formulario nuevo/editar producto (10 campos)",
+            "Modulo Inventario: formulario nueva categoria con color picker",
+            "Modulo Inventario: KPI cards (productos, por pedir, categorias)",
+            "Modulo Inventario: toast notifications animadas",
+            "Modulo Inventario: confirmacion eliminacion via overlay modal",
+            "MainMenu: boton INVENTARIO con badge EN PRUEBAS"
         ],
         "Improved": [
-            "Modulo Ordenes: boton Actualizar recarga catalogos completos desde BD",
-            "Panel Vendedor: unico boton Subir Factura segun contexto (con/sin archivos)",
-            "Portal Proveedores: alineacion visual del boton Nuevo Gasto"
-        ]
+            "UX: ComboBox custom en inventario (estilo SupplierPendingView)",
+            "UX: botones accion DataGrid con fondo tintado (azul/rojo)",
+            "UX: layout responsivo centrado para pantallas grandes",
+            "UX: alertas stock bajo con filas amber y badges"
+        ],
+        "Fixed": []
     }'::jsonb;
 
     UPDATE app_versions SET is_latest = false WHERE is_latest = true;
