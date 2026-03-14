@@ -165,6 +165,15 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="RefreshButton" Click="RefreshButton_Click" ToolTip="Actualizar"
+                            Background="White" BorderBrush="{StaticResource BorderColor}" BorderThickness="1"
+                            Cursor="Hand" Padding="8,6" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="Actualizar" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button Click="LogoutButton_Click" Width="120" Height="32"
                             Background="White" BorderBrush="{StaticResource BorderColor}"
                             BorderThickness="1" Cursor="Hand">

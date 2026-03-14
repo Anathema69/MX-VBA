@@ -234,15 +234,26 @@
                 </Grid>
             </Border>
 
-            <!-- Botón de nuevo vendedor -->
-            <Button Grid.Column="2" Name="AddVendorButton"
-                    Style="{StaticResource ModernButton}"
-                    Click="AddVendor_Click">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="➕" FontSize="12" Margin="0,0,6,0"/>
-                    <TextBlock Text="Nuevo Vendedor"/>
-                </StackPanel>
-            </Button>
+            <!-- Botones de acción -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button x:Name="RefreshButton" Click="RefreshButton_Click" ToolTip="Actualizar"
+                        Background="White" BorderBrush="{StaticResource BorderGray}" BorderThickness="1"
+                        Cursor="Hand" Padding="8,6" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Actualizar" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <Button Name="AddVendorButton"
+                        Style="{StaticResource ModernButton}"
+                        Click="AddVendor_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#x2795;" FontSize="12" Margin="0,0,6,0"/>
+                        <TextBlock Text="Nuevo Vendedor"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Lista de vendedores con diseño de tarjetas -->

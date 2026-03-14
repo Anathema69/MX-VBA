@@ -14,6 +14,7 @@ using System.Windows.Media;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -790,7 +791,7 @@ namespace SistemaGestionProyectos2.Views
 
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            
+            BaseSupabaseService.InvalidateAllCaches();
 
             await LoadInvoices();
             StatusMessage.Text = "Datos actualizados";

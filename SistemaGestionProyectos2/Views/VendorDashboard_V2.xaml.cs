@@ -17,6 +17,7 @@ using Microsoft.Win32;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using SistemaGestionProyectos2.Services.Storage;
 
 namespace SistemaGestionProyectos2.Views
@@ -1183,6 +1184,12 @@ namespace SistemaGestionProyectos2.Views
         }
 
         private void HideNoDataMessage() => NoDataPanel.Visibility = Visibility.Collapsed;
+
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            BaseSupabaseService.InvalidateAllCaches();
+            await LoadVendorDataAsync();
+        }
 
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {

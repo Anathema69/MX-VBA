@@ -2,6 +2,7 @@ using SistemaGestionProyectos2.Controls;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -803,11 +804,12 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
-        private async void RefreshDetailButton_Click(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            RefreshDetailButton.IsEnabled = false;
+            BaseSupabaseService.InvalidateAllCaches();
+            RefreshButton.IsEnabled = false;
             await LoadExpensesAsync();
-            RefreshDetailButton.IsEnabled = true;
+            RefreshButton.IsEnabled = true;
         }
 
         private void BackButton_Click(object sender, RoutedEventArgs e)

@@ -321,3 +321,43 @@ Registro cronologico de cambios, decisiones tecnicas y hallazgos durante el desa
 **Compilacion:** 0 errores.
 
 ---
+
+### 2026-03-13 - Global - Boton Actualizar normalizado + chips admin comisiones
+
+**Tipo:** implementacion
+**Archivos modificados:**
+- `Services/Core/BaseSupabaseService.cs` - +InvalidateAllCaches() (Cache.Clear() completo)
+- `Views/OrdersManagementWindow.xaml.cs` - InvalidateCatalogCaches → InvalidateAllCaches
+- `Views/ExpenseManagementWindow.xaml.cs` - +InvalidateAllCaches en RefreshButton_Click
+- `Views/InvoiceManagementWindow.xaml.cs` - +InvalidateAllCaches en RefreshButton_Click
+- `Views/CalendarView.xaml.cs` - +InvalidateAllCaches en RefreshButton_Click
+- `Views/SupplierPendingView.xaml.cs` - +InvalidateAllCaches en RefreshButton_Click
+- `Views/BalanceWindowPro.xaml` + `.cs` - Renombrado btnRefreshBalance → RefreshButton, label "Actualizar Datos" → "Actualizar"
+- `Views/SupplierPendingDetailView.xaml` + `.cs` - Renombrado RefreshDetailButton → RefreshButton, handler normalizado
+- `Views/PendingIncomesView.xaml` + `.cs` - Renombrado RefreshDetailButton → RefreshButton
+- `Views/PendingIncomesDetailView.xaml` + `.cs` - Renombrado RefreshDetailButton → RefreshButton, handler normalizado
+- `Views/VendorDashboard_V2.xaml` + `.cs` - NUEVO boton Actualizar en header
+- `Views/VendorCommissionsWindow.xaml` + `.cs` - NUEVO boton Actualizar + chips inline (reemplazo gallery colapsable)
+- `Views/DriveV2Window.xaml` + `.cs` - NUEVO boton Actualizar en toolbar
+- `Views/ClientManagementWindow.xaml` + `.cs` - NUEVO boton Actualizar en toolbar
+- `Views/VendorManagementWindow.xaml` + `.cs` - NUEVO boton Actualizar en toolbar
+
+**Detalle:**
+
+**Normalizacion boton Actualizar (14 vistas):**
+- x:Name uniforme: `RefreshButton` (antes: btnRefreshBalance, RefreshDetailButton, etc.)
+- Handler uniforme: `RefreshButton_Click` (antes: BtnRefreshBalance_Click, RefreshDetailButton_Click, etc.)
+- Label uniforme: icono &#xE72C; + "Actualizar" (excepto OrdersManagement: solo icono)
+- Todas llaman `BaseSupabaseService.InvalidateAllCaches()` antes de recargar datos
+- 5 vistas que no tenian boton ahora lo tienen (VendorDashboard_V2, VendorCommissionsWindow, DriveV2Window, ClientManagementWindow, VendorManagementWindow)
+
+**VendorCommissionsWindow - Chips inline (admin):**
+- Gallery colapsable con toggle eliminada (mismo cambio que VendorDashboard_V2)
+- Chips horizontales siempre visibles: badge extension + nombre + tamano
+- Clic izquierdo = preview modal, clic derecho = popup estilizado (Descargar/Vista previa)
+- Sin opcion eliminar (vista admin read-only)
+- Tooltip + icono more en hover
+
+**Compilacion:** 0 errores.
+
+---

@@ -1480,6 +1480,13 @@ namespace SistemaGestionProyectos2.Views
             UpdateStorageUI(); ClearMultiSelect(); HideDetail(); InvalidateStats(); await SafeLoad(() => LoadFolder());
         }
         async void BackToFolders_Click(object sender, RoutedEventArgs e) { if (_breadcrumb.Count >= 2) await SafeLoad(() => NavTo(_breadcrumb[^2].Id)); else await SafeLoad(() => NavigateToRoot()); }
+        async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            Services.Core.BaseSupabaseService.InvalidateAllCaches();
+            _folderCache.Clear();
+            _statsCache.Clear();
+            await SafeLoad(() => LoadFolder());
+        }
         void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
         void DetailClose_Click(object sender, RoutedEventArgs e) { HideDetail(); RenderContent(); }
         async void DetailDownload_Click(object sender, RoutedEventArgs e) { if (_selectedFile != null) await DlFile(_selectedFile); }

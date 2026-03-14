@@ -386,6 +386,14 @@
                                 </Button>
                             </StackPanel>
                         </Border>
+                        <Button x:Name="RefreshButton" Click="RefreshButton_Click" ToolTip="Actualizar"
+                                Style="{StaticResource SecondaryButton}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Actualizar" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <Button Style="{StaticResource SecondaryButton}" Click="NewFolder_Click" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>

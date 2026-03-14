@@ -19,6 +19,7 @@ using Microsoft.Win32;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using SistemaGestionProyectos2.Services.Storage;
 
 namespace SistemaGestionProyectos2.Views
@@ -423,6 +424,91 @@ namespace SistemaGestionProyectos2.Views
             var commission = button?.Tag as CommissionDetailViewModel;
             if (commission != null)
                 commission.IsFilesExpanded = !commission.IsFilesExpanded;
+        }
+
+        // Chip click → preview
+        private void FileChip_Click(object sender, MouseButtonEventArgs e)
+        {
+            var chip = sender as Border;
+            var fileVm = chip?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+            var parent = _vendorCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
+            var fileList = parent?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
+            ShowAdminPreviewModal(fileList, fileList.IndexOf(fileVm));
+        }
+
+        // Chip right-click → styled popup (download / preview)
+        private void FileChip_RightClick(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            var chip = sender as Border;
+            var fileVm = chip?.Tag as FileItemViewModel;
+            if (fileVm == null) return;
+
+            var popup = new System.Windows.Controls.Primitives.Popup
+            {
+                StaysOpen = false,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                PlacementTarget = chip,
+                AllowsTransparency = true
+            };
+
+            var card = new Border
+            {
+                Background = Brushes.White, CornerRadius = new CornerRadius(10),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)),
+                BorderThickness = new Thickness(1), Padding = new Thickness(4),
+                Margin = new Thickness(0, 4, 0, 0), MinWidth = 160,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                    { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 16, ShadowDepth = 4, Opacity = 0.12 }
+            };
+            var sp = new StackPanel();
+
+            var headerTb = new TextBlock { Text = fileVm.FileName, FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B)),
+                TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 180, Margin = new Thickness(10, 6, 10, 4) };
+            sp.Children.Add(headerTb);
+            sp.Children.Add(new Border { Height = 1, Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)), Margin = new Thickness(4, 2, 4, 2) });
+
+            var dlRow = MakePopupMenuItem("\uE896", "Descargar", Color.FromRgb(0x1D, 0x4E, 0xD8));
+            dlRow.MouseLeftButtonDown += async (s, args) =>
+            {
+                popup.IsOpen = false;
+                var saveDialog = new SaveFileDialog { FileName = fileVm.FileName };
+                if (saveDialog.ShowDialog() != true) return;
+                try
+                {
+                    var bytes = await _supabaseService.DownloadOrderFile(fileVm.StoragePath);
+                    File.WriteAllBytes(saveDialog.FileName, bytes);
+                    ShowTemporaryNotification("Archivo descargado");
+                }
+                catch { ShowTemporaryNotification("Error al descargar"); }
+            };
+            sp.Children.Add(dlRow);
+
+            var previewRow = MakePopupMenuItem("\uE7B3", "Vista previa", Color.FromRgb(0x47, 0x55, 0x69));
+            previewRow.MouseLeftButtonDown += (s, args) =>
+            {
+                popup.IsOpen = false;
+                var parent = _vendorCommissions.FirstOrDefault(c => c.Files.Contains(fileVm));
+                var fileList = parent?.Files?.ToList() ?? new List<FileItemViewModel> { fileVm };
+                ShowAdminPreviewModal(fileList, fileList.IndexOf(fileVm));
+            };
+            sp.Children.Add(previewRow);
+
+            card.Child = sp; popup.Child = card; popup.IsOpen = true;
+        }
+
+        Border MakePopupMenuItem(string icon, string label, Color accentColor)
+        {
+            var row = new Border { Padding = new Thickness(10, 7, 14, 7), CornerRadius = new CornerRadius(6), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            var rsp = new StackPanel { Orientation = Orientation.Horizontal };
+            rsp.Children.Add(new TextBlock { Text = icon, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 13, Foreground = new SolidColorBrush(accentColor), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            var labelTb = new TextBlock { Text = label, FontSize = 12, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)), VerticalAlignment = VerticalAlignment.Center };
+            rsp.Children.Add(labelTb); row.Child = rsp;
+            row.MouseEnter += (s, me) => { row.Background = new SolidColorBrush(Color.FromRgb(0xF7, 0xFA, 0xFC)); labelTb.Foreground = new SolidColorBrush(accentColor); };
+            row.MouseLeave += (s, me) => { row.Background = Brushes.Transparent; labelTb.Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)); };
+            return row;
         }
 
         private void PreviewFile_Click(object sender, RoutedEventArgs e)
@@ -1182,6 +1268,12 @@ namespace SistemaGestionProyectos2.Views
                     catch { }
                 }
             }
+        }
+
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            BaseSupabaseService.InvalidateAllCaches();
+            await LoadVendorsWithCommissions();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

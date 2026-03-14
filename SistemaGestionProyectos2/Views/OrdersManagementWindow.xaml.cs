@@ -878,7 +878,7 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 // Invalidar caché de catálogos para obtener datos frescos
-                Services.Core.BaseSupabaseService.InvalidateCatalogCaches();
+                Services.Core.BaseSupabaseService.InvalidateAllCaches();
 
                 // Recargar catálogos desde BD (vendedores, clientes, estados)
                 var clientsTask = _supabaseService.GetClients();

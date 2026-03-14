@@ -205,10 +205,14 @@
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,16,0,0">
                 <TextBlock Name="txtLastUpdate" Text="Actualizado: --"
                           FontSize="12" Foreground="#A1A1AA" VerticalAlignment="Center"/>
-                <Button Name="btnRefreshBalance" Content="Actualizar Datos"
-                        Margin="16,0,0,0" Padding="12,4" FontSize="12"
+                <Button x:Name="RefreshButton" Margin="16,0,0,0" Padding="12,4" FontSize="12"
                         Background="#3B82F6" Foreground="White" BorderThickness="0"
-                        Cursor="Hand" Click="BtnRefreshBalance_Click">
+                        Cursor="Hand" Click="RefreshButton_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Actualizar" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
                     <Button.Resources>
                         <Style TargetType="Border">
                             <Setter Property="CornerRadius" Value="6"/>

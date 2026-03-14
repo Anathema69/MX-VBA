@@ -59,5 +59,14 @@ namespace SistemaGestionProyectos2.Services.Core
             Cache.InvalidatePrefix("statuses:");
             System.Diagnostics.Debug.WriteLine("🔄 Cachés de catálogos invalidados");
         }
+
+        /// <summary>
+        /// Invalida TODAS las cachés. Usar en botones de Actualizar para datos 100% frescos.
+        /// </summary>
+        public static void InvalidateAllCaches()
+        {
+            Cache.Clear();
+            System.Diagnostics.Debug.WriteLine("🔄 Todas las cachés invalidadas");
+        }
     }
 }

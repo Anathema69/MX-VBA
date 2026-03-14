@@ -1,5 +1,6 @@
 ﻿using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -259,9 +260,10 @@ namespace SistemaGestionProyectos2.Views
         
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
-            RefreshDetailButton.IsEnabled = false;
+            BaseSupabaseService.InvalidateAllCaches();
+            RefreshButton.IsEnabled = false;
             await LoadPendingIncomesAsync();
-            RefreshDetailButton.IsEnabled = true;
+            RefreshButton.IsEnabled = true;
         }
 
         private void ViewDetailButton_Click(object sender, RoutedEventArgs e)

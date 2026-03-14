@@ -14,6 +14,7 @@ using Postgrest.Models;
 using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 
 namespace SistemaGestionProyectos2.Views
 {
@@ -1295,12 +1296,12 @@ namespace SistemaGestionProyectos2.Views
             Close();
         }
 
-        private async void BtnRefreshBalance_Click(object sender, RoutedEventArgs e)
+        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                btnRefreshBalance.IsEnabled = false;
-                btnRefreshBalance.Content = "Actualizando...";
+                BaseSupabaseService.InvalidateAllCaches();
+                RefreshButton.IsEnabled = false;
 
                 // Refresh the materialized view via RPC
                 var client = _supabaseService.GetClient();
@@ -1319,8 +1320,7 @@ namespace SistemaGestionProyectos2.Views
             }
             finally
             {
-                btnRefreshBalance.IsEnabled = true;
-                btnRefreshBalance.Content = "Actualizar Datos";
+                RefreshButton.IsEnabled = true;
             }
         }
 

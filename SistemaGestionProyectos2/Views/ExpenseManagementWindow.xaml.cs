@@ -1,6 +1,7 @@
 ﻿using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using SistemaGestionProyectos2.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -680,6 +681,7 @@ namespace SistemaGestionProyectos2.Views
         
         private async void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
+            BaseSupabaseService.InvalidateAllCaches();
             // Forzar recarga completa desde BD
             await LoadDataAsync(forceReload: true);
         }

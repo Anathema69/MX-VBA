@@ -131,7 +131,7 @@
                 <!-- Acciones -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <!-- Botón Actualizar -->
-                    <Button x:Name="RefreshDetailButton" Click="RefreshDetailButton_Click"
+                    <Button x:Name="RefreshButton" Click="RefreshButton_Click"
                             Width="100" Height="36"
                             Background="White" BorderBrush="{StaticResource BorderGray}"
                             BorderThickness="1" Cursor="Hand">
