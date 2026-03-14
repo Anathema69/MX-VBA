@@ -173,6 +173,23 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        // MÉTODO: Click en Inventario
+        private void Inventory_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusText.Text = "Abriendo Inventario...";
+                var inventory = new InventoryWindow();
+                inventory.Owner = this;
+                inventory.Show();
+                StatusText.Text = "Inventario abierto";
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Error al abrir Inventario: {ex.Message}";
+            }
+        }
+
         // MÉTODO IMPORTANTE: Click en el módulo de órdenes
         private void OrdersModule_Click(object sender, RoutedEventArgs e)
         {

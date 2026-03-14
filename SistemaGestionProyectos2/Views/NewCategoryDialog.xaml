@@ -1,0 +1,261 @@
+<Window x:Class="SistemaGestionProyectos2.Views.NewCategoryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Categoria"
+        Width="460" Height="440"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="FieldInput" TargetType="TextBox">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="White" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#1D4ED8"/>
+                                <Setter TargetName="border" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#1D4ED8" BlurRadius="8" ShadowDepth="0" Opacity="0.15"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FieldTextArea" TargetType="TextBox">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="White" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#1D4ED8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Color swatch button -->
+        <Style x:Key="ColorSwatch" TargetType="RadioButton">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid>
+                            <Border x:Name="outer" Width="36" Height="36" CornerRadius="8"
+                                    BorderThickness="2" BorderBrush="Transparent">
+                                <Border x:Name="inner" Width="28" Height="28" CornerRadius="6"
+                                        Background="{TemplateBinding Tag}"/>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="outer" Property="BorderBrush" Value="#1D4ED8"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="outer" Property="BorderBrush" Value="#94A3B8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Backdrop -->
+        <Border Background="#0F172A" Opacity="0.5" MouseLeftButtonDown="Backdrop_Click"/>
+
+        <!-- Dialog -->
+        <Border Background="White" CornerRadius="16" Width="460"
+                VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect Color="#1E293B" BlurRadius="32" ShadowDepth="8" Opacity="0.15" Direction="270"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <Border Grid.Row="0" BorderBrush="#F1F5F9" BorderThickness="0,0,0,1" Padding="24,20,24,16">
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock x:Name="DialogTitle" Text="Nueva Categoria" FontSize="20" FontWeight="SemiBold"
+                                       Foreground="#0F172A" Margin="0,0,0,4"/>
+                            <TextBlock Text="Crear una nueva categoria de inventario" FontSize="13"
+                                       Foreground="#64748B"/>
+                        </StackPanel>
+
+                        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Click="CloseButton_Click" Cursor="Hand"
+                                Background="Transparent" BorderThickness="0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Background="Transparent" CornerRadius="8"
+                                            Width="32" Height="32">
+                                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                   Foreground="#64748B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#F1F5F9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Form -->
+                <StackPanel Grid.Row="1" Margin="24,20">
+                    <!-- Nombre -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Style="{StaticResource FieldLabel}">
+                            <Run Text="NOMBRE"/>
+                            <Run Text=" *" Foreground="#EF4444"/>
+                        </TextBlock>
+                        <TextBox x:Name="NameInput" Style="{StaticResource FieldInput}"/>
+                    </StackPanel>
+
+                    <!-- Descripcion -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="DESCRIPCION"/>
+                        <TextBox x:Name="DescriptionInput" Style="{StaticResource FieldTextArea}" Height="56"/>
+                    </StackPanel>
+
+                    <!-- Color Picker -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="COLOR"/>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="Color1" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#3B82F6" IsChecked="True" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color2" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#10B981" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color3" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#8B5CF6" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color4" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#F59E0B" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color5" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#EC4899" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color6" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#EF4444" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color7" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#06B6D4" Click="ColorSwatch_Click"/>
+                            <RadioButton x:Name="Color8" Style="{StaticResource ColorSwatch}" GroupName="Color"
+                                         Tag="#84CC16" Click="ColorSwatch_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Preview -->
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="VISTA PREVIA"/>
+                        <Border x:Name="PreviewCard" Background="White" CornerRadius="10"
+                                BorderBrush="#E2E8F0" BorderThickness="1" Padding="16,12">
+                            <Grid>
+                                <Border x:Name="PreviewColorBar" CornerRadius="10,0,0,10" Width="4"
+                                        HorizontalAlignment="Left" Margin="-16,0,0,0"
+                                        Background="#3B82F6"/>
+                                <StackPanel Margin="4,0,0,0">
+                                    <TextBlock x:Name="PreviewName" Text="NUEVA CATEGORIA" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="#0F172A"/>
+                                    <TextBlock x:Name="PreviewDesc" Text="Sin descripcion" FontSize="11"
+                                               Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" BorderBrush="#F1F5F9" BorderThickness="0,1,0,0" Padding="24,16">
+                    <Grid>
+                        <Button HorizontalAlignment="Left" Click="CancelButton_Click"
+                                Height="40" Padding="20,0" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" Background="White"
+                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8"
+                                            Padding="{TemplateBinding Padding}" Height="{TemplateBinding Height}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#F1F5F9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock Text="Cancelar" FontSize="13" Foreground="#0F172A"/>
+                        </Button>
+
+                        <Button HorizontalAlignment="Right" Click="SaveButton_Click"
+                                Height="40" Padding="24,0" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" Background="#1D4ED8" CornerRadius="8"
+                                            Padding="{TemplateBinding Padding}" Height="{TemplateBinding Height}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#1E40AF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock Text="Crear Categoria" FontSize="13" FontWeight="SemiBold" Foreground="White"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

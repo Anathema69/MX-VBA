@@ -565,14 +565,79 @@
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
 
-                                            <TextBlock Text="&#x1F4C1;"
-                                                     FontSize="36"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"
-                                                     Foreground="#D97706"/>
+                                            <Image Source="pack://application:,,,/ico-ima/folder.png"
+                                                   Width="42" Height="42"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
 
                                             <TextBlock Grid.Row="1"
                                                      Text="IMA DRIVE"
+                                                     FontWeight="Bold"
+                                                     FontSize="12"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="#92400E"
+                                                     Margin="0,2,0,0"/>
+
+                                            <Border Grid.Row="2" CornerRadius="4" Padding="8,2"
+                                                    HorizontalAlignment="Center" Margin="0,2,0,8">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                        <GradientStop Color="#F59E0B" Offset="0"/>
+                                                        <GradientStop Color="#D97706" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <TextBlock Text="EN PRUEBAS"
+                                                         FontSize="9"
+                                                         FontWeight="Bold"
+                                                         Foreground="White"
+                                                         HorizontalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FEF3C7"/>
+                                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#FDE68A"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                    <!-- INVENTARIO (fase de pruebas) -->
+                        <Button x:Name="InventoryButton"
+                                Click="Inventory_Click"
+                                Width="200"
+                                Height="120"
+                                Margin="15"
+                                Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border"
+                                           Background="#FFFBEB"
+                                           BorderBrush="#D97706"
+                                           BorderThickness="2"
+                                           CornerRadius="5">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="&#xE773;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="36"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="#92400E"/>
+
+                                            <TextBlock Grid.Row="1"
+                                                     Text="INVENTARIO"
                                                      FontWeight="Bold"
                                                      FontSize="12"
                                                      HorizontalAlignment="Center"
