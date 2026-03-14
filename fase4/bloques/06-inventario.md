@@ -1,7 +1,7 @@
 # Bloque 6: Modulo de Inventario
 
 **Complejidad:** Alta
-**Estado:** PENDIENTE
+**Estado:** EN PRUEBAS (Fase 6A completada - pendiente feedback cliente)
 **Dependencias:** Ninguna (modulo independiente)
 **Primer paso obligatorio:** Mockup visual para validacion con el cliente
 
@@ -262,10 +262,15 @@ public class InventoryService : BaseSupabaseService
 
 ## Plan de Ejecucion por Fases
 
-### Fase 6A: Mockup (PRIMER PASO)
-- [ ] Disenar mockup de pantalla principal con cards
-- [ ] Disenar mockup de tabla de productos
-- [ ] Disenar mockup de alertas de stock bajo
+### Fase 6A: Mockup (EN PRUEBAS - pendiente feedback cliente)
+- [x] Disenar mockup de pantalla principal con cards (InventoryWindow.xaml)
+- [x] Disenar mockup de tabla de productos (CategoryDetailWindow.xaml)
+- [x] Disenar mockup de alertas de stock bajo (filas amber, badges, KPI cards)
+- [x] Disenar mockup de formularios (NewProductDialog, NewCategoryDialog)
+- [x] Boton INVENTARIO en MainMenu con badge "EN PRUEBAS"
+- [x] Toast notifications + confirmacion eliminacion inline
+- [x] ComboBox custom estilo SupplierPendingView
+- [x] Layout responsivo (MaxWidth centrado para pantallas grandes)
 - [ ] Presentar al cliente para validacion
 - [ ] Documentar feedback del cliente
 

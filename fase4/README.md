@@ -15,9 +15,9 @@
 | 3 | Portal Ventas + Storage | Media | COMPLETADO | 4/4 |
 | 4 | Columna Ejecutor | Baja | COMPLETADO (falta deploy SQL) | 3/3 |
 | 5 | Archivos (Drive IMA) | Alta | COMPLETADO (falta deploy SQL) | 5/5 |
-| 6 | Modulo Inventario | Alta | PENDIENTE | 0/4 |
+| 6 | Modulo Inventario | Alta | EN PRUEBAS (mockup) | 1/4 |
 
-**Progreso global:** 28/29 items (97%)
+**Progreso global:** 29/33 items (88%) - Fase 6A mockup listo, pendiente feedback cliente
 
 ---
 
