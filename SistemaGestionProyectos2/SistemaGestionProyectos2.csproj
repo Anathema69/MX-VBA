@@ -15,6 +15,7 @@
     <Company>IMA Mecatrónica</Company>
     <Product>Sistema de Gestión de Proyectos</Product>
     <Copyright>Copyright © 2026 IMA Mecatrónica</Copyright>
+
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,5 +39,11 @@
     <PackageReference Include="AWSSDK.S3" Version="3.7.405.3" />
     <PackageReference Include="supabase-csharp" Version="0.16.2" />
   </ItemGroup>
+
+  <!-- Authenticode signing post-build (requiere install-cert.ps1 ejecutado como admin) -->
+  <Target Name="SignAssembly" AfterTargets="Build" Condition="Exists('$(ProjectDir)ima-dev-cert.pfx')">
+    <Exec Command="&quot;$(ProjectDir)sign-build.bat&quot; &quot;$(TargetDir)$(TargetFileName)&quot; &quot;$(TargetDir)$(AssemblyName).exe&quot;"
+          IgnoreExitCode="true" ContinueOnError="true" />
+  </Target>
 
 </Project>

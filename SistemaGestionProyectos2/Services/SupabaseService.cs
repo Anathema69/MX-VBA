@@ -1055,11 +1055,36 @@ namespace SistemaGestionProyectos2.Services
         public Task<bool> DownloadDriveFileToLocal(int fileId, string localPath, CancellationToken ct = default)
             => _driveService.DownloadFileToLocal(fileId, localPath, ct);
 
-        public Task<bool> RenameDriveFile(int fileId, string newName, CancellationToken ct = default)
-            => _driveService.RenameFile(fileId, newName, ct);
+        public Task<byte[]?> DownloadDriveFilePartial(int fileId, long maxBytes = 102400, CancellationToken ct = default)
+            => _driveService.DownloadFilePartial(fileId, maxBytes, ct);
 
-        public Task<bool> DeleteDriveFile(int fileId, CancellationToken ct = default)
-            => _driveService.DeleteFile(fileId, ct);
+        public Task<bool> RenameDriveFile(int fileId, string newName, CancellationToken ct = default, int? userId = null)
+            => _driveService.RenameFile(fileId, newName, ct, userId);
+
+        public Task<bool> DeleteDriveFile(int fileId, CancellationToken ct = default, int? userId = null)
+            => _driveService.DeleteFile(fileId, ct, userId);
+
+        // V3-C: Move / Copy / Duplicate
+        public Task<bool> MoveDriveFile(int fileId, int targetFolderId, CancellationToken ct = default, int? userId = null)
+            => _driveService.MoveFile(fileId, targetFolderId, ct, userId);
+        public Task<bool> MoveDriveFolder(int folderId, int targetParentId, CancellationToken ct = default)
+            => _driveService.MoveFolder(folderId, targetParentId, ct);
+        public Task<(bool canMove, string? reason)> ValidateDriveFolderMove(int folderId, int targetId, CancellationToken ct = default)
+            => _driveService.ValidateFolderMove(folderId, targetId, ct);
+        public Task<DriveFileDb?> CopyDriveFile(int fileId, int targetFolderId, CancellationToken ct = default)
+            => _driveService.CopyFile(fileId, targetFolderId, ct);
+        public Task<DriveFileDb?> DuplicateDriveFile(int fileId, CancellationToken ct = default)
+            => _driveService.DuplicateFile(fileId, ct);
+        public Task<List<DriveFolderDb>> GetAllDriveFoldersFlat(CancellationToken ct = default)
+            => _driveService.GetAllFoldersFlat(ct);
+
+        // V3-B: Activity & Recientes
+        public Task LogDriveActivity(int? userId, string action, string targetType, int targetId, string? targetName, int? folderId, CancellationToken ct = default)
+            => _driveService.LogActivity(userId, action, targetType, targetId, targetName, folderId, ct);
+        public Task<List<DriveFileDb>> GetDriveRecentFiles(int limit = 15, CancellationToken ct = default)
+            => _driveService.GetRecentFiles(limit, ct);
+        public Task<List<Models.Database.DriveActivityDb>> GetDriveRecentActivity(int limit = 10, int? userId = null, CancellationToken ct = default)
+            => _driveService.GetRecentActivity(limit, userId, ct);
 
         public Task<int> PurgeDriveR2Files()
             => _driveService.PurgeAllR2Files();

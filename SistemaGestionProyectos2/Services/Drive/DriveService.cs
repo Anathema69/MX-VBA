@@ -539,7 +539,12 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             var inserted = response?.Models?.FirstOrDefault();
             if (inserted != null)
+            {
                 LogSuccess($"DB record created: drive_files.id={inserted.Id}");
+                _ = LogActivity(userId, "upload", "file", inserted.Id, fileName, folderId, ct,
+                    $"{{\"file_size\":{fileInfo.Length},\"content_type\":\"{contentType}\"}}");
+
+            }
 
             return inserted;
         }
@@ -580,13 +585,14 @@ namespace SistemaGestionProyectos2.Services.Drive
             }
         }
 
-        public async Task<bool> RenameFile(int fileId, string newName, CancellationToken ct = default)
+        public async Task<bool> RenameFile(int fileId, string newName, CancellationToken ct = default, int? userId = null)
         {
             try
             {
                 var file = await GetFileById(fileId, ct);
                 if (file == null) return false;
 
+                var oldName = file.FileName;
                 file.FileName = newName.Trim();
                 await SupabaseClient
                     .From<DriveFileDb>()
@@ -594,6 +600,8 @@ namespace SistemaGestionProyectos2.Services.Drive
                     .Update(file);
 
                 LogSuccess($"File renamed: id={fileId} -> '{newName}'");
+                _ = LogActivity(userId, "rename", "file", fileId, newName, file.FolderId, ct,
+                    $"{{\"old_name\":\"{oldName}\"}}");
                 return true;
             }
             catch (Exception ex)
@@ -603,7 +611,7 @@ namespace SistemaGestionProyectos2.Services.Drive
             }
         }
 
-        public async Task<bool> DeleteFile(int fileId, CancellationToken ct = default)
+        public async Task<bool> DeleteFile(int fileId, CancellationToken ct = default, int? userId = null)
         {
             try
             {
@@ -628,6 +636,8 @@ namespace SistemaGestionProyectos2.Services.Drive
                     .Delete();
 
                 LogSuccess($"File deleted: {file.FileName} (id={fileId})");
+                _ = LogActivity(userId, "delete", "file", fileId, file.FileName, file.FolderId, ct,
+                    $"{{\"file_size\":{file.FileSize ?? 0}}}");
                 return true;
             }
             catch (Exception ex)
@@ -635,6 +645,204 @@ namespace SistemaGestionProyectos2.Services.Drive
                 LogError($"Error deleting file {fileId}", ex);
                 return false;
             }
+        }
+
+        // ===============================================
+        // MOVE / COPY / DUPLICATE (V3-C)
+        // ===============================================
+
+        public async Task<bool> MoveFile(int fileId, int targetFolderId, CancellationToken ct = default, int? userId = null)
+        {
+            try
+            {
+                var file = await GetFileById(fileId, ct);
+                if (file == null) return false;
+                var fromFolder = file.FolderId;
+                file.FolderId = targetFolderId;
+                await SupabaseClient.From<DriveFileDb>().Where(f => f.Id == fileId).Update(file);
+                LogSuccess($"File moved: id={fileId} -> folder={targetFolderId}");
+                _ = LogActivity(userId, "move", "file", fileId, file.FileName, targetFolderId, ct,
+                    $"{{\"from_folder\":{fromFolder},\"to_folder\":{targetFolderId}}}");
+                return true;
+            }
+            catch (Exception ex) { LogError($"Error moving file {fileId}", ex); return false; }
+        }
+
+        public async Task<bool> MoveFolder(int folderId, int targetParentId, CancellationToken ct = default)
+        {
+            try
+            {
+                var folder = await GetFolderById(folderId, ct);
+                if (folder == null) return false;
+                folder.ParentId = targetParentId;
+                await SupabaseClient.From<DriveFolderDb>().Where(f => f.Id == folderId).Update(folder);
+                LogSuccess($"Folder moved: id={folderId} -> parent={targetParentId}");
+                return true;
+            }
+            catch (Exception ex) { LogError($"Error moving folder {folderId}", ex); return false; }
+        }
+
+        public async Task<(bool canMove, string? reason)> ValidateFolderMove(int folderId, int targetId, CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.Rpc("validate_folder_move",
+                    new Dictionary<string, object> { { "p_folder_id", folderId }, { "p_target_id", targetId } });
+                if (result?.Content == null) return (false, "Error de validacion");
+                var arr = System.Text.Json.JsonSerializer.Deserialize<List<FolderMoveValidation>>(result.Content);
+                var first = arr?.FirstOrDefault();
+                return first != null ? (first.can_move, first.block_reason) : (false, "Sin respuesta");
+            }
+            catch (Exception ex) { LogError("Error validating folder move", ex); return (false, ex.Message); }
+        }
+
+        private record FolderMoveValidation(bool can_move, string? block_reason);
+
+        public async Task<DriveFileDb?> CopyFile(int fileId, int targetFolderId, CancellationToken ct = default)
+        {
+            if (!_isStorageConfigured) return null;
+            try
+            {
+                var source = await GetFileById(fileId, ct);
+                if (source == null) return null;
+
+                // Generate unique name in target folder
+                var targetName = await GetUniqueName(targetFolderId, source.FileName, ct);
+
+                // Copy blob in R2 (R2 no soporta CopyObject, download+reupload)
+                var newStoragePath = $"{targetFolderId}/{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{targetName}";
+                using var getResp = await _s3Client.GetObjectAsync(new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = source.StoragePath
+                }, ct);
+                using var ms = new MemoryStream();
+                await getResp.ResponseStream.CopyToAsync(ms, ct);
+                ms.Position = 0;
+                await _s3Client.PutObjectAsync(new PutObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = newStoragePath,
+                    InputStream = ms,
+                    ContentType = source.ContentType ?? GetContentType(source.FileName),
+                    DisablePayloadSigning = true
+                }, ct);
+
+                // Insert new DB record
+                var newFile = new DriveFileDb
+                {
+                    FolderId = targetFolderId,
+                    FileName = targetName,
+                    StoragePath = newStoragePath,
+                    FileSize = source.FileSize,
+                    ContentType = source.ContentType,
+                    UploadedBy = source.UploadedBy,
+                    UploadedAt = DateTime.Now
+                };
+                var resp = await SupabaseClient.From<DriveFileDb>().Insert(newFile);
+                var inserted = resp?.Models?.FirstOrDefault();
+                LogSuccess($"File copied: {source.FileName} -> folder={targetFolderId} as '{targetName}'");
+                if (inserted != null) _ = LogActivity(source.UploadedBy, "copy", "file", inserted.Id, targetName, targetFolderId, ct,
+                    $"{{\"source_id\":{fileId},\"source_name\":\"{source.FileName}\"}}");
+
+                return inserted;
+            }
+            catch (Exception ex) { LogError($"Error copying file {fileId}", ex); return null; }
+        }
+
+        public async Task<DriveFileDb?> DuplicateFile(int fileId, CancellationToken ct = default)
+        {
+            var source = await GetFileById(fileId, ct);
+            if (source == null) return null;
+            return await CopyFile(fileId, source.FolderId, ct);
+        }
+
+        private async Task<string> GetUniqueName(int folderId, string fileName, CancellationToken ct)
+        {
+            var existing = await GetFilesByFolder(folderId, ct);
+            var names = new HashSet<string>(existing.Select(f => f.FileName), StringComparer.OrdinalIgnoreCase);
+            if (!names.Contains(fileName)) return fileName;
+
+            var nameWithout = Path.GetFileNameWithoutExtension(fileName);
+            var ext = Path.GetExtension(fileName);
+            for (int i = 1; i < 100; i++)
+            {
+                var candidate = $"{nameWithout} (copia{(i > 1 ? $" {i}" : "")}){ext}";
+                if (!names.Contains(candidate)) return candidate;
+            }
+            return $"{nameWithout} ({Guid.NewGuid().ToString()[..6]}){ext}";
+        }
+
+        public async Task<List<DriveFolderDb>> GetAllFoldersFlat(CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await SupabaseClient.From<DriveFolderDb>()
+                    .Order("name", Postgrest.Constants.Ordering.Ascending)
+                    .Get(ct);
+                return result.Models ?? new List<DriveFolderDb>();
+            }
+            catch (Exception ex) { LogError("Error getting all folders", ex); return new List<DriveFolderDb>(); }
+        }
+
+        // ===============================================
+        // ===============================================
+        // ACTIVITY LOG (V3-B)
+        // ===============================================
+
+        public async Task LogActivity(int? userId, string action, string targetType, int targetId, string? targetName, int? folderId, CancellationToken ct = default, string? metadata = null)
+        {
+            try
+            {
+                var activity = new DriveActivityDb
+                {
+                    UserId = userId,
+                    Action = action,
+                    TargetType = targetType,
+                    TargetId = targetId,
+                    TargetName = targetName,
+                    FolderId = folderId,
+                    Metadata = metadata,
+                    CreatedAt = DateTime.Now
+                };
+                await SupabaseClient.From<DriveActivityDb>().Insert(activity);
+            }
+            catch (Exception ex) { LogError($"Error logging activity: {action} {targetType} {targetId}", ex); }
+        }
+
+        public async Task<List<DriveFileDb>> GetRecentFiles(int limit = 15, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await SupabaseClient
+                    .From<DriveFileDb>()
+                    .Order("uploaded_at", Postgrest.Constants.Ordering.Descending)
+                    .Limit(limit)
+                    .Get(ct);
+                return response?.Models ?? new List<DriveFileDb>();
+            }
+            catch (Exception ex) { LogError("Error getting recent files", ex); return new List<DriveFileDb>(); }
+        }
+
+        public async Task<List<DriveActivityDb>> GetRecentActivity(int limit = 10, int? userId = null, CancellationToken ct = default)
+        {
+            try
+            {
+                Postgrest.Responses.ModeledResponse<DriveActivityDb> response;
+                if (userId.HasValue)
+                    response = await SupabaseClient.From<DriveActivityDb>()
+                        .Where(a => a.UserId == userId.Value)
+                        .Order("created_at", Postgrest.Constants.Ordering.Descending)
+                        .Limit(limit)
+                        .Get(ct);
+                else
+                    response = await SupabaseClient.From<DriveActivityDb>()
+                        .Order("created_at", Postgrest.Constants.Ordering.Descending)
+                        .Limit(limit)
+                        .Get(ct);
+                return response?.Models ?? new List<DriveActivityDb>();
+            }
+            catch (Exception ex) { LogError("Error getting recent activity", ex); return new List<DriveActivityDb>(); }
         }
 
         // ===============================================
@@ -879,6 +1087,81 @@ namespace SistemaGestionProyectos2.Services.Drive
                 LogError("Error purging R2 bucket", ex);
                 return -1;
             }
+        }
+
+        // ===============================================
+        // PREVIEW & THUMBNAILS (V3-A)
+        // ===============================================
+
+        /// <summary>Generate a pre-signed URL for file preview (default 15 min)</summary>
+        public string? GetPreviewUrl(string storagePath, int expirationMinutes = 15)
+        {
+            if (!_isStorageConfigured || string.IsNullOrEmpty(storagePath)) return null;
+            try
+            {
+                var request = new GetPreSignedUrlRequest
+                {
+                    BucketName = _bucketName,
+                    Key = storagePath,
+                    Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+                    Verb = HttpVerb.GET
+                };
+                return _s3Client.GetPreSignedURL(request);
+            }
+            catch (Exception ex)
+            {
+                LogError("Error generating preview URL", ex);
+                return null;
+            }
+        }
+
+        /// <summary>Download partial file content (for text preview, first N bytes)</summary>
+        public async Task<byte[]?> DownloadFilePartial(int fileId, long maxBytes = 102400, CancellationToken ct = default)
+        {
+            if (!_isStorageConfigured) return null;
+            try
+            {
+                var file = await GetFileById(fileId, ct);
+                if (file == null) return null;
+
+                var getRequest = new GetObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = file.StoragePath,
+                    ByteRange = new ByteRange(0, maxBytes - 1)
+                };
+
+                using var response = await _s3Client.GetObjectAsync(getRequest, ct);
+                using var ms = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(ms, ct);
+                return ms.ToArray();
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error downloading partial file {fileId}", ex);
+                return null;
+            }
+        }
+
+        /// <summary>Check if file extension is a text-previewable type</summary>
+        public static bool IsTextFile(string fileName)
+        {
+            var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+            return ext is ".txt" or ".csv" or ".log" or ".json" or ".xml" or ".md" or ".ini" or ".cfg" or ".html" or ".htm" or ".css" or ".js" or ".sql";
+        }
+
+        /// <summary>Check if file extension is an Office document</summary>
+        public static bool IsOfficeFile(string fileName)
+        {
+            var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+            return ext is ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
+        }
+
+        /// <summary>Check if file extension is a CAD file</summary>
+        public static bool IsCadFile(string fileName)
+        {
+            var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+            return ext is ".dwg" or ".dxf" or ".step" or ".stp" or ".sldprt" or ".ipt" or ".iam" or ".mcx-9";
         }
 
         public static string GetContentType(string fileName)

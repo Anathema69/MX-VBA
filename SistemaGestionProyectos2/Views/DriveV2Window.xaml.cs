@@ -5,7 +5,9 @@ using SistemaGestionProyectos2.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,6 +16,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
 namespace SistemaGestionProyectos2.Views
@@ -54,6 +57,26 @@ namespace SistemaGestionProyectos2.Views
         // Benchmark
         private bool _benchmarkActive;
         private BenchmarkPhaseResult? _lastPhaseResult;
+
+        // V3-B: Recientes & Actividad
+        private bool _recentShowAll = false; // false = mis recientes, true = todos
+        private bool _activityExpanded = true;
+
+        // V3-C: Clipboard for Cut/Copy/Paste
+        private enum ClipOp { Cut, Copy }
+        private List<DriveFileDb>? _clipFiles;
+        private ClipOp _clipOp;
+
+        // V3-A: Preview & Thumbnails
+        private readonly Dictionary<int, BitmapImage> _previewCache = new();
+        private readonly LinkedList<int> _previewLru = new();
+        private const int MaxPreviewCache = 20;
+        private readonly SemaphoreSlim _thumbnailSemaphore = new(5);
+        private int _overlayCurrentIndex = -1;
+        private List<DriveFileDb> _overlayImageFiles = new();
+        private static readonly string ThumbnailCacheDir = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "IMA-Drive", "thumbs");
 
         // Navigation cache (stale-while-revalidate)
         private readonly Dictionary<int, FolderSnapshot> _folderCache = new();
@@ -109,7 +132,7 @@ namespace SistemaGestionProyectos2.Views
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             MouseDown += OnMouseNav;
-            Loaded += async (s, e) => { InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot()); };
+            Loaded += async (s, e) => { InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); _ = LoadSidebarRecentsAndActivity(); await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot()); };
         }
 
         /// <summary>Open Drive navigating directly to a specific folder</summary>
@@ -187,6 +210,182 @@ namespace SistemaGestionProyectos2.Views
         }
 
         void SetNav(string id) { _activeNav = id; foreach (var it in _navItems) { var a = it.Tag as string == id; it.Background = a ? ActiveBg : Brushes.Transparent; if (it.Child is StackPanel sp) foreach (var c in sp.Children.OfType<TextBlock>()) c.Foreground = a ? Primary : TextSecondary; } }
+
+        // ===============================================
+        // V3-B: RECIENTES & ACTIVIDAD (SIDEBAR)
+        // ===============================================
+
+        async Task LoadSidebarRecentsAndActivity()
+        {
+            try
+            {
+                await LoadRecentFiles();
+                await LoadActivityFeed();
+
+                // Actividad solo visible para roles con visibilidad amplia
+                var role = _currentUser.Role?.ToLowerInvariant() ?? "";
+                if (role is not "direccion" and not "administracion" and not "coordinacion")
+                    ActivitySection.Visibility = Visibility.Collapsed;
+            }
+            catch { /* sidebar load failure is non-critical */ }
+        }
+
+        async Task LoadRecentFiles()
+        {
+            RecentFilesPanel.Children.Clear();
+            try
+            {
+                List<DriveFileDb> files;
+                if (_recentShowAll)
+                    files = await SupabaseService.Instance.GetDriveRecentFiles(15, _cts.Token);
+                else
+                {
+                    // Mis recientes: archivos subidos por el usuario actual
+                    var all = await SupabaseService.Instance.GetDriveRecentFiles(50, _cts.Token);
+                    files = all.Where(f => f.UploadedBy == _currentUser.Id).Take(15).ToList();
+                }
+
+                if (files.Count == 0)
+                {
+                    RecentFilesPanel.Children.Add(new TextBlock { Text = "Sin archivos recientes", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0), FontStyle = FontStyles.Italic });
+                    return;
+                }
+
+                foreach (var file in files)
+                    RecentFilesPanel.Children.Add(MkRecentFileItem(file));
+            }
+            catch { RecentFilesPanel.Children.Add(new TextBlock { Text = "Error al cargar", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0) }); }
+        }
+
+        Border MkRecentFileItem(DriveFileDb file)
+        {
+            var (cH, _) = GFC(file.FileName); var fC = CH(cH);
+            var row = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 6, 8, 6), Margin = new Thickness(0, 1, 0, 1), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+
+            var ico = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(Color.FromArgb(25, fC.R, fC.G, fC.B)), Margin = new Thickness(0, 0, 8, 0) };
+            ico.Child = new TextBlock { Text = FIcon(file.FileName), FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 10, Foreground = new SolidColorBrush(fC), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(ico);
+
+            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, MaxWidth = 150 };
+            textPanel.Children.Add(new TextBlock { Text = Tr(file.FileName, 25), FontSize = 12, Foreground = TextPrimary, TextTrimming = TextTrimming.CharacterEllipsis });
+            textPanel.Children.Add(new TextBlock { Text = RelT(file.UploadedAt), FontSize = 10, Foreground = TextLight });
+            sp.Children.Add(textPanel);
+
+            row.Child = sp;
+            row.ToolTip = $"{file.FileName}\n{Services.Drive.DriveService.FormatFileSize(file.FileSize)}\n{file.UploadedAt?.ToString("dd/MM/yyyy HH:mm")}";
+
+            row.MouseEnter += (s, e) => row.Background = HoverBg;
+            row.MouseLeave += (s, e) => row.Background = Brushes.Transparent;
+            row.MouseLeftButtonDown += async (s, e) =>
+            {
+                // Navegar a la carpeta del archivo y seleccionarlo
+                await SafeLoad(async () =>
+                {
+                    await NavTo(file.FolderId);
+                    // Después de cargar, seleccionar el archivo
+                    _selectedFile = _currentFiles.FirstOrDefault(f => f.Id == file.Id) ?? file;
+                    if (_selectedFile != null)
+                    {
+                        _selectedFileIds.Clear();
+                        _selectedFileIds.Add(_selectedFile.Id);
+                        ShowDetail(_selectedFile);
+                        RenderContent();
+                    }
+                });
+            };
+
+            return row;
+        }
+
+        async Task LoadActivityFeed()
+        {
+            ActivityPanel.Children.Clear();
+            try
+            {
+                var activities = await SupabaseService.Instance.GetDriveRecentActivity(10, ct: _cts.Token);
+                if (activities.Count == 0)
+                {
+                    ActivityPanel.Children.Add(new TextBlock { Text = "Sin actividad reciente", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0), FontStyle = FontStyles.Italic });
+                    return;
+                }
+
+                foreach (var act in activities)
+                    ActivityPanel.Children.Add(MkActivityItem(act));
+            }
+            catch { ActivityPanel.Children.Add(new TextBlock { Text = "Error al cargar", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0) }); }
+        }
+
+        Border MkActivityItem(Models.Database.DriveActivityDb act)
+        {
+            var actionText = act.Action switch
+            {
+                "upload" => "subio",
+                "download" => "descargo",
+                "rename" => "renombro",
+                "delete" => "elimino",
+                "move" => "movio",
+                "copy" => "copio",
+                _ => act.Action
+            };
+
+            var row = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 5, 8, 5), Margin = new Thickness(0, 1, 0, 1), Cursor = act.Action == "delete" ? Cursors.Arrow : Cursors.Hand, Background = Brushes.Transparent };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+
+            // Iniciales del usuario en circulo
+            var initials = "?";
+            if (act.UserId.HasValue && _userNameCache.TryGetValue(act.UserId.Value, out var name))
+                initials = string.Concat(name.Split(' ').Where(w => w.Length > 0).Select(w => w[0])).ToUpperInvariant();
+            else if (act.UserId.HasValue)
+                _ = Task.Run(async () => { var n = await ResolveUser(act.UserId); Dispatcher.Invoke(() => LoadActivityFeed()); }); // lazy resolve
+
+            var avatar = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12), Background = Primary, Margin = new Thickness(0, 0, 8, 0) };
+            avatar.Child = new TextBlock { Text = initials.Length > 2 ? initials[..2] : initials, FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(avatar);
+
+            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, MaxWidth = 155 };
+            var actionTb = new TextBlock { FontSize = 11, Foreground = TextMuted, TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+            actionTb.Inlines.Add(new System.Windows.Documents.Run { Text = actionText, Foreground = TextSecondary, FontWeight = FontWeights.Medium });
+            actionTb.Inlines.Add(new System.Windows.Documents.Run { Text = $" {Tr(act.TargetName ?? "archivo", 20)}", Foreground = TextPrimary });
+            if (act.Action == "delete") actionTb.TextDecorations = TextDecorations.Strikethrough;
+            textPanel.Children.Add(actionTb);
+            textPanel.Children.Add(new TextBlock { Text = RelT(act.CreatedAt), FontSize = 10, Foreground = TextLight });
+            sp.Children.Add(textPanel);
+
+            row.Child = sp;
+
+            if (act.Action != "delete")
+            {
+                row.MouseEnter += (s, e) => row.Background = HoverBg;
+                row.MouseLeave += (s, e) => row.Background = Brushes.Transparent;
+                row.MouseLeftButtonDown += async (s, e) =>
+                {
+                    if (act.FolderId.HasValue)
+                        await SafeLoad(() => NavTo(act.FolderId.Value));
+                };
+            }
+
+            return row;
+        }
+
+        void RecentToggle_Click(object sender, MouseButtonEventArgs e)
+        {
+            _recentShowAll = !_recentShowAll;
+            RecentToggleLabel.Text = _recentShowAll ? "Todos" : "Mis archivos";
+            RecentToggle.Background = _recentShowAll ? GreenOk : Primary;
+            RecentToggleDot.HorizontalAlignment = _recentShowAll ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+            _ = LoadRecentFiles();
+        }
+
+        void ActivityHeader_Click(object sender, MouseButtonEventArgs e)
+        {
+            _activityExpanded = !_activityExpanded;
+            ActivityPanel.Visibility = _activityExpanded ? Visibility.Visible : Visibility.Collapsed;
+            ActivityChevronRotation.Angle = _activityExpanded ? 90 : 0;
+        }
+
+        /// <summary>Refresh sidebar after upload or other file operations</summary>
+        void RefreshSidebarRecents() => _ = LoadSidebarRecentsAndActivity();
 
         Border MkFilter(string filterId, string clr, string lbl, string cnt)
         {
@@ -517,6 +716,7 @@ namespace SistemaGestionProyectos2.Views
             StorageFillCol.Width = new GridLength(pct, GridUnitType.Star);
             StorageEmptyCol.Width = new GridLength(100 - pct, GridUnitType.Star);
         }
+        void UpdateStorageUI(long addedBytes) { if (_globalStorageBytes >= 0) _globalStorageBytes += addedBytes; UpdateStorageUI(); }
 
         void InvalidateStats(int? fId = null)
         {
@@ -673,7 +873,7 @@ namespace SistemaGestionProyectos2.Views
             // MEJORA-9: Double-click to open folder (change ClickCount == 2 to 1 for single-click)
             rb.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
             var linked = folder.LinkedOrderId.HasValue;
-            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return rb;
         }
 
@@ -711,7 +911,7 @@ namespace SistemaGestionProyectos2.Views
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleFileSelect(file); }
                 else { ClearMultiSelect(); _selectedFile = file; _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); ShowDetail(file); RenderContent(); }
             };
-            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return rb;
         }
 
@@ -794,7 +994,7 @@ namespace SistemaGestionProyectos2.Views
             card.MouseLeave += (s, e) => { card.Effect = null; nameT.Foreground = TextPrimary; moreBtn.Visibility = Visibility.Collapsed; };
             // MEJORA-9: Double-click to open folder (configurable: change ClickCount == 2 to ClickCount == 1 for single-click navigation)
             card.MouseLeftButtonDown += (s, e) => { if (blockedInSelection) return; if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
-            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return card;
         }
 
@@ -805,11 +1005,36 @@ namespace SistemaGestionProyectos2.Views
         {
             var (cH, bH) = GFC(file.FileName); var fC = CH(cH); var fB = new SolidColorBrush(fC); var bgB = BH(bH);
             var sel = _selectedFileIds.Contains(file.Id);
-            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), BorderBrush = sel ? Primary : BorderColor, BorderThickness = new Thickness(2), Cursor = Cursors.Hand, ClipToBounds = true };
+            var isCut = _clipFiles != null && _clipOp == ClipOp.Cut && _clipFiles.Any(f => f.Id == file.Id);
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), BorderBrush = sel ? Primary : BorderColor, BorderThickness = new Thickness(2), Cursor = Cursors.Hand, ClipToBounds = true, Opacity = isCut ? 0.45 : 1.0 };
             if (sel) card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 12, ShadowDepth = 2, Opacity = 0.15 };
             var mg = new Grid(); mg.RowDefinitions.Add(new RowDefinition { Height = new GridLength(160) }); mg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var prev = new Border { Background = bgB, CornerRadius = new CornerRadius(10, 10, 0, 0) }; var pg = new Grid();
-            pg.Children.Add(new TextBlock { Text = FIcon(file.FileName), FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 48, Foreground = fB, Opacity = 0.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+            // V3-A: Show thumbnail for images, icon for others
+            var isImage = Services.Drive.DriveService.IsImageFile(file.FileName);
+            if (isImage)
+            {
+                var thumbImg = new Image { Stretch = Stretch.UniformToFill, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Opacity = 0 };
+                RenderOptions.SetBitmapScalingMode(thumbImg, BitmapScalingMode.HighQuality);
+                pg.Children.Add(thumbImg);
+                // Fallback icon (shown until thumbnail loads)
+                var fallbackIcon = new TextBlock { Text = FIcon(file.FileName), FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 48, Foreground = fB, Opacity = 0.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                pg.Children.Add(fallbackIcon);
+                // Load thumbnail async
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await LoadThumbnailAsync(file, thumbImg, _cts.Token);
+                        Dispatcher.Invoke(() => { if (thumbImg.Source != null) { thumbImg.Opacity = 1; fallbackIcon.Visibility = Visibility.Collapsed; } });
+                    }
+                    catch { /* non-critical */ }
+                });
+            }
+            else
+            {
+                pg.Children.Add(new TextBlock { Text = FIcon(file.FileName), FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 48, Foreground = fB, Opacity = 0.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+            }
             var ext = System.IO.Path.GetExtension(file.FileName)?.TrimStart('.').ToUpperInvariant() ?? "";
             var badge = new Border { Background = fB, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 4, 8, 4), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 12, 12, 0) };
             badge.Child = new TextBlock { Text = ext, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White }; pg.Children.Add(badge);
@@ -842,7 +1067,7 @@ namespace SistemaGestionProyectos2.Views
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleFileSelect(file); }
                 else { ClearMultiSelect(); _selectedFile = file; _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); ShowDetail(file); RenderContent(); }
             };
-            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return card;
         }
 
@@ -857,6 +1082,34 @@ namespace SistemaGestionProyectos2.Views
             DetailPreviewIcon.Text = FIcon(file.FileName);
             DetailPreviewBg.Background = new LinearGradientBrush(Color.FromArgb(20, fC.R, fC.G, fC.B), Color.FromArgb(40, fC.R, fC.G, fC.B), 45);
             DetailPreviewIcon.Foreground = new SolidColorBrush(fC);
+
+            // V3-A: Reset preview states
+            DetailPreviewBg.Visibility = Visibility.Visible;
+            DetailImageBorder.Visibility = Visibility.Collapsed;
+            DetailTextBorder.Visibility = Visibility.Collapsed;
+            DetailPreviewSpinner.Visibility = Visibility.Collapsed;
+            DetailImageHint.Visibility = Visibility.Collapsed;
+            DetailPreviewImage.Source = null;
+            DetailTextContent.Text = "";
+
+            // V3-A: Load rich preview based on file type
+            if (Services.Drive.DriveService.IsImageFile(file.FileName))
+            {
+                _ = LoadImagePreview(file);
+            }
+            else if (Services.Drive.DriveService.IsTextFile(file.FileName))
+            {
+                _ = LoadTextPreview(file);
+            }
+            else if (Services.Drive.DriveService.IsOfficeFile(file.FileName))
+            {
+                ShowOfficePreview(file);
+            }
+            else if (Services.Drive.DriveService.IsCadFile(file.FileName))
+            {
+                ShowCadPreview(file);
+            }
+
             var uploader = await ResolveUser(file.UploadedBy);
             var loc = _breadcrumb.Count > 0 ? string.Join(" / ", _breadcrumb.Select(b => b.Name)) : "IMA Drive";
             DetailInfoPanel.Children.Clear();
@@ -879,6 +1132,568 @@ namespace SistemaGestionProyectos2.Views
             DetailPanel.Visibility = Visibility.Visible;
         }
         void HideDetail() { _selectedFile = null; DetailPanel.Visibility = Visibility.Collapsed; }
+
+        // ===============================================
+        // V3-A: PREVIEW METHODS
+        // ===============================================
+
+        async Task LoadImagePreview(DriveFileDb file)
+        {
+            // Check in-memory cache first
+            if (_previewCache.TryGetValue(file.Id, out var cached))
+            {
+                ShowImageInDetail(cached, file);
+                return;
+            }
+
+            // Show spinner while loading
+            DetailPreviewBg.Visibility = Visibility.Collapsed;
+            DetailImageBorder.Visibility = Visibility.Visible;
+            DetailPreviewSpinner.Visibility = Visibility.Visible;
+
+            try
+            {
+                var bytes = await Task.Run(async () =>
+                    await SupabaseService.Instance.DownloadDriveFile(file.Id, _cts.Token));
+                if (bytes == null || bytes.Length == 0) return;
+
+                var bmp = await Task.Run(() =>
+                {
+                    var bi = new BitmapImage();
+                    bi.BeginInit();
+                    bi.StreamSource = new MemoryStream(bytes);
+                    bi.DecodePixelWidth = 600; // limit memory for preview
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.EndInit();
+                    bi.Freeze();
+                    return bi;
+                });
+
+                CachePreview(file.Id, bmp);
+                if (_selectedFile?.Id == file.Id) // still viewing this file
+                    ShowImageInDetail(bmp, file);
+            }
+            catch
+            {
+                // Fallback to icon if preview fails
+                if (_selectedFile?.Id == file.Id)
+                {
+                    DetailPreviewBg.Visibility = Visibility.Visible;
+                    DetailImageBorder.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        void ShowImageInDetail(BitmapImage bmp, DriveFileDb file)
+        {
+            DetailPreviewSpinner.Visibility = Visibility.Collapsed;
+            DetailPreviewBg.Visibility = Visibility.Collapsed;
+            DetailImageBorder.Visibility = Visibility.Visible;
+            DetailPreviewImage.Source = bmp;
+            DetailImageHint.Visibility = Visibility.Visible;
+            // Fix: use _selectedFile to always open the correct image (not a stale closure)
+            DetailImageBorder.MouseLeftButtonDown -= DetailImageBorder_Click;
+            DetailImageBorder.MouseLeftButtonDown += DetailImageBorder_Click;
+        }
+        void DetailImageBorder_Click(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            if (_selectedFile != null) OpenImageOverlay(_selectedFile);
+        }
+
+        async Task LoadTextPreview(DriveFileDb file)
+        {
+            DetailPreviewBg.Visibility = Visibility.Collapsed;
+            DetailTextBorder.Visibility = Visibility.Visible;
+            DetailTextContent.Text = "Cargando...";
+
+            try
+            {
+                var bytes = await Task.Run(async () =>
+                    await SupabaseService.Instance.DownloadDriveFilePartial(file.Id, 102400, _cts.Token));
+                if (bytes == null || _selectedFile?.Id != file.Id) return;
+
+                var text = Encoding.UTF8.GetString(bytes);
+                var isTruncated = file.FileSize.HasValue && file.FileSize.Value > 102400;
+                DetailTextContent.Text = isTruncated ? text + "\n\n--- Mostrando primeros 100 KB ---" : text;
+            }
+            catch
+            {
+                if (_selectedFile?.Id == file.Id)
+                {
+                    DetailPreviewBg.Visibility = Visibility.Visible;
+                    DetailTextBorder.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        void ShowOfficePreview(DriveFileDb file)
+        {
+            // Show colored icon with "Open with..." button
+            var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
+            var (appName, appColor) = ext switch
+            {
+                ".doc" or ".docx" => ("Word", Color.FromRgb(0x2B, 0x57, 0x9A)),
+                ".xls" or ".xlsx" => ("Excel", Color.FromRgb(0x21, 0x73, 0x46)),
+                ".ppt" or ".pptx" => ("PowerPoint", Color.FromRgb(0xD2, 0x47, 0x26)),
+                _ => ("aplicacion", Color.FromRgb(0x64, 0x74, 0x8B))
+            };
+
+            DetailPreviewBg.Background = new LinearGradientBrush(
+                Color.FromArgb(20, appColor.R, appColor.G, appColor.B),
+                Color.FromArgb(50, appColor.R, appColor.G, appColor.B), 45);
+            DetailPreviewIcon.Foreground = new SolidColorBrush(appColor);
+            DetailPreviewIcon.FontSize = 48;
+
+            // Add "Open with" button below info
+            var openBtn = new Button
+            {
+                Padding = new Thickness(12, 8, 12, 8),
+                Cursor = Cursors.Hand,
+                Background = new SolidColorBrush(appColor),
+                Foreground = Brushes.White,
+                BorderThickness = new Thickness(0),
+                Tag = "officeOpenBtn"
+            };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            sp.Children.Add(new TextBlock { Text = "\uE8E5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+            sp.Children.Add(new TextBlock { Text = $"Abrir con {appName}", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center });
+            openBtn.Content = sp;
+            openBtn.Click += async (s, e) => await OpenFileWithSystemApp(file);
+
+            // Will be inserted after info panel renders
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Remove previous office button if exists
+                var existing = DetailInfoPanel.Children.OfType<Button>().FirstOrDefault(b => b.Tag as string == "officeOpenBtn");
+                if (existing != null) DetailInfoPanel.Children.Remove(existing);
+
+                var wrapper = new Border { CornerRadius = new CornerRadius(8), ClipToBounds = true, Margin = new Thickness(0, 8, 0, 0) };
+                wrapper.Child = openBtn;
+                openBtn.Tag = "officeOpenBtn";
+                DetailInfoPanel.Children.Add(openBtn);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        void ShowCadPreview(DriveFileDb file)
+        {
+            var cadColor = Color.FromRgb(0xFF, 0x6F, 0x00);
+            DetailPreviewBg.Background = new LinearGradientBrush(
+                Color.FromArgb(15, cadColor.R, cadColor.G, cadColor.B),
+                Color.FromArgb(40, cadColor.R, cadColor.G, cadColor.B), 45);
+            DetailPreviewIcon.Foreground = new SolidColorBrush(cadColor);
+            DetailPreviewIcon.FontSize = 48;
+        }
+
+        async Task OpenFileWithSystemApp(DriveFileDb file)
+        {
+            try
+            {
+                var tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "IMA-Drive", "preview");
+                Directory.CreateDirectory(tempDir);
+                var localPath = System.IO.Path.Combine(tempDir, $"{file.Id}_{file.FileName}");
+
+                StatusText.Text = $"Descargando {file.FileName}...";
+                var ok = await SupabaseService.Instance.DownloadDriveFileToLocal(file.Id, localPath, _cts.Token);
+                if (!ok) { ShowToast($"Error al descargar {file.FileName}", "error"); return; }
+
+                Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+                StatusText.Text = $"{file.FileName} abierto";
+                ShowToast($"{file.FileName} abierto", "info");
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"No se pudo abrir: {ex.Message}", "error");
+            }
+        }
+
+        // ===============================================
+        // V3-A: IMAGE OVERLAY (FULLSCREEN)
+        // ===============================================
+
+        void OpenImageOverlay(DriveFileDb file)
+        {
+            _overlayImageFiles = _currentFiles
+                .Where(f => Services.Drive.DriveService.IsImageFile(f.FileName))
+                .ToList();
+            _overlayCurrentIndex = _overlayImageFiles.FindIndex(f => f.Id == file.Id);
+            if (_overlayCurrentIndex < 0) return;
+
+            ShowOverlayImage(_overlayCurrentIndex);
+            ImageOverlay.Visibility = Visibility.Visible;
+            ImageOverlay.Focus(); // capturar foco para que las flechas del teclado funcionen
+            UpdateOverlayNav();
+        }
+
+        void ShowOverlayImage(int index)
+        {
+            if (index < 0 || index >= _overlayImageFiles.Count) return;
+            _overlayCurrentIndex = index;
+            var file = _overlayImageFiles[index];
+            OverlayFileName.Text = file.FileName;
+            OverlayCounter.Text = $"{index + 1} de {_overlayImageFiles.Count}";
+            UpdateOverlayNav();
+
+            if (_previewCache.TryGetValue(file.Id, out var cached))
+            {
+                OverlayImage.Source = cached;
+            }
+            else
+            {
+                OverlayImage.Source = null;
+                var capturedIndex = index;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var bytes = await SupabaseService.Instance.DownloadDriveFile(file.Id, _cts.Token);
+                        if (bytes == null) return;
+                        var bmp = new BitmapImage();
+                        bmp.BeginInit();
+                        bmp.StreamSource = new MemoryStream(bytes);
+                        bmp.CacheOption = BitmapCacheOption.OnLoad;
+                        bmp.EndInit();
+                        bmp.Freeze();
+                        CachePreview(file.Id, bmp);
+                        Dispatcher.Invoke(() => { if (_overlayCurrentIndex == capturedIndex) OverlayImage.Source = bmp; });
+                    }
+                    catch { /* non-critical */ }
+                });
+            }
+        }
+
+        void UpdateOverlayNav()
+        {
+            OverlayPrevBtn.Visibility = _overlayCurrentIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
+            OverlayNextBtn.Visibility = _overlayCurrentIndex < _overlayImageFiles.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        void ImageOverlay_CloseBtn(object sender, RoutedEventArgs e) => ImageOverlay.Visibility = Visibility.Collapsed;
+        void ImageOverlay_BgClick(object sender, MouseButtonEventArgs e) => ImageOverlay.Visibility = Visibility.Collapsed;
+        void ImageOverlay_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape) { ImageOverlay.Visibility = Visibility.Collapsed; e.Handled = true; }
+            else if (e.Key == Key.Left && _overlayCurrentIndex > 0) { ShowOverlayImage(_overlayCurrentIndex - 1); e.Handled = true; }
+            else if (e.Key == Key.Right && _overlayCurrentIndex < _overlayImageFiles.Count - 1) { ShowOverlayImage(_overlayCurrentIndex + 1); e.Handled = true; }
+        }
+        void OverlayPrev_Click(object sender, RoutedEventArgs e) { if (_overlayCurrentIndex > 0) ShowOverlayImage(_overlayCurrentIndex - 1); }
+        void OverlayNext_Click(object sender, RoutedEventArgs e) { if (_overlayCurrentIndex < _overlayImageFiles.Count - 1) ShowOverlayImage(_overlayCurrentIndex + 1); }
+
+        void CachePreview(int fileId, BitmapImage img)
+        {
+            if (_previewCache.ContainsKey(fileId))
+            {
+                var node = _previewLru.Find(fileId);
+                if (node != null) { _previewLru.Remove(node); _previewLru.AddFirst(fileId); }
+                _previewCache[fileId] = img;
+                return;
+            }
+            while (_previewCache.Count >= MaxPreviewCache && _previewLru.Count > 0)
+            {
+                var oldest = _previewLru.Last!.Value;
+                _previewLru.RemoveLast();
+                _previewCache.Remove(oldest);
+            }
+            _previewLru.AddFirst(fileId);
+            _previewCache[fileId] = img;
+        }
+
+        // ===============================================
+        // V3-A: THUMBNAILS IN GRID
+        // ===============================================
+
+        async Task LoadThumbnailAsync(DriveFileDb file, Image targetImage, CancellationToken ct)
+        {
+            await _thumbnailSemaphore.WaitAsync(ct);
+            try
+            {
+                // Check disk cache
+                Directory.CreateDirectory(ThumbnailCacheDir);
+                var thumbPath = System.IO.Path.Combine(ThumbnailCacheDir, $"{file.Id}.jpg");
+                BitmapImage? bmp = null;
+
+                if (File.Exists(thumbPath))
+                {
+                    bmp = await Task.Run(() =>
+                    {
+                        var bi = new BitmapImage();
+                        bi.BeginInit();
+                        bi.UriSource = new Uri(thumbPath, UriKind.Absolute);
+                        bi.DecodePixelWidth = 200;
+                        bi.CacheOption = BitmapCacheOption.OnLoad;
+                        bi.EndInit();
+                        bi.Freeze();
+                        return bi;
+                    }, ct);
+                }
+                else
+                {
+                    // Download and create thumbnail
+                    var bytes = await SupabaseService.Instance.DownloadDriveFile(file.Id, ct);
+                    if (bytes == null || bytes.Length == 0) return;
+
+                    bmp = await Task.Run(() =>
+                    {
+                        var bi = new BitmapImage();
+                        bi.BeginInit();
+                        bi.StreamSource = new MemoryStream(bytes);
+                        bi.DecodePixelWidth = 200;
+                        bi.CacheOption = BitmapCacheOption.OnLoad;
+                        bi.EndInit();
+                        bi.Freeze();
+
+                        // Save to disk cache as JPEG
+                        try
+                        {
+                            var encoder = new JpegBitmapEncoder { QualityLevel = 80 };
+                            encoder.Frames.Add(BitmapFrame.Create(bi));
+                            using var fs = new FileStream(thumbPath, FileMode.Create);
+                            encoder.Save(fs);
+                        }
+                        catch { /* cache write failure is non-critical */ }
+
+                        return bi;
+                    }, ct);
+                }
+
+                if (bmp != null && !ct.IsCancellationRequested)
+                    Dispatcher.Invoke(() => targetImage.Source = bmp);
+            }
+            catch (OperationCanceledException) { }
+            catch { /* thumbnail load failure is non-critical */ }
+            finally { _thumbnailSemaphore.Release(); }
+        }
+
+        // ===============================================
+        // V3-C: MOVE / COPY / DUPLICATE / CLIPBOARD
+        // ===============================================
+
+        async Task<int?> ShowFolderPickerAsync(string title, string action, int? excludeFolderId = null)
+        {
+            // Load folders async BEFORE opening dialog
+            var allFolders = await SupabaseService.Instance.GetAllDriveFoldersFlat(_cts.Token);
+
+            var w = new Window
+            {
+                Title = title, Width = 440, Height = 500,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this, WindowStyle = WindowStyle.None,
+                AllowsTransparency = true, Background = Brushes.Transparent,
+                ResizeMode = ResizeMode.NoResize
+            };
+
+            var card = new Border
+            {
+                Background = Brushes.White, CornerRadius = new CornerRadius(12),
+                BorderBrush = BorderColor, BorderThickness = new Thickness(1),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 24, ShadowDepth = 8, Opacity = 0.12 },
+                Margin = new Thickness(16)
+            };
+            var root = new Grid();
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Header
+            var header = new Border { Padding = new Thickness(20, 16, 20, 16), BorderBrush = BorderColor, BorderThickness = new Thickness(0, 0, 0, 1) };
+            var hg = new Grid();
+            hg.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = TextPrimary, VerticalAlignment = VerticalAlignment.Center });
+            var closeBtn = new Button { Content = new TextBlock { Text = "\uE711", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 11, Foreground = TextMuted }, HorizontalAlignment = HorizontalAlignment.Right, Background = Brushes.Transparent, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, Padding = new Thickness(6) };
+            closeBtn.Click += (s, e) => w.Close();
+            hg.Children.Add(closeBtn);
+            header.Child = hg;
+            Grid.SetRow(header, 0);
+            root.Children.Add(header);
+
+            // TreeView (no wrapping ScrollViewer — TreeView has its own)
+            var tv = new TreeView { BorderThickness = new Thickness(0), Margin = new Thickness(8), Background = Brushes.White };
+            Grid.SetRow(tv, 1);
+            root.Children.Add(tv);
+
+            // Build tree from flat folder list
+            int? selectedId = null;
+            var lookup = allFolders.ToLookup(f => f.ParentId);
+
+            TreeViewItem BuildNode(DriveFolderDb folder)
+            {
+                var isCurrentOrExcluded = folder.Id == excludeFolderId || folder.Id == _currentFolderId;
+                var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                var ico = new Border { Width = 20, Height = 20, Margin = new Thickness(0, 0, 8, 0) };
+                ico.Child = MkFolderIco(14, isCurrentOrExcluded ? TextLight : Primary);
+                sp.Children.Add(ico);
+                var nameTb = new TextBlock { Text = folder.Name, FontSize = 13, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center };
+                nameTb.Foreground = isCurrentOrExcluded ? TextLight : TextPrimary;
+                sp.Children.Add(nameTb);
+                if (folder.LinkedOrderId.HasValue)
+                {
+                    var badge = new Border { Background = ActiveBg, CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                    badge.Child = new TextBlock { Text = "VINCULADA", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = Primary };
+                    sp.Children.Add(badge);
+                }
+                if (isCurrentOrExcluded)
+                {
+                    var curBadge = new Border { Background = HoverBg, CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                    curBadge.Child = new TextBlock { Text = "ACTUAL", FontSize = 9, FontWeight = FontWeights.Bold, Foreground = TextLight };
+                    sp.Children.Add(curBadge);
+                }
+
+                var item = new TreeViewItem { Header = sp, Tag = folder.Id, IsExpanded = folder.ParentId == null, Padding = new Thickness(4, 4, 4, 4) };
+                // Don't disable — just prevent selection (so children remain expandable)
+                if (isCurrentOrExcluded)
+                    item.Selected += (s, e) => { e.Handled = true; item.IsSelected = false; selectedId = null; };
+
+                foreach (var child in lookup[folder.Id].OrderBy(f => f.Name))
+                    item.Items.Add(BuildNode(child));
+                return item;
+            }
+
+            foreach (var rootFolder in lookup[null].OrderBy(f => f.Name))
+                tv.Items.Add(BuildNode(rootFolder));
+
+            tv.SelectedItemChanged += (s, e) =>
+            {
+                if (tv.SelectedItem is TreeViewItem si && si.IsEnabled)
+                    selectedId = si.Tag as int?;
+            };
+
+            // Footer
+            var footer = new Border { Padding = new Thickness(20, 12, 20, 12), BorderBrush = BorderColor, BorderThickness = new Thickness(0, 1, 0, 0) };
+            var fp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var cancelBtn = new Button { Content = "Cancelar", Padding = new Thickness(16, 8, 16, 8), Background = HoverBg, Foreground = TextSecondary, BorderBrush = BorderColor, BorderThickness = new Thickness(1), Cursor = Cursors.Hand, FontWeight = FontWeights.Medium };
+            cancelBtn.Click += (s, e) => { selectedId = null; w.Close(); };
+            var okBtn = new Button { Content = action, Padding = new Thickness(16, 8, 16, 8), Background = Primary, Foreground = Brushes.White, BorderThickness = new Thickness(0), Cursor = Cursors.Hand, FontWeight = FontWeights.SemiBold, Margin = new Thickness(8, 0, 0, 0) };
+            okBtn.Click += (s, e) => { if (selectedId.HasValue) w.DialogResult = true; };
+            fp.Children.Add(cancelBtn);
+            fp.Children.Add(okBtn);
+            footer.Child = fp;
+            Grid.SetRow(footer, 2);
+            root.Children.Add(footer);
+
+            card.Child = root;
+            w.Content = card;
+            w.MouseLeftButtonDown += (s, e) => { try { w.DragMove(); } catch { } };
+
+            return w.ShowDialog() == true ? selectedId : null;
+        }
+
+        async Task MoveFilesTo(IEnumerable<DriveFileDb> files)
+        {
+            var fileList = files.ToList();
+            var targetId = await ShowFolderPickerAsync(
+                fileList.Count == 1 ? $"Mover '{Tr(fileList[0].FileName, 30)}'" : $"Mover {fileList.Count} archivos",
+                "Mover aqui");
+            if (!targetId.HasValue) return;
+            await SafeLoad(async () =>
+            {
+                int moved = 0;
+                foreach (var f in fileList)
+                    if (await SupabaseService.Instance.MoveDriveFile(f.Id, targetId.Value, _cts.Token, _currentUser.Id)) moved++;
+                ShowToast(moved == 1 ? $"{fileList[0].FileName} movido" : $"{moved} archivos movidos", "info");
+                InvalidateStats(); RefreshSidebarRecents(); await LoadFolder();
+            });
+        }
+
+        async Task MoveFolderTo(DriveFolderDb folder)
+        {
+            var targetId = await ShowFolderPickerAsync($"Mover '{Tr(folder.Name, 30)}'", "Mover aqui", excludeFolderId: folder.Id);
+            if (!targetId.HasValue) return;
+            await SafeLoad(async () =>
+            {
+                var (canMove, reason) = await SupabaseService.Instance.ValidateDriveFolderMove(folder.Id, targetId.Value, _cts.Token);
+                if (!canMove) { ShowToast(reason ?? "No se puede mover", "warning"); return; }
+                if (await SupabaseService.Instance.MoveDriveFolder(folder.Id, targetId.Value, _cts.Token))
+                {
+                    ShowToast($"Carpeta '{folder.Name}' movida", "info");
+                    InvalidateStats(); RefreshSidebarRecents(); await LoadFolder();
+                }
+                else ShowToast("Error al mover carpeta", "error");
+            });
+        }
+
+        async Task CopyFileTo(DriveFileDb file)
+        {
+            var targetId = await ShowFolderPickerAsync($"Copiar '{Tr(file.FileName, 30)}'", "Copiar aqui");
+            if (!targetId.HasValue) return;
+            await SafeLoad(async () =>
+            {
+                var copy = await SupabaseService.Instance.CopyDriveFile(file.Id, targetId.Value, _cts.Token);
+                if (copy != null)
+                {
+                    UpdateStorageUI(file.FileSize ?? 0);
+                    ShowToast($"{file.FileName} copiado", "info");
+                    InvalidateStats(); RefreshSidebarRecents(); await LoadFolder();
+                }
+                else ShowToast("Error al copiar", "error");
+            });
+        }
+
+        async Task DuplicateFile(DriveFileDb file)
+        {
+            await SafeLoad(async () =>
+            {
+                var copy = await SupabaseService.Instance.DuplicateDriveFile(file.Id, _cts.Token);
+                if (copy != null)
+                {
+                    UpdateStorageUI(file.FileSize ?? 0);
+                    ShowToast($"Duplicado: {copy.FileName}", "info");
+                    InvalidateStats(); RefreshSidebarRecents(); await LoadFolder();
+                }
+                else ShowToast("Error al duplicar", "error");
+            });
+        }
+
+        // Clipboard: Ctrl+X / Ctrl+C / Ctrl+V
+        void ClipCut()
+        {
+            var files = GetSelectedFiles();
+            if (files.Count == 0) return;
+            _clipFiles = files; _clipOp = ClipOp.Cut;
+            ShowToast($"{files.Count} archivo{(files.Count > 1 ? "s" : "")} cortado{(files.Count > 1 ? "s" : "")}", "info");
+            RenderContent(); // re-render to show cut visual
+        }
+
+        void ClipCopy()
+        {
+            var files = GetSelectedFiles();
+            if (files.Count == 0) return;
+            _clipFiles = files; _clipOp = ClipOp.Copy;
+            ShowToast($"{files.Count} archivo{(files.Count > 1 ? "s" : "")} copiado{(files.Count > 1 ? "s" : "")}", "info");
+        }
+
+        async Task ClipPaste()
+        {
+            if (_clipFiles == null || _clipFiles.Count == 0 || !_currentFolderId.HasValue) return;
+            await SafeLoad(async () =>
+            {
+                int ok = 0;
+                foreach (var f in _clipFiles)
+                {
+                    bool success;
+                    if (_clipOp == ClipOp.Cut)
+                        success = await SupabaseService.Instance.MoveDriveFile(f.Id, _currentFolderId.Value, _cts.Token, _currentUser.Id);
+                    else
+                    {
+                        var copy = await SupabaseService.Instance.CopyDriveFile(f.Id, _currentFolderId.Value, _cts.Token);
+                        success = copy != null;
+                        if (success) UpdateStorageUI(f.FileSize ?? 0);
+                    }
+                    if (success) ok++;
+                }
+                var verb = _clipOp == ClipOp.Cut ? "movido" : "pegado";
+                ShowToast($"{ok} archivo{(ok > 1 ? "s" : "")} {verb}{(ok > 1 ? "s" : "")}", "info");
+                if (_clipOp == ClipOp.Cut) _clipFiles = null; // clear after cut-paste
+                InvalidateStats(); await LoadFolder();
+            });
+        }
+
+        List<DriveFileDb> GetSelectedFiles()
+        {
+            if (_selectedFileIds.Count > 0)
+                return _currentFiles.Where(f => _selectedFileIds.Contains(f.Id)).ToList();
+            if (_selectedFile != null)
+                return new List<DriveFileDb> { _selectedFile };
+            return new();
+        }
 
         // P9: Rich order tooltip
         UIElement? MkOrderTip(int? oid)
@@ -1058,7 +1873,7 @@ namespace SistemaGestionProyectos2.Views
             // Find the name TextBlock in the rendered UI
             var tag = $"fileName_{f.Id}";
             var nameBlock = FindByTag<TextBlock>(ContentHost, tag);
-            if (nameBlock == null) { Debug.WriteLine($"[DriveV2] RenFile: TextBlock '{tag}' not found, fallback to prompt"); var n = Prompt("Renombrar", "Nuevo nombre:", f.FileName); if (string.IsNullOrWhiteSpace(n) || n == f.FileName) return; _ = SafeLoad(async () => { if (await SupabaseService.Instance.RenameDriveFile(f.Id, n, _cts.Token)) await LoadFolder(); }); return; }
+            if (nameBlock == null) { Debug.WriteLine($"[DriveV2] RenFile: TextBlock '{tag}' not found, fallback to prompt"); var n = Prompt("Renombrar", "Nuevo nombre:", f.FileName); if (string.IsNullOrWhiteSpace(n) || n == f.FileName) return; _ = SafeLoad(async () => { if (await SupabaseService.Instance.RenameDriveFile(f.Id, n, _cts.Token, _currentUser.Id)) await LoadFolder(); }); return; }
 
             var parent = nameBlock.Parent as Panel;
             if (parent == null) return;
@@ -1095,7 +1910,7 @@ namespace SistemaGestionProyectos2.Views
                 var fullName = newName + ext;
                 nameBlock.Text = fullName;
                 nameBlock.ToolTip = fullName;
-                _ = SafeLoad(async () => { if (await SupabaseService.Instance.RenameDriveFile(f.Id, fullName, _cts.Token)) await LoadFolder(); });
+                _ = SafeLoad(async () => { if (await SupabaseService.Instance.RenameDriveFile(f.Id, fullName, _cts.Token, _currentUser.Id)) await LoadFolder(); });
             }
 
             tb.KeyDown += (s, ke) =>
@@ -1106,7 +1921,7 @@ namespace SistemaGestionProyectos2.Views
             tb.LostFocus += (s, le) => Commit();
         }
         async Task DelFolder(DriveFolderDb f) { if (!Confirm($"Eliminar \"{f.Name}\" y todo su contenido?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFolder(f.Id, _cts.Token)) { _statsCache.Remove(f.Id); InvalidateStats(); ShowToast($"\"{f.Name}\" eliminada", "success"); await LoadFolder(); } }); }
-        async Task DelFile(DriveFileDb f) { if (!Confirm($"Eliminar \"{f.FileName}\"?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token)) { if (_selectedFile?.Id == f.Id) HideDetail(); if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); } InvalidateStats(); ShowToast($"\"{f.FileName}\" eliminado", "success"); await LoadFolder(); } }); }
+        async Task DelFile(DriveFileDb f) { if (!Confirm($"Eliminar \"{f.FileName}\"?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token, _currentUser.Id)) { if (_selectedFile?.Id == f.Id) HideDetail(); if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); } InvalidateStats(); ShowToast($"\"{f.FileName}\" eliminado", "success"); RefreshSidebarRecents(); await LoadFolder(); } }); }
 
         // ===============================================
         // ORDER LINKING
@@ -1425,10 +2240,12 @@ namespace SistemaGestionProyectos2.Views
 
         void UpdateMultiSelectBar()
         {
-            if (_selectedFileIds.Count > 0)
+            // Solo mostrar barra de acciones con 2+ archivos seleccionados (Ctrl+Click)
+            // Un solo clic solo abre el panel de detalle, sin saturar con la barra
+            if (_selectedFileIds.Count > 1)
             {
                 MultiSelectBar.Visibility = Visibility.Visible;
-                MultiSelectText.Text = $"{_selectedFileIds.Count} archivo{(_selectedFileIds.Count != 1 ? "s" : "")} seleccionado{(_selectedFileIds.Count != 1 ? "s" : "")}";
+                MultiSelectText.Text = $"{_selectedFileIds.Count} archivos seleccionados";
             }
             else MultiSelectBar.Visibility = Visibility.Collapsed;
         }
@@ -1471,13 +2288,13 @@ namespace SistemaGestionProyectos2.Views
             {
                 try
                 {
-                    if (await SupabaseService.Instance.DeleteDriveFile(file.Id, _cts.Token))
+                    if (await SupabaseService.Instance.DeleteDriveFile(file.Id, _cts.Token, _currentUser.Id))
                     { ok++; if (_globalStorageBytes > 0) _globalStorageBytes -= file.FileSize ?? 0; }
                 }
                 catch (Exception ex) { Debug.WriteLine($"[DriveV2] Multi-delete err: {ex.Message}"); }
             }
             StatusText.Text = $"{ok} archivo(s) eliminado(s)";
-            UpdateStorageUI(); ClearMultiSelect(); HideDetail(); InvalidateStats(); await SafeLoad(() => LoadFolder());
+            UpdateStorageUI(); ClearMultiSelect(); HideDetail(); InvalidateStats(); RefreshSidebarRecents(); await SafeLoad(() => LoadFolder());
         }
         async void BackToFolders_Click(object sender, RoutedEventArgs e) { if (_breadcrumb.Count >= 2) await SafeLoad(() => NavTo(_breadcrumb[^2].Id)); else await SafeLoad(() => NavigateToRoot()); }
         async void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -1724,15 +2541,23 @@ namespace SistemaGestionProyectos2.Views
         }
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            if (ImageOverlay.Visibility == Visibility.Visible) { base.OnKeyDown(e); return; }
+            if (_isCreatingFolder) { base.OnKeyDown(e); return; }
+
+            var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+
             if (e.Key == Key.Escape)
             {
-                // Don't navigate if inline folder textbox is handling Escape
-                if (_isCreatingFolder) { base.OnKeyDown(e); return; }
-                if (_selectedFileIds.Count > 0) { ClearMultiSelect(); HideDetail(); RenderContent(); }
+                if (_clipFiles != null) { _clipFiles = null; ShowToast("Operacion cancelada", "info"); RenderContent(); }
+                else if (_selectedFileIds.Count > 0) { ClearMultiSelect(); HideDetail(); RenderContent(); }
                 else if (_selectedFile != null) { HideDetail(); RenderContent(); }
                 else if (_breadcrumb.Count > 1) BackToFolders_Click(this, new RoutedEventArgs());
                 else Close();
             }
+            // V3-C: Clipboard shortcuts
+            else if (ctrl && e.Key == Key.X) { ClipCut(); e.Handled = true; }
+            else if (ctrl && e.Key == Key.C) { ClipCopy(); e.Handled = true; }
+            else if (ctrl && e.Key == Key.V) { _ = ClipPaste(); e.Handled = true; }
             base.OnKeyDown(e);
         }
         async void OnMouseNav(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.XButton1) { e.Handled = true; await SafeLoad(() => NavBack()); } else if (e.ChangedButton == MouseButton.XButton2) { e.Handled = true; await SafeLoad(() => NavFwd()); } }
