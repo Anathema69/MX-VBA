@@ -14,6 +14,7 @@ namespace SistemaGestionProyectos2.Services.Drive
     /// <summary>
     /// V3-E: Singleton service that monitors locally-opened Drive files
     /// and auto-syncs changes back to R2. Survives DriveV2Window close.
+    /// V3-F2: Subdirectory per file (clean names) + "Save As" detection.
     /// </summary>
     public class FileWatcherService
     {
@@ -30,7 +31,7 @@ namespace SistemaGestionProyectos2.Services.Drive
         private readonly Dictionary<int, SyncState> _syncStates = new();
         private bool _initialized;
 
-        // FIX-1: Suppress watcher events caused by our own downloads/writes
+        // Suppress watcher events caused by our own downloads/writes
         private readonly HashSet<string> _suppressPaths = new(StringComparer.OrdinalIgnoreCase);
 
         public int CurrentUserId { get; set; }
@@ -62,6 +63,7 @@ namespace SistemaGestionProyectos2.Services.Drive
             {
                 Directory.CreateDirectory(_baseDir);
                 LoadManifest();
+                MigrateOldFiles(); // V3-F2: migrate {id}_{name} → {id}/{name}
                 CleanupOldFiles();
                 StartWatcher();
                 Debug.WriteLine($"[FileWatcher] Initialized: {_baseDir}, {_manifest.Files.Count} tracked files");
@@ -73,24 +75,26 @@ namespace SistemaGestionProyectos2.Services.Drive
         }
 
         /// <summary>
-        /// Download file to local dir (or use cached), register in manifest, return local path.
+        /// Download file to local subdirectory (or use cached), register in manifest, return local path.
+        /// Files are stored as {baseDir}/{fileId}/{originalFileName} to preserve clean names.
         /// </summary>
         public async Task<string?> OpenFile(DriveFileDb file, CancellationToken ct = default)
         {
             Initialize();
 
-            var localPath = Path.Combine(_baseDir, $"{file.Id}_{file.FileName}");
+            // V3-F2: Subdirectory per file ID → clean file name
+            var subDir = Path.Combine(_baseDir, file.Id.ToString());
+            Directory.CreateDirectory(subDir);
+            var localPath = Path.Combine(subDir, file.FileName);
 
             lock (_manifestLock)
             {
                 var existing = _manifest.Files.FirstOrDefault(f => f.FileId == file.Id);
                 if (existing != null && File.Exists(existing.LocalPath))
                 {
-                    // Check if remote is newer than what we have
                     var remoteTime = file.UploadedAt ?? DateTime.MinValue;
                     if (remoteTime <= existing.RemoteUploadedAt)
                     {
-                        // Local copy is still valid — reuse it
                         existing.Watching = true;
                         SetSyncState(file.Id, SyncState.Opened);
                         SaveManifest();
@@ -174,25 +178,25 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             _watcher = new FileSystemWatcher(_baseDir)
             {
-                IncludeSubdirectories = false,
+                // V3-F2: Watch subdirectories to detect "Save As" new files
+                IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.FileName,
                 EnableRaisingEvents = true
             };
 
             _watcher.Changed += OnFileChanged;
             _watcher.Renamed += (s, e) => OnFileChanged(s, e);
+            _watcher.Created += OnFileCreated; // V3-F2: detect "Save As" new files
         }
 
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
             var fileName = Path.GetFileName(e.FullPath);
 
-            // Ignore Office temp files and system files
-            if (fileName.StartsWith("~$") || fileName.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
-                || fileName == ".manifest.json")
-                return;
+            // Ignore temp files and system files
+            if (IsIgnoredFile(fileName)) return;
 
-            // FIX-1: Ignore events caused by our own downloads
+            // Ignore events caused by our own downloads
             lock (_suppressPaths)
             {
                 if (_suppressPaths.Contains(e.FullPath)) return;
@@ -207,7 +211,7 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             if (entry == null) return;
 
-            // FIX-3: Check if file actually changed (same LastWriteTime = no real change)
+            // Check if file actually changed (same LastWriteTime = no real change)
             var currentModified = File.GetLastWriteTime(e.FullPath);
             if (Math.Abs((currentModified - entry.LocalModifiedAt).TotalSeconds) < 1)
             {
@@ -230,6 +234,139 @@ namespace SistemaGestionProyectos2.Services.Drive
             }
         }
 
+        /// <summary>
+        /// V3-F2: Detect new files created via "Save As" in a tracked subdirectory.
+        /// If user opens file.ipt and does "Save As" file.dwg in the same folder,
+        /// we detect the new .dwg and upload it as a new file to the same Drive folder.
+        /// </summary>
+        private void OnFileCreated(object sender, FileSystemEventArgs e)
+        {
+            var fileName = Path.GetFileName(e.FullPath);
+            if (IsIgnoredFile(fileName)) return;
+
+            // Ignore events caused by our own downloads
+            lock (_suppressPaths)
+            {
+                if (_suppressPaths.Contains(e.FullPath)) return;
+            }
+
+            // Check if this file is already tracked (normal open)
+            lock (_manifestLock)
+            {
+                if (_manifest.Files.Any(f => string.Equals(f.LocalPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+                    return;
+            }
+
+            // Determine which tracked file's subdirectory this belongs to
+            var parentDir = Path.GetDirectoryName(e.FullPath);
+            if (parentDir == null || string.Equals(parentDir, _baseDir, StringComparison.OrdinalIgnoreCase))
+                return; // File in root of open/ — not a subdirectory, ignore
+
+            var subDirName = Path.GetFileName(parentDir);
+            if (!int.TryParse(subDirName, out var originFileId))
+                return; // Not a numeric subdirectory
+
+            WatchedFileEntry? originEntry;
+            lock (_manifestLock)
+            {
+                originEntry = _manifest.Files.FirstOrDefault(f => f.FileId == originFileId && f.Watching);
+            }
+
+            if (originEntry == null) return;
+
+            Debug.WriteLine($"[FileWatcher] 'Save As' detected: {fileName} in folder of file #{originFileId} (Drive folder={originEntry.FolderId})");
+
+            // Debounce the upload of the new file (apps may write in chunks)
+            lock (_debounceTokens)
+            {
+                if (_debounceTokens.TryGetValue(e.FullPath, out var prev))
+                {
+                    prev.Cancel();
+                    prev.Dispose();
+                }
+                var cts = new CancellationTokenSource();
+                _debounceTokens[e.FullPath] = cts;
+
+                _ = DebouncedSaveAsUpload(e.FullPath, fileName, originEntry, cts.Token);
+            }
+        }
+
+        private async Task DebouncedSaveAsUpload(string localPath, string fileName, WatchedFileEntry originEntry, CancellationToken ct)
+        {
+            try
+            {
+                // Longer debounce for "Save As" — apps may take time to finish writing
+                await Task.Delay(4000, ct);
+            }
+            catch (TaskCanceledException) { return; }
+
+            // Wait for file to be unlocked
+            for (int i = 0; i < 5; i++)
+            {
+                if (IsFileUnlocked(localPath)) break;
+                await Task.Delay(1000);
+            }
+            if (!IsFileUnlocked(localPath))
+            {
+                Debug.WriteLine($"[FileWatcher] SaveAs file still locked: {localPath}");
+                return;
+            }
+
+            try
+            {
+                await _uploadSemaphore.WaitAsync();
+                try
+                {
+                    Debug.WriteLine($"[FileWatcher] Uploading 'Save As' file: {fileName} → Drive folder {originEntry.FolderId}");
+                    var uploaded = await SupabaseService.Instance.UploadDriveFile(localPath, originEntry.FolderId, CurrentUserId);
+
+                    if (uploaded != null)
+                    {
+                        // Register the new file in manifest so edits are also tracked
+                        var newEntry = new WatchedFileEntry
+                        {
+                            FileId = uploaded.Id,
+                            FolderId = uploaded.FolderId,
+                            LocalPath = localPath,
+                            StoragePath = uploaded.StoragePath,
+                            RemoteUploadedAt = uploaded.UploadedAt ?? DateTime.Now,
+                            LocalModifiedAt = File.GetLastWriteTime(localPath),
+                            Size = new FileInfo(localPath).Length,
+                            Watching = true
+                        };
+
+                        lock (_manifestLock)
+                        {
+                            _manifest.Files.RemoveAll(f => f.FileId == uploaded.Id);
+                            _manifest.Files.Add(newEntry);
+                            SaveManifest();
+                        }
+
+                        SetSyncState(uploaded.Id, SyncState.Synced);
+                        FileAutoUploaded?.Invoke(fileName, "success");
+                        Debug.WriteLine($"[FileWatcher] 'Save As' uploaded: {fileName} → drive_files.id={uploaded.Id}");
+
+                        _ = Task.Delay(5000).ContinueWith(_ =>
+                        {
+                            if (GetSyncState(uploaded.Id) == SyncState.Synced)
+                                SetSyncState(uploaded.Id, SyncState.Opened);
+                        });
+                    }
+                    else
+                    {
+                        FileAutoUploaded?.Invoke(fileName, "error");
+                        Debug.WriteLine($"[FileWatcher] 'Save As' upload failed: {fileName}");
+                    }
+                }
+                finally { _uploadSemaphore.Release(); }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[FileWatcher] SaveAs upload error: {ex.Message}");
+                FileAutoUploaded?.Invoke(fileName, "error");
+            }
+        }
+
         private async Task DebouncedUpload(WatchedFileEntry entry, CancellationToken ct)
         {
             try
@@ -246,7 +383,7 @@ namespace SistemaGestionProyectos2.Services.Drive
 
         private async Task TryAutoUpload(WatchedFileEntry entry)
         {
-            // FIX-3: Double-check the file actually changed from what we last uploaded
+            // Double-check the file actually changed from what we last uploaded
             if (!File.Exists(entry.LocalPath)) return;
             var currentSize = new FileInfo(entry.LocalPath).Length;
             var currentModified = File.GetLastWriteTime(entry.LocalPath);
@@ -274,8 +411,7 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             try
             {
-                // FIX-2: Check for conflict using server's actual uploaded_at
-                // Only flag conflict if someone ELSE uploaded a new version while we had it open
+                // Check for conflict using server's actual uploaded_at
                 var serverFile = await SupabaseService.Instance.GetDriveFileById(entry.FileId);
                 if (serverFile == null)
                 {
@@ -285,10 +421,8 @@ namespace SistemaGestionProyectos2.Services.Drive
                 }
 
                 var serverTime = serverFile.UploadedAt ?? DateTime.MinValue;
-                // Use a 5-second tolerance to account for clock skew between client and Supabase server
                 if (serverTime > entry.RemoteUploadedAt.AddSeconds(5))
                 {
-                    // Server has a genuinely newer version — conflict!
                     Debug.WriteLine($"[FileWatcher] CONFLICT: server={serverTime:O} > manifest={entry.RemoteUploadedAt:O} (+5s tolerance)");
                     SetSyncState(entry.FileId, SyncState.Conflict);
                     FileAutoUploaded?.Invoke(serverFile.FileName, "conflict");
@@ -303,7 +437,6 @@ namespace SistemaGestionProyectos2.Services.Drive
 
                     if (ok)
                     {
-                        // FIX-2: Read back the ACTUAL server timestamp instead of DateTime.Now
                         var updatedFile = await SupabaseService.Instance.GetDriveFileById(entry.FileId);
 
                         lock (_manifestLock)
@@ -317,7 +450,6 @@ namespace SistemaGestionProyectos2.Services.Drive
                         SetSyncState(entry.FileId, SyncState.Synced);
                         FileAutoUploaded?.Invoke(serverFile.FileName, "success");
 
-                        // After 5 seconds, revert to Opened state
                         _ = Task.Delay(5000).ContinueWith(_ =>
                         {
                             if (GetSyncState(entry.FileId) == SyncState.Synced)
@@ -362,7 +494,6 @@ namespace SistemaGestionProyectos2.Services.Drive
                     var ok = await SupabaseService.Instance.ReuploadDriveFile(fileId, entry.LocalPath, CurrentUserId);
                     if (ok)
                     {
-                        // FIX-2: Read server's actual timestamp
                         var updatedFile = await SupabaseService.Instance.GetDriveFileById(fileId);
                         lock (_manifestLock)
                         {
@@ -400,14 +531,13 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             try
             {
-                // Suppress watcher during our download
                 lock (_suppressPaths) { _suppressPaths.Add(entry.LocalPath); }
                 try
                 {
                     var ok = await SupabaseService.Instance.DownloadDriveFileToLocal(fileId, entry.LocalPath);
                     if (ok)
                     {
-                        await Task.Delay(500); // let watcher flush
+                        await Task.Delay(500);
                         var serverFile = await SupabaseService.Instance.GetDriveFileById(fileId);
                         lock (_manifestLock)
                         {
@@ -455,7 +585,7 @@ namespace SistemaGestionProyectos2.Services.Drive
             {
                 if (!Directory.Exists(_baseDir)) return 0;
                 return new DirectoryInfo(_baseDir)
-                    .GetFiles()
+                    .GetFiles("*", SearchOption.AllDirectories)
                     .Where(f => f.Name != ".manifest.json")
                     .Sum(f => f.Length);
             }
@@ -472,6 +602,15 @@ namespace SistemaGestionProyectos2.Services.Drive
                     try { if (File.Exists(entry.LocalPath)) File.Delete(entry.LocalPath); }
                     catch { /* non-critical */ }
                 }
+                // Clean up subdirectories
+                try
+                {
+                    foreach (var dir in Directory.GetDirectories(_baseDir))
+                    {
+                        try { Directory.Delete(dir, true); } catch { }
+                    }
+                }
+                catch { }
                 _manifest.Files.Clear();
                 _manifest.LastCleanup = DateTime.Now;
                 SaveManifest();
@@ -479,6 +618,63 @@ namespace SistemaGestionProyectos2.Services.Drive
 
             lock (_syncStates) { _syncStates.Clear(); }
             Debug.WriteLine("[FileWatcher] Local cache cleared");
+        }
+
+        // ===== Helpers =====
+
+        private static bool IsIgnoredFile(string fileName)
+        {
+            return fileName.StartsWith("~$")
+                || fileName.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
+                || fileName.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)
+                || fileName.StartsWith(".", StringComparison.Ordinal)
+                || fileName == ".manifest.json";
+        }
+
+        // ===== Migration: {id}_{name} → {id}/{name} =====
+
+        private void MigrateOldFiles()
+        {
+            lock (_manifestLock)
+            {
+                var migrated = 0;
+                foreach (var entry in _manifest.Files.ToList())
+                {
+                    if (!File.Exists(entry.LocalPath)) continue;
+                    var dir = Path.GetDirectoryName(entry.LocalPath);
+
+                    // Already in subdirectory format
+                    if (dir != null && !string.Equals(dir, _baseDir, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    // Old format: {baseDir}/{id}_{filename}
+                    var oldFileName = Path.GetFileName(entry.LocalPath);
+                    var prefix = $"{entry.FileId}_";
+                    if (!oldFileName.StartsWith(prefix)) continue;
+
+                    var cleanName = oldFileName.Substring(prefix.Length);
+                    var subDir = Path.Combine(_baseDir, entry.FileId.ToString());
+                    Directory.CreateDirectory(subDir);
+                    var newPath = Path.Combine(subDir, cleanName);
+
+                    try
+                    {
+                        File.Move(entry.LocalPath, newPath);
+                        entry.LocalPath = newPath;
+                        migrated++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[FileWatcher] Migration failed for {oldFileName}: {ex.Message}");
+                    }
+                }
+
+                if (migrated > 0)
+                {
+                    SaveManifest();
+                    Debug.WriteLine($"[FileWatcher] Migrated {migrated} files to subdirectory format");
+                }
+            }
         }
 
         // ===== Manifest I/O =====
@@ -525,7 +721,17 @@ namespace SistemaGestionProyectos2.Services.Drive
 
                 foreach (var entry in toRemove)
                 {
-                    try { if (File.Exists(entry.LocalPath)) File.Delete(entry.LocalPath); }
+                    try
+                    {
+                        if (File.Exists(entry.LocalPath)) File.Delete(entry.LocalPath);
+                        // Clean up empty subdirectory
+                        var dir = Path.GetDirectoryName(entry.LocalPath);
+                        if (dir != null && !string.Equals(dir, _baseDir, StringComparison.OrdinalIgnoreCase)
+                            && Directory.Exists(dir) && !Directory.EnumerateFileSystemEntries(dir).Any())
+                        {
+                            Directory.Delete(dir);
+                        }
+                    }
                     catch { /* non-critical */ }
                     _manifest.Files.Remove(entry);
                 }

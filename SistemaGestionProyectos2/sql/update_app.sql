@@ -17,56 +17,25 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.1.0';
+    v_version       VARCHAR := '2.1.1';
     v_created_by    VARCHAR := 'Zuri Dev';
     v_file_size_mb  NUMERIC := 54.0;
     v_is_mandatory  BOOLEAN := false;
-    v_min_version   VARCHAR := '2.0.9';
+    v_min_version   VARCHAR := '2.1.0';
 
-    v_release_notes TEXT := 'Version 2.1.0 - Drive V3 Completo + Modo Produccion
+    v_release_notes TEXT := 'Version 2.1.1 - Open-in-Place mejorado + UX fixes
 
-=== DRIVE V3 - Fases A+B+C (Preview, Recientes, Operaciones) ===
-- Preview de imagenes: overlay fullscreen con navegacion flechas, zoom, thumbnails async
-- Cache de thumbnails en disco (%LOCALAPPDATA%/IMA-Drive/thumbs/)
-- Recientes en contenido principal con toggle Mis archivos / Todos
-- Actividad en sidebar (ultimos cambios por usuario)
-- Operaciones: Cut (Ctrl+X), Copy (Ctrl+C), Paste (Ctrl+V) entre carpetas
-- Descarga ZIP de multiples archivos seleccionados
-- Drag & Drop de archivos desde el explorador
+OPEN-IN-PLACE MEJORADO:
+- Nombres de archivo limpios: archivos abiertos usan subcarpeta por ID en vez de prefijo numerico
+  Antes: IMA-Drive/open/1420_Pieza.ipt → Ahora: IMA-Drive/open/1420/Pieza.ipt
+- Deteccion de "Guardar como": al guardar con otro nombre o extension, el archivo nuevo se sube automaticamente a la misma carpeta de Drive
+- Auto-refresh de UI: al sincronizar un archivo, la carpeta se refresca automaticamente sin necesidad de F5
+- Migracion automatica de archivos existentes al nuevo formato de subcarpetas
+- Debounce de 4s para "Save As" (apps como Inventor escriben lento)
 
-=== DRIVE V3 - Fases D+E (Open-in-Place + Simplificacion UI) ===
-- FileWatcherService: Singleton con FileSystemWatcher + debounce 2s
-- Doble-clic = descarga a local + abre con app nativa + auto-sync al guardar
-- Sync badges en cards/rows (verde=abierto, azul=syncing, check=synced, rojo=error)
-- SyncStatusBar inferior con boton Reintentar para errores
-- Conflictos auto-resueltos (local siempre gana, sin dialogo)
-- Panel de detalles ELIMINADO (320px recuperados): acciones via context menu
-- Cache local visible en sidebar (tamano + boton Limpiar)
-- Boton Volver reemplaza icono X para regresar al menu
-
-=== DRIVE V3 - Fases F+G (Cache + Pulido UX) ===
-- Atajos de teclado: F2 renombrar, Delete eliminar, F5 refrescar, Ctrl+N nueva carpeta, Ctrl+U subir, Ctrl+F buscar, Ctrl+A seleccionar todos, Backspace volver, Enter abrir
-- Empty state mejorado con botones de accion (Subir archivos, Nueva carpeta)
-- Animacion fade suave (150ms) al navegar entre carpetas
-- Prefetch de carpetas nivel 1-2 al iniciar (navegacion instantanea)
-- Limpieza automatica de thumbnails (>30 dias o >200MB via LRU)
-- Cache label muestra tamano combinado (thumbnails + archivos abiertos)
-
-=== DRIVE WORKFLOW TESTS ===
-- 7 tests automatizados con archivos reales: FolderCRUD, FileCRUD, BulkUpload, OpenInPlace, ConflictAutoResolve, SubfolderTree, Setup
-- Reporte copiable con tabla formateada (estado, nombre, tiempo, limite)
-- Boton Test Drive en sidebar (solo usuario caaj)
-
-=== SIDEBAR MEJORADO ===
-- Filtrar por tipo ahora aparece antes de Actividad (acceso rapido)
-- Recientes: empty state propio sin botones de crear/subir
-
-=== SEGURIDAD Y PRODUCCION ===
-- Certificado de firma incluido en el instalador (certutil importa a TrustedPublisher + Root)
-- DevMode desactivado (sin auto-login, sin skip password, username vacio)
-- Logging nivel Info (era Debug), retencion 30 dias
-- Herramientas dev (Purgar R2, Benchmark, Test Drive) solo visibles para usuario caaj
-- Proteccion contra loop de actualizacion (flag _updateCheckDone por sesion)';
+UX FIXES:
+- Busqueda sin resultados: muestra "Sin resultados" sin botones de crear/subir
+- Empty state contextual: botones de accion solo aparecen en carpetas vacias (no en Recientes ni busqueda)';
 
     v_download_url TEXT;
     v_changelog JSONB;
@@ -76,37 +45,17 @@ BEGIN
 
     v_changelog := '{
         "Added": [
-            "Drive V3-A: Preview imagenes fullscreen con zoom, flechas y thumbnails en disco",
-            "Drive V3-B: Recientes en contenido principal con toggle Mis archivos/Todos",
-            "Drive V3-B: Actividad reciente en sidebar",
-            "Drive V3-C: Cut/Copy/Paste (Ctrl+X/C/V) entre carpetas",
-            "Drive V3-C: Descarga ZIP de seleccion multiple + Drag & Drop",
-            "Drive V3-D: Open-in-Place (doble-clic = abrir nativo + auto-sync al guardar)",
-            "Drive V3-D: FileWatcherService con debounce 2s y manifest JSON",
-            "Drive V3-D: Sync badges en cards/rows (abierto/syncing/synced/error)",
-            "Drive V3-D: SyncStatusBar inferior con Reintentar",
-            "Drive V3-G: Atajos teclado (F2, Delete, F5, Ctrl+N/U/F/A, Backspace, Enter)",
-            "Drive V3-G: Empty state con botones Subir archivos y Nueva carpeta",
-            "Drive V3-G: Animacion fade 150ms en transiciones de carpeta",
-            "Drive V3-F: Prefetch carpetas nivel 1-2 al iniciar",
-            "Drive V3-F: Limpieza automatica de thumbnails (LRU 200MB, 30 dias)",
-            "Drive Workflow Tests: 7 tests automatizados con archivos reales",
-            "Drive Workflow Tests: reporte copiable con tabla formateada",
-            "Instalador: certificado de firma incluido (instalacion transparente)"
+            "Open-in-Place: deteccion de Guardar como (nuevo archivo se sube automaticamente)",
+            "Open-in-Place: auto-refresh de carpeta al sincronizar archivos"
         ],
         "Improved": [
-            "Drive V3-E: Panel detalles eliminado (320px recuperados, acciones via context menu)",
-            "Drive V3-E: Conflictos auto-resueltos (local gana, sin dialogo)",
-            "Drive V3-E: Boton Volver reemplaza icono X",
-            "Drive V3-F: Cache label combinado (thumbs + open-in-place)",
-            "Sidebar: Filtrar por tipo antes de Actividad (acceso rapido)",
-            "Recientes: empty state contextual sin botones de crear",
-            "Herramientas dev (Purgar/Benchmark/Test) solo para usuario caaj",
-            "Logging: nivel Info con retencion 30 dias (modo produccion)"
+            "Open-in-Place: nombres limpios con subcarpeta por ID (sin prefijo numerico)",
+            "Open-in-Place: migracion automatica de archivos existentes al nuevo formato",
+            "Open-in-Place: debounce 4s para Save As (apps CAD escriben lento)"
         ],
         "Fixed": [
-            "Fix: loop infinito de actualizacion (check unico por sesion con _updateCheckDone)",
-            "Fix: DevMode desactivado en produccion (auto-login, skip password, username vacio)"
+            "Fix: busqueda sin resultados mostraba botones de crear/subir",
+            "Fix: empty state contextual (solo botones en carpetas vacias, no en Recientes ni busqueda)"
         ]
     }'::jsonb;
 

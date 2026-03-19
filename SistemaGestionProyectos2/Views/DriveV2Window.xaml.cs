@@ -1373,12 +1373,18 @@ namespace SistemaGestionProyectos2.Views
 
         void OnFileAutoUploaded(string fileName, string status)
         {
-            Dispatcher.Invoke(() =>
+            Dispatcher.Invoke(async () =>
             {
                 switch (status)
                 {
                     case "success":
                         ShowToast($"{fileName} sincronizado", "success");
+                        // Auto-refresh current folder to show new "Save As" files
+                        if (_currentFolderId.HasValue)
+                        {
+                            InvalidateStats();
+                            await SafeLoad(() => LoadFolder());
+                        }
                         break;
                     case "error":
                         ShowToast($"Error al sincronizar {fileName}", "error");
@@ -2320,7 +2326,14 @@ namespace SistemaGestionProyectos2.Views
                     : $"Resultados: \"{q}\"";
                 SectionSubtitle.Text = $"{folderResults.Count} carpeta(s), {fileResults.Count} archivo(s) en {groups.Count} ubicacion(es)";
                 StatusText.Text = $"{total} resultado(s)";
-                EmptyState.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
+                if (total == 0)
+                {
+                    EmptyStateTitle.Text = "Sin resultados";
+                    EmptyStateSubtitle.Text = $"No se encontraron archivos o carpetas para \"{q}\"";
+                    EmptyStateActions.Visibility = Visibility.Collapsed;
+                    EmptyState.Visibility = Visibility.Visible;
+                }
+                else EmptyState.Visibility = Visibility.Collapsed;
             }
             catch (Exception ex)
             {
