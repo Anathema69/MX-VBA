@@ -17,25 +17,34 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.1.1';
+    v_version       VARCHAR := '2.2.0';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 54.0;
+    v_file_size_mb  NUMERIC := 55.0;
     v_is_mandatory  BOOLEAN := false;
     v_min_version   VARCHAR := '2.1.0';
 
-    v_release_notes TEXT := 'Version 2.1.1 - Open-in-Place mejorado + UX fixes
+    v_release_notes TEXT := 'Version 2.2.0 - Modulo de Inventario + IMA Drive en produccion
 
-OPEN-IN-PLACE MEJORADO:
-- Nombres de archivo limpios: archivos abiertos usan subcarpeta por ID en vez de prefijo numerico
-  Antes: IMA-Drive/open/1420_Pieza.ipt → Ahora: IMA-Drive/open/1420/Pieza.ipt
-- Deteccion de "Guardar como": al guardar con otro nombre o extension, el archivo nuevo se sube automaticamente a la misma carpeta de Drive
-- Auto-refresh de UI: al sincronizar un archivo, la carpeta se refresca automaticamente sin necesidad de F5
-- Migracion automatica de archivos existentes al nuevo formato de subcarpetas
-- Debounce de 4s para "Save As" (apps como Inventor escriben lento)
+MODULO DE INVENTARIO (nuevo):
+- Gestion completa de categorias y productos con stock
+- Pantalla unificada sidebar+detalle (sin ventanas separadas)
+- 8 categorias pre-configuradas: Tornilleria, Cableado, Conectores, Herramientas, Sensores, Motores, Neumatica, Electronica
+- Creacion/edicion inline de categorias y productos (sin dialogs modales)
+- Alertas de stock bajo con indicadores visuales en sidebar y tabla
+- Filtros por ubicacion, stock bajo y busqueda por codigo/nombre
+- Auditoria completa de cambios (INSERT/UPDATE/DELETE)
+- Color auto-asignado por categoria desde paleta de 8 colores
+- Atajos: Enter=guardar, Escape=cancelar en formularios inline
 
-UX FIXES:
-- Busqueda sin resultados: muestra "Sin resultados" sin botones de crear/subir
-- Empty state contextual: botones de accion solo aparecen en carpetas vacias (no en Recientes ni busqueda)';
+IMA DRIVE + INVENTARIO:
+- Botones del menu principal cambiados de amarillo (EN PRUEBAS) a azul normal
+- Badge "EN PRUEBAS" removido de ambos modulos
+
+BASE DE DATOS:
+- 4 nuevas tablas: inventory_categories, inventory_products, inventory_movements, inventory_audit
+- 3 vistas: v_inventory_low_stock, v_inventory_category_summary, v_inventory_movement_detail
+- 6 funciones RPC: fn_get_inventory_stats, fn_adjust_stock, fn_get_inventory_locations, etc.
+- 11 indexes optimizados con partial indexes';
 
     v_download_url TEXT;
     v_changelog JSONB;
@@ -45,17 +54,20 @@ BEGIN
 
     v_changelog := '{
         "Added": [
-            "Open-in-Place: deteccion de Guardar como (nuevo archivo se sube automaticamente)",
-            "Open-in-Place: auto-refresh de carpeta al sincronizar archivos"
+            "Modulo de Inventario: gestion completa de categorias y productos",
+            "Inventario: creacion/edicion inline sin dialogs modales",
+            "Inventario: alertas de stock bajo con indicadores visuales",
+            "Inventario: filtros por ubicacion, stock bajo y busqueda",
+            "Inventario: auditoria completa de cambios en BD",
+            "Inventario: atajos Enter=guardar, Escape=cancelar"
         ],
         "Improved": [
-            "Open-in-Place: nombres limpios con subcarpeta por ID (sin prefijo numerico)",
-            "Open-in-Place: migracion automatica de archivos existentes al nuevo formato",
-            "Open-in-Place: debounce 4s para Save As (apps CAD escriben lento)"
+            "IMA Drive y Inventario: botones del menu en azul normal (produccion)",
+            "Inventario: UI unificada sidebar+detalle en una sola ventana",
+            "Inventario: color auto-asignado por categoria desde paleta de 8 colores"
         ],
         "Fixed": [
-            "Fix: busqueda sin resultados mostraba botones de crear/subir",
-            "Fix: empty state contextual (solo botones en carpetas vacias, no en Recientes ni busqueda)"
+            "Fix: badge EN PRUEBAS removido de IMA Drive e Inventario"
         ]
     }'::jsonb;
 
