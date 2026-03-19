@@ -8,95 +8,180 @@
         ResizeMode="NoResize">
 
     <Window.Resources>
-        <!-- ============================================= -->
-        <!-- BRUSHES                                       -->
-        <!-- ============================================= -->
-        <SolidColorBrush x:Key="PrimaryBrush"       Color="#1D4ED8"/>
-        <SolidColorBrush x:Key="PrimaryHoverBrush"   Color="#1E40AF"/>
-        <SolidColorBrush x:Key="PrimaryDarkBrush"    Color="#1E3A8A"/>
-        <SolidColorBrush x:Key="PrimaryLightBrush"   Color="#3B82F6"/>
-        <SolidColorBrush x:Key="BackgroundBrush"     Color="#F8FAFC"/>
-        <SolidColorBrush x:Key="CardBgBrush"         Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="ThemeBorderBrush"    Color="#E2E8F0"/>
-        <SolidColorBrush x:Key="BorderLightBrush"    Color="#F1F5F9"/>
-        <SolidColorBrush x:Key="TextPrimaryBrush"    Color="#0F172A"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush"  Color="#475569"/>
-        <SolidColorBrush x:Key="TextMutedBrush"      Color="#64748B"/>
-        <SolidColorBrush x:Key="TextLightBrush"      Color="#94A3B8"/>
-        <SolidColorBrush x:Key="SuccessBrush"        Color="#48BB78"/>
-        <SolidColorBrush x:Key="SuccessBgBrush"      Color="#F0FFF4"/>
-        <SolidColorBrush x:Key="WarningBrush"        Color="#D97706"/>
-        <SolidColorBrush x:Key="WarningBgBrush"      Color="#FFFBEB"/>
-        <SolidColorBrush x:Key="DangerBrush"         Color="#EF4444"/>
-        <SolidColorBrush x:Key="PrimaryBgBrush"      Color="#EFF6FF"/>
+        <SolidColorBrush x:Key="BgBrush"              Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="SurfaceBrush"         Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="BorderBrush"          Color="#E5E7EB"/>
+        <SolidColorBrush x:Key="BorderLightBrush"     Color="#F3F4F6"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush"     Color="#111827"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush"   Color="#6B7280"/>
+        <SolidColorBrush x:Key="TextMutedBrush"       Color="#9CA3AF"/>
+        <SolidColorBrush x:Key="AccentBrush"          Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush"         Color="#059669"/>
+        <SolidColorBrush x:Key="WarningBrush"         Color="#D97706"/>
+        <SolidColorBrush x:Key="DangerBrush"          Color="#DC2626"/>
 
-        <DropShadowEffect x:Key="CardShadow" Color="#1E293B" BlurRadius="16"
-                           ShadowDepth="4" Opacity="0.08" Direction="270"/>
-        <DropShadowEffect x:Key="CardHoverShadow" Color="#1E293B" BlurRadius="24"
-                           ShadowDepth="8" Opacity="0.14" Direction="270"/>
+        <!-- Inline TextBox -->
+        <Style x:Key="InlineTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E5E7EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#2563EB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-        <!-- ============================================= -->
-        <!-- BUTTON STYLES                                 -->
-        <!-- ============================================= -->
-        <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#1D4ED8"/>
+        <!-- Buttons -->
+        <Style x:Key="BtnPrimary" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#1E40AF"/></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#1E3A8A"/></Trigger>
-                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.5"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#1D4ED8"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#1E3A8A"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Opacity" Value="0.5"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <Style x:Key="SecondaryButton" TargetType="Button">
+        <Style x:Key="BtnPrimarySmall" TargetType="Button" BasedOn="{StaticResource BtnPrimary}">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="11.5"/>
+        </Style>
+
+        <Style x:Key="BtnSecondary" TargetType="Button">
             <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="#111827"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#F1F5F9"/></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#E2E8F0"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F3F4F6"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="bd" Property="Background" Value="#E5E7EB"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <Style x:Key="IconButton" TargetType="Button">
+        <Style x:Key="BtnSecondarySmall" TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="11.5"/>
+        </Style>
+
+        <Style x:Key="BtnGhost" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#6B7280"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#F3F4F6"/>
+                                <Setter Property="Foreground" Value="#111827"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="IconActionBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6" Width="28" Height="28">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#F1F5F9"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F3F4F6"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DeleteActionBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6" Width="28" Height="28">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#FEF2F2"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CatListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="8" Padding="10,9" Margin="4,0">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F3F4F6"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#EFF6FF"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -104,296 +189,573 @@
         </Style>
     </Window.Resources>
 
-    <Grid Background="{StaticResource BackgroundBrush}">
+    <Grid Background="{StaticResource BgBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>  <!-- Header -->
-            <RowDefinition Height="Auto"/>  <!-- KPI Cards -->
-            <RowDefinition Height="Auto"/>  <!-- Search + Action Bar -->
-            <RowDefinition Height="*"/>     <!-- Cards Grid -->
-            <RowDefinition Height="Auto"/>  <!-- Footer -->
+            <RowDefinition Height="52"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- ===== HEADER ===== -->
-        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
-            <Grid Margin="24,16">
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="20,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <!-- Logo Icon -->
-                    <Border Width="48" Height="48" CornerRadius="12" Margin="0,0,16,0">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="30" Height="30" CornerRadius="7" Margin="0,0,10,0">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                <GradientStop Color="#1D4ED8" Offset="0"/>
-                                <GradientStop Color="#1E3A8A" Offset="1"/>
+                                <GradientStop Color="#2563EB" Offset="0"/>
+                                <GradientStop Color="#1E40AF" Offset="1"/>
                             </LinearGradientBrush>
                         </Border.Background>
-                        <TextBlock Text="&#xE773;" FontFamily="Segoe MDL2 Assets" FontSize="24"
-                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock Text="I" FontSize="14" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="INVENTARIO" FontSize="24" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"/>
-                        <TextBlock Text="Gestion de componentes" FontSize="14"
-                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        <TextBlock Text="Inventario" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="IMA Mecatrónica" FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,1,0,0"/>
                     </StackPanel>
                 </StackPanel>
-
-                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Click="BackButton_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="Volver" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource BtnGhost}" Click="RefreshButton_Click" Margin="0,0,6,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="Actualizar" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource BtnSecondary}" Click="BackButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock Text="Volver" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- ===== KPI CARDS (SupplierPendingView style) ===== -->
-        <Grid Grid.Row="1" Margin="30,16,30,0" MaxWidth="900" HorizontalAlignment="Left">
+        <!-- MAIN LAYOUT -->
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Total Productos -->
-            <Border Grid.Column="0" Margin="0,0,8,0" Padding="14,10" Background="White" CornerRadius="10">
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="1" Opacity="0.06" BlurRadius="3"/>
-                </Border.Effect>
+            <!-- ==================== SIDEBAR ==================== -->
+            <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,10,0">
-                        <Border.Background>
-                            <SolidColorBrush Color="#1D4ED8" Opacity="0.1"/>
-                        </Border.Background>
-                        <TextBlock Text="&#xE773;" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                                   Foreground="#1D4ED8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Productos" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TotalProductsText" Text="120" FontSize="20" FontWeight="Bold"
-                                   Foreground="#1D4ED8" Margin="0,2,0,0"/>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- KPIs + Search -->
+                    <StackPanel Grid.Row="0" Margin="14,14,14,8">
+                        <UniformGrid Columns="2" Margin="0,0,0,10">
+                            <Border Background="#F3F4F6" CornerRadius="6" Padding="10,8" Margin="0,0,4,4">
+                                <StackPanel>
+                                    <TextBlock Text="PRODUCTOS" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2"/>
+                                    <TextBlock x:Name="TotalProductsText" Text="0" FontSize="18" FontWeight="Bold" Foreground="#2563EB"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#F3F4F6" CornerRadius="6" Padding="10,8" Margin="4,0,0,4">
+                                <StackPanel>
+                                    <TextBlock Text="POR PEDIR" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2"/>
+                                    <TextBlock x:Name="LowStockTotalText" Text="0" FontSize="18" FontWeight="Bold" Foreground="#D97706"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#F3F4F6" CornerRadius="6" Padding="10,8" Margin="0,4,4,0">
+                                <StackPanel>
+                                    <TextBlock Text="CATEGORÍAS" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2"/>
+                                    <TextBlock x:Name="TotalCategoriesText" Text="0" FontSize="18" FontWeight="Bold" Foreground="#059669"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#F3F4F6" CornerRadius="6" Padding="10,8" Margin="4,4,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="VALOR TOTAL" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,2"/>
+                                    <TextBlock x:Name="TotalValueText" Text="$0" FontSize="18" FontWeight="Bold" Foreground="#7C3AED"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+                        <Border Background="#F3F4F6" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6">
+                            <Grid>
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="10,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent" Padding="30,7,10,7" FontSize="12.5" VerticalAlignment="Center" TextChanged="SearchBox_TextChanged"/>
+                                <TextBlock Text="Buscar categoría..." Margin="30,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" FontSize="12.5" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Hidden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text.Length, ElementName=SearchBox}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </Border>
                     </StackPanel>
+
+                    <!-- INLINE NEW CATEGORY FORM -->
+                    <Border x:Name="InlineCategoryForm" Grid.Row="1" Visibility="Collapsed"
+                            Background="#FAFBFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="14,10">
+                        <StackPanel>
+                            <TextBlock Text="Nueva categoría" FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                            <TextBlock Text="NOMBRE" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="NewCatNameBox" Style="{StaticResource InlineTextBox}" Margin="0,0,0,8" MaxLength="100"/>
+                            <TextBlock Text="DESCRIPCIÓN" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,4"/>
+                            <TextBox x:Name="NewCatDescBox" Style="{StaticResource InlineTextBox}" Height="48" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Margin="0,0,0,4"/>
+                            <TextBlock Text="El color se asigna automáticamente" FontSize="10" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Style="{StaticResource BtnSecondarySmall}" Click="CancelNewCategory_Click" Margin="0,0,6,0" Content="Cancelar"/>
+                                <Button Style="{StaticResource BtnPrimarySmall}" Click="SaveNewCategory_Click" Content="Guardar"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Category List -->
+                    <ListBox x:Name="CategoriesListBox" Grid.Row="2" Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionChanged="CategoriesListBox_SelectionChanged"
+                             ItemContainerStyle="{StaticResource CatListBoxItem}" Padding="4,4">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Ellipse Grid.Column="0" Width="9" Height="9" Fill="{Binding ColorBrush}" Margin="0,0,10,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock FontSize="10.5" Foreground="{StaticResource TextMutedBrush}" Margin="0,1,0,0">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0} productos · {1} uds">
+                                                    <Binding Path="ProductsCount"/>
+                                                    <Binding Path="StockTotal"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" CornerRadius="10" Padding="7,2" Background="{Binding BadgeBg}" Visibility="{Binding LowStockBadgeVisibility}">
+                                        <TextBlock Text="{Binding LowStockCount}" FontSize="10" FontWeight="SemiBold" Foreground="{Binding BadgeFg}"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- "+ Nueva Categoría" button -->
+                    <Border Grid.Row="3" Padding="14,10" BorderBrush="{StaticResource BorderLightBrush}" BorderThickness="0,1,0,0">
+                        <Button Style="{StaticResource BtnPrimary}" Click="NewCategory_Click" HorizontalAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                <TextBlock Text="Nueva Categoría" FontSize="12.5" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Border>
                 </Grid>
             </Border>
 
-            <!-- Por Pedir -->
-            <Border Grid.Column="1" Margin="4,0" Padding="14,10" Background="White" CornerRadius="10">
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="1" Opacity="0.06" BlurRadius="3"/>
-                </Border.Effect>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,10,0">
-                        <Border.Background>
-                            <SolidColorBrush Color="#F59E0B" Opacity="0.1"/>
-                        </Border.Background>
-                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                                   Foreground="#D97706" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Por pedir" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="LowStockTotalText" Text="13" FontSize="20" FontWeight="Bold"
-                                   Foreground="#D97706" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <!-- ==================== RIGHT PANEL ==================== -->
+            <Grid Grid.Column="1" Background="{StaticResource BgBrush}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <!-- Categorias -->
-            <Border Grid.Column="2" Margin="8,0,0,0" Padding="14,10" Background="White" CornerRadius="10">
-                <Border.Effect>
-                    <DropShadowEffect Color="#000000" Direction="270" ShadowDepth="1" Opacity="0.06" BlurRadius="3"/>
-                </Border.Effect>
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Width="32" Height="32" CornerRadius="8" Margin="0,0,10,0">
-                        <Border.Background>
-                            <SolidColorBrush Color="#48BB78" Opacity="0.1"/>
-                        </Border.Background>
-                        <TextBlock Text="&#xF168;" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                                   Foreground="#48BB78" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="Categorias" FontSize="11" Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="TotalCategoriesText" Text="6" FontSize="20" FontWeight="Bold"
-                                   Foreground="#48BB78" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- ===== SEARCH + ACTION BAR ===== -->
-        <Border Grid.Row="2" Margin="30,12,30,0" Padding="16" Background="White" CornerRadius="12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Search -->
-                <Border Grid.Column="0" MaxWidth="400" HorizontalAlignment="Left"
-                        Background="#F8FAFC" BorderBrush="{StaticResource ThemeBorderBrush}"
-                        BorderThickness="1" CornerRadius="8">
+                <!-- Category header -->
+                <Border Grid.Row="0" Padding="24,18,24,14">
                     <Grid>
-                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                   Foreground="{StaticResource TextLightBrush}"
-                                   Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent"
-                                 Padding="36,9,12,9" FontSize="13" VerticalAlignment="Center"
-                                 TextChanged="SearchBox_TextChanged"/>
-                        <TextBlock Text="Buscar categoria..." Margin="36,0,0,0"
-                                   VerticalAlignment="Center" Foreground="{StaticResource TextLightBrush}"
-                                   FontSize="13" IsHitTestVisible="False">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Hidden"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Text.Length, ElementName=SearchBox}" Value="0">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Ellipse x:Name="DetailColorDot" Width="12" Height="12" Fill="#2563EB" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="DetailCatName" Text="Selecciona una categoría" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DetailCatDesc" Text="" FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="22,0,0,0"/>
+                            <StackPanel x:Name="DetailStatsPanel" Orientation="Horizontal" Margin="22,12,0,0"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="0,2,0,0">
+                            <Button x:Name="EditCategoryBtn" Style="{StaticResource BtnSecondary}" Click="EditCategory_Click" Margin="0,0,6,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Editar Categoría" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="NewProductBtn" Style="{StaticResource BtnPrimary}" Click="NewProduct_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Nuevo Producto" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- New Category Button -->
-                <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Click="NewCategory_Click">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <TextBlock Text="Nueva Categoria" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-            </Grid>
-        </Border>
-
-        <!-- ===== CARDS GRID (centered, max-width constrained) ===== -->
-        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Background="{StaticResource BackgroundBrush}">
-            <ItemsControl x:Name="CategoriesPanel" Margin="30,16,30,24"
-                          MaxWidth="1100" HorizontalAlignment="Center"
-                          VerticalAlignment="Top"
-                          VirtualizingPanel.IsVirtualizing="True"
-                          VirtualizingPanel.VirtualizationMode="Recycling">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel HorizontalAlignment="Center"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="White" CornerRadius="12" Margin="6" Cursor="Hand"
-                                MouseLeftButtonDown="CategoryCard_Click" Tag="{Binding}"
-                                BorderBrush="#E2E8F0" BorderThickness="1"
-                                Width="340">
-                            <Border.Style>
-                                <Style TargetType="Border">
-                                    <Setter Property="Effect">
-                                        <Setter.Value>
-                                            <DropShadowEffect Color="#1E293B" BlurRadius="8" ShadowDepth="2" Opacity="0.06" Direction="270"/>
-                                        </Setter.Value>
-                                    </Setter>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="BorderBrush" Value="#94A3B8"/>
-                                            <Setter Property="Effect">
-                                                <Setter.Value>
-                                                    <DropShadowEffect Color="#1E293B" BlurRadius="20" ShadowDepth="6" Opacity="0.14" Direction="270"/>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Border.Style>
+                <!-- Toolbar -->
+                <Border Grid.Row="1" Padding="24,0,24,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Margin="0,0,8,0">
                             <Grid>
-                                <!-- Color bar left -->
-                                <Border CornerRadius="12,0,0,12" Width="5" HorizontalAlignment="Left"
-                                        Background="{Binding ColorBrush}"/>
-
-                                <StackPanel Margin="20,18,20,16">
-                                    <!-- Category Name -->
-                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
-                                               Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,4"/>
-
-                                    <!-- Description -->
-                                    <TextBlock Text="{Binding Description}" FontSize="12"
-                                               Foreground="{StaticResource TextMutedBrush}"
-                                               TextTrimming="CharacterEllipsis" MaxHeight="18"
-                                               Margin="0,0,0,12"/>
-
-                                    <!-- Separator -->
-                                    <Border Height="1" Background="{StaticResource BorderLightBrush}" Margin="0,0,0,12"/>
-
-                                    <!-- Stats -->
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="PRODUCTOS" FontSize="10" Foreground="{StaticResource TextLightBrush}"
-                                                       FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                            <TextBlock Text="{Binding ProductsCount}" FontSize="22" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        </StackPanel>
-
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="STOCK TOTAL" FontSize="10" Foreground="{StaticResource TextLightBrush}"
-                                                       FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                            <TextBlock Text="{Binding StockTotal}" FontSize="22" FontWeight="Bold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <!-- Badge -->
-                                    <Border CornerRadius="8" Padding="10,4" HorizontalAlignment="Left"
-                                            Background="{Binding BadgeBg}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding BadgeIcon}" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                                       Foreground="{Binding BadgeFg}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                            <TextBlock Text="{Binding BadgeText}" FontSize="11"
-                                                       Foreground="{Binding BadgeFg}" FontWeight="Medium"/>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="9,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                                <TextBox x:Name="ProductSearchBox" BorderThickness="0" Background="Transparent" Padding="28,6,10,6" FontSize="13" Width="240" TextChanged="ProductSearch_TextChanged"/>
+                                <TextBlock Text="Buscar por código o nombre..." Margin="28,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource TextMutedBrush}" FontSize="13" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Hidden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Text.Length, ElementName=ProductSearchBox}" Value="0">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </Grid>
                         </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+                        <ToggleButton x:Name="LowStockToggle" Grid.Column="1" Margin="0,0,6,0" Checked="FilterChanged" Unchecked="FilterChanged">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border x:Name="bd" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6" Padding="10,5" Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#D97706"/>
+                                            <TextBlock Text="Solo stock bajo" FontSize="11.5" Foreground="#6B7280" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#EFF6FF"/>
+                                            <Setter TargetName="bd" Property="BorderBrush" Value="#2563EB"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="BorderBrush" Value="#9CA3AF"/></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ComboBox x:Name="LocationFilter" Grid.Column="2" MinWidth="160" FontSize="12.5" SelectionChanged="FilterChanged">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox">
+                                    <Setter Property="Background" Value="White"/>
+                                    <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="Padding" Value="10,6"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ComboBox">
+                                                <Grid>
+                                                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <ContentPresenter Grid.Column="0"
+                                                                              Content="{TemplateBinding SelectionBoxItem}"
+                                                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                                              Margin="10,6,0,6" VerticalAlignment="Center"/>
+                                                            <Border Grid.Column="1" Background="#F3F4F6" CornerRadius="3"
+                                                                    Padding="5,3" Margin="8,0,8,0" VerticalAlignment="Center">
+                                                                <TextBlock x:Name="arrow" Text="▼" FontSize="9" Foreground="#9CA3AF"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                    <ToggleButton IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                                  Background="Transparent" BorderThickness="0" Focusable="False" ClickMode="Press">
+                                                        <ToggleButton.Template>
+                                                            <ControlTemplate TargetType="ToggleButton"><Border Background="Transparent"/></ControlTemplate>
+                                                        </ToggleButton.Template>
+                                                    </ToggleButton>
+                                                    <Popup x:Name="PART_Popup"
+                                                           IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                                           AllowsTransparency="True" PopupAnimation="Slide" Placement="Bottom">
+                                                        <Border Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="6"
+                                                                Margin="0,4,0,0" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                                            <Border.Effect>
+                                                                <DropShadowEffect Color="#000" Direction="270" ShadowDepth="2" Opacity="0.1" BlurRadius="8"/>
+                                                            </Border.Effect>
+                                                            <ScrollViewer MaxHeight="200" Margin="4">
+                                                                <StackPanel IsItemsHost="True"/>
+                                                            </ScrollViewer>
+                                                        </Border>
+                                                    </Popup>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="bd" Property="BorderBrush" Value="#9CA3AF"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDropDownOpen" Value="True">
+                                                        <Setter TargetName="bd" Property="BorderBrush" Value="#2563EB"/>
+                                                        <Setter TargetName="arrow" Property="Text" Value="▲"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ComboBox.Style>
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem">
+                                    <Setter Property="Padding" Value="10,7"/>
+                                    <Setter Property="Cursor" Value="Hand"/>
+                                    <Setter Property="FontSize" Value="12.5"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ComboBoxItem">
+                                                <Border x:Name="bd" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="4" Margin="2">
+                                                    <ContentPresenter VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#F3F4F6"/></Trigger>
+                                                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="bd" Property="Background" Value="#EFF6FF"/></Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                            <ComboBoxItem Content="Todas las ubicaciones" IsSelected="True"/>
+                        </ComboBox>
+                        <TextBlock x:Name="ProductCountText" Grid.Column="4" Text="Mostrando 0 de 0" FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
 
-        <!-- ===== FOOTER ===== -->
-        <Border Grid.Row="4" Background="White" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
-            <Grid Margin="24,0" Height="36">
-                <TextBlock x:Name="FooterCategoryCount" Text="6 categorias activas"
-                           FontSize="12" Foreground="{StaticResource TextMutedBrush}"
-                           VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="FooterTimestamp" Text="Ultima actualizacion: 13/03/2026 14:30"
-                           FontSize="12" Foreground="{StaticResource TextLightBrush}"
-                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                <!-- INLINE NEW PRODUCT FORM -->
+                <Border x:Name="InlineProductForm" Grid.Row="2" Visibility="Collapsed"
+                        Background="#FAFBFC" Margin="24,0,24,8" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <!-- Row 1: Code, Name, Description -->
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="CÓDIGO *" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdCodeBox" Style="{StaticResource InlineTextBox}" MaxLength="50"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="NOMBRE *" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdNameBox" Style="{StaticResource InlineTextBox}" MaxLength="255"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="DESCRIPCIÓN" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdDescBox" Style="{StaticResource InlineTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <!-- Row 2: Stock, Min, Unit, Price, Location, Actions -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="STOCK" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdStockBox" Style="{StaticResource InlineTextBox}" Text="0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="MÍNIMO" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdMinBox" Style="{StaticResource InlineTextBox}" Text="0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="UNI" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdUnitBox" Style="{StaticResource InlineTextBox}" Text="pza"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Text="PRECIO" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdPriceBox" Style="{StaticResource InlineTextBox}" Text="0.00"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="8">
+                                <TextBlock Text="UBIC." FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="NewProdLocBox" Style="{StaticResource InlineTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="10" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,0,1">
+                                <Button Style="{StaticResource BtnPrimarySmall}" Click="SaveNewProduct_Click" Content="Guardar" Margin="0,0,6,0"/>
+                                <Button Style="{StaticResource BtnSecondarySmall}" Click="CancelNewProduct_Click" Content="Cancelar"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Products DataGrid -->
+                <Border Grid.Row="3" Margin="24,0,24,0">
+                    <DataGrid x:Name="ProductsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F3F4F6"
+                              BorderThickness="0" Background="Transparent" RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                              CanUserResizeRows="False" CanUserReorderColumns="False" FontSize="13" RowHeight="42">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#F3F4F6"/>
+                                <Setter Property="Foreground" Value="#9CA3AF"/>
+                                <Setter Property="FontSize" Value="10.5"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Padding" Value="14,8"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="BorderBrush" Value="#E5E7EB"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Padding" Value="14,0"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="DataGridCell">
+                                            <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                                <ContentPresenter VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#EFF6FF"/>
+                                        <Setter Property="Foreground" Value="#111827"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#F9FAFB"/></Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Code}" Width="90">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock"><Setter Property="FontFamily" Value="Consolas"/><Setter Property="FontSize" Value="11.5"/><Setter Property="Foreground" Value="#9CA3AF"/></Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="NOMBRE" Binding="{Binding Name}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock"><Setter Property="FontWeight" Value="Medium"/><Setter Property="Foreground" Value="#111827"/></Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="STOCK" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding StockWarningIcon}" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{Binding StockForeground}" VerticalAlignment="Center" Margin="0,0,4,0" Visibility="{Binding StockWarningVisibility}"/>
+                                            <TextBlock Text="{Binding StockCurrent, StringFormat='{}{0:N0}'}" FontWeight="SemiBold" Foreground="{Binding StockForeground}"/>
+                                            <Border Width="40" Height="3" Background="#F3F4F6" CornerRadius="1.5" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <Border Background="{Binding StockBarBrush}" CornerRadius="1.5" HorizontalAlignment="Left" Width="{Binding StockBarWidth}"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="MÍN" Binding="{Binding StockMinimum, StringFormat='{}{0:N0}'}" Width="60">
+                                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#9CA3AF"/></Style></DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="UNI" Binding="{Binding Unit}" Width="50">
+                                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#9CA3AF"/></Style></DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="PRECIO" Binding="{Binding UnitPrice, StringFormat='${0:N2}'}" Width="80">
+                                <DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="Foreground" Value="#6B7280"/></Style></DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTemplateColumn Header="UBIC." Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F3F4F6" CornerRadius="3" Padding="6,2" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding Location}" FontSize="10.5" FontWeight="Medium" Foreground="#6B7280"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Button Style="{StaticResource IconActionBtn}" Click="EditProduct_Click" Tag="{Binding}">
+                                                <TextBlock Text="&#xE70F;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#9CA3AF"/>
+                                            </Button>
+                                            <Button Style="{StaticResource DeleteActionBtn}" Click="DeleteProduct_Click" Tag="{Binding}" Margin="2,0,0,0">
+                                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#DC2626"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+
+                <!-- Empty states -->
+                <Border x:Name="EmptyProductState" Grid.Row="3" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="52" Height="52" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <Border.Background><SolidColorBrush Color="#2563EB" Opacity="0.07"/></Border.Background>
+                            <TextBlock Text="&#xE773;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="#2563EB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Sin productos" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Agrega productos a esta categoría" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border x:Name="NoCategoryState" Grid.Row="3" Visibility="Visible" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Border Width="52" Height="52" CornerRadius="14" HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <Border.Background><SolidColorBrush Color="#6B7280" Opacity="0.07"/></Border.Background>
+                            <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="22" Foreground="#6B7280" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Selecciona una categoría" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Elige una categoría del panel izquierdo para ver sus productos" FontSize="12.5" Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" MaxWidth="300" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Footer -->
+                <Border Grid.Row="4" Background="White" BorderBrush="{StaticResource BorderLightBrush}" BorderThickness="0,1,0,0">
+                    <Grid Margin="24,0" Height="34">
+                        <TextBlock x:Name="FooterAlertText" Text="" FontSize="11.5" Foreground="#D97706" FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <TextBlock Text="Valor de categoría: " FontSize="11.5" Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="FooterCatValue" Text="$0" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </Grid>
-        </Border>
+        </Grid>
 
-        <!-- ===== TOAST NOTIFICATIONS OVERLAY ===== -->
-        <StackPanel x:Name="ToastContainer" Grid.Row="0" Grid.RowSpan="5"
-                    VerticalAlignment="Top" HorizontalAlignment="Right"
-                    Margin="0,70,24,0" IsHitTestVisible="False"/>
+        <!-- Toast overlay -->
+        <StackPanel x:Name="ToastContainer" Grid.Row="0" Grid.RowSpan="2" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,60,24,0" IsHitTestVisible="False"/>
     </Grid>
 </Window>

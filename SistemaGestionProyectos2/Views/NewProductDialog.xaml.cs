@@ -8,6 +8,17 @@ namespace SistemaGestionProyectos2.Views
     {
         private readonly ProductRowItem? _editProduct;
 
+        // Propiedades publicas para leer los valores del formulario
+        public string ProductCode => CodeInput.Text.Trim();
+        public string ProductName => NameInput.Text.Trim();
+        public string ProductDescription => DescriptionInput.Text.Trim();
+        public decimal ProductStock => decimal.TryParse(StockInput.Text, out var s) ? s : 0;
+        public decimal ProductMinimum => decimal.TryParse(MinimumInput.Text, out var m) ? m : 0;
+        public string ProductUnit => (UnitCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "pza";
+        public decimal ProductPrice => decimal.TryParse(PriceInput.Text, out var p) ? p : 0;
+        public string ProductLocation => LocationInput.Text.Trim();
+        public string ProductNotes => NotesInput.Text.Trim();
+
         public NewProductDialog(string categoryName, ProductRowItem? product = null)
         {
             InitializeComponent();
@@ -27,9 +38,9 @@ namespace SistemaGestionProyectos2.Views
         {
             CodeInput.Text = p.Code;
             NameInput.Text = p.Name;
-            StockInput.Text = p.Stock.ToString();
-            MinimumInput.Text = p.Minimum.ToString();
-            PriceInput.Text = p.Price.ToString("F2");
+            StockInput.Text = p.StockCurrent.ToString("F0");
+            MinimumInput.Text = p.StockMinimum.ToString("F0");
+            PriceInput.Text = p.UnitPrice.ToString("F2");
             LocationInput.Text = p.Location;
 
             // Select matching unit

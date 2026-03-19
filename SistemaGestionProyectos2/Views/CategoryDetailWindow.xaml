@@ -313,6 +313,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>  <!-- Header -->
             <RowDefinition Height="Auto"/>  <!-- Filter Bar -->
+            <RowDefinition Height="Auto"/>  <!-- Inline Form (collapsed) -->
             <RowDefinition Height="*"/>     <!-- Table -->
             <RowDefinition Height="Auto"/>  <!-- Footer -->
         </Grid.RowDefinitions>
@@ -407,15 +408,13 @@
                         </StackPanel>
                     </ToggleButton>
 
+                    <!-- Ubicacion (se carga dinamicamente desde BD via fn_get_inventory_locations) -->
                     <ComboBox x:Name="LocationFilter" Width="200" Margin="10,0,0,0"
                               Style="{StaticResource StyledComboBox}"
                               SelectionChanged="LocationFilter_Changed">
                         <ComboBoxItem Content="Todas las ubicaciones" IsSelected="True"
                                       Style="{StaticResource StyledComboBoxItem}"/>
-                        <ComboBoxItem Content="A-1" Style="{StaticResource StyledComboBoxItem}"/>
-                        <ComboBoxItem Content="A-2" Style="{StaticResource StyledComboBoxItem}"/>
-                        <ComboBoxItem Content="A-3" Style="{StaticResource StyledComboBoxItem}"/>
-                        <ComboBoxItem Content="B-1" Style="{StaticResource StyledComboBoxItem}"/>
+                        <!-- TODO Fase 6C: poblar dinamicamente desde fn_get_inventory_locations -->
                     </ComboBox>
                 </StackPanel>
 
@@ -425,8 +424,180 @@
             </Grid>
         </Border>
 
+        <!-- ===== INLINE FORM (collapsed by default) ===== -->
+        <Border x:Name="InlineFormPanel" Grid.Row="2" Visibility="Collapsed"
+                Background="#FAFBFF" BorderBrush="#DBEAFE" BorderThickness="0,0,0,1">
+            <Grid Margin="24,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Row 1: Code, Name, Description -->
+                <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="InlineCode" Grid.Column="0" FontSize="13" Padding="8,7"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlineName" Grid.Column="2" FontSize="13" Padding="8,7"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlineDescription" Grid.Column="4" FontSize="13" Padding="8,7"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                </Grid>
+
+                <!-- Row 2: Stock, Min, Unit, Price, Location + Buttons -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="InlineStock" Grid.Column="0" FontSize="13" Padding="8,7" Text="0"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlineMinimum" Grid.Column="2" FontSize="13" Padding="8,7" Text="0"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlineUnit" Grid.Column="4" FontSize="13" Padding="8,7" Text="pza"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlinePrice" Grid.Column="6" FontSize="13" Padding="8,7" Text="0.00"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+                    <TextBox x:Name="InlineLocation" Grid.Column="8" FontSize="13" Padding="8,7"
+                             BorderBrush="#E2E8F0" BorderThickness="1" Background="White">
+                        <TextBox.Template>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </TextBox.Template>
+                    </TextBox>
+
+                    <StackPanel Grid.Column="10" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Click="InlineSave_Click" Cursor="Hand" Margin="0,0,6,0">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Background="#1D4ED8" CornerRadius="6" Padding="14,7">
+                                        <TextBlock Text="Guardar" FontSize="12" FontWeight="SemiBold" Foreground="White"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#1E40AF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Click="InlineCancel_Click" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="14,7">
+                                        <TextBlock Text="Cancelar" FontSize="12" Foreground="#64748B"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#F1F5F9"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Labels row (hints) -->
+                <Grid Grid.Row="0" Margin="0,-2,0,0" VerticalAlignment="Top" IsHitTestVisible="False">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Codigo *" FontSize="10" Foreground="#94A3B8" Margin="2,-14,0,0"/>
+                    <TextBlock Grid.Column="2" Text="Nombre *" FontSize="10" Foreground="#94A3B8" Margin="2,-14,0,0"/>
+                    <TextBlock Grid.Column="4" Text="Descripcion" FontSize="10" Foreground="#94A3B8" Margin="2,-14,0,0"/>
+                </Grid>
+            </Grid>
+        </Border>
+
         <!-- ===== PRODUCT TABLE ===== -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Background="{StaticResource BackgroundBrush}">
         <Border Margin="24,12" VerticalAlignment="Top">
@@ -450,7 +621,7 @@
                   CellStyle="{StaticResource CellStyle}"
                   CanUserReorderColumns="False"
                   CanUserResizeRows="False"
-                  RowHeight="52"
+                  RowHeight="44"
                   VirtualizingPanel.IsVirtualizing="True"
                   VirtualizingPanel.VirtualizationMode="Recycling"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -491,8 +662,16 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="CODIGO" Binding="{Binding Code}" Width="100"/>
+                <DataGridTextColumn Header="CODIGO" Binding="{Binding Code}" Width="90"/>
                 <DataGridTextColumn Header="NOMBRE" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="DESCRIPCION" Binding="{Binding Description}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#64748B"/>
+                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
 
                 <!-- Stock with warning icon -->
                 <DataGridTemplateColumn Header="STOCK" Width="100">
@@ -519,10 +698,10 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="MINIMO" Binding="{Binding Minimum}" Width="80"/>
-                <DataGridTextColumn Header="UNIDAD" Binding="{Binding Unit}" Width="80"/>
-                <DataGridTextColumn Header="PRECIO UNIT." Binding="{Binding PriceFormatted}" Width="110"/>
-                <DataGridTextColumn Header="UBICACION" Binding="{Binding Location}" Width="100"/>
+                <DataGridTextColumn Header="MIN" Binding="{Binding Minimum}" Width="60"/>
+                <DataGridTextColumn Header="UND" Binding="{Binding Unit}" Width="55"/>
+                <DataGridTextColumn Header="PRECIO" Binding="{Binding PriceFormatted}" Width="80"/>
+                <DataGridTextColumn Header="UBIC." Binding="{Binding Location}" Width="70"/>
 
                 <!-- Actions -->
                 <DataGridTemplateColumn Header="ACCIONES" Width="110">
@@ -578,7 +757,7 @@
         </ScrollViewer>
 
         <!-- ===== FOOTER ===== -->
-        <Border Grid.Row="3" Background="White" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
+        <Border Grid.Row="4" Background="White" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
             <Grid Margin="24,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -601,12 +780,12 @@
         </Border>
 
         <!-- ===== TOAST NOTIFICATIONS OVERLAY ===== -->
-        <StackPanel x:Name="ToastContainer" Grid.Row="0" Grid.RowSpan="4"
+        <StackPanel x:Name="ToastContainer" Grid.Row="0" Grid.RowSpan="5"
                     VerticalAlignment="Top" HorizontalAlignment="Right"
                     Margin="0,70,24,0" IsHitTestVisible="False"/>
 
         <!-- ===== DELETE CONFIRMATION OVERLAY ===== -->
-        <Grid x:Name="DeleteOverlay" Grid.Row="0" Grid.RowSpan="4" Visibility="Collapsed">
+        <Grid x:Name="DeleteOverlay" Grid.Row="0" Grid.RowSpan="5" Visibility="Collapsed">
             <Border Background="#0F172A" Opacity="0.4" MouseLeftButtonDown="CancelDelete_Backdrop"/>
             <Border Background="White" CornerRadius="16" Width="420" Height="220"
                     VerticalAlignment="Center" HorizontalAlignment="Center">

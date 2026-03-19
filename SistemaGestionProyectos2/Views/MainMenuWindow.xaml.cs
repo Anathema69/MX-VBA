@@ -179,7 +179,7 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 StatusText.Text = "Abriendo Inventario...";
-                var inventory = new InventoryWindow();
+                var inventory = new InventoryWindow(_currentUser);
                 inventory.Owner = this;
                 inventory.Show();
                 StatusText.Text = "Inventario abierto";

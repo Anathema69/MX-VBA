@@ -1,7 +1,11 @@
+using SistemaGestionProyectos2.Models.Database;
+using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,6 +19,7 @@ namespace SistemaGestionProyectos2.Views
     public partial class CategoryDetailWindow : Window
     {
         private readonly CategoryCardItem _category;
+        private readonly Models.UserSession _currentUser;
         private List<ProductRowItem> _allProducts = new();
         private ProductRowItem? _pendingDeleteProduct;
         private bool _isInitialized;
@@ -22,14 +27,15 @@ namespace SistemaGestionProyectos2.Views
         private static readonly string LogPath = Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, "inventory_debug.log");
 
-        public CategoryDetailWindow(CategoryCardItem category)
+        public CategoryDetailWindow(CategoryCardItem category, Models.UserSession user = null)
         {
             _category = category;
+            _currentUser = user;
             InitializeComponent();
             this.SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SetupHeader();
-            LoadMockProducts();
+            LoadDataAsync();
             _isInitialized = true;
         }
 
@@ -52,22 +58,50 @@ namespace SistemaGestionProyectos2.Views
             CategoryColorBar.Background = _category.ColorBrush;
         }
 
-        private void LoadMockProducts()
+        private async void LoadDataAsync()
         {
-            Log("LoadMockProducts: creating 8 mock items");
-            _allProducts = new List<ProductRowItem>
+            try
             {
-                new("TOR-001", "Tornillo M3x10",    150,  50, "pza", 0.50m, "A-1"),
-                new("TOR-002", "Tornillo M4x15",     20,  30, "pza", 0.75m, "A-1"),
-                new("TOR-003", "Tornillo M5x20",    200, 100, "pza", 1.00m, "A-2"),
-                new("TOR-004", "Tuerca M3",           45,  50, "pza", 0.30m, "A-1"),
-                new("TOR-005", "Arandela M3",        500, 100, "pza", 0.10m, "A-3"),
-                new("TOR-006", "Tornillo Allen M6",   80,  20, "pza", 1.50m, "A-2"),
-                new("TOR-007", "Perno M8x30",         10,  25, "pza", 2.00m, "B-1"),
-                new("TOR-008", "Rondana plana M4",   300,  50, "pza", 0.15m, "A-1"),
-            };
+                Log("LoadDataAsync: loading products for category " + _category.Name);
 
-            RefreshGrid();
+                var products = await SupabaseService.Instance.GetInventoryProducts(_category.Id);
+                _allProducts = products.Select(p => new ProductRowItem(p)).ToList();
+
+                // Cargar ubicaciones dinamicas para el filtro
+                await LoadLocationFilter();
+
+                RefreshGrid();
+                Log($"LoadDataAsync: loaded {_allProducts.Count} products");
+            }
+            catch (Exception ex)
+            {
+                Log($"LoadDataAsync: ERROR - {ex.Message}");
+                ShowToast($"Error al cargar: {ex.Message}", ToastType.Error);
+            }
+        }
+
+        private async Task LoadLocationFilter()
+        {
+            try
+            {
+                var locations = await SupabaseService.Instance.GetInventoryLocations(_category.Id);
+                // Mantener el primer item "Todas las ubicaciones"
+                while (LocationFilter.Items.Count > 1)
+                    LocationFilter.Items.RemoveAt(1);
+
+                foreach (var loc in locations)
+                {
+                    LocationFilter.Items.Add(new ComboBoxItem
+                    {
+                        Content = loc,
+                        Style = (Style)FindResource("StyledComboBoxItem")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"LoadLocationFilter: ERROR - {ex.Message}");
+            }
         }
 
         private void RefreshGrid()
@@ -122,7 +156,7 @@ namespace SistemaGestionProyectos2.Views
                 Log("RefreshGrid: ItemsSource set OK");
 
                 int lowCount = list.Count(p => p.IsLowStock);
-                decimal totalValue = list.Sum(p => p.Stock * p.Price);
+                decimal totalValue = list.Sum(p => p.StockCurrent * p.UnitPrice);
 
                 if (LowStockCountText != null)
                     LowStockCountText.Text = $"{lowCount} productos con stock bajo";
@@ -149,17 +183,58 @@ namespace SistemaGestionProyectos2.Views
 
         private void NewProduct_Click(object sender, RoutedEventArgs e)
         {
+            // Mostrar inline form en vez de dialog
+            InlineFormPanel.Visibility = Visibility.Visible;
+            InlineCode.Text = "";
+            InlineName.Text = "";
+            InlineDescription.Text = "";
+            InlineStock.Text = "0";
+            InlineMinimum.Text = "0";
+            InlineUnit.Text = "pza";
+            InlinePrice.Text = "0.00";
+            InlineLocation.Text = "";
+            InlineCode.Focus();
+        }
+
+        private async void InlineSave_Click(object sender, RoutedEventArgs e)
+        {
             try
             {
-                var dialog = new NewProductDialog(_category.Name);
-                dialog.Owner = this;
-                if (dialog.ShowDialog() == true)
+                if (string.IsNullOrWhiteSpace(InlineCode.Text) || string.IsNullOrWhiteSpace(InlineName.Text))
                 {
-                    ShowToast("Producto creado exitosamente", ToastType.Success);
-                    RefreshGrid();
+                    ShowToast("Codigo y nombre son requeridos", ToastType.Warning);
+                    return;
                 }
+
+                var product = new InventoryProductDb
+                {
+                    CategoryId = _category.Id,
+                    Code = InlineCode.Text.Trim(),
+                    Name = InlineName.Text.Trim(),
+                    Description = InlineDescription.Text.Trim(),
+                    StockCurrent = decimal.TryParse(InlineStock.Text, out var s) ? s : 0,
+                    StockMinimum = decimal.TryParse(InlineMinimum.Text, out var m) ? m : 0,
+                    Unit = InlineUnit.Text.Trim(),
+                    UnitPrice = decimal.TryParse(InlinePrice.Text, out var p) ? p : 0,
+                    Location = InlineLocation.Text.Trim(),
+                    CreatedBy = _currentUser?.Id
+                };
+
+                await SupabaseService.Instance.CreateInventoryProduct(product);
+                InlineFormPanel.Visibility = Visibility.Collapsed;
+                ShowToast("Producto creado exitosamente", ToastType.Success);
+                LoadDataAsync();
             }
-            catch (Exception ex) { Log($"NewProduct_Click ERROR: {ex}"); }
+            catch (Exception ex)
+            {
+                Log($"InlineSave_Click ERROR: {ex}");
+                ShowToast($"Error: {ex.Message}", ToastType.Error);
+            }
+        }
+
+        private void InlineCancel_Click(object sender, RoutedEventArgs e)
+        {
+            InlineFormPanel.Visibility = Visibility.Collapsed;
         }
 
         private void EditProduct_Click(object sender, RoutedEventArgs e)
@@ -194,16 +269,26 @@ namespace SistemaGestionProyectos2.Views
             catch (Exception ex) { Log($"DeleteProduct_Click ERROR: {ex}"); }
         }
 
-        private void ConfirmDelete_Click(object sender, RoutedEventArgs e)
+        private async void ConfirmDelete_Click(object sender, RoutedEventArgs e)
         {
             if (_pendingDeleteProduct != null)
             {
-                var name = _pendingDeleteProduct.Name;
-                _allProducts.Remove(_pendingDeleteProduct);
-                _pendingDeleteProduct = null;
-                DeleteOverlay.Visibility = Visibility.Collapsed;
-                RefreshGrid();
-                ShowToast($"Producto \"{name}\" eliminado", ToastType.Warning);
+                try
+                {
+                    var name = _pendingDeleteProduct.Name;
+                    var userId = _currentUser?.Id ?? 0;
+                    await SupabaseService.Instance.DeleteInventoryProduct(_pendingDeleteProduct.Id, userId);
+                    _pendingDeleteProduct = null;
+                    DeleteOverlay.Visibility = Visibility.Collapsed;
+                    ShowToast($"Producto \"{name}\" eliminado", ToastType.Warning);
+                    LoadDataAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log($"ConfirmDelete ERROR: {ex}");
+                    ShowToast($"Error: {ex.Message}", ToastType.Error);
+                    DeleteOverlay.Visibility = Visibility.Collapsed;
+                }
             }
         }
 
@@ -320,11 +405,15 @@ namespace SistemaGestionProyectos2.Views
         #endregion
     }
 
-    // ViewModel for product table rows
-    public class ProductRowItem
+    // ProductRowItem ahora vive en InventoryWindow.xaml.cs (ventana unificada)
+
+    // Clase legacy para compatibilidad con CategoryDetailWindow (si se usa)
+    public class ProductRowItemLegacy
     {
+        public int DbId { get; set; }
         public string Code { get; set; }
         public string Name { get; set; }
+        public string Description { get; set; }
         public int Stock { get; set; }
         public int Minimum { get; set; }
         public string Unit { get; set; }
@@ -336,12 +425,11 @@ namespace SistemaGestionProyectos2.Views
 
         public string PriceFormatted => $"${Price:N2}";
 
-        // Cache brushes to avoid creating new instances on every binding evaluation
         private static readonly Brush LowStockBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D97706"));
         private static readonly Brush HighStockBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#48BB78"));
         private static readonly Brush NormalStockBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#0F172A"));
 
-        static ProductRowItem()
+        static ProductRowItemLegacy()
         {
             LowStockBrush.Freeze();
             HighStockBrush.Freeze();
@@ -351,10 +439,11 @@ namespace SistemaGestionProyectos2.Views
         public Brush StockColor => IsLowStock ? LowStockBrush : IsHighStock ? HighStockBrush : NormalStockBrush;
         public FontWeight StockWeight => IsLowStock ? FontWeights.Bold : FontWeights.Normal;
 
-        public ProductRowItem(string code, string name, int stock, int min, string unit, decimal price, string location)
+        public ProductRowItemLegacy(string code, string name, int stock, int min, string unit, decimal price, string location, string description = "")
         {
             Code = code;
             Name = name;
+            Description = description;
             Stock = stock;
             Minimum = min;
             Unit = unit;

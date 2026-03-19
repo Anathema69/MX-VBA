@@ -50,6 +50,7 @@ namespace SistemaGestionProyectos2.Services
         private UserService _userService;
         private StorageService _storageService;
         private DriveService _driveService;
+        private Inventory.InventoryService _inventoryService;
 
         // Singleton Pattern
         public static SupabaseService Instance
@@ -121,6 +122,7 @@ namespace SistemaGestionProyectos2.Services
                 var r2SecretKey = _configuration["CloudflareR2:SecretAccessKey"] ?? "";
                 var r2Bucket = _configuration["CloudflareR2:BucketName"] ?? "ima-drive";
                 _driveService = new DriveService(_supabaseClient, r2AccountId, r2AccessKey, r2SecretKey, r2Bucket);
+                _inventoryService = new Inventory.InventoryService(_supabaseClient);
 
                 _isInitialized = true;
                 System.Diagnostics.Debug.WriteLine("✅ SupabaseService (Facade) inicializado correctamente");
@@ -1122,5 +1124,62 @@ namespace SistemaGestionProyectos2.Services
             => _driveService.GetFileById(fileId, ct);
         public Task<bool> ReuploadDriveFile(int fileId, string localPath, int userId, CancellationToken ct = default)
             => _driveService.ReuploadFile(fileId, localPath, userId, ct);
+
+        // ==========================================
+        // DELEGACION A InventoryService
+        // ==========================================
+
+        public Task<List<Models.Database.InventoryCategoryDb>> GetInventoryCategories()
+            => _inventoryService.GetCategories();
+
+        public Task<List<Models.DTOs.CategorySummaryDto>> GetInventoryCategorySummary()
+            => _inventoryService.GetCategorySummary();
+
+        public Task<Models.Database.InventoryCategoryDb> CreateInventoryCategory(Models.Database.InventoryCategoryDb category)
+            => _inventoryService.CreateCategory(category);
+
+        public Task<bool> UpdateInventoryCategory(Models.Database.InventoryCategoryDb category)
+            => _inventoryService.UpdateCategory(category);
+
+        public Task<bool> DeleteInventoryCategory(int categoryId, int userId)
+            => _inventoryService.DeleteCategory(categoryId, userId);
+
+        public Task<List<Models.Database.InventoryProductDb>> GetInventoryProducts(int categoryId)
+            => _inventoryService.GetProductsByCategory(categoryId);
+
+        // Alias usado por el nuevo InventoryWindow unificado
+        public Task<List<Models.Database.InventoryProductDb>> GetInventoryProductsByCategory(int categoryId)
+            => _inventoryService.GetProductsByCategory(categoryId);
+
+        public Task<Models.Database.InventoryProductDb> CreateInventoryProduct(Models.Database.InventoryProductDb product)
+            => _inventoryService.CreateProduct(product);
+
+        public Task<bool> UpdateInventoryProduct(Models.Database.InventoryProductDb product)
+            => _inventoryService.UpdateProduct(product);
+
+        public Task<bool> UpdateInventoryProduct(int productId, Models.Database.InventoryProductDb product)
+        {
+            product.Id = productId;
+            return _inventoryService.UpdateProduct(product);
+        }
+
+        public Task<bool> DeleteInventoryProduct(int productId, int userId)
+            => _inventoryService.DeleteProduct(productId, userId);
+
+        // Overload sin userId (usa soft-delete con userId=0)
+        public Task<bool> DeleteInventoryProduct(int productId)
+            => _inventoryService.DeleteProduct(productId, 0);
+
+        public Task<Models.DTOs.StockAdjustResult> AdjustInventoryStock(int productId, decimal newStock, int userId, string notes = null)
+            => _inventoryService.AdjustStock(productId, newStock, userId, notes);
+
+        public Task<Models.DTOs.InventoryStatsDto> GetInventoryStats()
+            => _inventoryService.GetStats();
+
+        public Task<List<string>> GetInventoryLocations(int? categoryId = null)
+            => _inventoryService.GetLocations(categoryId);
+
+        public Task<List<Models.Database.InventoryMovementDb>> GetInventoryMovements(int productId, int limit = 50)
+            => _inventoryService.GetMovements(productId, limit);
     }
 }

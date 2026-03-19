@@ -330,14 +330,13 @@
                         </Grid>
 
                         <!-- Proveedor -->
+                        <!-- Proveedor (se carga dinamicamente desde BD) -->
                         <StackPanel Margin="0,0,0,16">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="PROVEEDOR"/>
                             <ComboBox x:Name="SupplierCombo" Style="{StaticResource FieldComboBox}"
                                       ItemContainerStyle="{StaticResource StyledComboBoxItem}">
                                 <ComboBoxItem Content="Seleccionar proveedor..." IsSelected="True"/>
-                                <ComboBoxItem Content="Distribuidora Electrica MX"/>
-                                <ComboBoxItem Content="Tornillos Industriales SA"/>
-                                <ComboBoxItem Content="Cables y Mas"/>
+                                <!-- TODO Fase 6C: poblar dinamicamente desde t_supplier -->
                             </ComboBox>
                         </StackPanel>
 

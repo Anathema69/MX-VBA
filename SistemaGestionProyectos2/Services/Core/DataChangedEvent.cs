@@ -24,6 +24,7 @@ namespace SistemaGestionProyectos2.Services.Core
             public const string Attendance = "attendance";
             public const string Contacts = "contacts";
             public const string Drive = "drive";
+            public const string Inventory = "inventory";
         }
 
         private static readonly ConcurrentDictionary<string, List<SubscriptionEntry>> _subscriptions = new();

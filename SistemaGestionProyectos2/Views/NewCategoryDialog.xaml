@@ -171,47 +171,11 @@
                         <TextBox x:Name="DescriptionInput" Style="{StaticResource FieldTextArea}" Height="56"/>
                     </StackPanel>
 
-                    <!-- Color Picker -->
-                    <StackPanel Margin="0,0,0,16">
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="COLOR"/>
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="Color1" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#3B82F6" IsChecked="True" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color2" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#10B981" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color3" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#8B5CF6" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color4" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#F59E0B" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color5" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#EC4899" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color6" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#EF4444" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color7" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#06B6D4" Click="ColorSwatch_Click"/>
-                            <RadioButton x:Name="Color8" Style="{StaticResource ColorSwatch}" GroupName="Color"
-                                         Tag="#84CC16" Click="ColorSwatch_Click"/>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Preview -->
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource FieldLabel}" Text="VISTA PREVIA"/>
-                        <Border x:Name="PreviewCard" Background="White" CornerRadius="10"
-                                BorderBrush="#E2E8F0" BorderThickness="1" Padding="16,12">
-                            <Grid>
-                                <Border x:Name="PreviewColorBar" CornerRadius="10,0,0,10" Width="4"
-                                        HorizontalAlignment="Left" Margin="-16,0,0,0"
-                                        Background="#3B82F6"/>
-                                <StackPanel Margin="4,0,0,0">
-                                    <TextBlock x:Name="PreviewName" Text="NUEVA CATEGORIA" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="#0F172A"/>
-                                    <TextBlock x:Name="PreviewDesc" Text="Sin descripcion" FontSize="11"
-                                               Foreground="#94A3B8" Margin="0,2,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
+                    <!-- Info: color se asigna automaticamente -->
+                    <Border Background="#EFF6FF" CornerRadius="8" Padding="12,8" Margin="0,0,0,8">
+                        <TextBlock Text="El color se asigna automaticamente de la paleta del sistema."
+                                   FontSize="12" Foreground="#1D4ED8"/>
+                    </Border>
                 </StackPanel>
 
                 <!-- Footer -->
