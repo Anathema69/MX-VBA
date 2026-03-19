@@ -2815,9 +2815,9 @@ namespace SistemaGestionProyectos2.Views
             var stk = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
             ContentHost.Content = stk;
 
-            var tealFg = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88));
             var totalSw = Stopwatch.StartNew();
             int passed = 0, failed = 0;
+            var allResults = new List<Tests.TestResult>();
 
             try
             {
@@ -2826,6 +2826,7 @@ namespace SistemaGestionProyectos2.Views
                 {
                     Dispatcher.Invoke(() =>
                     {
+                        allResults.Add(result);
                         if (result.Passed) passed++; else failed++;
 
                         var row = new Border
@@ -2897,6 +2898,10 @@ namespace SistemaGestionProyectos2.Views
             }
 
             totalSw.Stop();
+            var totalMs = totalSw.ElapsedMilliseconds;
+
+            // Generate text report
+            var report = GenerateWorkflowTestReport(allResults, totalMs);
 
             // Summary bar
             var summary = new Border
@@ -2912,7 +2917,11 @@ namespace SistemaGestionProyectos2.Views
                     : new SolidColorBrush(Color.FromRgb(0xFC, 0xA5, 0xA5)),
                 BorderThickness = new Thickness(1)
             };
-            var ssp = new StackPanel { Orientation = Orientation.Horizontal };
+            var summaryGrid = new Grid();
+            summaryGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            summaryGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var ssp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             ssp.Children.Add(new TextBlock
             {
                 Text = failed == 0 ? "\uE73E" : "\uEA39",
@@ -2924,16 +2933,92 @@ namespace SistemaGestionProyectos2.Views
             });
             ssp.Children.Add(new TextBlock
             {
-                Text = $"{passed} pasaron, {failed} fallaron — {totalSw.ElapsedMilliseconds}ms total",
+                Text = $"{passed} pasaron, {failed} fallaron — {totalMs}ms total",
                 FontSize = 15, FontWeight = FontWeights.SemiBold,
                 Foreground = failed == 0 ? GreenOk : Destructive,
                 VerticalAlignment = VerticalAlignment.Center
             });
-            summary.Child = ssp;
+            Grid.SetColumn(ssp, 0); summaryGrid.Children.Add(ssp);
+
+            // Copy report button
+            var copyBtn = new Button
+            {
+                Style = FindResource("SecondaryButton") as Style,
+                Padding = new Thickness(14, 8, 14, 8),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var copySp = new StackPanel { Orientation = Orientation.Horizontal };
+            copySp.Children.Add(new TextBlock { Text = "\uE8C8", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+            copySp.Children.Add(new TextBlock { Text = "Copiar reporte", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
+            copyBtn.Content = copySp;
+            copyBtn.Click += (s2, e2) =>
+            {
+                try { Clipboard.SetText(report); ShowToast("Reporte copiado al portapapeles", "success"); }
+                catch { ShowToast("Error al copiar", "error"); }
+            };
+            Grid.SetColumn(copyBtn, 1); summaryGrid.Children.Add(copyBtn);
+
+            summary.Child = summaryGrid;
             stk.Children.Insert(0, summary);
 
-            SectionSubtitle.Text = $"{passed + failed} tests completados en {totalSw.ElapsedMilliseconds}ms";
-            StatusText.Text = failed == 0 ? $"Tests OK ({totalSw.ElapsedMilliseconds}ms)" : $"{failed} test(s) fallaron";
+            SectionSubtitle.Text = $"{passed + failed} tests completados en {totalMs}ms";
+            StatusText.Text = failed == 0 ? $"Tests OK ({totalMs}ms)" : $"{failed} test(s) fallaron";
+        }
+
+        string GenerateWorkflowTestReport(List<Tests.TestResult> results, long totalMs)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("╔══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║           IMA Drive - Workflow Test Report                  ║");
+            sb.AppendLine("╚══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine($"  Fecha:    {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+            sb.AppendLine($"  Usuario:  {_currentUser?.FullName ?? _currentUser?.Username ?? "N/A"}");
+            sb.AppendLine($"  R2:       {(SupabaseService.Instance.IsDriveStorageConfigured ? "Configurado" : "NO configurado")}");
+            sb.AppendLine();
+
+            var passed = results.Count(r => r.Passed);
+            var failed = results.Count(r => !r.Passed);
+            sb.AppendLine($"  RESULTADO: {(failed == 0 ? "PASSED" : "FAILED")}");
+            sb.AppendLine($"  Total:     {results.Count} tests ({passed} OK, {failed} FAIL)");
+            sb.AppendLine($"  Tiempo:    {totalMs}ms");
+            sb.AppendLine();
+            sb.AppendLine("──────────────────────────────────────────────────────────────");
+            sb.AppendLine();
+
+            // Table header
+            sb.AppendLine($"  {"#",-3} {"Estado",-8} {"Test",-52} {"Tiempo",8} {"Limite",8}");
+            sb.AppendLine($"  {"─",3} {"──────",-8} {"────────────────────────────────────────────────────",-52} {"──────",8} {"──────",8}");
+
+            for (int i = 0; i < results.Count; i++)
+            {
+                var r = results[i];
+                var status = r.Passed ? "PASS" : "FAIL";
+                var name = r.Name.Length > 50 ? r.Name[..50] + ".." : r.Name;
+                sb.AppendLine($"  {i + 1,-3} {status,-8} {name,-52} {r.ElapsedMs + "ms",8} {r.ThresholdMs + "ms",8}");
+                if (!string.IsNullOrEmpty(r.Error))
+                    sb.AppendLine($"       ERROR: {r.Error}");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("──────────────────────────────────────────────────────────────");
+            sb.AppendLine();
+
+            // Timing summary
+            if (results.Count > 0)
+            {
+                var avg = results.Average(r => r.ElapsedMs);
+                var max = results.Max(r => r.ElapsedMs);
+                var maxTest = results.First(r => r.ElapsedMs == max);
+                var min = results.Min(r => r.ElapsedMs);
+                sb.AppendLine($"  Promedio:    {avg:F0}ms");
+                sb.AppendLine($"  Mas rapido:  {min}ms");
+                sb.AppendLine($"  Mas lento:   {max}ms ({maxTest.Name})");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("  Generado por IMA Drive Workflow Tests");
+            return sb.ToString();
         }
 
         // ===============================================
