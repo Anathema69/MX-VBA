@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SistemaGestionProyectos2.Services.Core;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -27,9 +28,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
         private CancellationTokenSource _cts = new();
 
-        // Caché de datos
-        private DateTime _lastSuppliersLoad = DateTime.MinValue;
-        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
+        private bool _needsReload;
 
         public SupplierManagementWindow()
         {
@@ -37,6 +36,8 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _suppliers = new ObservableCollection<SupplierViewModel>();
             _filteredSuppliers = new ObservableCollection<SupplierViewModel>();
+
+            DataChangedEvent.Subscribe(this, DataChangedEvent.Topics.Suppliers, () => _needsReload = true);
 
             SuppliersItemsControl.ItemsSource = _filteredSuppliers;
             _ = SafeLoadAsync(() => LoadSuppliers());
@@ -46,22 +47,7 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Verificar si usar caché
-                bool shouldUseCache = !forceReload &&
-                                      _suppliers.Count > 0 &&
-                                      (DateTime.Now - _lastSuppliersLoad) < _cacheExpiration;
-
-                if (shouldUseCache)
-                {
-                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de proveedores");
-                    ApplyFilter();
-                    UpdateStatistics();
-                    StatusText.Text = "Listo (desde caché)";
-                    StatusText.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine("🔄 Recargando proveedores desde BD");
+                System.Diagnostics.Debug.WriteLine("🔄 Cargando proveedores");
                 StatusText.Text = "Cargando proveedores...";
                 StatusText.Foreground = new SolidColorBrush(Colors.Orange);
 
@@ -97,8 +83,6 @@ namespace SistemaGestionProyectos2.Views
                     vm.PropertyChanged += OnSupplierPropertyChanged;
                     _suppliers.Add(vm);
                 }
-
-                _lastSuppliersLoad = DateTime.Now;
 
                 ApplyFilter();
                 UpdateStatistics();
@@ -713,8 +697,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadSuppliers());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             foreach (var vm in _suppliers)
                 vm.PropertyChanged -= OnSupplierPropertyChanged;
             _cts.Cancel();

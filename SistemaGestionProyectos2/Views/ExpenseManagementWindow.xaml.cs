@@ -37,12 +37,8 @@ namespace SistemaGestionProyectos2.Views
         private string _lastSupplierClicked = "";
         private CancellationTokenSource _cts = new();
 
-        // Caché de datos
-        private DateTime _lastExpensesLoad = DateTime.MinValue;
-        private DateTime _lastSuppliersLoad = DateTime.MinValue;
-        private DateTime _lastOrdersLoad = DateTime.MinValue;
-        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
         private List<OrderDb> _ordersCache;
+        private bool _needsReload;
 
 
         public ExpenseManagementWindow(UserSession user)
@@ -53,6 +49,12 @@ namespace SistemaGestionProyectos2.Views
             _expenses = new ObservableCollection<ExpenseViewModel>();
             _filteredExpenses = new ObservableCollection<ExpenseViewModel>();
             _ordersCache = new List<OrderDb>();
+
+            // Suscribir a cambios de datos relevantes
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Expenses, DataChangedEvent.Topics.Suppliers,
+                         DataChangedEvent.Topics.Orders },
+                () => _needsReload = true);
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
@@ -874,21 +876,8 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Verificar si usar caché
-                bool shouldUseCache = !forceReload &&
-                                      _suppliers != null &&
-                                      _suppliers.Count > 0 &&
-                                      (DateTime.Now - _lastSuppliersLoad) < _cacheExpiration;
-
-                if (shouldUseCache)
-                {
-                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de proveedores");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine("🔄 Recargando proveedores desde BD");
+                System.Diagnostics.Debug.WriteLine("🔄 Cargando proveedores");
                 _suppliers = await _supabaseService.GetActiveSuppliers();
-                _lastSuppliersLoad = DateTime.Now;
 
                 // Llenar combo de filtro de proveedores
                 SupplierFilterCombo.Items.Clear();
@@ -915,22 +904,8 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Verificar si usar caché
-                bool shouldUseCache = !forceReload &&
-                                      _ordersCache != null &&
-                                      _ordersCache.Count > 0 &&
-                                      (DateTime.Now - _lastOrdersLoad) < _cacheExpiration;
-
-                if (!shouldUseCache)
-                {
-                    System.Diagnostics.Debug.WriteLine("🔄 Recargando órdenes desde BD");
-                    _ordersCache = await _supabaseService.GetRecentOrders(100);
-                    _lastOrdersLoad = DateTime.Now;
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de órdenes");
-                }
+                System.Diagnostics.Debug.WriteLine("🔄 Cargando órdenes para filtro");
+                _ordersCache = await _supabaseService.GetRecentOrders(100);
 
                 var orderList = new List<dynamic> { new { Id = (int?)null, Display = "Todas las órdenes" } };
 
@@ -959,29 +934,17 @@ namespace SistemaGestionProyectos2.Views
         {
             try
             {
-                // Verificar si usar caché
-                bool shouldUseCache = !forceReload &&
-                                      _expenses.Count > 0 &&
-                                      (DateTime.Now - _lastExpensesLoad) < _cacheExpiration;
-
-                if (shouldUseCache)
-                {
-                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de gastos");
-                    return;
-                }
-
-                System.Diagnostics.Debug.WriteLine("🔄 Recargando gastos desde BD");
+                System.Diagnostics.Debug.WriteLine("🔄 Cargando gastos");
                 var expensesDb = await _supabaseService.GetExpenses(
                     fromDate: null,
                     toDate: null,
                     limit: 1000
                 );
 
-                // Usar caché de órdenes si está disponible, sino cargar
+                // Cargar órdenes si no están disponibles
                 if (_ordersCache == null || _ordersCache.Count == 0)
                 {
                     _ordersCache = await _supabaseService.GetRecentOrders(200);
-                    _lastOrdersLoad = DateTime.Now;
                 }
 
                 var ordersDict = _ordersCache.ToDictionary(o => o.Id, o => o.Po);
@@ -1020,7 +983,6 @@ namespace SistemaGestionProyectos2.Views
                     _expenses.Add(expenseVm);
                 }
 
-                _lastExpensesLoad = DateTime.Now;
                 System.Diagnostics.Debug.WriteLine($"✅ Gastos cargados: {_expenses.Count}");
             }
             catch (Exception ex)
@@ -1725,8 +1687,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadDataAsync(forceReload: true));
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

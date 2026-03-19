@@ -112,6 +112,7 @@ namespace SistemaGestionProyectos2.Services.Expenses
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Gasto creado: {expense.Description}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Expenses);
                     return response.Models.First();
                 }
 
@@ -139,7 +140,11 @@ namespace SistemaGestionProyectos2.Services.Expenses
                     .Update(expense);
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Gasto actualizado: {expense.Description}");
+                if (success)
+                {
+                    LogSuccess($"Gasto actualizado: {expense.Description}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Expenses);
+                }
                 return success;
             }
             catch (Exception ex)
@@ -186,6 +191,7 @@ namespace SistemaGestionProyectos2.Services.Expenses
                     .Delete();
 
                 LogSuccess($"Gasto eliminado: {expenseId}");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Expenses);
                 return true;
             }
             catch (Exception ex)

@@ -16,7 +16,7 @@ namespace SistemaGestionProyectos2.Services.Core
 
         private readonly ConcurrentDictionary<string, CacheEntry> _cache = new();
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
-        private static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(2);
 
         public async Task<T> GetOrLoadAsync<T>(string key, Func<Task<T>> loader, TimeSpan? ttl = null)
         {

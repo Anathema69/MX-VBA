@@ -30,12 +30,17 @@ namespace SistemaGestionProyectos2.Views
         private bool _isCreatingNewContact = false;
         private bool _hasUnsavedContactChanges = false;
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         public ClientManagementWindow(UserSession currentUser)
         {
             InitializeComponent();
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
+
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Clients, DataChangedEvent.Topics.Contacts },
+                () => _needsReload = true);
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
@@ -656,8 +661,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadClientsAsync());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

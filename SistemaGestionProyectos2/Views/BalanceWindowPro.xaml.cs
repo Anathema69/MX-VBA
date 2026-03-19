@@ -71,6 +71,7 @@ namespace SistemaGestionProyectos2.Views
         private List<Border> _highlightedCells = new List<Border>();
         private int _currentMonth = DateTime.Now.Month; // Mes actual (1-12)
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         public BalanceWindowPro(UserSession currentUser)
         {
@@ -87,6 +88,11 @@ namespace SistemaGestionProyectos2.Views
 
             // Actualizar timestamp
             txtLastUpdate.Text = $"Actualizado: {DateTime.Now:dd/MM/yyyy HH:mm}";
+
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Orders, DataChangedEvent.Topics.Invoices,
+                         DataChangedEvent.Topics.Expenses },
+                () => _needsReload = true);
 
             // Cargar datos
             _ = SafeLoadAsync(() => LoadBalanceData());
@@ -1452,8 +1458,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadBalanceData());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

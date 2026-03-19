@@ -126,6 +126,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Orden creada: {order.Po}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     return response.Models.First();
                 }
 
@@ -167,7 +168,11 @@ namespace SistemaGestionProyectos2.Services.Orders
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
-                if (success) LogSuccess($"Orden actualizada: {order.Id}");
+                if (success)
+                {
+                    LogSuccess($"Orden actualizada: {order.Id}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
+                }
                 return success;
             }
             catch (Exception ex)
@@ -199,6 +204,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     if (result.Success)
                     {
                         LogSuccess($"✅ {result.Message}");
+                        DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     }
                     else
                     {
@@ -268,6 +274,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 if (success)
                 {
                     LogSuccess($"✅ Orden {orderId} cancelada exitosamente. Nuevos modelos retornados: {response.Models.Count}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
 
                     // Log del estado actualizado
                     var updatedOrder = response.Models.FirstOrDefault();
@@ -362,7 +369,7 @@ namespace SistemaGestionProyectos2.Services.Orders
             }
         }
 
-        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(10);
 
         public async Task<List<OrderStatusDb>> GetOrderStatuses()
         {
@@ -543,6 +550,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Gasto operativo agregado a orden {orderId}: {monto:C} (ID: {response.Models[0].Id})");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     return response.Models[0];
                 }
 
@@ -570,6 +578,7 @@ namespace SistemaGestionProyectos2.Services.Orders
 
                 // El trigger trg_recalcular_gasto_operativo recalcula t_order.gasto_operativo automáticamente
                 LogSuccess($"Gasto operativo {gastoId} eliminado");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                 return true;
             }
             catch (Exception ex)
@@ -604,6 +613,7 @@ namespace SistemaGestionProyectos2.Services.Orders
 
                     // El trigger trg_recalcular_gasto_operativo recalcula t_order.gasto_operativo automáticamente
                     LogSuccess($"Gasto operativo {gastoId} actualizado");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     return true;
                 }
                 return false;
@@ -671,6 +681,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Gasto indirecto agregado a orden {orderId}: {monto:C} (ID: {response.Models[0].Id})");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     return response.Models[0];
                 }
 
@@ -699,6 +710,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 // Recalcular total
                 await RecalcularGastoIndirecto(orderId, userId);
                 LogSuccess($"Gasto indirecto {gastoId} eliminado");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                 return true;
             }
             catch (Exception ex)
@@ -734,6 +746,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                     // Recalcular total de gastos indirectos
                     await RecalcularGastoIndirecto(orderId, userId);
                     LogSuccess($"Gasto indirecto {gastoId} actualizado");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                     return true;
                 }
                 return false;
@@ -878,6 +891,7 @@ namespace SistemaGestionProyectos2.Services.Orders
                 }
 
                 LogDebug($"Ejecutores de orden {orderId} actualizados: [{string.Join(", ", payrollIds ?? new List<int>())}]");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Orders);
                 return true;
             }
             catch (Exception ex)

@@ -102,6 +102,7 @@ namespace SistemaGestionProyectos2.Services.Clients
                 if (response?.Models?.Count > 0)
                 {
                     Cache.InvalidatePrefix("clients:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Clients);
                     LogSuccess($"Cliente creado: {client.Name}");
                     return response.Models.First();
                 }
@@ -137,6 +138,7 @@ namespace SistemaGestionProyectos2.Services.Clients
                 if (success)
                 {
                     Cache.InvalidatePrefix("clients:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Clients);
                     LogSuccess($"Cliente actualizado: {client.Name}");
                 }
                 return success;
@@ -165,6 +167,7 @@ namespace SistemaGestionProyectos2.Services.Clients
                 if (success)
                 {
                     Cache.InvalidatePrefix("clients:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Clients);
                     LogSuccess($"Cliente desactivado: {clientId}");
                 }
                 return success;

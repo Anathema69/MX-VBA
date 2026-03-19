@@ -33,6 +33,7 @@ namespace SistemaGestionProyectos2.Views
         private string _currentStatusFilter = "PENDIENTE"; // Filtro actual: PENDIENTE, PAGADO, TODOS
         private bool _supplierSelectionConfirmed = false; // Para evitar selección automática al escribir
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         // Lista de órdenes disponibles para el ComboBox
         private ObservableCollection<OrderDisplayItem> _availableOrders;
@@ -76,6 +77,10 @@ namespace SistemaGestionProyectos2.Views
             _availableOrders = new ObservableCollection<OrderDisplayItem>();
             _availableSuppliers = new ObservableCollection<SupplierDisplayItem>();
 
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Expenses, DataChangedEvent.Topics.Suppliers },
+                () => _needsReload = true);
+
             // Establecer DataContext para bindings
             this.DataContext = this;
 
@@ -118,6 +123,10 @@ namespace SistemaGestionProyectos2.Views
             _expenses = new ObservableCollection<ExpenseDetailViewModel>();
             _availableOrders = new ObservableCollection<OrderDisplayItem>();
             _availableSuppliers = new ObservableCollection<SupplierDisplayItem>();
+
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Expenses, DataChangedEvent.Topics.Suppliers },
+                () => _needsReload = true);
 
             // Establecer DataContext para bindings
             this.DataContext = this;
@@ -1552,8 +1561,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                _ = SafeLoadAsync(() => LoadExpensesAsync());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

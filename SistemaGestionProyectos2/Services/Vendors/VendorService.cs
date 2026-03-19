@@ -115,6 +115,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (response?.Models?.Count > 0)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Vendedor creado: {vendor.VendorName}");
                     return response.Models.First();
                 }
@@ -153,6 +154,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (response?.Models?.Count > 0)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Vendedor actualizado: {vendor.VendorName}");
                     return response.Models.First();
                 }
@@ -184,6 +186,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (success)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Vendedor eliminado: {vendorId}");
                 }
                 return success;
@@ -213,6 +216,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (success)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Vendedor desactivado: {vendorId}");
                 }
                 return success;
@@ -242,6 +246,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (success)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Vendedor reactivado: {vendorId}");
                 }
                 return success;
@@ -349,6 +354,7 @@ namespace SistemaGestionProyectos2.Services.Vendors
                 if (success)
                 {
                     Cache.InvalidatePrefix("vendors:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Vendors);
                     LogSuccess($"Tasa de comisión actualizada para vendedor {vendorId}: {commissionRate}%");
                 }
                 return success;

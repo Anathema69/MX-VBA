@@ -29,6 +29,7 @@ namespace SistemaGestionProyectos2.Views
         private string _currentSearchText = "";
         private string _currentStatusFilter = "Todos";
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
 
         public PendingIncomesView(UserSession currentUser)
@@ -40,6 +41,10 @@ namespace SistemaGestionProyectos2.Views
 
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
+
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Invoices, DataChangedEvent.Topics.Clients },
+                () => _needsReload = true);
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
@@ -327,8 +332,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                _ = SafeLoadAsync(() => LoadPendingIncomesAsync());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

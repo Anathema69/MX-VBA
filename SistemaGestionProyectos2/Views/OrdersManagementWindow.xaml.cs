@@ -1,6 +1,7 @@
 ﻿using SistemaGestionProyectos2.Models;
 using SistemaGestionProyectos2.Models.Database;
 using SistemaGestionProyectos2.Services;
+using SistemaGestionProyectos2.Services.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -26,11 +27,10 @@ namespace SistemaGestionProyectos2.Views
         private List<OrderStatusDb> _orderStatuses;
         public bool IsAdmin => _currentUser?.Role == "direccion" || _currentUser?.Role == "administracion";
 
-        // Caché completo de órdenes cargadas desde la BD
+        // Lista local de órdenes cargadas (para filtrado client-side)
         private List<OrderViewModel> _allOrdersCache;
-        private DateTime _lastFullLoadTime = DateTime.MinValue;
-        private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         public OrdersManagementWindow(UserSession user)
         {
@@ -39,6 +39,12 @@ namespace SistemaGestionProyectos2.Views
             _orders = new ObservableCollection<OrderViewModel>();
             _allOrdersCache = new List<OrderViewModel>();
             _supabaseService = SupabaseService.Instance;
+
+            // Suscribir a cambios de datos relevantes
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Orders, DataChangedEvent.Topics.Invoices,
+                         DataChangedEvent.Topics.Clients, DataChangedEvent.Topics.Vendors },
+                () => _needsReload = true);
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
@@ -325,18 +331,6 @@ namespace SistemaGestionProyectos2.Views
             {
                 StatusText.Text = "Cargando órdenes...";
 
-                // Verificar si podemos usar el caché
-                bool shouldUseCache = !forceReload &&
-                                      _allOrdersCache.Count > 0 &&
-                                      (DateTime.Now - _lastFullLoadTime) < _cacheExpiration;
-
-                if (shouldUseCache)
-                {
-                    System.Diagnostics.Debug.WriteLine("📦 Usando caché de órdenes");
-                    RepopulateFromCache();
-                    return;
-                }
-
                 System.Diagnostics.Debug.WriteLine("🔄 Recargando órdenes desde BD");
                 _orders.Clear();
                 _allOrdersCache.Clear();
@@ -437,9 +431,6 @@ namespace SistemaGestionProyectos2.Views
 
                 if (ordersLoadedCount > 0)
                 {
-                    // Actualizar timestamp del caché
-                    _lastFullLoadTime = DateTime.Now;
-
                     // Mostrar mensaje específico según el rol
                     if ((_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos"))
                     {
@@ -1407,8 +1398,22 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                var currentSearch = SearchBox?.Text?.Trim();
+                await SafeLoadAsync(() => LoadOrders(forceReload: true));
+                if (!string.IsNullOrEmpty(currentSearch))
+                    ReapplyFilters(currentSearch);
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

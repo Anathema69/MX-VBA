@@ -116,6 +116,7 @@ namespace SistemaGestionProyectos2.Services.Invoices
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Factura creada: {invoice.Folio}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Invoices);
                     return response.Models.First();
                 }
 
@@ -169,7 +170,11 @@ namespace SistemaGestionProyectos2.Services.Invoices
                     .Update();
 
                 bool success = response?.Models?.Count > 0;
-                if (success) LogSuccess($"Factura actualizada: {invoice.Folio}");
+                if (success)
+                {
+                    LogSuccess($"Factura actualizada: {invoice.Folio}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Invoices);
+                }
                 return success;
             }
             catch (Exception ex)
@@ -189,6 +194,7 @@ namespace SistemaGestionProyectos2.Services.Invoices
                     .Delete();
 
                 LogSuccess($"Factura eliminada: {invoiceId}");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Invoices);
                 return true;
             }
             catch (Exception ex)
@@ -198,7 +204,7 @@ namespace SistemaGestionProyectos2.Services.Invoices
             }
         }
 
-        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan StatusCacheTtl = TimeSpan.FromMinutes(10);
 
         public async Task<List<InvoiceStatusDb>> GetInvoiceStatuses()
         {

@@ -105,6 +105,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                 if (response?.Models?.Count > 0)
                 {
                     Cache.InvalidatePrefix("suppliers:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Suppliers);
                     LogSuccess($"Proveedor creado: {supplier.SupplierName}");
                     return response.Models.First();
                 }
@@ -138,6 +139,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                 if (success)
                 {
                     Cache.InvalidatePrefix("suppliers:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Suppliers);
                     LogSuccess($"Proveedor actualizado: {supplier.SupplierName}");
                 }
                 return success;
@@ -162,6 +164,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                     .Delete();
 
                 Cache.InvalidatePrefix("suppliers:");
+                DataChangedEvent.Publish(DataChangedEvent.Topics.Suppliers);
                 LogSuccess($"Proveedor eliminado: {supplierId}");
                 return true;
             }
@@ -190,6 +193,7 @@ namespace SistemaGestionProyectos2.Services.Suppliers
                 if (success)
                 {
                     Cache.InvalidatePrefix("suppliers:");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Suppliers);
                     LogSuccess($"Proveedor desactivado: {supplierId}");
                 }
                 return success;

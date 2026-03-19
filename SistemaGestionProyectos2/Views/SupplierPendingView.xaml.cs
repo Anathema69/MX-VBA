@@ -30,6 +30,7 @@ namespace SistemaGestionProyectos2.Views
         private bool _showingPaid = false;
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         public SupplierPendingView(UserSession currentUser)
         {
@@ -41,6 +42,10 @@ namespace SistemaGestionProyectos2.Views
 
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
+
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Expenses, DataChangedEvent.Topics.Suppliers },
+                () => _needsReload = true);
 
             MaximizeWithTaskbar();
             this.SourceInitialized += (s, e) => MaximizeWithTaskbar();
@@ -551,8 +556,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadPendingExpensesAsync());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

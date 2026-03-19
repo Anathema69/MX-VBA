@@ -28,12 +28,14 @@ namespace SistemaGestionProyectos2.Views
         private VendorViewModel _selectedVendor;
         private readonly CultureInfo _mexicanCulture = new CultureInfo("es-MX");
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         public VendorManagementWindow(UserSession user)
         {
             InitializeComponent();
             _currentUser = user;
             _supabaseService = SupabaseService.Instance;
+            DataChangedEvent.Subscribe(this, DataChangedEvent.Topics.Vendors, () => _needsReload = true);
             _vendors = new ObservableCollection<VendorViewModel>();
             _filteredVendors = new ObservableCollection<VendorViewModel>();
 
@@ -512,8 +514,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadActiveVendorsAsync());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

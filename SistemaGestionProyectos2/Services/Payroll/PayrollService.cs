@@ -102,6 +102,7 @@ namespace SistemaGestionProyectos2.Services.Payroll
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Empleado creado en nómina: {payroll.Employee}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Payroll);
                     return response.Models.First();
                 }
 
@@ -145,6 +146,7 @@ namespace SistemaGestionProyectos2.Services.Payroll
                 if (response?.Models?.Count > 0)
                 {
                     LogSuccess($"Empleado actualizado en nómina: {payroll.Employee}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Payroll);
                     return response.Models.First();
                 }
 
@@ -173,7 +175,11 @@ namespace SistemaGestionProyectos2.Services.Payroll
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Empleado desactivado: {employeeId}");
+                if (success)
+                {
+                    LogSuccess($"Empleado desactivado: {employeeId}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Payroll);
+                }
                 return success;
             }
             catch (Exception ex)
@@ -199,7 +205,11 @@ namespace SistemaGestionProyectos2.Services.Payroll
                     .Update();
 
                 bool success = response?.Models?.Any() == true;
-                if (success) LogSuccess($"Empleado reactivado: {employeeId}");
+                if (success)
+                {
+                    LogSuccess($"Empleado reactivado: {employeeId}");
+                    DataChangedEvent.Publish(DataChangedEvent.Topics.Payroll);
+                }
                 return success;
             }
             catch (Exception ex)

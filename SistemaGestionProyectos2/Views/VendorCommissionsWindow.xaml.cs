@@ -33,6 +33,7 @@ namespace SistemaGestionProyectos2.Views
         private VendorSummaryViewModel _selectedVendor;
         private readonly CultureInfo _cultureMX = new CultureInfo("es-MX");
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
 
         // Cache pre-cargado: ordenes y clientes para evitar queries al seleccionar vendedor
         private List<VendorCommissionPaymentDb> _allCommissionsCache;
@@ -45,6 +46,9 @@ namespace SistemaGestionProyectos2.Views
 
             _currentUser = currentUser;
             _supabaseService = SupabaseService.Instance;
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Vendors, DataChangedEvent.Topics.Orders },
+                () => _needsReload = true);
             _vendors = new ObservableCollection<VendorSummaryViewModel>();
             _vendorCommissions = new ObservableCollection<CommissionDetailViewModel>();
 
@@ -1331,8 +1335,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadVendorsWithCommissions());
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);

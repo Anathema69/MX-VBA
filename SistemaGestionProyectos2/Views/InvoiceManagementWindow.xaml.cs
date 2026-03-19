@@ -29,6 +29,8 @@ namespace SistemaGestionProyectos2.Views
         private bool _hasUnsavedChanges = false;
         private bool _isCreatingNewInvoice = false; // Nueva bandera para controlar creación
         private CancellationTokenSource _cts = new();
+        private bool _needsReload;
+        private int _currentOrderId;
 
         public InvoiceManagementWindow(int orderId, UserSession currentUser)
         {
@@ -36,6 +38,7 @@ namespace SistemaGestionProyectos2.Views
             _supabaseService = SupabaseService.Instance;
             _invoices = new ObservableCollection<InvoiceViewModel>();
             _currentUser = currentUser;
+            _currentOrderId = orderId;
 
             // VALIDACIÓN DE SEGURIDAD - Solo direccion y administracion pueden acceder
             if (_currentUser.Role != "direccion" && _currentUser.Role != "administracion")
@@ -49,6 +52,11 @@ namespace SistemaGestionProyectos2.Views
                 this.Loaded += (s, e) => this.Close();
                 return;
             }
+
+            // Suscribir a cambios de datos relevantes
+            DataChangedEvent.Subscribe(this,
+                new[] { DataChangedEvent.Topics.Invoices, DataChangedEvent.Topics.Orders },
+                () => _needsReload = true);
 
             // Maximizar ventana dejando visible la barra de tareas
             MaximizeWithTaskbar();
@@ -1002,8 +1010,19 @@ namespace SistemaGestionProyectos2.Views
             }
         }
 
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (_needsReload)
+            {
+                _needsReload = false;
+                await SafeLoadAsync(() => LoadOrderAndInvoices(_currentOrderId));
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
+            DataChangedEvent.Unsubscribe(this);
             _cts.Cancel();
             _cts.Dispose();
             base.OnClosed(e);
