@@ -17,35 +17,56 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.0.9';
+    v_version       VARCHAR := '2.1.0';
     v_created_by    VARCHAR := 'Zuri Dev';
-    v_file_size_mb  NUMERIC := 51.0;
+    v_file_size_mb  NUMERIC := 54.0;
     v_is_mandatory  BOOLEAN := false;
-    v_min_version   VARCHAR := '2.0.8';
+    v_min_version   VARCHAR := '2.0.9';
 
-    v_release_notes TEXT := 'Version 2.0.9 - Modulo Inventario (Mockup en pruebas)
+    v_release_notes TEXT := 'Version 2.1.0 - Drive V3 Completo + Modo Produccion
 
-NUEVO MODULO: INVENTARIO (fase de pruebas - datos de ejemplo)
-- Pantalla principal con cards de categorias (nombre, color, productos, stock, alertas)
-- KPI cards: total productos, por pedir, categorias activas
-- Detalle de categoria con tabla de productos (DataGrid)
-- Alertas de stock bajo: filas amber, icono warning, badge naranja
-- Formulario nuevo/editar producto (10 campos con validacion visual)
-- Formulario nueva categoria con color picker y preview en vivo
-- Busqueda en tiempo real + filtro stock bajo + filtro ubicacion
-- Toast notifications animadas (slide-in, auto-dismiss 3s)
-- Confirmacion de eliminacion via overlay modal
-- Boton INVENTARIO en MainMenu con badge EN PRUEBAS
+=== DRIVE V3 - Fases A+B+C (Preview, Recientes, Operaciones) ===
+- Preview de imagenes: overlay fullscreen con navegacion flechas, zoom, thumbnails async
+- Cache de thumbnails en disco (%LOCALAPPDATA%/IMA-Drive/thumbs/)
+- Recientes en contenido principal con toggle Mis archivos / Todos
+- Actividad en sidebar (ultimos cambios por usuario)
+- Operaciones: Cut (Ctrl+X), Copy (Ctrl+C), Paste (Ctrl+V) entre carpetas
+- Descarga ZIP de multiples archivos seleccionados
+- Drag & Drop de archivos desde el explorador
 
-UX/UI:
-- Design system unificado con DriveV2 (azul #1D4ED8)
-- ComboBox custom estilo SupplierPendingView (popup redondeado)
-- Botones accion con fondo tintado (azul editar, rojo eliminar)
-- Layout responsivo centrado para pantallas grandes (MaxWidth)
-- Maximizar sin tapar barra de tareas
+=== DRIVE V3 - Fases D+E (Open-in-Place + Simplificacion UI) ===
+- FileWatcherService: Singleton con FileSystemWatcher + debounce 2s
+- Doble-clic = descarga a local + abre con app nativa + auto-sync al guardar
+- Sync badges en cards/rows (verde=abierto, azul=syncing, check=synced, rojo=error)
+- SyncStatusBar inferior con boton Reintentar para errores
+- Conflictos auto-resueltos (local siempre gana, sin dialogo)
+- Panel de detalles ELIMINADO (320px recuperados): acciones via context menu
+- Cache local visible en sidebar (tamano + boton Limpiar)
+- Boton Volver reemplaza icono X para regresar al menu
 
-NOTA: Este modulo usa datos hardcoded para validacion con el cliente.
-La implementacion con BD real sera en las fases 6B-6F.';
+=== DRIVE V3 - Fases F+G (Cache + Pulido UX) ===
+- Atajos de teclado: F2 renombrar, Delete eliminar, F5 refrescar, Ctrl+N nueva carpeta, Ctrl+U subir, Ctrl+F buscar, Ctrl+A seleccionar todos, Backspace volver, Enter abrir
+- Empty state mejorado con botones de accion (Subir archivos, Nueva carpeta)
+- Animacion fade suave (150ms) al navegar entre carpetas
+- Prefetch de carpetas nivel 1-2 al iniciar (navegacion instantanea)
+- Limpieza automatica de thumbnails (>30 dias o >200MB via LRU)
+- Cache label muestra tamano combinado (thumbnails + archivos abiertos)
+
+=== DRIVE WORKFLOW TESTS ===
+- 7 tests automatizados con archivos reales: FolderCRUD, FileCRUD, BulkUpload, OpenInPlace, ConflictAutoResolve, SubfolderTree, Setup
+- Reporte copiable con tabla formateada (estado, nombre, tiempo, limite)
+- Boton Test Drive en sidebar (solo usuario caaj)
+
+=== SIDEBAR MEJORADO ===
+- Filtrar por tipo ahora aparece antes de Actividad (acceso rapido)
+- Recientes: empty state propio sin botones de crear/subir
+
+=== SEGURIDAD Y PRODUCCION ===
+- Certificado de firma incluido en el instalador (certutil importa a TrustedPublisher + Root)
+- DevMode desactivado (sin auto-login, sin skip password, username vacio)
+- Logging nivel Info (era Debug), retencion 30 dias
+- Herramientas dev (Purgar R2, Benchmark, Test Drive) solo visibles para usuario caaj
+- Proteccion contra loop de actualizacion (flag _updateCheckDone por sesion)';
 
     v_download_url TEXT;
     v_changelog JSONB;
@@ -55,22 +76,38 @@ BEGIN
 
     v_changelog := '{
         "Added": [
-            "Modulo Inventario: pantalla principal con cards de categorias",
-            "Modulo Inventario: detalle de categoria con DataGrid de productos",
-            "Modulo Inventario: formulario nuevo/editar producto (10 campos)",
-            "Modulo Inventario: formulario nueva categoria con color picker",
-            "Modulo Inventario: KPI cards (productos, por pedir, categorias)",
-            "Modulo Inventario: toast notifications animadas",
-            "Modulo Inventario: confirmacion eliminacion via overlay modal",
-            "MainMenu: boton INVENTARIO con badge EN PRUEBAS"
+            "Drive V3-A: Preview imagenes fullscreen con zoom, flechas y thumbnails en disco",
+            "Drive V3-B: Recientes en contenido principal con toggle Mis archivos/Todos",
+            "Drive V3-B: Actividad reciente en sidebar",
+            "Drive V3-C: Cut/Copy/Paste (Ctrl+X/C/V) entre carpetas",
+            "Drive V3-C: Descarga ZIP de seleccion multiple + Drag & Drop",
+            "Drive V3-D: Open-in-Place (doble-clic = abrir nativo + auto-sync al guardar)",
+            "Drive V3-D: FileWatcherService con debounce 2s y manifest JSON",
+            "Drive V3-D: Sync badges en cards/rows (abierto/syncing/synced/error)",
+            "Drive V3-D: SyncStatusBar inferior con Reintentar",
+            "Drive V3-G: Atajos teclado (F2, Delete, F5, Ctrl+N/U/F/A, Backspace, Enter)",
+            "Drive V3-G: Empty state con botones Subir archivos y Nueva carpeta",
+            "Drive V3-G: Animacion fade 150ms en transiciones de carpeta",
+            "Drive V3-F: Prefetch carpetas nivel 1-2 al iniciar",
+            "Drive V3-F: Limpieza automatica de thumbnails (LRU 200MB, 30 dias)",
+            "Drive Workflow Tests: 7 tests automatizados con archivos reales",
+            "Drive Workflow Tests: reporte copiable con tabla formateada",
+            "Instalador: certificado de firma incluido (instalacion transparente)"
         ],
         "Improved": [
-            "UX: ComboBox custom en inventario (estilo SupplierPendingView)",
-            "UX: botones accion DataGrid con fondo tintado (azul/rojo)",
-            "UX: layout responsivo centrado para pantallas grandes",
-            "UX: alertas stock bajo con filas amber y badges"
+            "Drive V3-E: Panel detalles eliminado (320px recuperados, acciones via context menu)",
+            "Drive V3-E: Conflictos auto-resueltos (local gana, sin dialogo)",
+            "Drive V3-E: Boton Volver reemplaza icono X",
+            "Drive V3-F: Cache label combinado (thumbs + open-in-place)",
+            "Sidebar: Filtrar por tipo antes de Actividad (acceso rapido)",
+            "Recientes: empty state contextual sin botones de crear",
+            "Herramientas dev (Purgar/Benchmark/Test) solo para usuario caaj",
+            "Logging: nivel Info con retencion 30 dias (modo produccion)"
         ],
-        "Fixed": []
+        "Fixed": [
+            "Fix: loop infinito de actualizacion (check unico por sesion con _updateCheckDone)",
+            "Fix: DevMode desactivado en produccion (auto-login, skip password, username vacio)"
+        ]
     }'::jsonb;
 
     UPDATE app_versions SET is_latest = false WHERE is_latest = true;

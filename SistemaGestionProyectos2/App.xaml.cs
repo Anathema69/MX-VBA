@@ -14,6 +14,7 @@ namespace SistemaGestionProyectos2
         private SessionTimeoutService _timeoutService;
         private SessionTimeoutWarningWindow _warningWindow;
         private DateTime _lastActivityNotification = DateTime.MinValue;
+        private bool _updateCheckDone; // Prevent duplicate update checks per session
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -321,6 +322,10 @@ namespace SistemaGestionProyectos2
         /// </summary>
         public async System.Threading.Tasks.Task CheckForUpdatesAsync()
         {
+            // Guard: only check once per session to prevent loops
+            if (_updateCheckDone) return;
+            _updateCheckDone = true;
+
             try
             {
                 // Obtener versión actual desde AssemblyInfo

@@ -63,8 +63,8 @@
   - [x] SQL: `search_in_folder`, `validate_folder_link`, `get_folder_tree` (pendiente deploy)
 
 ### Pendiente
-- [ ] Quitar botones temporales (Purgar R2, Benchmark)
-- [ ] Quitar auto-login temporal (appsettings.json)
+- [x] Botones dev (Purgar R2, Benchmark, Test Drive) ocultos — solo visibles para usuario "caaj"
+- [x] Auto-login desactivado, DevMode off, Logging nivel Info (modo produccion)
 - [ ] Confirmar si Shot&Shot/Rack V2.1 necesita orden nueva (actualmente sin vincular)
 
 ---

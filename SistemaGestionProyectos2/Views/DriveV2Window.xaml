@@ -326,6 +326,10 @@
                     <StackPanel Margin="16">
                         <StackPanel x:Name="NavPanel"/>
 
+                        <TextBlock Text="FILTRAR POR TIPO" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextMutedBrush}" Margin="12,24,0,12"/>
+                        <StackPanel x:Name="FilterPanel"/>
+
                         <!-- V3-B: Actividad -->
                         <Border x:Name="ActivitySection" Margin="0,16,0,0">
                             <StackPanel>
@@ -347,10 +351,6 @@
                                 <StackPanel x:Name="ActivityPanel"/>
                             </StackPanel>
                         </Border>
-
-                        <TextBlock Text="FILTRAR POR TIPO" FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}" Margin="12,24,0,12"/>
-                        <StackPanel x:Name="FilterPanel"/>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -541,11 +541,17 @@
                                        FontSize="32" Foreground="{StaticResource PrimaryBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-                        <TextBlock Text="Carpeta vacia" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock x:Name="EmptyStateTitle" Text="Carpeta vacia" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Crea una carpeta o sube un archivo para comenzar"
+                        <TextBlock x:Name="EmptyStateSubtitle" Text="Crea una carpeta o sube un archivo para comenzar"
                                    FontSize="13" Foreground="{StaticResource TextMutedBrush}"
                                    HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        <StackPanel x:Name="EmptyStateActions" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                            <Button Style="{StaticResource PrimaryButton}" Content="Subir archivos"
+                                    Click="Upload_Click" Padding="16,8" Margin="0,0,8,0"/>
+                            <Button Style="{StaticResource SecondaryButton}" Content="Nueva carpeta"
+                                    Click="NewFolder_Click" Padding="16,8"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Loading spinner (P2) -->

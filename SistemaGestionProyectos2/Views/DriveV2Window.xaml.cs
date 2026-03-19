@@ -146,7 +146,11 @@ namespace SistemaGestionProyectos2.Views
                 FileWatcherService.Instance.FileAutoUploaded += OnFileAutoUploaded;
                 FileWatcherService.Instance.FileSyncStateChanged += OnFileSyncStateChanged;
                 UpdateLocalCacheUI();
+                // F2: Cleanup old thumbnails fire-and-forget
+                _ = Task.Run(() => CleanupThumbnailCache());
                 await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot());
+                // F1: Prefetch top folders fire-and-forget (after initial load)
+                if (_folderCache.Count <= 1) _ = PrefetchTopFolders();
             };
         }
 
@@ -184,48 +188,49 @@ namespace SistemaGestionProyectos2.Views
             foreach (var (id, clr, lbl) in new[] { ("pdf", "#EF4444", "PDFs"), ("img", "#10B981", "Imagenes"), ("cad", "#8B5CF6", "Archivos CAD"), ("xls", "#10B981", "Hojas de calculo"), ("vid", "#EC4899", "Videos") })
             { var fi = MkFilter(id, clr, lbl, "0"); _filterItems.Add(fi); FilterPanel.Children.Add(fi); }
 
-            // Temporal: boton Purgar R2 para limpieza durante desarrollo
-            var purgeBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 24, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)) };
-            var psp = new StackPanel { Orientation = Orientation.Horizontal };
-            psp.Children.Add(new TextBlock { Text = "\uE74D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-            psp.Children.Add(new TextBlock { Text = "Purgar R2 (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center });
-            purgeBtn.Child = psp;
-            purgeBtn.MouseEnter += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xE2, 0xE2));
-            purgeBtn.MouseLeave += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2));
-            purgeBtn.MouseLeftButtonDown += async (s, e) =>
+            // Dev tools: solo visibles para usuario "caaj"
+            if (_currentUser?.Username?.ToLowerInvariant() == "caaj")
             {
-                if (!Confirm("ATENCION: Esto eliminara TODOS los archivos del bucket R2.\nLos registros en BD NO se eliminan.\n\nContinuar?")) return;
-                await SafeLoad(async () =>
+                var purgeBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 24, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)) };
+                var psp = new StackPanel { Orientation = Orientation.Horizontal };
+                psp.Children.Add(new TextBlock { Text = "\uE74D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+                psp.Children.Add(new TextBlock { Text = "Purgar R2", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center });
+                purgeBtn.Child = psp;
+                purgeBtn.MouseEnter += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xE2, 0xE2));
+                purgeBtn.MouseLeave += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2));
+                purgeBtn.MouseLeftButtonDown += async (s, e) =>
                 {
-                    StatusText.Text = "Purgando R2...";
-                    var count = await SupabaseService.Instance.PurgeDriveR2Files();
-                    StatusText.Text = count >= 0 ? $"R2 purgado: {count} archivos eliminados" : "Error purgando R2";
-                    if (count >= 0) { _statsCache.Clear(); await LoadFolder(); }
-                });
-            };
-            NavPanel.Children.Add(purgeBtn);
+                    if (!Confirm("ATENCION: Esto eliminara TODOS los archivos del bucket R2.\nLos registros en BD NO se eliminan.\n\nContinuar?")) return;
+                    await SafeLoad(async () =>
+                    {
+                        StatusText.Text = "Purgando R2...";
+                        var count = await SupabaseService.Instance.PurgeDriveR2Files();
+                        StatusText.Text = count >= 0 ? $"R2 purgado: {count} archivos eliminados" : "Error purgando R2";
+                        if (count >= 0) { _statsCache.Clear(); await LoadFolder(); }
+                    });
+                };
+                NavPanel.Children.Add(purgeBtn);
 
-            // Temporal: boton Benchmark para medir rendimiento
-            var benchBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF)) };
-            var bsp = new StackPanel { Orientation = Orientation.Horizontal };
-            bsp.Children.Add(new TextBlock { Text = "\uE9D2", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-            bsp.Children.Add(new TextBlock { Text = "Benchmark (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center });
-            benchBtn.Child = bsp;
-            benchBtn.MouseEnter += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xDB, 0xEA, 0xFE));
-            benchBtn.MouseLeave += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
-            benchBtn.MouseLeftButtonDown += RunBenchmark_Click;
-            NavPanel.Children.Add(benchBtn);
+                var benchBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF)) };
+                var bsp = new StackPanel { Orientation = Orientation.Horizontal };
+                bsp.Children.Add(new TextBlock { Text = "\uE9D2", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+                bsp.Children.Add(new TextBlock { Text = "Benchmark", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center });
+                benchBtn.Child = bsp;
+                benchBtn.MouseEnter += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xDB, 0xEA, 0xFE));
+                benchBtn.MouseLeave += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
+                benchBtn.MouseLeftButtonDown += RunBenchmark_Click;
+                NavPanel.Children.Add(benchBtn);
 
-            // Temporal: boton Test Drive para ejecutar workflow tests
-            var testBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)) };
-            var tsp = new StackPanel { Orientation = Orientation.Horizontal };
-            tsp.Children.Add(new TextBlock { Text = "\uE9D5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-            tsp.Children.Add(new TextBlock { Text = "Test Drive (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center });
-            testBtn.Child = tsp;
-            testBtn.MouseEnter += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0x99, 0xF6, 0xE4));
-            testBtn.MouseLeave += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1));
-            testBtn.MouseLeftButtonDown += RunDriveWorkflowTests_Click;
-            NavPanel.Children.Add(testBtn);
+                var testBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)) };
+                var tsp = new StackPanel { Orientation = Orientation.Horizontal };
+                tsp.Children.Add(new TextBlock { Text = "\uE9D5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+                tsp.Children.Add(new TextBlock { Text = "Test Drive", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center });
+                testBtn.Child = tsp;
+                testBtn.MouseEnter += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0x99, 0xF6, 0xE4));
+                testBtn.MouseLeave += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1));
+                testBtn.MouseLeftButtonDown += RunDriveWorkflowTests_Click;
+                NavPanel.Children.Add(testBtn);
+            }
         }
 
         Border MkNav(string id, string ico, string lbl)
@@ -307,6 +312,9 @@ namespace SistemaGestionProyectos2.Views
                 if (files.Count == 0)
                 {
                     ContentHost.Content = headerSp;
+                    EmptyStateTitle.Text = "Sin archivos recientes";
+                    EmptyStateSubtitle.Text = "Los archivos que subas o modifiques apareceran aqui";
+                    EmptyStateActions.Visibility = Visibility.Collapsed;
                     EmptyState.Visibility = Visibility.Visible;
                 }
                 else
@@ -716,6 +724,9 @@ namespace SistemaGestionProyectos2.Views
             _viewMode = _persistedViewMode;
 
             RenderContent();
+            EmptyStateTitle.Text = "Carpeta vacia";
+            EmptyStateSubtitle.Text = "Crea una carpeta o sube un archivo para comenzar";
+            EmptyStateActions.Visibility = Visibility.Visible;
             EmptyState.Visibility = tot == 0 ? Visibility.Visible : Visibility.Collapsed;
             LoadingPanel.Visibility = Visibility.Collapsed;
             UpdateFilterCounts();
@@ -802,10 +813,14 @@ namespace SistemaGestionProyectos2.Views
 
         void UpdateLocalCacheUI()
         {
-            var cacheSize = FileWatcherService.Instance.GetLocalCacheSize();
-            if (cacheSize > 0)
+            var openSize = FileWatcherService.Instance.GetLocalCacheSize();
+            // F3: Include thumbnail cache size
+            long thumbSize = 0;
+            try { if (Directory.Exists(ThumbnailCacheDir)) thumbSize = new DirectoryInfo(ThumbnailCacheDir).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length); } catch { }
+            var totalSize = openSize + thumbSize;
+            if (totalSize > 0)
             {
-                LocalCacheLabel.Text = $"Cache local: {Services.Drive.DriveService.FormatFileSize(cacheSize)}";
+                LocalCacheLabel.Text = $"Cache local: {Services.Drive.DriveService.FormatFileSize(totalSize)}";
                 ClearCacheBtn.Visibility = Visibility.Visible;
             }
             else
@@ -832,6 +847,80 @@ namespace SistemaGestionProyectos2.Views
             if (fId.HasValue) { _statsCache.Remove(fId.Value); _folderCache.Remove(fId.Value); }
             else { _statsCache.Clear(); _folderCache.Clear(); }
             if (_currentFolderId.HasValue) { _statsCache.Remove(_currentFolderId.Value); _folderCache.Remove(_currentFolderId.Value); }
+        }
+
+        // F1: Prefetch top 2 levels of folders for instant navigation
+        async Task PrefetchTopFolders()
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                var roots = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token);
+                var prefetched = 0;
+                foreach (var root in roots)
+                {
+                    if (_cts.IsCancellationRequested) return;
+                    if (_folderCache.ContainsKey(root.Id)) continue;
+                    var bcT = SupabaseService.Instance.GetDriveBreadcrumb(root.Id, _cts.Token);
+                    var fT = SupabaseService.Instance.GetDriveChildFolders(root.Id, _cts.Token);
+                    var fiT = SupabaseService.Instance.GetDriveFilesByFolder(root.Id, _cts.Token);
+                    await Task.WhenAll(bcT, fT, fiT);
+                    _folderCache[root.Id] = new FolderSnapshot(fT.Result, fiT.Result, bcT.Result, DateTime.Now);
+                    prefetched++;
+                    // Level 2: children of root
+                    foreach (var child in fT.Result)
+                    {
+                        if (_cts.IsCancellationRequested) return;
+                        if (_folderCache.ContainsKey(child.Id)) continue;
+                        var bc2 = SupabaseService.Instance.GetDriveBreadcrumb(child.Id, _cts.Token);
+                        var f2 = SupabaseService.Instance.GetDriveChildFolders(child.Id, _cts.Token);
+                        var fi2 = SupabaseService.Instance.GetDriveFilesByFolder(child.Id, _cts.Token);
+                        await Task.WhenAll(bc2, f2, fi2);
+                        _folderCache[child.Id] = new FolderSnapshot(f2.Result, fi2.Result, bc2.Result, DateTime.Now);
+                        prefetched++;
+                    }
+                }
+                Debug.WriteLine($"[DriveV2] Prefetch complete: {prefetched} folders cached in {sw.ElapsedMilliseconds}ms");
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { Debug.WriteLine($"[DriveV2] Prefetch error: {ex.Message}"); }
+        }
+
+        // F2: Cleanup old/large thumbnail cache
+        void CleanupThumbnailCache()
+        {
+            try
+            {
+                if (!Directory.Exists(ThumbnailCacheDir)) return;
+                var dir = new DirectoryInfo(ThumbnailCacheDir);
+                var files = dir.GetFiles("*", SearchOption.AllDirectories);
+                var totalSize = files.Sum(f => f.Length);
+                var cutoff = DateTime.Now.AddDays(-30);
+                long freed = 0;
+
+                // Delete thumbnails older than 30 days
+                foreach (var f in files.Where(f => f.LastAccessTime < cutoff))
+                {
+                    freed += f.Length; f.Delete();
+                }
+
+                // If still over 200MB, delete oldest by access time
+                const long maxBytes = 200 * 1024 * 1024;
+                if (totalSize - freed > maxBytes)
+                {
+                    var remaining = dir.GetFiles("*", SearchOption.AllDirectories)
+                        .OrderBy(f => f.LastAccessTime).ToList();
+                    var current = remaining.Sum(f => f.Length);
+                    foreach (var f in remaining)
+                    {
+                        if (current <= maxBytes) break;
+                        current -= f.Length; freed += f.Length; f.Delete();
+                    }
+                }
+
+                if (freed > 0) Debug.WriteLine($"[DriveV2] Thumbnail cleanup: freed {Services.Drive.DriveService.FormatFileSize(freed)}");
+            }
+            catch (Exception ex) { Debug.WriteLine($"[DriveV2] Thumbnail cleanup error: {ex.Message}"); }
         }
 
         // ===============================================
@@ -861,8 +950,13 @@ namespace SistemaGestionProyectos2.Views
             EmptyState.Visibility = Visibility.Collapsed;
             var filteredFiles = _activeFilter != null ? ApplyFileFilter(_currentFiles, _activeFilter) : _currentFiles;
             var sortedFiles = SortFiles(filteredFiles);
+
+            // G3: Fade transition
+            ContentHost.Opacity = 0;
             if (_viewMode == "list") RenderList(sortedFiles);
             else RenderWrap(sortedFiles);
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)) { EasingFunction = new QuadraticEase() };
+            ContentHost.BeginAnimation(UIElement.OpacityProperty, fadeIn);
         }
 
         // MEJORA-7: Sort files by current sort field
@@ -2615,7 +2709,48 @@ namespace SistemaGestionProyectos2.Views
             else if (ctrl && e.Key == Key.X) { ClipCut(); e.Handled = true; }
             else if (ctrl && e.Key == Key.C) { ClipCopy(); e.Handled = true; }
             else if (ctrl && e.Key == Key.V) { _ = ClipPaste(); e.Handled = true; }
+            // G1: Explorer-style keyboard shortcuts
+            else if (e.Key == Key.F2) { e.Handled = true; KeyRename(); }
+            else if (e.Key == Key.Delete) { e.Handled = true; _ = KeyDelete(); }
+            else if (e.Key == Key.F5) { e.Handled = true; RefreshButton_Click(this, new RoutedEventArgs()); }
+            else if (ctrl && e.Key == Key.N) { e.Handled = true; NewFolder_Click(this, new RoutedEventArgs()); }
+            else if (ctrl && e.Key == Key.U) { e.Handled = true; Upload_Click(this, new RoutedEventArgs()); }
+            else if (ctrl && e.Key == Key.F) { e.Handled = true; SearchBox.Focus(); }
+            else if (ctrl && e.Key == Key.A) { e.Handled = true; _selectedFileIds.Clear(); foreach (var f in _currentFiles) _selectedFileIds.Add(f.Id); UpdateMultiSelectBar(); RenderContent(); }
+            else if (e.Key == Key.Back) { e.Handled = true; BackToFolders_Click(this, new RoutedEventArgs()); }
+            else if (e.Key == Key.Enter) { e.Handled = true; KeyOpen(); }
             base.OnKeyDown(e);
+        }
+
+        void KeyRename()
+        {
+            if (_selectedFileIds.Count == 1) { var f = _currentFiles.FirstOrDefault(x => x.Id == _selectedFileIds.First()); if (f != null) RenFile(f); }
+            else if (_selectedFileIds.Count == 0 && _currentFolders.Count == 1) RenFolder(_currentFolders[0]);
+        }
+
+        async Task KeyDelete()
+        {
+            if (_selectedFileIds.Count > 0)
+            {
+                var files = _currentFiles.Where(f => _selectedFileIds.Contains(f.Id)).ToList();
+                if (files.Count == 0) return;
+                if (files.Count == 1) { await DelFile(files[0]); return; }
+                if (!Confirm($"Eliminar {files.Count} archivos seleccionados?")) return;
+                foreach (var f in files) await DelFile(f);
+            }
+        }
+
+        void KeyOpen()
+        {
+            if (_selectedFileIds.Count == 1)
+            {
+                var f = _currentFiles.FirstOrDefault(x => x.Id == _selectedFileIds.First());
+                if (f != null) _ = OpenFileInPlace(f);
+            }
+            else if (_selectedFileIds.Count == 0 && _currentFolders.Count > 0)
+            {
+                // If no files selected, open first folder
+            }
         }
         async void OnMouseNav(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.XButton1) { e.Handled = true; await SafeLoad(() => NavBack()); } else if (e.ChangedButton == MouseButton.XButton2) { e.Handled = true; await SafeLoad(() => NavFwd()); } }
 

@@ -419,3 +419,7 @@ FodyWeavers.xsd
 appsettings.json
 .idea
 .claude
+
+# Instaladores y certificados (pesados / sensibles)
+SistemaGestionProyectos2/installer/*.exe
+*.pfx
