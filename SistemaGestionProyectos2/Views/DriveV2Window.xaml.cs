@@ -17,6 +17,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.IO.Compression;
+using SistemaGestionProyectos2.Models.DTOs;
+using SistemaGestionProyectos2.Services.Drive;
 using System.Windows.Shapes;
 
 namespace SistemaGestionProyectos2.Views
@@ -44,7 +47,6 @@ namespace SistemaGestionProyectos2.Views
         private string _sortField = "name"; // MEJORA-7: name, type, size, date
         private bool _sortAsc = true;
         private long _globalStorageBytes = -1;
-        private DriveFileDb? _selectedFile = null;
         private readonly HashSet<int> _selectedFileIds = new(); // Multi-select
         private readonly List<Border> _navItems = new();
         private readonly List<Border> _filterItems = new(); // BUG-3: filter sidebar items
@@ -77,6 +79,9 @@ namespace SistemaGestionProyectos2.Views
         private static readonly string ThumbnailCacheDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "IMA-Drive", "thumbs");
+
+        // V3-E: Open-in-Place sync states
+        private readonly Dictionary<int, SyncState> _syncStates = new();
 
         // Navigation cache (stale-while-revalidate)
         private readonly Dictionary<int, FolderSnapshot> _folderCache = new();
@@ -132,7 +137,17 @@ namespace SistemaGestionProyectos2.Views
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             MouseDown += OnMouseNav;
-            Loaded += async (s, e) => { InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); _ = LoadSidebarRecentsAndActivity(); await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot()); };
+            Loaded += async (s, e) =>
+            {
+                InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); _ = LoadSidebarActivity();
+                // V3-E: Initialize FileWatcher
+                FileWatcherService.Instance.CurrentUserId = _currentUser?.Id ?? 0;
+                FileWatcherService.Instance.Initialize();
+                FileWatcherService.Instance.FileAutoUploaded += OnFileAutoUploaded;
+                FileWatcherService.Instance.FileSyncStateChanged += OnFileSyncStateChanged;
+                UpdateLocalCacheUI();
+                await SafeLoad(() => _navigateToFolderId.HasValue ? NavTo(_navigateToFolderId.Value, hist: false) : NavigateToRoot());
+            };
         }
 
         /// <summary>Open Drive navigating directly to a specific folder</summary>
@@ -150,7 +165,13 @@ namespace SistemaGestionProyectos2.Views
             SelectionBannerText.Text = $"Seleccione una carpeta para vincular a {orderPo}";
         }
 
-        protected override void OnClosed(EventArgs e) { _cts?.Cancel(); _cts?.Dispose(); base.OnClosed(e); }
+        protected override void OnClosed(EventArgs e)
+        {
+            // V3-E: Unsubscribe from FileWatcher events (don't dispose — singleton survives window)
+            FileWatcherService.Instance.FileAutoUploaded -= OnFileAutoUploaded;
+            FileWatcherService.Instance.FileSyncStateChanged -= OnFileSyncStateChanged;
+            _cts?.Cancel(); _cts?.Dispose(); base.OnClosed(e);
+        }
 
         // ===============================================
         // SIDEBAR
@@ -203,7 +224,7 @@ namespace SistemaGestionProyectos2.Views
             sp.Children.Add(new TextBlock { Text = ico, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 16, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0), Foreground = TextSecondary });
             sp.Children.Add(new TextBlock { Text = lbl, FontSize = 14, FontWeight = FontWeights.Medium, VerticalAlignment = VerticalAlignment.Center, Foreground = TextSecondary });
             b.Child = sp;
-            b.MouseLeftButtonDown += async (s, e) => { if (id == "all") { SetNav(id); ClearMultiSelect(); _activeFilter = null; UpdateFilterHighlight(); HideDetail(); await SafeLoad(() => NavigateToRoot()); } };
+            b.MouseLeftButtonDown += async (s, e) => { if (id == "all") { SetNav(id); ClearMultiSelect(); _activeFilter = null; UpdateFilterHighlight(); await SafeLoad(() => NavigateToRoot()); } else if (id == "recent") { SetNav(id); ClearMultiSelect(); _activeFilter = null; UpdateFilterHighlight(); await SafeLoad(() => LoadRecentsInContent()); } };
             b.MouseEnter += (s, e) => { if (b.Tag as string != _activeNav) b.Background = HoverBg; };
             b.MouseLeave += (s, e) => { if (b.Tag as string != _activeNav) b.Background = Brushes.Transparent; };
             return b;
@@ -215,11 +236,10 @@ namespace SistemaGestionProyectos2.Views
         // V3-B: RECIENTES & ACTIVIDAD (SIDEBAR)
         // ===============================================
 
-        async Task LoadSidebarRecentsAndActivity()
+        async Task LoadSidebarActivity()
         {
             try
             {
-                await LoadRecentFiles();
                 await LoadActivityFeed();
 
                 // Actividad solo visible para roles con visibilidad amplia
@@ -230,31 +250,89 @@ namespace SistemaGestionProyectos2.Views
             catch { /* sidebar load failure is non-critical */ }
         }
 
-        async Task LoadRecentFiles()
+        async Task LoadRecentsInContent()
         {
-            RecentFilesPanel.Children.Clear();
+            _currentFolderId = null;
+            _currentFolders.Clear();
+            _currentFiles.Clear();
+            _breadcrumb.Clear();
+            _selectedFileIds.Clear();
+            ClearMultiSelect();
+
+            BackToFoldersBtn.Visibility = Visibility.Collapsed;
+            SectionTitle.Text = "Archivos recientes";
+            EmptyState.Visibility = Visibility.Collapsed;
+            LoadingPanel.Visibility = Visibility.Visible;
+            ((Storyboard)FindResource("SpinnerStoryboard")).Begin();
+
             try
             {
                 List<DriveFileDb> files;
                 if (_recentShowAll)
-                    files = await SupabaseService.Instance.GetDriveRecentFiles(15, _cts.Token);
+                    files = await SupabaseService.Instance.GetDriveRecentFiles(50, _cts.Token);
                 else
                 {
-                    // Mis recientes: archivos subidos por el usuario actual
                     var all = await SupabaseService.Instance.GetDriveRecentFiles(50, _cts.Token);
-                    files = all.Where(f => f.UploadedBy == _currentUser.Id).Take(15).ToList();
+                    files = all.Where(f => f.UploadedBy == _currentUser.Id).Take(50).ToList();
                 }
+
+                // Build header with toggle
+                var headerSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
+                var toggleLabel = new TextBlock { Text = _recentShowAll ? "Todos" : "Mis archivos", FontSize = 13, Foreground = TextSecondary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+                var toggleBorder = new Border { Width = 36, Height = 18, CornerRadius = new CornerRadius(9), Background = _recentShowAll ? GreenOk : Primary, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center };
+                var toggleDot = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(7), Background = Brushes.White, HorizontalAlignment = _recentShowAll ? HorizontalAlignment.Left : HorizontalAlignment.Right, Margin = new Thickness(2) };
+                toggleBorder.Child = toggleDot;
+                toggleBorder.MouseLeftButtonDown += async (s, e) =>
+                {
+                    _recentShowAll = !_recentShowAll;
+                    await SafeLoad(() => LoadRecentsInContent());
+                };
+                headerSp.Children.Add(toggleLabel);
+                headerSp.Children.Add(toggleBorder);
+
+                SectionSubtitle.Text = $"{files.Count} archivo{(files.Count != 1 ? "s" : "")}";
+                StatusText.Text = $"{files.Count} elemento{(files.Count != 1 ? "s" : "")}";
 
                 if (files.Count == 0)
                 {
-                    RecentFilesPanel.Children.Add(new TextBlock { Text = "Sin archivos recientes", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0), FontStyle = FontStyles.Italic });
-                    return;
+                    ContentHost.Content = headerSp;
+                    EmptyState.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    var stk = new StackPanel();
+                    stk.Children.Add(headerSp);
+
+                    if (_viewMode == "list")
+                    {
+                        // Render as list
+                        _currentFiles = files;
+                        var wrap = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), BorderBrush = BorderColor, BorderThickness = new Thickness(1), ClipToBounds = true };
+                        var listStk = new StackPanel();
+                        foreach (var f in files) listStk.Children.Add(MkFileListRow(f));
+                        wrap.Child = listStk;
+                        stk.Children.Add(wrap);
+                    }
+                    else
+                    {
+                        // Render as grid
+                        _currentFiles = files;
+                        var filew = new WrapPanel();
+                        foreach (var f in files) { var c = MkFileCard(f); c.Width = 200; c.Margin = new Thickness(6); filew.Children.Add(c); }
+                        stk.Children.Add(filew);
+                    }
+                    ContentHost.Content = stk;
                 }
 
-                foreach (var file in files)
-                    RecentFilesPanel.Children.Add(MkRecentFileItem(file));
+                RenderBreadcrumb();
+                UpdateSearchPlaceholder();
             }
-            catch { RecentFilesPanel.Children.Add(new TextBlock { Text = "Error al cargar", FontSize = 12, Foreground = TextLight, Margin = new Thickness(12, 4, 0, 0) }); }
+            catch (Exception ex) { StatusText.Text = "Error"; SectionSubtitle.Text = ex.Message; }
+            finally
+            {
+                LoadingPanel.Visibility = Visibility.Collapsed;
+                ((Storyboard)FindResource("SpinnerStoryboard")).Stop();
+            }
         }
 
         Border MkRecentFileItem(DriveFileDb file)
@@ -283,13 +361,11 @@ namespace SistemaGestionProyectos2.Views
                 await SafeLoad(async () =>
                 {
                     await NavTo(file.FolderId);
-                    // Después de cargar, seleccionar el archivo
-                    _selectedFile = _currentFiles.FirstOrDefault(f => f.Id == file.Id) ?? file;
-                    if (_selectedFile != null)
+                    var found = _currentFiles.FirstOrDefault(f => f.Id == file.Id);
+                    if (found != null)
                     {
                         _selectedFileIds.Clear();
-                        _selectedFileIds.Add(_selectedFile.Id);
-                        ShowDetail(_selectedFile);
+                        _selectedFileIds.Add(found.Id);
                         RenderContent();
                     }
                 });
@@ -368,15 +444,6 @@ namespace SistemaGestionProyectos2.Views
             return row;
         }
 
-        void RecentToggle_Click(object sender, MouseButtonEventArgs e)
-        {
-            _recentShowAll = !_recentShowAll;
-            RecentToggleLabel.Text = _recentShowAll ? "Todos" : "Mis archivos";
-            RecentToggle.Background = _recentShowAll ? GreenOk : Primary;
-            RecentToggleDot.HorizontalAlignment = _recentShowAll ? HorizontalAlignment.Left : HorizontalAlignment.Right;
-            _ = LoadRecentFiles();
-        }
-
         void ActivityHeader_Click(object sender, MouseButtonEventArgs e)
         {
             _activityExpanded = !_activityExpanded;
@@ -384,8 +451,12 @@ namespace SistemaGestionProyectos2.Views
             ActivityChevronRotation.Angle = _activityExpanded ? 90 : 0;
         }
 
-        /// <summary>Refresh sidebar after upload or other file operations</summary>
-        void RefreshSidebarRecents() => _ = LoadSidebarRecentsAndActivity();
+        /// <summary>Refresh sidebar activity + recents content if active</summary>
+        void RefreshSidebarRecents()
+        {
+            _ = LoadSidebarActivity();
+            if (_activeNav == "recent") _ = SafeLoad(() => LoadRecentsInContent());
+        }
 
         Border MkFilter(string filterId, string clr, string lbl, string cnt)
         {
@@ -482,7 +553,7 @@ namespace SistemaGestionProyectos2.Views
         async Task NavTo(int fId, bool hist = true)
         {
             if (hist && _currentFolderId.HasValue && _currentFolderId.Value != fId) { _backHistory.Push(_currentFolderId.Value); _forwardHistory.Clear(); }
-            _currentFolderId = fId; _selectedFile = null; _selectedFileIds.Clear(); HideDetail();
+            _currentFolderId = fId; _selectedFileIds.Clear();
             // Clear search box on navigation (e.g. clicking a search result)
             if (!string.IsNullOrEmpty(SearchBox.Text)) { SearchBox.Text = ""; SearchPlaceholder.Visibility = Visibility.Visible; }
             // BUG-3: Reset filter on navigation
@@ -616,7 +687,7 @@ namespace SistemaGestionProyectos2.Views
         void RenderFolderUI()
         {
             // Clear all selection state when changing folders
-            ClearMultiSelect(); HideDetail();
+            ClearMultiSelect();
             RenderBreadcrumb();
             BackToFoldersBtn.Visibility = _breadcrumb.Count <= 1 ? Visibility.Collapsed : Visibility.Visible;
             SectionTitle.Text = _breadcrumb.LastOrDefault()?.Name ?? "IMA Drive";
@@ -717,6 +788,33 @@ namespace SistemaGestionProyectos2.Views
             StorageEmptyCol.Width = new GridLength(100 - pct, GridUnitType.Star);
         }
         void UpdateStorageUI(long addedBytes) { if (_globalStorageBytes >= 0) _globalStorageBytes += addedBytes; UpdateStorageUI(); }
+
+        void UpdateLocalCacheUI()
+        {
+            var cacheSize = FileWatcherService.Instance.GetLocalCacheSize();
+            if (cacheSize > 0)
+            {
+                LocalCacheLabel.Text = $"Cache local: {Services.Drive.DriveService.FormatFileSize(cacheSize)}";
+                ClearCacheBtn.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                LocalCacheLabel.Text = "";
+                ClearCacheBtn.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        void ClearCache_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (FileWatcherService.Instance.HasPendingSyncs())
+            {
+                ShowToast("No se puede limpiar: hay archivos sincronizando", "warning");
+                return;
+            }
+            FileWatcherService.Instance.ClearLocalCache();
+            UpdateLocalCacheUI();
+            ShowToast("Cache local limpiado", "success");
+        }
 
         void InvalidateStats(int? fId = null)
         {
@@ -873,7 +971,7 @@ namespace SistemaGestionProyectos2.Views
             // MEJORA-9: Double-click to open folder (change ClickCount == 2 to 1 for single-click)
             rb.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
             var linked = folder.LinkedOrderId.HasValue;
-            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(MI("Descargar como ZIP", (_, _) => _ = DownloadFolderAsZip(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return rb;
         }
 
@@ -905,13 +1003,22 @@ namespace SistemaGestionProyectos2.Views
             var rb = new Border { BorderBrush = BorderLight, BorderThickness = new Thickness(0, 0, 0, 1), Child = rg };
             rb.MouseEnter += (s, e) => { selCircle.Visibility = Visibility.Visible; if (!_selectedFileIds.Contains(file.Id)) rg.Background = HoverBg; nt.Foreground = Primary; };
             rb.MouseLeave += (s, e) => { if (!_selectedFileIds.Contains(file.Id)) { selCircle.Visibility = Visibility.Collapsed; rg.Background = Brushes.White; } nt.Foreground = TextPrimary; };
+            // V3-E: Sync badge for list row
+            var syncState = FileWatcherService.Instance.GetSyncState(file.Id);
+            if (syncState != SyncState.None)
+            {
+                var syncBadge = MkSyncBadge(syncState);
+                syncBadge.Margin = new Thickness(6, 0, 0, 0);
+                syncBadge.VerticalAlignment = VerticalAlignment.Center;
+                np.Children.Add(syncBadge);
+            }
             rb.MouseLeftButtonDown += (s, e) =>
             {
-                if (e.ClickCount == 2) { _ = DlFile(file); return; }
+                if (e.ClickCount == 2) { _ = OpenFileInPlace(file); return; }
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleFileSelect(file); }
-                else { ClearMultiSelect(); _selectedFile = file; _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); ShowDetail(file); RenderContent(); }
+                else { ClearMultiSelect(); _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); RenderContent(); }
             };
-            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            rb.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", async (_, _) => await OpenFileInPlace(file))); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); if (Services.Drive.DriveService.IsImageFile(file.FileName)) { m.Items.Add(new Separator()); m.Items.Add(MI("Ver imagen", (_, _) => OpenImageOverlay(file))); } m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = rb; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return rb;
         }
 
@@ -994,7 +1101,7 @@ namespace SistemaGestionProyectos2.Views
             card.MouseLeave += (s, e) => { card.Effect = null; nameT.Foreground = TextPrimary; moreBtn.Visibility = Visibility.Collapsed; };
             // MEJORA-9: Double-click to open folder (configurable: change ClickCount == 2 to ClickCount == 1 for single-click navigation)
             card.MouseLeftButtonDown += (s, e) => { if (blockedInSelection) return; if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
-            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(MI("Descargar como ZIP", (_, _) => _ = DownloadFolderAsZip(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return card;
         }
 
@@ -1061,229 +1168,27 @@ namespace SistemaGestionProyectos2.Views
             Grid.SetRow(ip, 1); mg.Children.Add(ip); card.Child = mg;
             card.MouseEnter += (s, e) => { selCircle.Visibility = Visibility.Visible; if (!_selectedFileIds.Contains(file.Id)) { card.BorderBrush = SlateLight; card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 4, Opacity = 0.08 }; } nameT.Foreground = Primary; };
             card.MouseLeave += (s, e) => { if (!_selectedFileIds.Contains(file.Id)) { selCircle.Visibility = Visibility.Collapsed; card.BorderBrush = BorderColor; card.Effect = null; } nameT.Foreground = TextPrimary; };
+            // V3-E: Sync badge overlay for grid card
+            var syncState = FileWatcherService.Instance.GetSyncState(file.Id);
+            if (syncState != SyncState.None)
+            {
+                var syncBadge = MkSyncBadge(syncState);
+                syncBadge.HorizontalAlignment = HorizontalAlignment.Left;
+                syncBadge.VerticalAlignment = VerticalAlignment.Top;
+                syncBadge.Margin = new Thickness(10, 38, 0, 0);
+                pg.Children.Add(syncBadge);
+            }
             card.MouseLeftButtonDown += (s, e) =>
             {
-                if (e.ClickCount == 2) { _ = DlFile(file); return; }
+                if (e.ClickCount == 2) { _ = OpenFileInPlace(file); return; }
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleFileSelect(file); }
-                else { ClearMultiSelect(); _selectedFile = file; _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); ShowDetail(file); RenderContent(); }
+                else { ClearMultiSelect(); _selectedFileIds.Add(file.Id); UpdateMultiSelectBar(); RenderContent(); }
             };
-            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
+            card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", async (_, _) => await OpenFileInPlace(file))); m.Items.Add(MI("Descargar", async (_, _) => await DlFile(file))); m.Items.Add(MI("Renombrar", (_, _) => RenFile(file))); m.Items.Add(new Separator()); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFilesTo(new[] { file }))); m.Items.Add(MI("Copiar a...", (_, _) => _ = CopyFileTo(file))); m.Items.Add(MI("Duplicar", (_, _) => _ = DuplicateFile(file))); if (Services.Drive.DriveService.IsImageFile(file.FileName)) { m.Items.Add(new Separator()); m.Items.Add(MI("Ver imagen", (_, _) => OpenImageOverlay(file))); } m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFile(file)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
             return card;
         }
 
-        // ===============================================
-        // DETAIL PANEL (P6 safe icons)
-        // ===============================================
-        async void ShowDetail(DriveFileDb file)
-        {
-            var (cH, _) = GFC(file.FileName); var fC = CH(cH);
-            DetailFileName.Text = file.FileName;
-            DetailFileExt.Text = $"Archivo {System.IO.Path.GetExtension(file.FileName)?.TrimStart('.').ToUpperInvariant()}";
-            DetailPreviewIcon.Text = FIcon(file.FileName);
-            DetailPreviewBg.Background = new LinearGradientBrush(Color.FromArgb(20, fC.R, fC.G, fC.B), Color.FromArgb(40, fC.R, fC.G, fC.B), 45);
-            DetailPreviewIcon.Foreground = new SolidColorBrush(fC);
-
-            // V3-A: Reset preview states
-            DetailPreviewBg.Visibility = Visibility.Visible;
-            DetailImageBorder.Visibility = Visibility.Collapsed;
-            DetailTextBorder.Visibility = Visibility.Collapsed;
-            DetailPreviewSpinner.Visibility = Visibility.Collapsed;
-            DetailImageHint.Visibility = Visibility.Collapsed;
-            DetailPreviewImage.Source = null;
-            DetailTextContent.Text = "";
-
-            // V3-A: Load rich preview based on file type
-            if (Services.Drive.DriveService.IsImageFile(file.FileName))
-            {
-                _ = LoadImagePreview(file);
-            }
-            else if (Services.Drive.DriveService.IsTextFile(file.FileName))
-            {
-                _ = LoadTextPreview(file);
-            }
-            else if (Services.Drive.DriveService.IsOfficeFile(file.FileName))
-            {
-                ShowOfficePreview(file);
-            }
-            else if (Services.Drive.DriveService.IsCadFile(file.FileName))
-            {
-                ShowCadPreview(file);
-            }
-
-            var uploader = await ResolveUser(file.UploadedBy);
-            var loc = _breadcrumb.Count > 0 ? string.Join(" / ", _breadcrumb.Select(b => b.Name)) : "IMA Drive";
-            DetailInfoPanel.Children.Clear();
-            foreach (var (ico, lbl, val) in new[] {
-                ("\uE8A5", "Tipo", FType(file.FileName)),
-                ("\uE7F8", "Tamano", Services.Drive.DriveService.FormatFileSize(file.FileSize)),
-                ("\uE787", "Fecha de subida", file.UploadedAt?.ToString("dd 'de' MMMM, yyyy") ?? "Sin fecha"),
-                ("\uE77B", "Subido por", uploader),
-                ("\uE8B7", "Ubicacion", loc) })
-            {
-                var g = new Grid { Margin = new Thickness(0, 0, 0, 16) };
-                var ib2 = new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(8), Background = Background, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-                ib2.Child = new TextBlock { Text = ico, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = TextMuted, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-                g.Children.Add(ib2);
-                var tp = new StackPanel { Margin = new Thickness(44, 0, 0, 0) };
-                tp.Children.Add(new TextBlock { Text = lbl, FontSize = 11, Foreground = TextLight, Margin = new Thickness(0, 0, 0, 2) });
-                tp.Children.Add(new TextBlock { Text = val, FontSize = 13, FontWeight = FontWeights.Medium, Foreground = TextPrimary, TextWrapping = TextWrapping.Wrap });
-                g.Children.Add(tp); DetailInfoPanel.Children.Add(g);
-            }
-            DetailPanel.Visibility = Visibility.Visible;
-        }
-        void HideDetail() { _selectedFile = null; DetailPanel.Visibility = Visibility.Collapsed; }
-
-        // ===============================================
-        // V3-A: PREVIEW METHODS
-        // ===============================================
-
-        async Task LoadImagePreview(DriveFileDb file)
-        {
-            // Check in-memory cache first
-            if (_previewCache.TryGetValue(file.Id, out var cached))
-            {
-                ShowImageInDetail(cached, file);
-                return;
-            }
-
-            // Show spinner while loading
-            DetailPreviewBg.Visibility = Visibility.Collapsed;
-            DetailImageBorder.Visibility = Visibility.Visible;
-            DetailPreviewSpinner.Visibility = Visibility.Visible;
-
-            try
-            {
-                var bytes = await Task.Run(async () =>
-                    await SupabaseService.Instance.DownloadDriveFile(file.Id, _cts.Token));
-                if (bytes == null || bytes.Length == 0) return;
-
-                var bmp = await Task.Run(() =>
-                {
-                    var bi = new BitmapImage();
-                    bi.BeginInit();
-                    bi.StreamSource = new MemoryStream(bytes);
-                    bi.DecodePixelWidth = 600; // limit memory for preview
-                    bi.CacheOption = BitmapCacheOption.OnLoad;
-                    bi.EndInit();
-                    bi.Freeze();
-                    return bi;
-                });
-
-                CachePreview(file.Id, bmp);
-                if (_selectedFile?.Id == file.Id) // still viewing this file
-                    ShowImageInDetail(bmp, file);
-            }
-            catch
-            {
-                // Fallback to icon if preview fails
-                if (_selectedFile?.Id == file.Id)
-                {
-                    DetailPreviewBg.Visibility = Visibility.Visible;
-                    DetailImageBorder.Visibility = Visibility.Collapsed;
-                }
-            }
-        }
-
-        void ShowImageInDetail(BitmapImage bmp, DriveFileDb file)
-        {
-            DetailPreviewSpinner.Visibility = Visibility.Collapsed;
-            DetailPreviewBg.Visibility = Visibility.Collapsed;
-            DetailImageBorder.Visibility = Visibility.Visible;
-            DetailPreviewImage.Source = bmp;
-            DetailImageHint.Visibility = Visibility.Visible;
-            // Fix: use _selectedFile to always open the correct image (not a stale closure)
-            DetailImageBorder.MouseLeftButtonDown -= DetailImageBorder_Click;
-            DetailImageBorder.MouseLeftButtonDown += DetailImageBorder_Click;
-        }
-        void DetailImageBorder_Click(object sender, MouseButtonEventArgs e)
-        {
-            e.Handled = true;
-            if (_selectedFile != null) OpenImageOverlay(_selectedFile);
-        }
-
-        async Task LoadTextPreview(DriveFileDb file)
-        {
-            DetailPreviewBg.Visibility = Visibility.Collapsed;
-            DetailTextBorder.Visibility = Visibility.Visible;
-            DetailTextContent.Text = "Cargando...";
-
-            try
-            {
-                var bytes = await Task.Run(async () =>
-                    await SupabaseService.Instance.DownloadDriveFilePartial(file.Id, 102400, _cts.Token));
-                if (bytes == null || _selectedFile?.Id != file.Id) return;
-
-                var text = Encoding.UTF8.GetString(bytes);
-                var isTruncated = file.FileSize.HasValue && file.FileSize.Value > 102400;
-                DetailTextContent.Text = isTruncated ? text + "\n\n--- Mostrando primeros 100 KB ---" : text;
-            }
-            catch
-            {
-                if (_selectedFile?.Id == file.Id)
-                {
-                    DetailPreviewBg.Visibility = Visibility.Visible;
-                    DetailTextBorder.Visibility = Visibility.Collapsed;
-                }
-            }
-        }
-
-        void ShowOfficePreview(DriveFileDb file)
-        {
-            // Show colored icon with "Open with..." button
-            var ext = System.IO.Path.GetExtension(file.FileName)?.ToLowerInvariant();
-            var (appName, appColor) = ext switch
-            {
-                ".doc" or ".docx" => ("Word", Color.FromRgb(0x2B, 0x57, 0x9A)),
-                ".xls" or ".xlsx" => ("Excel", Color.FromRgb(0x21, 0x73, 0x46)),
-                ".ppt" or ".pptx" => ("PowerPoint", Color.FromRgb(0xD2, 0x47, 0x26)),
-                _ => ("aplicacion", Color.FromRgb(0x64, 0x74, 0x8B))
-            };
-
-            DetailPreviewBg.Background = new LinearGradientBrush(
-                Color.FromArgb(20, appColor.R, appColor.G, appColor.B),
-                Color.FromArgb(50, appColor.R, appColor.G, appColor.B), 45);
-            DetailPreviewIcon.Foreground = new SolidColorBrush(appColor);
-            DetailPreviewIcon.FontSize = 48;
-
-            // Add "Open with" button below info
-            var openBtn = new Button
-            {
-                Padding = new Thickness(12, 8, 12, 8),
-                Cursor = Cursors.Hand,
-                Background = new SolidColorBrush(appColor),
-                Foreground = Brushes.White,
-                BorderThickness = new Thickness(0),
-                Tag = "officeOpenBtn"
-            };
-            var sp = new StackPanel { Orientation = Orientation.Horizontal };
-            sp.Children.Add(new TextBlock { Text = "\uE8E5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
-            sp.Children.Add(new TextBlock { Text = $"Abrir con {appName}", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center });
-            openBtn.Content = sp;
-            openBtn.Click += async (s, e) => await OpenFileWithSystemApp(file);
-
-            // Will be inserted after info panel renders
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                // Remove previous office button if exists
-                var existing = DetailInfoPanel.Children.OfType<Button>().FirstOrDefault(b => b.Tag as string == "officeOpenBtn");
-                if (existing != null) DetailInfoPanel.Children.Remove(existing);
-
-                var wrapper = new Border { CornerRadius = new CornerRadius(8), ClipToBounds = true, Margin = new Thickness(0, 8, 0, 0) };
-                wrapper.Child = openBtn;
-                openBtn.Tag = "officeOpenBtn";
-                DetailInfoPanel.Children.Add(openBtn);
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
-        }
-
-        void ShowCadPreview(DriveFileDb file)
-        {
-            var cadColor = Color.FromRgb(0xFF, 0x6F, 0x00);
-            DetailPreviewBg.Background = new LinearGradientBrush(
-                Color.FromArgb(15, cadColor.R, cadColor.G, cadColor.B),
-                Color.FromArgb(40, cadColor.R, cadColor.G, cadColor.B), 45);
-            DetailPreviewIcon.Foreground = new SolidColorBrush(cadColor);
-            DetailPreviewIcon.FontSize = 48;
-        }
+        // Detail panel removed — download/delete via context menu, preview via image overlay
 
         async Task OpenFileWithSystemApp(DriveFileDb file)
         {
@@ -1304,6 +1209,146 @@ namespace SistemaGestionProyectos2.Views
             catch (Exception ex)
             {
                 ShowToast($"No se pudo abrir: {ex.Message}", "error");
+            }
+        }
+
+        // ===============================================
+        // V3-E: OPEN-IN-PLACE + AUTO-SYNC
+        // ===============================================
+
+        async Task OpenFileInPlace(DriveFileDb file)
+        {
+            if (!SupabaseService.Instance.IsDriveStorageConfigured) { ShowToast("R2 Storage no configurado", "warning"); return; }
+
+            try
+            {
+                StatusText.Text = $"Abriendo {file.FileName}...";
+                var localPath = await FileWatcherService.Instance.OpenFile(file, _cts.Token);
+                if (localPath == null) { ShowToast($"Error al descargar {file.FileName}", "error"); return; }
+
+                Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+                StatusText.Text = $"{file.FileName} abierto - cambios se sincronizan automaticamente";
+                ShowToast($"{file.FileName} abierto", "info");
+                UpdateSyncStatusBar();
+                RenderContent(); // Refresh to show sync badge
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"No se pudo abrir: {ex.Message}", "error");
+            }
+        }
+
+        Border MkSyncBadge(SyncState state)
+        {
+            var (icon, bg, fg, tip) = state switch
+            {
+                SyncState.Opened => ("\uE70F", Color.FromRgb(0x10, 0xB9, 0x81), Brushes.White, "Abierto localmente"),
+                SyncState.Syncing => ("\uE895", Color.FromRgb(0x3B, 0x82, 0xF6), Brushes.White, "Sincronizando..."),
+                SyncState.Synced => ("\uE73E", Color.FromRgb(0x10, 0xB9, 0x81), Brushes.White, "Sincronizado"),
+                SyncState.Error => ("\uEA39", Color.FromRgb(0xEF, 0x44, 0x44), Brushes.White, "Error de sincronizacion"),
+                SyncState.Conflict => ("\uE7BA", Color.FromRgb(0xF5, 0x9E, 0x0B), Brushes.White, "Conflicto detectado"),
+                _ => ("", Colors.Transparent, Brushes.Transparent, "")
+            };
+
+            var badge = new Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(10),
+                Background = new SolidColorBrush(bg),
+                ToolTip = tip
+            };
+            badge.Child = new TextBlock
+            {
+                Text = icon, FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 10, Foreground = fg,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            return badge;
+        }
+
+        void OnFileAutoUploaded(string fileName, string status)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                switch (status)
+                {
+                    case "success":
+                        ShowToast($"{fileName} sincronizado", "success");
+                        break;
+                    case "error":
+                        ShowToast($"Error al sincronizar {fileName}", "error");
+                        break;
+                    case "conflict":
+                        var entry = GetWatchedEntry(fileName);
+                        if (entry != null) HandleConflict(entry, fileName);
+                        break;
+                }
+                UpdateSyncStatusBar();
+            });
+        }
+
+        void OnFileSyncStateChanged(int fileId, SyncState state)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _syncStates[fileId] = state;
+                UpdateSyncStatusBar();
+                // Only re-render if this file is visible in current folder
+                if (_currentFiles.Any(f => f.Id == fileId))
+                    RenderContent();
+            });
+        }
+
+        WatchedFileEntry? GetWatchedEntry(string fileName)
+        {
+            // Find by fileName in the current files list, then check FileWatcher
+            var file = _currentFiles.FirstOrDefault(f => f.FileName == fileName);
+            if (file == null) return null;
+            // Reconstruct a WatchedFileEntry for conflict handling
+            return new WatchedFileEntry { FileId = file.Id, FolderId = file.FolderId, StoragePath = file.StoragePath };
+        }
+
+        // V3-E: Auto-resolve conflicts (local always wins)
+        void HandleConflict(WatchedFileEntry entry, string fileName)
+        {
+            _ = Task.Run(async () =>
+            {
+                var ok = await FileWatcherService.Instance.ForceReupload(entry.FileId);
+                Dispatcher.Invoke(() => ShowToast(ok ? $"{fileName} sincronizado (conflicto auto-resuelto)" : $"Error al sincronizar {fileName}", ok ? "success" : "error"));
+            });
+        }
+
+        void UpdateSyncStatusBar()
+        {
+            var pending = FileWatcherService.Instance.GetPendingStates();
+            if (pending.Count == 0)
+            {
+                SyncStatusBar.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            SyncStatusBar.Visibility = Visibility.Visible;
+            var syncing = pending.Count(p => p.State == SyncState.Syncing);
+            var errors = pending.Count(p => p.State == SyncState.Error);
+            var conflicts = pending.Count(p => p.State == SyncState.Conflict);
+
+            if (syncing > 0)
+            {
+                SyncStatusIcon.Text = "\uE895";
+                SyncStatusText.Text = $"Sincronizando {syncing} archivo{(syncing > 1 ? "s" : "")}...";
+                SyncRetryBtn.Visibility = Visibility.Collapsed;
+            }
+            else if (errors > 0)
+            {
+                SyncStatusIcon.Text = "\uEA39";
+                SyncStatusText.Text = $"{errors} archivo{(errors > 1 ? "s" : "")} con error de sincronizacion";
+                SyncRetryBtn.Visibility = Visibility.Visible;
+            }
+            else if (conflicts > 0)
+            {
+                SyncStatusIcon.Text = "\uE895";
+                SyncStatusText.Text = "Resolviendo conflictos...";
+                SyncRetryBtn.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1690,8 +1735,6 @@ namespace SistemaGestionProyectos2.Views
         {
             if (_selectedFileIds.Count > 0)
                 return _currentFiles.Where(f => _selectedFileIds.Contains(f.Id)).ToList();
-            if (_selectedFile != null)
-                return new List<DriveFileDb> { _selectedFile };
             return new();
         }
 
@@ -1921,7 +1964,7 @@ namespace SistemaGestionProyectos2.Views
             tb.LostFocus += (s, le) => Commit();
         }
         async Task DelFolder(DriveFolderDb f) { if (!Confirm($"Eliminar \"{f.Name}\" y todo su contenido?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFolder(f.Id, _cts.Token)) { _statsCache.Remove(f.Id); InvalidateStats(); ShowToast($"\"{f.Name}\" eliminada", "success"); await LoadFolder(); } }); }
-        async Task DelFile(DriveFileDb f) { if (!Confirm($"Eliminar \"{f.FileName}\"?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token, _currentUser.Id)) { if (_selectedFile?.Id == f.Id) HideDetail(); if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); } InvalidateStats(); ShowToast($"\"{f.FileName}\" eliminado", "success"); RefreshSidebarRecents(); await LoadFolder(); } }); }
+        async Task DelFile(DriveFileDb f) { if (!Confirm($"Eliminar \"{f.FileName}\"?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token, _currentUser.Id)) { _selectedFileIds.Remove(f.Id); if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); } InvalidateStats(); ShowToast($"\"{f.FileName}\" eliminado", "success"); RefreshSidebarRecents(); await LoadFolder(); } }); }
 
         // ===============================================
         // ORDER LINKING
@@ -2231,11 +2274,8 @@ namespace SistemaGestionProyectos2.Views
         {
             if (_selectedFileIds.Contains(file.Id)) _selectedFileIds.Remove(file.Id);
             else _selectedFileIds.Add(file.Id);
-            _selectedFile = _selectedFileIds.Count == 1 ? _currentFiles.FirstOrDefault(f => f.Id == _selectedFileIds.First()) : null;
             UpdateMultiSelectBar();
             RenderContent();
-            if (_selectedFile != null) ShowDetail(_selectedFile);
-            else HideDetail();
         }
 
         void UpdateMultiSelectBar()
@@ -2250,8 +2290,8 @@ namespace SistemaGestionProyectos2.Views
             else MultiSelectBar.Visibility = Visibility.Collapsed;
         }
 
-        void ClearMultiSelect() { _selectedFileIds.Clear(); _selectedFile = null; MultiSelectBar.Visibility = Visibility.Collapsed; }
-        void MultiSelectClear_Click(object sender, RoutedEventArgs e) { ClearMultiSelect(); HideDetail(); RenderContent(); }
+        void ClearMultiSelect() { _selectedFileIds.Clear(); MultiSelectBar.Visibility = Visibility.Collapsed; }
+        void MultiSelectClear_Click(object sender, RoutedEventArgs e) { ClearMultiSelect(); RenderContent(); }
 
         async void MultiSelectDownload_Click(object sender, RoutedEventArgs e)
         {
@@ -2294,7 +2334,7 @@ namespace SistemaGestionProyectos2.Views
                 catch (Exception ex) { Debug.WriteLine($"[DriveV2] Multi-delete err: {ex.Message}"); }
             }
             StatusText.Text = $"{ok} archivo(s) eliminado(s)";
-            UpdateStorageUI(); ClearMultiSelect(); HideDetail(); InvalidateStats(); RefreshSidebarRecents(); await SafeLoad(() => LoadFolder());
+            UpdateStorageUI(); ClearMultiSelect(); InvalidateStats(); RefreshSidebarRecents(); await SafeLoad(() => LoadFolder());
         }
         async void BackToFolders_Click(object sender, RoutedEventArgs e) { if (_breadcrumb.Count >= 2) await SafeLoad(() => NavTo(_breadcrumb[^2].Id)); else await SafeLoad(() => NavigateToRoot()); }
         async void RefreshButton_Click(object sender, RoutedEventArgs e)
@@ -2305,10 +2345,17 @@ namespace SistemaGestionProyectos2.Views
             await SafeLoad(() => LoadFolder());
         }
         void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
-        void DetailClose_Click(object sender, RoutedEventArgs e) { HideDetail(); RenderContent(); }
-        async void DetailDownload_Click(object sender, RoutedEventArgs e) { if (_selectedFile != null) await DlFile(_selectedFile); }
-        // Copiar enlace removed - no requirement for it
-        async void DetailDelete_Click(object sender, RoutedEventArgs e) { if (_selectedFile != null) await DelFile(_selectedFile); }
+        // DetailClose_Click, DetailDownload_Click, DetailDelete_Click removed — panel eliminated
+        void SyncRetry_Click(object sender, RoutedEventArgs e)
+        {
+            // Retry all errored files
+            var errors = FileWatcherService.Instance.GetPendingStates()
+                .Where(p => p.State == SyncState.Error)
+                .Select(p => p.FileId).ToList();
+            foreach (var fid in errors)
+                _ = FileWatcherService.Instance.ForceReupload(fid);
+            ShowToast($"Reintentando {errors.Count} archivo{(errors.Count > 1 ? "s" : "")}...", "info");
+        }
         void Window_DragEnter(object sender, DragEventArgs e) { if (_currentFolderId.HasValue && e.Data.GetDataPresent(DataFormats.FileDrop)) DragDropOverlay.Visibility = Visibility.Visible; }
         void Window_DragLeave(object sender, DragEventArgs e) => DragDropOverlay.Visibility = Visibility.Collapsed;
         void Window_DragOver(object sender, DragEventArgs e) => e.Handled = true;
@@ -2549,8 +2596,7 @@ namespace SistemaGestionProyectos2.Views
             if (e.Key == Key.Escape)
             {
                 if (_clipFiles != null) { _clipFiles = null; ShowToast("Operacion cancelada", "info"); RenderContent(); }
-                else if (_selectedFileIds.Count > 0) { ClearMultiSelect(); HideDetail(); RenderContent(); }
-                else if (_selectedFile != null) { HideDetail(); RenderContent(); }
+                else if (_selectedFileIds.Count > 0) { ClearMultiSelect(); RenderContent(); }
                 else if (_breadcrumb.Count > 1) BackToFolders_Click(this, new RoutedEventArgs());
                 else Close();
             }
@@ -2587,6 +2633,93 @@ namespace SistemaGestionProyectos2.Views
             ok.Click += (s, e) => { res = tb.Text; w.Close(); };
             bp.Children.Add(cancel); bp.Children.Add(ok); p.Children.Add(bp);
             card.Child = p; w.Content = card; w.Loaded += (s, e) => tb.Focus(); w.MouseLeftButtonDown += (s, e) => { try { w.DragMove(); } catch { } }; w.ShowDialog(); return res ?? "";
+        }
+
+        // ===============================================
+        // V3-D: DOWNLOAD FOLDER AS ZIP
+        // ===============================================
+
+        async Task DownloadFolderAsZip(DriveFolderDb folder)
+        {
+            await SafeLoad(async () =>
+            {
+                // Collect all files recursively
+                ShowToast($"Preparando ZIP de \"{folder.Name}\"...", "info", 5000);
+                var files = await SupabaseService.Instance.CollectDriveFilesRecursive(folder.Id, _cts.Token);
+
+                if (files.Count == 0) { ShowToast("La carpeta esta vacia", "warning"); return; }
+                if (files.Count > 50) { if (!Confirm($"Esta carpeta contiene {files.Count} archivos. Continuar?")) return; }
+
+                var totalSize = files.Sum(f => f.FileSize ?? 0);
+                if (totalSize > 500 * 1024 * 1024) { if (!Confirm($"El tamano total es {Services.Drive.DriveService.FormatFileSize(totalSize)}. Continuar?")) return; }
+
+                // SaveFileDialog
+                var sfd = new SaveFileDialog
+                {
+                    FileName = $"{folder.Name}.zip",
+                    Filter = "Archivo ZIP|*.zip",
+                    Title = "Guardar carpeta como ZIP"
+                };
+                if (sfd.ShowDialog() != true) return;
+
+                var zipPath = sfd.FileName;
+                var completed = 0;
+                var failed = 0;
+                var semaphore = new SemaphoreSlim(3);
+
+                using (var zipStream = new FileStream(zipPath, FileMode.Create))
+                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create))
+                {
+                    // Build folder path map for proper ZIP structure
+                    var folderPaths = new Dictionary<int, string> { { folder.Id, "" } };
+
+                    async Task BuildFolderMap(int parentId, string parentPath)
+                    {
+                        var subs = await SupabaseService.Instance.GetDriveChildFolders(parentId, _cts.Token);
+                        foreach (var sub in subs)
+                        {
+                            var subPath = string.IsNullOrEmpty(parentPath) ? sub.Name : $"{parentPath}/{sub.Name}";
+                            folderPaths[sub.Id] = subPath;
+                            await BuildFolderMap(sub.Id, subPath);
+                        }
+                    }
+                    await BuildFolderMap(folder.Id, "");
+
+                    // Download files in parallel and add to ZIP
+                    var tasks = files.Select(async file =>
+                    {
+                        await semaphore.WaitAsync(_cts.Token);
+                        try
+                        {
+                            var folderPath = folderPaths.ContainsKey(file.FolderId)
+                                ? folderPaths[file.FolderId] : "";
+                            var entryName = string.IsNullOrEmpty(folderPath) ? file.FileName : $"{folderPath}/{file.FileName}";
+
+                            using var ms = new MemoryStream();
+                            var ok = await SupabaseService.Instance.DownloadDriveFileToStream(file.StoragePath, ms, _cts.Token);
+                            if (ok)
+                            {
+                                ms.Position = 0;
+                                lock (archive)
+                                {
+                                    var entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
+                                    using var entryStream = entry.Open();
+                                    ms.CopyTo(entryStream);
+                                }
+                                Interlocked.Increment(ref completed);
+                            }
+                            else Interlocked.Increment(ref failed);
+                        }
+                        finally { semaphore.Release(); }
+                    });
+                    await Task.WhenAll(tasks);
+                }
+
+                var msg = failed > 0
+                    ? $"ZIP descargado: {completed} de {files.Count} archivos"
+                    : $"ZIP descargado: {folder.Name}.zip ({Services.Drive.DriveService.FormatFileSize(totalSize)}, {files.Count} archivos)";
+                ShowToast(msg, failed > 0 ? "warning" : "success", 4000);
+            });
         }
 
         // ===============================================

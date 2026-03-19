@@ -20,12 +20,12 @@ Transformar el modulo ARCHIVOS de una ventana web-like a una experiencia que se 
 | V3-A | Preview & Thumbnails | 6 | COMPLETADO |
 | V3-B | Recientes & Actividad | 4 | COMPLETADO |
 | V3-C | Operaciones de Archivos | 5 | COMPLETADO |
-| V3-D | Compartir & Enlaces | 4 | PENDIENTE |
+| V3-D | ~~Compartir~~ & ZIP Download | 1 | COMPLETADO |
 | V3-E | Open-in-Place (edicion nativa) | 6 | PENDIENTE |
 | V3-F | Cache Local & Sync Ligero | 5 | PENDIENTE |
 | V3-G | Pulido UX & Cosmeticos | 5 | PENDIENTE |
 
-**Progreso global:** 15/35 items (43%)
+**Progreso global:** 16/32 items (50%) — 3 items de compartir cancelados por cliente
 
 ---
 
@@ -263,51 +263,20 @@ No existe forma de compartir un archivo con alguien que no tenga la app instalad
 
 ### Items
 
-- [ ] **D1: Generar enlace temporal (signed URL)**
-  - Context menu > "Compartir enlace"
-  - Genera un R2 signed URL con expiracion configurable: 1 hora, 24 horas, 7 dias, 30 dias
-  - Default: 24 horas
-  - El enlace se copia automaticamente al clipboard
-  - Toast: "Enlace copiado - expira en 24 horas"
-  - Implementacion: `S3Client.GetPreSignedURL(bucket, key, expiration)`
-  ```csharp
-  public string GenerateShareLink(string storagePath, TimeSpan expiration)
-  {
-      var request = new GetPreSignedUrlRequest
-      {
-          BucketName = _bucketName,
-          Key = storagePath,
-          Expires = DateTime.UtcNow.Add(expiration)
-      };
-      return _s3Client.GetPreSignedURL(request);
-  }
-  ```
+- ~~**D1: Generar enlace temporal (signed URL)**~~ — CANCELADO (cliente no lo requiere por ahora)
 
-- [ ] **D2: Dialog de compartir con opciones**
-  - Dialog modal (estilo IMA) con:
-    - Preview del nombre del archivo + icono
-    - Selector de expiracion: dropdown con 1h, 24h, 7d, 30d
-    - Campo de texto readonly con el link generado
-    - Boton "Copiar enlace" (con feedback visual: "Copiado!")
-    - Boton "Abrir en navegador" (para probar el enlace)
-  - Registrar en `drive_activity`: accion 'share', metadata: {expiration, url_hash}
+- ~~**D2: Dialog de compartir con opciones**~~ — CANCELADO (cliente no lo requiere por ahora)
 
-- [ ] **D3: Compartir carpeta completa (ZIP)**
-  - Context menu en carpeta > "Descargar como ZIP"
-  - Recopilar todos los archivos de la carpeta (recursivo)
-  - Descargar cada uno via R2 + crear ZIP en temp
-  - Opcion 1: SaveFileDialog para guardar el ZIP localmente
-  - Opcion 2: Subir el ZIP a R2 y generar signed URL
-  - Limite: maximo 50 archivos o 500MB por ZIP (para no saturar la red)
-  - Progress bar durante la descarga/creacion del ZIP
-  - NuGet: `System.IO.Compression` (ya incluido en .NET 8)
+- [x] **D3: Descargar carpeta como ZIP** (18-Mar-2026)
+  - Context menu "Descargar como ZIP" en carpetas (grid + list view)
+  - Recopilacion recursiva via `CollectAllFilesRecursive`
+  - Validacion: confirmacion si >50 archivos o >500MB
+  - SaveFileDialog → descarga paralela (SemaphoreSlim(3)) → ZipArchive
+  - Estructura de carpetas preservada dentro del ZIP
+  - Toast con resultado (archivos completados/fallidos + tamano)
+  - Usa `System.IO.Compression` (built-in .NET 8)
 
-- [ ] **D4: Historial de enlaces compartidos**
-  - Tabla en BD (o recopilar de `drive_activity` WHERE action='share')
-  - UI: seccion en panel de detalle del archivo mostrando enlaces activos
-  - Mostrar: fecha de creacion, expiracion, estado (activo/expirado)
-  - Posibilidad de revocar un enlace (no aplica a signed URLs de R2 — no se pueden revocar individualmente)
-  - Alternativa: si se necesita revocacion, crear tabla `drive_shared_links` con flag `revoked` y un endpoint proxy que valide antes de redirigir
+- ~~**D4: Historial de enlaces compartidos**~~ — CANCELADO (cliente no lo requiere por ahora)
 
 ### Nota sobre seguridad
 - Los signed URLs de R2 no se pueden revocar una vez generados

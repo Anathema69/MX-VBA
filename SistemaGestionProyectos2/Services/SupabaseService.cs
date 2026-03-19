@@ -18,6 +18,7 @@ using SistemaGestionProyectos2.ViewModels;
 using Supabase;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -1086,6 +1087,12 @@ namespace SistemaGestionProyectos2.Services
         public Task<List<Models.Database.DriveActivityDb>> GetDriveRecentActivity(int limit = 10, int? userId = null, CancellationToken ct = default)
             => _driveService.GetRecentActivity(limit, userId, ct);
 
+        // V3-D: ZIP Download
+        public Task<List<DriveFileDb>> CollectDriveFilesRecursive(int folderId, CancellationToken ct = default)
+            => _driveService.CollectAllFilesRecursive(folderId, ct);
+        public Task<bool> DownloadDriveFileToStream(string storagePath, Stream destination, CancellationToken ct = default)
+            => _driveService.DownloadFileToStream(storagePath, destination, ct);
+
         public Task<int> PurgeDriveR2Files()
             => _driveService.PurgeAllR2Files();
 
@@ -1109,5 +1116,11 @@ namespace SistemaGestionProyectos2.Services
 
         public Task<long> GetDriveTotalStorageBytes(CancellationToken ct = default)
             => _driveService.GetTotalStorageBytes(ct);
+
+        // V3-E: Open-in-Place
+        public Task<DriveFileDb> GetDriveFileById(int fileId, CancellationToken ct = default)
+            => _driveService.GetFileById(fileId, ct);
+        public Task<bool> ReuploadDriveFile(int fileId, string localPath, int userId, CancellationToken ct = default)
+            => _driveService.ReuploadFile(fileId, localPath, userId, ct);
     }
 }

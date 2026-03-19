@@ -998,10 +998,59 @@ namespace SistemaGestionProyectos2.Services.Drive
         }
 
         // ===============================================
+        // REUPLOAD (V3-E: Open-in-Place auto-sync)
+        // ===============================================
+
+        /// <summary>
+        /// Overwrite an existing file's blob in R2 and update DB metadata.
+        /// Used by FileWatcherService for auto-sync after local edits.
+        /// </summary>
+        public async Task<bool> ReuploadFile(int fileId, string localPath, int userId, CancellationToken ct = default)
+        {
+            if (!_isStorageConfigured)
+                throw new InvalidOperationException("R2 Storage no esta configurado.");
+
+            try
+            {
+                var file = await GetFileById(fileId, ct);
+                if (file == null) { LogError($"ReuploadFile: file {fileId} not found"); return false; }
+
+                var fileInfo = new FileInfo(localPath);
+                if (!fileInfo.Exists) { LogError($"ReuploadFile: local file not found: {localPath}"); return false; }
+
+                // Overwrite blob in R2 (same key)
+                var putRequest = new PutObjectRequest
+                {
+                    BucketName = _bucketName,
+                    Key = file.StoragePath,
+                    FilePath = localPath,
+                    ContentType = file.ContentType ?? GetContentType(file.FileName),
+                    DisablePayloadSigning = true
+                };
+                await _s3Client.PutObjectAsync(putRequest, ct);
+
+                // Update DB: file_size, uploaded_at
+                file.FileSize = fileInfo.Length;
+                file.UploadedAt = DateTime.Now;
+                await SupabaseClient.From<DriveFileDb>().Where(f => f.Id == fileId).Update(file);
+
+                LogSuccess($"File reuploaded: {file.FileName} (id={fileId}, size={fileInfo.Length})");
+                _ = LogActivity(userId, "reupload", "file", fileId, file.FileName, file.FolderId, ct,
+                    $"{{\"file_size\":{fileInfo.Length}}}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error reuploading file {fileId}", ex);
+                return false;
+            }
+        }
+
+        // ===============================================
         // HELPERS
         // ===============================================
 
-        private async Task<DriveFileDb> GetFileById(int fileId, CancellationToken ct)
+        public async Task<DriveFileDb> GetFileById(int fileId, CancellationToken ct = default)
         {
             try
             {
@@ -1087,6 +1136,44 @@ namespace SistemaGestionProyectos2.Services.Drive
                 LogError("Error purging R2 bucket", ex);
                 return -1;
             }
+        }
+
+        // ===============================================
+        // ZIP DOWNLOAD & HELPERS (V3-D)
+        // ===============================================
+
+        /// <summary>Collect all files recursively from a folder (for ZIP download)</summary>
+        public async Task<List<DriveFileDb>> CollectAllFilesRecursive(int folderId, CancellationToken ct = default)
+        {
+            var result = new List<DriveFileDb>();
+            try
+            {
+                var files = await GetFilesByFolder(folderId, ct);
+                result.AddRange(files);
+
+                var subfolders = await GetChildFolders(folderId, ct);
+                foreach (var sub in subfolders)
+                {
+                    var subFiles = await CollectAllFilesRecursive(sub.Id, ct);
+                    result.AddRange(subFiles);
+                }
+            }
+            catch (Exception ex) { LogError($"Error collecting files from folder {folderId}", ex); }
+            return result;
+        }
+
+        /// <summary>Download a file to a stream (for ZIP creation)</summary>
+        public async Task<bool> DownloadFileToStream(string storagePath, Stream destination, CancellationToken ct = default)
+        {
+            if (!_isStorageConfigured) return false;
+            try
+            {
+                var getRequest = new GetObjectRequest { BucketName = _bucketName, Key = storagePath };
+                using var response = await _s3Client.GetObjectAsync(getRequest, ct);
+                await response.ResponseStream.CopyToAsync(destination, ct);
+                return true;
+            }
+            catch (Exception ex) { LogError($"Error downloading to stream: {storagePath}", ex); return false; }
         }
 
         // ===============================================

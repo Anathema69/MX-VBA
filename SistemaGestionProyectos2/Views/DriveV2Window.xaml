@@ -262,7 +262,6 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="256"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- ============================================= -->
@@ -271,6 +270,21 @@
         <Border Grid.Column="0" Background="White"
                 BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel>
+                <!-- Cache local (always visible, above storage) -->
+                <Border DockPanel.Dock="Bottom"
+                        BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
+                        Padding="16,8">
+                    <Grid>
+                        <TextBlock x:Name="LocalCacheLabel" Text="" FontSize="10"
+                                   Foreground="{StaticResource TextLightBrush}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="ClearCacheBtn" Text="Limpiar" FontSize="10"
+                                   Foreground="{StaticResource PrimaryBrush}" Cursor="Hand"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                   MouseLeftButtonDown="ClearCache_Click"
+                                   Visibility="Collapsed"/>
+                    </Grid>
+                </Border>
+                <!-- Storage -->
                 <Border DockPanel.Dock="Bottom"
                         BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0"
                         Padding="16">
@@ -312,24 +326,6 @@
                     <StackPanel Margin="16">
                         <StackPanel x:Name="NavPanel"/>
 
-                        <!-- V3-B: Recientes -->
-                        <Grid Margin="12,24,0,8">
-                            <TextBlock Text="RECIENTES" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,8,0">
-                                <TextBlock x:Name="RecentToggleLabel" Text="Mis archivos" FontSize="10"
-                                           Foreground="{StaticResource TextLightBrush}" VerticalAlignment="Center"
-                                           Margin="0,0,6,0"/>
-                                <Border x:Name="RecentToggle" Width="32" Height="16" CornerRadius="8"
-                                        Background="{StaticResource PrimaryBrush}" Cursor="Hand"
-                                        MouseLeftButtonDown="RecentToggle_Click">
-                                    <Border x:Name="RecentToggleDot" Width="12" Height="12" CornerRadius="6"
-                                            Background="White" HorizontalAlignment="Right" Margin="2"/>
-                                </Border>
-                            </StackPanel>
-                        </Grid>
-                        <StackPanel x:Name="RecentFilesPanel"/>
-
                         <!-- V3-B: Actividad -->
                         <Border x:Name="ActivitySection" Margin="0,16,0,0">
                             <StackPanel>
@@ -369,6 +365,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- TOP BAR -->
@@ -447,8 +444,12 @@
                                 <TextBlock Text="Subir archivo" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource IconButton}" Click="CloseWindow_Click" ToolTip="Cerrar" Padding="8">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{StaticResource TextMutedBrush}"/>
+                        <Button Style="{StaticResource SecondaryButton}" Click="CloseWindow_Click" ToolTip="Volver al menu principal">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Volver" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -572,128 +573,32 @@
                 </StackPanel>
             </ScrollViewer>
 
+            <!-- V3-E: SYNC STATUS BAR -->
+            <Border x:Name="SyncStatusBar" Grid.Row="4" Background="#EFF6FF"
+                    BorderBrush="{StaticResource PrimaryBrush}" BorderThickness="0,1,0,0"
+                    Padding="24,8" Visibility="Collapsed">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock x:Name="SyncStatusIcon" Text="&#xE895;"
+                               FontFamily="Segoe MDL2 Assets" FontSize="14"
+                               Foreground="{StaticResource PrimaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="SyncStatusText" Text="" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <Button x:Name="SyncRetryBtn" Style="{StaticResource SecondaryButton}"
+                            Click="SyncRetry_Click" Margin="16,0,0,0" Padding="12,4"
+                            Visibility="Collapsed">
+                        <TextBlock Text="Reintentar" FontSize="12"/>
+                    </Button>
+                </StackPanel>
+            </Border>
+
         </Grid>
 
 
 
-        <!-- ============================================= -->
-        <!-- DETAIL PANEL                                  -->
-        <!-- ============================================= -->
-        <Border x:Name="DetailPanel" Grid.Column="2" Width="320" Background="White"
-                BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="1,0,0,0"
-                Visibility="Collapsed">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <Border Grid.Row="0" Padding="20,16" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,0,0,1">
-                    <Grid>
-                        <TextBlock Text="Detalles del archivo" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                        <Button Style="{StaticResource IconButton}" HorizontalAlignment="Right" Click="DetailClose_Click">
-                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                        </Button>
-                    </Grid>
-                </Border>
-                <Border Grid.Row="1" Padding="20,16" BorderBrush="{StaticResource BorderLightBrush}" BorderThickness="0,0,0,1">
-                    <StackPanel>
-                        <!-- Preview area: icon fallback + image/text preview -->
-                        <Grid x:Name="DetailPreviewContainer" Margin="0,0,0,12">
-                            <!-- Default icon preview (always present) -->
-                            <Border x:Name="DetailPreviewBg" CornerRadius="8" Height="120">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#EFF6FF" Offset="0"/>
-                                        <GradientStop Color="#DBEAFE" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <TextBlock x:Name="DetailPreviewIcon" FontSize="40"
-                                           FontFamily="Segoe MDL2 Assets"
-                                           Foreground="{StaticResource PrimaryBrush}" Opacity="0.6"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <!-- Image preview (shown for images) -->
-                            <Border x:Name="DetailImageBorder" CornerRadius="8" ClipToBounds="True"
-                                    Height="200" Visibility="Collapsed" Cursor="Hand">
-                                <Grid>
-                                    <Image x:Name="DetailPreviewImage" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                                    <!-- Loading spinner overlay -->
-                                    <Border x:Name="DetailPreviewSpinner" CornerRadius="8"
-                                            Visibility="Collapsed">
-                                        <Border.Background>
-                                            <SolidColorBrush Color="#F8FAFC" Opacity="0.9"/>
-                                        </Border.Background>
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="24" Foreground="{StaticResource PrimaryBrush}"
-                                                       HorizontalAlignment="Center"/>
-                                            <TextBlock Text="Cargando..." FontSize="11"
-                                                       Foreground="{StaticResource TextMutedBrush}"
-                                                       HorizontalAlignment="Center" Margin="0,4,0,0"/>
-                                        </StackPanel>
-                                    </Border>
-                                    <!-- Click hint -->
-                                    <Border x:Name="DetailImageHint" CornerRadius="0,0,8,8"
-                                            VerticalAlignment="Bottom" Background="#CC0F172A"
-                                            Padding="8,4" HorizontalAlignment="Center" Visibility="Collapsed">
-                                        <TextBlock Text="Clic para ampliar" FontSize="10"
-                                                   Foreground="White" FontWeight="Medium"/>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                            <!-- Text preview (shown for text files) -->
-                            <Border x:Name="DetailTextBorder" CornerRadius="8" ClipToBounds="True"
-                                    MaxHeight="200" Visibility="Collapsed"
-                                    Background="#F8FAFC" BorderBrush="{StaticResource ThemeBorderBrush}"
-                                    BorderThickness="1">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Auto" Padding="12,8">
-                                    <TextBlock x:Name="DetailTextContent" FontFamily="Consolas"
-                                               FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                               TextWrapping="NoWrap"/>
-                                </ScrollViewer>
-                            </Border>
-                        </Grid>
-                        <TextBlock x:Name="DetailFileName" FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   TextTrimming="CharacterEllipsis" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="DetailFileExt" FontSize="11"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                    </StackPanel>
-                </Border>
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="20,16">
-                    <StackPanel>
-                        <TextBlock Text="INFORMACION" FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{StaticResource TextMutedBrush}" Margin="0,0,0,16"/>
-                        <StackPanel x:Name="DetailInfoPanel"/>
-                    </StackPanel>
-                </ScrollViewer>
-                <Border Grid.Row="3" Padding="20,16" BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="0,1,0,0">
-                    <StackPanel>
-                        <Button Style="{StaticResource PrimaryButton}" Click="DetailDownload_Click" Margin="0,0,0,8">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Descargar" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource DestructiveButton}" Click="DetailDelete_Click">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="Eliminar" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Border>
-            </Grid>
-        </Border>
-
         <!-- FULLSCREEN IMAGE OVERLAY (V3-A) -->
-        <Border x:Name="ImageOverlay" Grid.ColumnSpan="3" Panel.ZIndex="80"
+        <Border x:Name="ImageOverlay" Grid.ColumnSpan="2" Panel.ZIndex="80"
                 Visibility="Collapsed" Focusable="True"
                 KeyDown="ImageOverlay_KeyDown">
             <Border.Background>
@@ -752,7 +657,7 @@
         </Border>
 
         <!-- TOAST NOTIFICATION -->
-        <Border x:Name="ToastPanel" Grid.ColumnSpan="3" Panel.ZIndex="90"
+        <Border x:Name="ToastPanel" Grid.ColumnSpan="2" Panel.ZIndex="90"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
                 Margin="0,12,0,0" Visibility="Collapsed" IsHitTestVisible="True">
             <Border x:Name="ToastInner" Background="#0F172A" CornerRadius="10"
@@ -770,7 +675,7 @@
         </Border>
 
         <!-- DRAG & DROP OVERLAY -->
-        <Border x:Name="DragDropOverlay" Grid.ColumnSpan="3" Panel.ZIndex="100"
+        <Border x:Name="DragDropOverlay" Grid.ColumnSpan="2" Panel.ZIndex="100"
                 Visibility="Collapsed" IsHitTestVisible="False">
             <Border.Background>
                 <SolidColorBrush Color="#1D4ED8" Opacity="0.1"/>

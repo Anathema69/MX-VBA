@@ -50,6 +50,8 @@ namespace SistemaGestionProyectos2.Views
         private static readonly Brush QueryFg = Freeze(new SolidColorBrush(Color.FromRgb(0xB4, 0x53, 0x09)));
         private static readonly Brush StressBg = Freeze(new SolidColorBrush(Color.FromRgb(0xED, 0xE9, 0xFE)));
         private static readonly Brush StressFg = Freeze(new SolidColorBrush(Color.FromRgb(0x6D, 0x28, 0xD9)));
+        private static readonly Brush WorkflowBg = Freeze(new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)));
+        private static readonly Brush WorkflowFg = Freeze(new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)));
 
         private static Brush Freeze(SolidColorBrush brush)
         {
@@ -76,6 +78,7 @@ namespace SistemaGestionProyectos2.Views
 
             _isRunning = true;
             btnRun.IsEnabled = false;
+            btnRunWorkflow.IsEnabled = false;
             btnCopy.IsEnabled = false;
             _displayResults.Clear();
             _passedCount = 0;
@@ -83,6 +86,7 @@ namespace SistemaGestionProyectos2.Views
             _rawResults = null;
 
             pbProgress.Value = 0;
+            pbProgress.Maximum = 23;
             txtProgress.Text = "Ejecutando tests...";
             txtTotal.Text = "0 / 23";
             txtPassed.Text = "0";
@@ -115,6 +119,7 @@ namespace SistemaGestionProyectos2.Views
             {
                 _isRunning = false;
                 btnRun.IsEnabled = true;
+                btnRunWorkflow.IsEnabled = true;
                 btnCopy.IsEnabled = _rawResults != null && _rawResults.Count > 0;
             }
         }
@@ -142,8 +147,9 @@ namespace SistemaGestionProyectos2.Views
             });
 
             pbProgress.Value = index;
-            txtProgressCount.Text = $"{index} / 23";
-            txtTotal.Text = $"{index} / 23";
+            var max = (int)pbProgress.Maximum;
+            txtProgressCount.Text = $"{index} / {max}";
+            txtTotal.Text = $"{index} / {max}";
             txtPassed.Text = _passedCount.ToString();
             txtFailed.Text = _failedCount.ToString();
             txtTotalTime.Text = $"{_totalTimer.ElapsedMilliseconds:N0} ms";
@@ -161,6 +167,7 @@ namespace SistemaGestionProyectos2.Views
                 "ServerFilter" => (FilterBg, FilterFg),
                 "Queries" => (QueryBg, QueryFg),
                 "Stress" => (StressBg, StressFg),
+                "Workflow" => (WorkflowBg, WorkflowFg),
                 _ => (CacheBg, CacheFg)
             };
         }
@@ -215,6 +222,58 @@ namespace SistemaGestionProyectos2.Views
             {
                 MessageBox.Show($"Error al copiar: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnRunWorkflow_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isRunning) return;
+
+            _isRunning = true;
+            btnRun.IsEnabled = false;
+            btnRunWorkflow.IsEnabled = false;
+            btnCopy.IsEnabled = false;
+            _displayResults.Clear();
+            _passedCount = 0;
+            _failedCount = 0;
+            _rawResults = null;
+
+            pbProgress.Value = 0;
+            pbProgress.Maximum = 5;
+            txtProgress.Text = "Ejecutando tests de workflow...";
+            txtTotal.Text = "0 / 5";
+            txtPassed.Text = "0";
+            txtFailed.Text = "0";
+            txtTotalTime.Text = "--";
+
+            _totalTimer.Restart();
+
+            try
+            {
+                var test = new DriveWorkflowTests();
+                _rawResults = await test.RunAllTests(result =>
+                {
+                    Dispatcher.Invoke(() => OnTestResult(result));
+                });
+
+                _totalTimer.Stop();
+                txtProgress.Text = _failedCount == 0
+                    ? "Todos los workflow tests completados exitosamente"
+                    : $"Completado con {_failedCount} test(s) fallido(s)";
+                txtTotalTime.Text = $"{_totalTimer.ElapsedMilliseconds:N0} ms";
+            }
+            catch (Exception ex)
+            {
+                _totalTimer.Stop();
+                txtProgress.Text = $"Error: {ex.Message}";
+                txtTotalTime.Text = $"{_totalTimer.ElapsedMilliseconds:N0} ms";
+            }
+            finally
+            {
+                _isRunning = false;
+                btnRun.IsEnabled = true;
+                btnRunWorkflow.IsEnabled = true;
+                btnCopy.IsEnabled = _rawResults != null && _rawResults.Count > 0;
             }
         }
 

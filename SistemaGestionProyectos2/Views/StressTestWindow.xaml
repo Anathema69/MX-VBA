@@ -61,6 +61,28 @@
                         </Button.Template>
                     </Button>
 
+                    <Button Name="btnRunWorkflow" Content="Ejecutar Workflow"
+                            Margin="12,0,0,0" Padding="24,10" FontSize="14" FontWeight="SemiBold"
+                            Foreground="White" Cursor="Hand"
+                            Click="BtnRunWorkflow_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Name="border" Background="#0D9488"
+                                        CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#0F766E"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter TargetName="border" Property="Background" Value="#99F6E4"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
                     <Button Name="btnCopy" Content="Copiar Reporte JSON"
                             Margin="12,0,0,0" Padding="16,10" FontSize="13"
                             Foreground="#71717A" Cursor="Hand" IsEnabled="False"
