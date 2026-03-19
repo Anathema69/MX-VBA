@@ -215,6 +215,17 @@ namespace SistemaGestionProyectos2.Views
             benchBtn.MouseLeave += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
             benchBtn.MouseLeftButtonDown += RunBenchmark_Click;
             NavPanel.Children.Add(benchBtn);
+
+            // Temporal: boton Test Drive para ejecutar workflow tests
+            var testBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)) };
+            var tsp = new StackPanel { Orientation = Orientation.Horizontal };
+            tsp.Children.Add(new TextBlock { Text = "\uE9D5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+            tsp.Children.Add(new TextBlock { Text = "Test Drive (temp)", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center });
+            testBtn.Child = tsp;
+            testBtn.MouseEnter += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0x99, 0xF6, 0xE4));
+            testBtn.MouseLeave += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1));
+            testBtn.MouseLeftButtonDown += RunDriveWorkflowTests_Click;
+            NavPanel.Children.Add(testBtn);
         }
 
         Border MkNav(string id, string ico, string lbl)
@@ -2773,6 +2784,157 @@ namespace SistemaGestionProyectos2.Views
         static MenuItem MI(string h, RoutedEventHandler hnd) { var m = new MenuItem { Header = h }; m.Click += hnd; return m; }
         static Color CH(string h) { h = h.TrimStart('#'); return Color.FromRgb(Convert.ToByte(h[..2], 16), Convert.ToByte(h[2..4], 16), Convert.ToByte(h[4..6], 16)); }
         static SolidColorBrush BH(string h) => new(CH(h));
+
+        // ===============================================
+        // BENCHMARK
+        // ===============================================
+        // DRIVE WORKFLOW TESTS
+        // ===============================================
+        async void RunDriveWorkflowTests_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (!Confirm("Ejecutar tests de workflow Drive?\n\n" +
+                "- 7 tests (CRUD carpetas, archivos reales, bulk upload, open-in-place, conflictos, arbol)\n" +
+                "- Usa archivos de fase4/_carpeta_test/\n" +
+                "- Crea y elimina datos temporales (_test_*)\n\n" +
+                "Continuar?")) return;
+
+            SetNav("all");
+            _currentFolderId = null;
+            _currentFolders.Clear();
+            _currentFiles.Clear();
+            _breadcrumb.Clear();
+            _selectedFileIds.Clear();
+            ClearMultiSelect();
+
+            SectionTitle.Text = "Drive Workflow Tests";
+            SectionSubtitle.Text = "Ejecutando...";
+            BackToFoldersBtn.Visibility = Visibility.Collapsed;
+            EmptyState.Visibility = Visibility.Collapsed;
+            StatusText.Text = "Tests en progreso...";
+
+            var stk = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+            ContentHost.Content = stk;
+
+            var tealFg = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88));
+            var totalSw = Stopwatch.StartNew();
+            int passed = 0, failed = 0;
+
+            try
+            {
+                var test = new Tests.DriveWorkflowTests();
+                await test.RunAllTests(result =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (result.Passed) passed++; else failed++;
+
+                        var row = new Border
+                        {
+                            CornerRadius = new CornerRadius(8),
+                            Padding = new Thickness(16, 10, 16, 10),
+                            Margin = new Thickness(0, 4, 0, 0),
+                            Background = result.Passed
+                                ? new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4))
+                                : new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)),
+                            BorderBrush = result.Passed
+                                ? new SolidColorBrush(Color.FromRgb(0xBB, 0xF7, 0xD0))
+                                : new SolidColorBrush(Color.FromRgb(0xFE, 0xCA, 0xCA)),
+                            BorderThickness = new Thickness(1)
+                        };
+                        var g = new Grid();
+                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                        var icon = new TextBlock
+                        {
+                            Text = result.Passed ? "\uE73E" : "\uEA39",
+                            FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                            FontSize = 16,
+                            Foreground = result.Passed ? GreenOk : Destructive,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Margin = new Thickness(0, 0, 12, 0)
+                        };
+                        Grid.SetColumn(icon, 0); g.Children.Add(icon);
+
+                        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                        info.Children.Add(new TextBlock
+                        {
+                            Text = result.Name,
+                            FontSize = 13, FontWeight = FontWeights.Medium,
+                            Foreground = TextPrimary
+                        });
+                        if (!string.IsNullOrEmpty(result.Error))
+                            info.Children.Add(new TextBlock
+                            {
+                                Text = result.Error,
+                                FontSize = 11, Foreground = Destructive,
+                                TextTrimming = TextTrimming.CharacterEllipsis,
+                                ToolTip = result.Error
+                            });
+                        Grid.SetColumn(info, 1); g.Children.Add(info);
+
+                        var time = new TextBlock
+                        {
+                            Text = $"{result.ElapsedMs}ms",
+                            FontSize = 12, FontWeight = FontWeights.Medium,
+                            Foreground = result.ElapsedMs > result.ThresholdMs ? Destructive : TextMuted,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Margin = new Thickness(12, 0, 0, 0)
+                        };
+                        Grid.SetColumn(time, 2); g.Children.Add(time);
+
+                        row.Child = g;
+                        stk.Children.Add(row);
+
+                        StatusText.Text = $"Tests: {passed} OK, {failed} FAIL";
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"Error en tests: {ex.Message}", "error");
+            }
+
+            totalSw.Stop();
+
+            // Summary bar
+            var summary = new Border
+            {
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(20, 14, 20, 14),
+                Margin = new Thickness(0, 16, 0, 0),
+                Background = failed == 0
+                    ? new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4))
+                    : new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)),
+                BorderBrush = failed == 0
+                    ? new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC))
+                    : new SolidColorBrush(Color.FromRgb(0xFC, 0xA5, 0xA5)),
+                BorderThickness = new Thickness(1)
+            };
+            var ssp = new StackPanel { Orientation = Orientation.Horizontal };
+            ssp.Children.Add(new TextBlock
+            {
+                Text = failed == 0 ? "\uE73E" : "\uEA39",
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 20,
+                Foreground = failed == 0 ? GreenOk : Destructive,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 12, 0)
+            });
+            ssp.Children.Add(new TextBlock
+            {
+                Text = $"{passed} pasaron, {failed} fallaron — {totalSw.ElapsedMilliseconds}ms total",
+                FontSize = 15, FontWeight = FontWeights.SemiBold,
+                Foreground = failed == 0 ? GreenOk : Destructive,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+            summary.Child = ssp;
+            stk.Children.Insert(0, summary);
+
+            SectionSubtitle.Text = $"{passed + failed} tests completados en {totalSw.ElapsedMilliseconds}ms";
+            StatusText.Text = failed == 0 ? $"Tests OK ({totalSw.ElapsedMilliseconds}ms)" : $"{failed} test(s) fallaron";
+        }
 
         // ===============================================
         // BENCHMARK
