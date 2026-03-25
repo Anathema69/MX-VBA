@@ -43,6 +43,11 @@
                              Storyboard.TargetProperty="Angle"
                              From="0" To="360" Duration="0:0:1"/>
         </Storyboard>
+        <Storyboard x:Key="CtxSpinnerStoryboard" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="CtxSpinnerRotation"
+                             Storyboard.TargetProperty="Angle"
+                             From="0" To="360" Duration="0:0:1"/>
+        </Storyboard>
 
         <!-- ============================================= -->
         <!-- CONTEXT MENU + TOOLTIP STYLES (P1, P9)        -->
@@ -578,6 +583,44 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- MEJORA-6: Context download overlay -->
+            <Border x:Name="ContextDownloadOverlay" Grid.Row="3" Background="#E0F2FE"
+                    Visibility="Collapsed" CornerRadius="12" Margin="24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Padding="32,24" Effect="{StaticResource CardShadow}">
+                <StackPanel HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <Border Width="28" Height="28" Margin="0,0,10,0">
+                            <Border x:Name="CtxSpinner" Width="28" Height="28"
+                                    BorderBrush="{StaticResource PrimaryBrush}"
+                                    BorderThickness="3" CornerRadius="14"
+                                    RenderTransformOrigin="0.5,0.5">
+                                <Border.OpacityMask>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#FF000000" Offset="0"/>
+                                        <GradientStop Color="#00000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.OpacityMask>
+                                <Border.RenderTransform>
+                                    <RotateTransform x:Name="CtxSpinnerRotation"/>
+                                </Border.RenderTransform>
+                            </Border>
+                        </Border>
+                        <TextBlock x:Name="CtxDownloadTitle" Text="Preparando ensamble..."
+                                   FontSize="15" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock x:Name="CtxDownloadStatus" Text="Descargando archivos de contexto"
+                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <ProgressBar x:Name="CtxProgressBar" Height="6" Width="280"
+                                 Minimum="0" Maximum="100" Value="0"
+                                 Foreground="{StaticResource PrimaryBrush}"
+                                 Background="#BFD8F6"/>
+                </StackPanel>
+            </Border>
 
             <!-- V3-E: SYNC STATUS BAR -->
             <Border x:Name="SyncStatusBar" Grid.Row="4" Background="#EFF6FF"

@@ -1244,11 +1244,20 @@ namespace SistemaGestionProyectos2.Services.Drive
             return ext is ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx";
         }
 
-        /// <summary>Check if file extension is a CAD file</summary>
+        /// <summary>Check if file is a CAD assembly (references other part files)</summary>
+        public static bool IsAssemblyFile(string fileName)
+        {
+            var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+            return ext is ".iam" or ".sldasm";
+        }
+
+        /// <summary>Check if file extension is a CAD file (includes CNC/Mastercam)</summary>
         public static bool IsCadFile(string fileName)
         {
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
-            return ext is ".dwg" or ".dxf" or ".step" or ".stp" or ".sldprt" or ".ipt" or ".iam" or ".mcx-9";
+            return ext is ".dwg" or ".dxf" or ".step" or ".stp" or ".igs"
+                or ".sldprt" or ".sldasm" or ".ipt" or ".iam"
+                or ".mcam" or ".mcx-5" or ".mcx-7" or ".mcx-9";
         }
 
         public static string GetContentType(string fileName)
@@ -1256,7 +1265,7 @@ namespace SistemaGestionProyectos2.Services.Drive
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
             return ext switch
             {
-                ".jpg" or ".jpeg" => "image/jpeg",
+                ".jpg" or ".jpeg" or ".jfif" => "image/jpeg",
                 ".png" => "image/png",
                 ".gif" => "image/gif",
                 ".bmp" => "image/bmp",
@@ -1276,9 +1285,17 @@ namespace SistemaGestionProyectos2.Services.Drive
                 ".log" => "text/plain",
                 ".zip" => "application/zip",
                 ".rar" => "application/x-rar-compressed",
+                // CAD
                 ".dwg" => "application/acad",
                 ".dxf" => "application/dxf",
                 ".step" or ".stp" => "application/step",
+                ".igs" => "application/iges",
+                ".ipt" => "application/x-inventor-part",
+                ".iam" => "application/x-inventor-assembly",
+                ".sldprt" => "application/x-solidworks-part",
+                ".sldasm" => "application/x-solidworks-assembly",
+                // CNC / Mastercam
+                ".mcam" or ".mcx-5" or ".mcx-7" or ".mcx-9" => "application/x-mastercam",
                 _ => "application/octet-stream"
             };
         }
@@ -1307,10 +1324,15 @@ namespace SistemaGestionProyectos2.Services.Drive
                 ".doc" or ".docx" => "\uD83D\uDCC3", // page with curl
                 ".xls" or ".xlsx" => "\uD83D\uDCCA", // bar chart
                 ".ppt" or ".pptx" => "\uD83D\uDCCA", // bar chart
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => "\uD83D\uDDBC", // framed picture
+                ".jpg" or ".jpeg" or ".jfif" or ".png" or ".gif" or ".bmp" or ".webp" => "\uD83D\uDDBC", // framed picture
                 ".zip" or ".rar" => "\uD83D\uDCE6", // package
                 ".txt" or ".csv" => "\uD83D\uDCC4", // page
-                ".dwg" or ".dxf" or ".step" or ".stp" => "\uD83D\uDCD0", // triangular ruler
+                // CAD: piezas + planos + modelos 3D
+                ".dwg" or ".dxf" or ".step" or ".stp" or ".igs" or ".ipt" or ".sldprt" => "\uD83D\uDCD0", // triangular ruler
+                // CAD: ensambles (gear emoji for distinction)
+                ".iam" or ".sldasm" => "\u2699\uFE0F", // gear
+                // CNC Mastercam
+                ".mcam" or ".mcx-5" or ".mcx-7" or ".mcx-9" => "\uD83D\uDD27", // wrench
                 _ => "\uD83D\uDCC1"                  // folder
             };
         }

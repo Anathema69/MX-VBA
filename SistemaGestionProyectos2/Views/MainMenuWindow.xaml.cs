@@ -152,23 +152,36 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // MÉTODO: Click en IMA DRIVE
+        // MEJORA-7: Helper — open a child window, hide main menu, show main menu when child closes
+        private void OpenModuleWindow(Window child)
+        {
+            child.Owner = this;
+            child.Closed += (_, _) => { this.Show(); this.Activate(); StatusText.Text = "Sistema listo"; };
+            this.Hide();
+            child.Show();
+        }
+
+        private void OpenModuleDialog(Window child)
+        {
+            child.Owner = this;
+            this.Hide();
+            child.ShowDialog();
+            this.Show();
+            this.Activate();
+            StatusText.Text = "Sistema listo";
+        }
+
         private void DriveV2_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 StatusText.Text = "Abriendo IMA Drive...";
-                var driveV2 = new DriveV2Window(_currentUser);
-                driveV2.Owner = this;
-                driveV2.Show();
-                StatusText.Text = "IMA Drive abierto";
+                OpenModuleWindow(new DriveV2Window(_currentUser));
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"Error al abrir IMA Drive:\n{ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                this.Show();
+                MessageBox.Show($"Error al abrir IMA Drive:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusText.Text = "Error al abrir IMA Drive";
             }
         }
@@ -179,13 +192,11 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 StatusText.Text = "Abriendo Inventario...";
-                var inventory = new InventoryWindow(_currentUser);
-                inventory.Owner = this;
-                inventory.Show();
-                StatusText.Text = "Inventario abierto";
+                OpenModuleWindow(new InventoryWindow(_currentUser));
             }
             catch (Exception ex)
             {
+                this.Show();
                 StatusText.Text = $"Error al abrir Inventario: {ex.Message}";
             }
         }
@@ -209,16 +220,11 @@ namespace SistemaGestionProyectos2.Views
 
             try
             {
-                // Abrir ventana de órdenes
-                OrdersManagementWindow ordersWindow = new OrdersManagementWindow(_currentUser);
-                ordersWindow.Owner = this;
-                ordersWindow.Show();
-
-                // Opcional: Cerrar menú principal o dejarlo abierto
-                // this.Close();
+                OpenModuleWindow(new OrdersManagementWindow(_currentUser));
             }
             catch (Exception ex)
             {
+                this.Show();
                 MessageBox.Show(
                     $"Error al abrir el módulo de órdenes:\n{ex.Message}",
                     "Error",
@@ -289,9 +295,7 @@ namespace SistemaGestionProyectos2.Views
                 if (_currentUser.Role == "direccion")
                 {
                     // Dirección ve la ventana completa con edición
-                    var vendorWindow = new VendorCommissionsWindow(_currentUser);
-                    vendorWindow.Owner = this;
-                    vendorWindow.Show();
+                    OpenModuleWindow(new VendorCommissionsWindow(_currentUser));
                 }
                 else if (_currentUser.Role == "ventas")
                 {
@@ -347,11 +351,7 @@ namespace SistemaGestionProyectos2.Views
                 }
 
                 // Abrir la nueva vista de Cuentas por Pagar (pivoteada por proveedor)
-                var supplierPendingWindow = new SupplierPendingView(_currentUser);
-                supplierPendingWindow.Owner = this;
-                supplierPendingWindow.ShowDialog();
-
-                StatusText.Text = "Cuentas por Pagar cerrado";
+                OpenModuleDialog(new SupplierPendingView(_currentUser));
             }
             catch (Exception ex)
             {
@@ -375,9 +375,7 @@ namespace SistemaGestionProyectos2.Views
                 return;
             }
 
-            var pendingIncomesWindow = new PendingIncomesView(_currentUser);
-            pendingIncomesWindow.Owner = this;
-            pendingIncomesWindow.ShowDialog();
+            OpenModuleDialog(new PendingIncomesView(_currentUser));
         }
 
         private void OpenPayroll_Click(object sender, RoutedEventArgs e) {
@@ -387,9 +385,7 @@ namespace SistemaGestionProyectos2.Views
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            var payrollWindow = new PayrollManagementView(_currentUser);
-            payrollWindow.Owner = this;
-            payrollWindow.ShowDialog();
+            OpenModuleDialog(new PayrollManagementView(_currentUser));
         }
 
         // función para abrir la ventana de balance 'BalanceWindow.xaml' con 'Balance_Click'
@@ -400,9 +396,7 @@ namespace SistemaGestionProyectos2.Views
                     "Acceso Denegado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            var balanceWindow = new BalanceWindowPro(_currentUser);
-            balanceWindow.Owner = this;
-            balanceWindow.ShowDialog();
+            OpenModuleDialog(new BalanceWindowPro(_currentUser));
         }
 
         // Calendario - disponible para direccion y administracion
@@ -411,10 +405,7 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 StatusText.Text = "Abriendo Calendario de Personal...";
-                var calendarWindow = new CalendarView(_currentUser);
-                calendarWindow.Owner = this;
-                calendarWindow.ShowDialog();
-                StatusText.Text = "Sistema listo";
+                OpenModuleDialog(new CalendarView(_currentUser));
             }
             catch (Exception ex)
             {
@@ -433,10 +424,7 @@ namespace SistemaGestionProyectos2.Views
             try
             {
                 StatusText.Text = "Abriendo Gestión de Usuarios...";
-                var userWindow = new UserManagementWindow(_currentUser);
-                userWindow.Owner = this;
-                userWindow.ShowDialog();
-                StatusText.Text = "Sistema listo";
+                OpenModuleDialog(new UserManagementWindow(_currentUser));
             }
             catch (Exception ex)
             {

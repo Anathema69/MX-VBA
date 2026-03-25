@@ -155,6 +155,17 @@ namespace SistemaGestionProyectos2.Services.Drive
             }
         }
 
+        /// <summary>MEJORA-5: Get local path for a file if it exists in cache (opened or context-downloaded).</summary>
+        public string? GetCachedLocalPath(int fileId)
+        {
+            lock (_manifestLock)
+            {
+                var entry = _manifest.Files.FirstOrDefault(f => f.FileId == fileId);
+                if (entry != null && File.Exists(entry.LocalPath)) return entry.LocalPath;
+                return null;
+            }
+        }
+
         public SyncState GetSyncState(int fileId)
         {
             lock (_syncStates)
@@ -473,6 +484,88 @@ namespace SistemaGestionProyectos2.Services.Drive
                 SetSyncState(entry.FileId, SyncState.Error);
                 FileAutoUploaded?.Invoke(Path.GetFileName(entry.LocalPath), "error");
             }
+        }
+
+        /// <summary>MEJORA-6: Download sibling files to the same local directory as the assembly.
+        /// This ensures CAD software finds referenced parts when opening an assembly.
+        /// Files are registered in manifest with Watching=false (not auto-synced).</summary>
+        public async Task<int> DownloadContext(List<DriveFileDb> siblings, string contextDir, CancellationToken ct = default, Action<int, int>? onProgress = null)
+        {
+            Initialize();
+            int downloaded = 0;
+            int processed = 0;
+            var total = siblings.Count;
+            var semaphore = new SemaphoreSlim(3);
+            var tasks = siblings.Select(async sib =>
+            {
+                await semaphore.WaitAsync(ct);
+                try
+                {
+                    var localPath = Path.Combine(contextDir, sib.FileName);
+
+                    // Skip if already cached and up-to-date
+                    bool needsDownload = true;
+                    lock (_manifestLock)
+                    {
+                        var existing = _manifest.Files.FirstOrDefault(f => f.FileId == sib.Id);
+                        if (existing != null && File.Exists(existing.LocalPath))
+                        {
+                            var remoteTime = sib.UploadedAt ?? DateTime.MinValue;
+                            if (remoteTime <= existing.RemoteUploadedAt)
+                                needsDownload = false;
+                        }
+                    }
+                    if (!needsDownload)
+                    {
+                        var p = Interlocked.Increment(ref processed);
+                        onProgress?.Invoke(p, total);
+                        return;
+                    }
+
+                    // Suppress watcher events for this download
+                    lock (_suppressPaths) { _suppressPaths.Add(localPath); }
+                    try
+                    {
+                        var ok = await SupabaseService.Instance.DownloadDriveFileToLocal(sib.Id, localPath, ct);
+                        if (!ok) return;
+                        await Task.Delay(300, ct); // Let watcher flush
+
+                        // Register in manifest with Watching=false (cached, not auto-synced)
+                        lock (_manifestLock)
+                        {
+                            _manifest.Files.RemoveAll(f => f.FileId == sib.Id);
+                            _manifest.Files.Add(new WatchedFileEntry
+                            {
+                                FileId = sib.Id,
+                                FolderId = sib.FolderId,
+                                LocalPath = localPath,
+                                StoragePath = sib.StoragePath,
+                                RemoteUploadedAt = sib.UploadedAt ?? DateTime.Now,
+                                LocalModifiedAt = File.GetLastWriteTime(localPath),
+                                Size = new FileInfo(localPath).Length,
+                                Watching = false // Not auto-synced, just cached for assembly context
+                            });
+                            SaveManifest();
+                        }
+                        Interlocked.Increment(ref downloaded);
+                        var p = Interlocked.Increment(ref processed);
+                        onProgress?.Invoke(p, total);
+                    }
+                    finally
+                    {
+                        lock (_suppressPaths) { _suppressPaths.Remove(localPath); }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[FileWatcher] DownloadContext skip {sib.FileName}: {ex.Message}");
+                    var p = Interlocked.Increment(ref processed);
+                    onProgress?.Invoke(p, total);
+                }
+                finally { semaphore.Release(); }
+            });
+            await Task.WhenAll(tasks);
+            return downloaded;
         }
 
         /// <summary>Force reupload, ignoring conflict check (user chose "replace with mine")</summary>

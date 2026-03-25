@@ -50,6 +50,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly HashSet<int> _selectedFileIds = new(); // Multi-select
         private readonly List<Border> _navItems = new();
         private readonly List<Border> _filterItems = new(); // BUG-3: filter sidebar items
+        private StackPanel? _cadSubPanel; // MEJORA-4: collapsible CAD sub-filters
 
         // Caches
         private readonly Dictionary<int, string> _userNameCache = new();
@@ -109,22 +110,64 @@ namespace SistemaGestionProyectos2.Views
 
         private static readonly Dictionary<string, (string c, string bg)> FileCfg = new()
         {
-            ["pdf"] = ("#EF4444", "#FEF2F2"), ["dwg"] = ("#8B5CF6", "#F5F3FF"), ["dxf"] = ("#8B5CF6", "#F5F3FF"),
-            ["step"] = ("#8B5CF6", "#F5F3FF"), ["stp"] = ("#8B5CF6", "#F5F3FF"),
+            ["pdf"] = ("#EF4444", "#FEF2F2"),
+            // CAD Planos (morado)
+            ["dwg"] = ("#8B5CF6", "#F5F3FF"), ["dxf"] = ("#8B5CF6", "#F5F3FF"),
+            // CAD Modelos 3D (morado)
+            ["step"] = ("#8B5CF6", "#F5F3FF"), ["stp"] = ("#8B5CF6", "#F5F3FF"), ["igs"] = ("#8B5CF6", "#F5F3FF"),
+            // CAD Piezas (morado)
+            ["ipt"] = ("#8B5CF6", "#F5F3FF"), ["sldprt"] = ("#8B5CF6", "#F5F3FF"),
+            // CAD Ensambles (teal — diferenciado de piezas)
+            ["iam"] = ("#0891B2", "#ECFEFF"), ["sldasm"] = ("#0891B2", "#ECFEFF"),
+            // CNC Mastercam (naranja ingenieria)
+            ["mcam"] = ("#EA580C", "#FFF7ED"), ["mcx-5"] = ("#EA580C", "#FFF7ED"),
+            ["mcx-7"] = ("#EA580C", "#FFF7ED"), ["mcx-9"] = ("#EA580C", "#FFF7ED"),
+            // Office
             ["xlsx"] = ("#10B981", "#F0FDF4"), ["xls"] = ("#10B981", "#F0FDF4"), ["csv"] = ("#10B981", "#F0FDF4"),
             ["docx"] = ("#3B82F6", "#EFF6FF"), ["doc"] = ("#3B82F6", "#EFF6FF"),
             ["pptx"] = ("#F59E0B", "#FFFBEB"), ["ppt"] = ("#F59E0B", "#FFFBEB"),
+            // Media
             ["mp4"] = ("#EC4899", "#FDF2F8"), ["zip"] = ("#F59E0B", "#FFFBEB"), ["rar"] = ("#F59E0B", "#FFFBEB"),
-            ["jpg"] = ("#10B981", "#F0FDF4"), ["jpeg"] = ("#10B981", "#F0FDF4"), ["png"] = ("#10B981", "#F0FDF4"),
-            ["gif"] = ("#10B981", "#F0FDF4"), ["bmp"] = ("#10B981", "#F0FDF4"), ["webp"] = ("#10B981", "#F0FDF4"),
+            ["jpg"] = ("#10B981", "#F0FDF4"), ["jpeg"] = ("#10B981", "#F0FDF4"), ["jfif"] = ("#10B981", "#F0FDF4"),
+            ["png"] = ("#10B981", "#F0FDF4"), ["gif"] = ("#10B981", "#F0FDF4"),
+            ["bmp"] = ("#10B981", "#F0FDF4"), ["webp"] = ("#10B981", "#F0FDF4"),
+            // Texto
             ["txt"] = ("#64748B", "#F8FAFC"), ["log"] = ("#64748B", "#F8FAFC"),
             ["html"] = ("#F59E0B", "#FFFBEB"), ["xml"] = ("#F59E0B", "#FFFBEB"), ["json"] = ("#F59E0B", "#FFFBEB"),
         };
         static (string c, string bg) GFC(string fn) { var e = System.IO.Path.GetExtension(fn)?.TrimStart('.').ToLowerInvariant() ?? ""; return FileCfg.TryGetValue(e, out var v) ? v : ("#64748B", "#F8FAFC"); }
 
-        // P6: Safe Segoe MDL2 icons
-        static string FIcon(string fn) { var e = System.IO.Path.GetExtension(fn)?.ToLowerInvariant(); return e switch { ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => "\uE91B", ".mp4" or ".avi" or ".mkv" or ".mov" => "\uE714", ".zip" or ".rar" or ".7z" => "\uE8C8", ".pdf" => "\uEA90", ".xls" or ".xlsx" or ".csv" => "\uE80B", ".dwg" or ".dxf" or ".step" or ".stp" => "\uE8FD", _ => "\uE8A5" }; }
-        static string FType(string fn) { var e = System.IO.Path.GetExtension(fn)?.ToLowerInvariant(); return e switch { ".pdf" => "Documento PDF", ".doc" or ".docx" => "Documento Word", ".xls" or ".xlsx" => "Hoja de calculo Excel", ".ppt" or ".pptx" => "Presentacion PowerPoint", ".jpg" or ".jpeg" => "Imagen JPEG", ".png" => "Imagen PNG", ".gif" => "Imagen GIF", ".mp4" => "Video MP4", ".zip" => "Archivo ZIP", ".rar" => "Archivo RAR", ".txt" => "Archivo de texto", ".csv" => "Archivo CSV", ".log" => "Archivo de registro", ".dwg" => "Plano AutoCAD", ".dxf" => "Plano DXF", ".step" or ".stp" => "Modelo 3D STEP", _ => $"Archivo {e?.TrimStart('.').ToUpperInvariant()}" }; }
+        // P6: Safe Segoe MDL2 icons — mapped from real DB extensions (Mar 2026)
+        static string FIcon(string fn) { var e = System.IO.Path.GetExtension(fn)?.ToLowerInvariant(); return e switch {
+            ".jpg" or ".jpeg" or ".jfif" or ".png" or ".gif" or ".bmp" or ".webp" => "\uE91B",
+            ".mp4" or ".avi" or ".mkv" or ".mov" => "\uE714",
+            ".zip" or ".rar" or ".7z" => "\uE8C8",
+            ".pdf" => "\uEA90",
+            ".doc" or ".docx" => "\uE8A5",
+            ".xls" or ".xlsx" or ".csv" => "\uE80B",
+            ".ppt" or ".pptx" => "\uE8A5",
+            // CAD Piezas + Planos + Modelos 3D
+            ".dwg" or ".dxf" or ".step" or ".stp" or ".igs" or ".ipt" or ".sldprt" => "\uE8FD",
+            // CAD Ensambles (icono diferenciado)
+            ".iam" or ".sldasm" => "\uE912",
+            // CNC Mastercam (wrench/repair icon)
+            ".mcam" or ".mcx-5" or ".mcx-7" or ".mcx-9" => "\uE90F",
+            _ => "\uE8A5" }; }
+        static string FType(string fn) { var e = System.IO.Path.GetExtension(fn)?.ToLowerInvariant(); return e switch {
+            ".pdf" => "Documento PDF", ".doc" or ".docx" => "Documento Word",
+            ".xls" or ".xlsx" => "Hoja de calculo Excel", ".ppt" or ".pptx" => "Presentacion PowerPoint",
+            ".jpg" or ".jpeg" or ".jfif" => "Imagen JPEG", ".png" => "Imagen PNG", ".gif" => "Imagen GIF",
+            ".mp4" => "Video MP4", ".zip" => "Archivo ZIP", ".rar" => "Archivo RAR",
+            ".txt" => "Archivo de texto", ".csv" => "Archivo CSV", ".log" => "Archivo de registro",
+            // CAD
+            ".dwg" => "Plano AutoCAD", ".dxf" => "Plano DXF",
+            ".step" or ".stp" => "Modelo 3D STEP", ".igs" => "Modelo 3D IGES",
+            ".ipt" => "Pieza Inventor", ".iam" => "Ensamble Inventor",
+            ".sldprt" => "Pieza SolidWorks", ".sldasm" => "Ensamble SolidWorks",
+            // CNC
+            ".mcam" => "Programa Mastercam", ".mcx-5" => "Programa Mastercam 5",
+            ".mcx-7" => "Programa Mastercam 7", ".mcx-9" => "Programa Mastercam 9",
+            _ => $"Archivo {e?.TrimStart('.').ToUpperInvariant()}" }; }
         static string RelT(DateTime? d) { if (!d.HasValue) return "sin fecha"; var df = DateTime.Now - d.Value; if (df.TotalSeconds < 60) return "hace un momento"; if (df.TotalMinutes < 60) return $"hace {(int)df.TotalMinutes} min"; if (df.TotalHours < 24) return $"hace {(int)df.TotalHours} hora{((int)df.TotalHours != 1 ? "s" : "")}"; if (df.TotalDays < 2) return "ayer"; if (df.TotalDays < 7) return $"hace {(int)df.TotalDays} dias"; if (df.TotalDays < 30) return $"hace {(int)(df.TotalDays / 7)} semana{((int)(df.TotalDays / 7) != 1 ? "s" : "")}"; return d.Value.ToString("dd/MM/yyyy"); }
 
         // ===============================================
@@ -185,7 +228,23 @@ namespace SistemaGestionProyectos2.Views
             foreach (var (id, ico, lbl) in new[] { ("all", "\uE80F", "Todos los archivos"), ("recent", "\uE823", "Recientes"), ("starred", "\uE734", "Destacados"), ("trash", "\uE74D", "Papelera") })
             { var it = MkNav(id, ico, lbl); NavPanel.Children.Add(it); _navItems.Add(it); }
             SetNav("all");
-            foreach (var (id, clr, lbl) in new[] { ("pdf", "#EF4444", "PDFs"), ("img", "#10B981", "Imagenes"), ("cad", "#8B5CF6", "Archivos CAD"), ("xls", "#10B981", "Hojas de calculo"), ("vid", "#EC4899", "Videos") })
+            foreach (var (id, clr, lbl) in new[] { ("pdf", "#EF4444", "PDFs"), ("img", "#10B981", "Imagenes") })
+            { var fi = MkFilter(id, clr, lbl, "0"); _filterItems.Add(fi); FilterPanel.Children.Add(fi); }
+
+            // MEJORA-4: CAD parent with collapsible sub-filters
+            var cadParent = MkFilter("cad", "#8B5CF6", "CAD (todos)", "0");
+            _filterItems.Add(cadParent); FilterPanel.Children.Add(cadParent);
+            var cadSubPanel = new StackPanel { Margin = new Thickness(16, 0, 0, 0) };
+            _cadSubPanel = cadSubPanel;
+            // MEJORA-4: Sub-filtros CAD with PNG icons from ico-ima/
+            foreach (var (id, clr, lbl, ico) in new[] {
+                ("cad_asm", "#0891B2", "Ensambles", "gear.png"), ("cad_part", "#8B5CF6", "Piezas", "ruler.png"),
+                ("cad_dwg", "#8B5CF6", "Planos", "ruler.png"), ("cad_3d", "#8B5CF6", "Modelos 3D", "ruler.png"),
+                ("cad_cnc", "#EA580C", "CNC", "wrench.png") })
+            { var fi = MkCadSubFilter(id, clr, lbl, ico); _filterItems.Add(fi); cadSubPanel.Children.Add(fi); }
+            FilterPanel.Children.Add(cadSubPanel);
+
+            foreach (var (id, clr, lbl) in new[] { ("xls", "#10B981", "Hojas de calculo"), ("vid", "#EC4899", "Videos") })
             { var fi = MkFilter(id, clr, lbl, "0"); _filterItems.Add(fi); FilterPanel.Children.Add(fi); }
 
             // Dev tools: solo visibles para usuario "caaj"
@@ -505,6 +564,34 @@ namespace SistemaGestionProyectos2.Views
             return b;
         }
 
+        // MEJORA-4: CAD sub-filter with PNG icon from ico-ima/
+        Border MkCadSubFilter(string filterId, string clr, string lbl, string icoFile)
+        {
+            var b = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 1, 0, 1), Cursor = Cursors.Hand, Background = Brushes.Transparent, Tag = filterId };
+            var g = new Grid(); var sp = new StackPanel { Orientation = Orientation.Horizontal, IsHitTestVisible = false };
+            var img = new Image { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0), Opacity = 0.7 };
+            img.Source = new BitmapImage(new Uri($"pack://application:,,,/ico-ima/{icoFile}", UriKind.Absolute));
+            sp.Children.Add(img);
+            sp.Children.Add(new TextBlock { Text = lbl, FontSize = 12.5, Foreground = TextSecondary, VerticalAlignment = VerticalAlignment.Center });
+            g.Children.Add(sp);
+            var cntTb = new TextBlock { Text = "0", FontSize = 11, Foreground = TextLight, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+            g.Children.Add(cntTb);
+            g.IsHitTestVisible = false;
+            b.Child = g;
+            b.MouseLeftButtonDown += (s, e) =>
+            {
+                if (_activeFilter == filterId) _activeFilter = null;
+                else _activeFilter = filterId;
+                UpdateFilterHighlight();
+                RenderContent();
+                var tot = _activeFilter != null ? ApplyFileFilter(_currentFiles, _activeFilter).Count : _currentFiles.Count;
+                StatusText.Text = _activeFilter != null ? $"Filtro: {lbl} ({tot} archivo(s))" : $"{_currentFolders.Count + _currentFiles.Count} elemento(s)";
+            };
+            b.MouseEnter += (s, e) => { if (b.Tag as string != _activeFilter) b.Background = HoverBg; };
+            b.MouseLeave += (s, e) => { if (b.Tag as string != _activeFilter) b.Background = Brushes.Transparent; };
+            return b;
+        }
+
         // BUG-3: Highlight active filter
         void UpdateFilterHighlight()
         {
@@ -524,7 +611,13 @@ namespace SistemaGestionProyectos2.Views
         {
             ["pdf"] = new[] { ".pdf" },
             ["img"] = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" },
-            ["cad"] = new[] { ".dwg", ".dxf", ".step", ".stp", ".igs", ".sldprt", ".sldasm", ".ipt", ".iam", ".mcx-9" },
+            ["cad"] = new[] { ".dwg", ".dxf", ".step", ".stp", ".igs", ".sldprt", ".sldasm", ".ipt", ".iam", ".mcam", ".mcx-5", ".mcx-7", ".mcx-9" },
+            // MEJORA-4: Sub-filtros CAD
+            ["cad_asm"] = new[] { ".iam", ".sldasm" },
+            ["cad_part"] = new[] { ".ipt", ".sldprt" },
+            ["cad_dwg"] = new[] { ".dwg", ".dxf" },
+            ["cad_3d"] = new[] { ".step", ".stp", ".igs" },
+            ["cad_cnc"] = new[] { ".mcam", ".mcx-5", ".mcx-7", ".mcx-9" },
             ["xls"] = new[] { ".xls", ".xlsx", ".csv" },
             ["vid"] = new[] { ".mp4", ".avi", ".mkv", ".mov" },
         };
@@ -538,18 +631,15 @@ namespace SistemaGestionProyectos2.Views
         // P12: Update filter counts + disable when no files in current folder
         void UpdateFilterCounts()
         {
-            var filterKeys = new[] { "pdf", "img", "cad", "xls", "vid" };
             var hasFiles = _currentFiles.Count > 0;
             Debug.WriteLine($"[DriveV2] UpdateFilterCounts: {_currentFiles.Count} files, hasFiles={hasFiles}");
-            if (hasFiles)
+
+            // Update ALL filter items (including sub-filters) by their Tag
+            foreach (var fi in _filterItems)
             {
-                var exts = _currentFiles.Select(f => System.IO.Path.GetExtension(f.FileName)?.ToLowerInvariant() ?? "?").GroupBy(e => e).Select(g => $"{g.Key}({g.Count()})");
-                Debug.WriteLine($"[DriveV2]   Extensions: {string.Join(", ", exts)}");
-            }
-            for (int i = 0; i < _filterItems.Count && i < filterKeys.Length; i++)
-            {
-                var fi = _filterItems[i];
-                var count = hasFiles ? ApplyFileFilter(_currentFiles, filterKeys[i]).Count : 0;
+                var filterId = fi.Tag as string;
+                if (filterId == null || !FilterExtensions.ContainsKey(filterId)) continue;
+                var count = hasFiles ? ApplyFileFilter(_currentFiles, filterId).Count : 0;
                 // Update count text
                 if (fi.Child is Grid g)
                 {
@@ -557,10 +647,18 @@ namespace SistemaGestionProyectos2.Views
                     if (ct != null) ct.Text = count.ToString();
                 }
                 // Disable/enable filter visually
-                fi.Opacity = hasFiles ? 1.0 : 0.4;
-                fi.Cursor = hasFiles ? Cursors.Hand : Cursors.Arrow;
-                fi.IsHitTestVisible = hasFiles;
+                fi.Opacity = (hasFiles && count > 0) ? 1.0 : 0.4;
+                fi.Cursor = (hasFiles && count > 0) ? Cursors.Hand : Cursors.Arrow;
+                fi.IsHitTestVisible = hasFiles && count > 0;
             }
+
+            // MEJORA-4: Show/hide CAD sub-panel based on whether any CAD files exist
+            if (_cadSubPanel != null)
+            {
+                var cadCount = hasFiles ? ApplyFileFilter(_currentFiles, "cad").Count : 0;
+                _cadSubPanel.Visibility = cadCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+
             // Clear active filter if no files
             if (!hasFiles && _activeFilter != null) { _activeFilter = null; UpdateFilterHighlight(); }
         }
@@ -1222,22 +1320,31 @@ namespace SistemaGestionProyectos2.Views
             if (sel) card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 12, ShadowDepth = 2, Opacity = 0.15 };
             var mg = new Grid(); mg.RowDefinitions.Add(new RowDefinition { Height = new GridLength(160) }); mg.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             var prev = new Border { Background = bgB, CornerRadius = new CornerRadius(10, 10, 0, 0) }; var pg = new Grid();
-            // V3-A: Show thumbnail for images, icon for others
+            // V3-A + MEJORA-5: Show thumbnail for images and CAD files (if locally cached), icon for others
             var isImage = Services.Drive.DriveService.IsImageFile(file.FileName);
-            if (isImage)
+            var isCad = Services.Drive.DriveService.IsCadFile(file.FileName);
+            if (isImage || isCad)
             {
                 var thumbImg = new Image { Stretch = Stretch.UniformToFill, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Opacity = 0 };
                 RenderOptions.SetBitmapScalingMode(thumbImg, BitmapScalingMode.HighQuality);
                 pg.Children.Add(thumbImg);
-                // Fallback icon (shown until thumbnail loads)
+                // Fallback icon (shown until thumbnail loads, or permanently if no thumbnail available)
                 var fallbackIcon = new TextBlock { Text = FIcon(file.FileName), FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 48, Foreground = fB, Opacity = 0.8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
                 pg.Children.Add(fallbackIcon);
                 // Load thumbnail async
+                var fileRef = file; // capture for closure
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await LoadThumbnailAsync(file, thumbImg, _cts.Token);
+                        if (isImage)
+                        {
+                            await LoadThumbnailAsync(fileRef, thumbImg, _cts.Token);
+                        }
+                        else // CAD: try Shell thumbnail from local cache
+                        {
+                            await LoadCadThumbnailAsync(fileRef, thumbImg, _cts.Token);
+                        }
                         Dispatcher.Invoke(() => { if (thumbImg.Source != null) { thumbImg.Opacity = 1; fallbackIcon.Visibility = Visibility.Collapsed; } });
                     }
                     catch { /* non-critical */ }
@@ -1321,24 +1428,87 @@ namespace SistemaGestionProyectos2.Views
         // V3-E: OPEN-IN-PLACE + AUTO-SYNC
         // ===============================================
 
+        // MEJORA-6: Show/hide context download overlay with progress
+        void ShowContextOverlay(string title, string status, int percent = -1)
+        {
+            ContextDownloadOverlay.Visibility = Visibility.Visible;
+            CtxDownloadTitle.Text = title;
+            CtxDownloadStatus.Text = status;
+            if (percent >= 0) { CtxProgressBar.IsIndeterminate = false; CtxProgressBar.Value = percent; }
+            else CtxProgressBar.IsIndeterminate = true;
+            var sb = (System.Windows.Media.Animation.Storyboard)FindResource("CtxSpinnerStoryboard");
+            sb.Begin(this, true);
+        }
+        void HideContextOverlay()
+        {
+            ContextDownloadOverlay.Visibility = Visibility.Collapsed;
+            var sb = (System.Windows.Media.Animation.Storyboard)FindResource("CtxSpinnerStoryboard");
+            sb.Stop(this);
+        }
+
         async Task OpenFileInPlace(DriveFileDb file)
         {
             if (!SupabaseService.Instance.IsDriveStorageConfigured) { ShowToast("R2 Storage no configurado", "warning"); return; }
 
             try
             {
-                StatusText.Text = $"Abriendo {file.FileName}...";
+                // Show overlay for file download
+                ShowContextOverlay($"Abriendo {file.FileName}", "Descargando archivo...");
                 var localPath = await FileWatcherService.Instance.OpenFile(file, _cts.Token);
-                if (localPath == null) { ShowToast($"Error al descargar {file.FileName}", "error"); return; }
+                if (localPath == null) { HideContextOverlay(); ShowToast($"Error al descargar {file.FileName}", "error"); return; }
 
-                Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+                // MEJORA-6: If assembly file, download all sibling files to same directory
+                if (Services.Drive.DriveService.IsAssemblyFile(file.FileName))
+                {
+                    var contextDir = System.IO.Path.GetDirectoryName(localPath)!;
+                    var siblings = _currentFiles.Where(f => f.Id != file.Id).ToList();
+                    if (siblings.Count > 0)
+                    {
+                        int done = 0;
+                        ShowContextOverlay("Preparando ensamble", $"Descargando 0 de {siblings.Count} archivos...", 0);
+                        var dlCount = await FileWatcherService.Instance.DownloadContext(siblings, contextDir, _cts.Token,
+                            onProgress: (completed, total) =>
+                            {
+                                done = completed;
+                                Dispatcher.Invoke(() =>
+                                {
+                                    var pct = (int)(completed * 100.0 / total);
+                                    ShowContextOverlay("Preparando ensamble",
+                                        $"Descargando {completed} de {total} archivos...", pct);
+                                });
+                            });
+                        if (dlCount > 0)
+                            Debug.WriteLine($"[DriveV2] Assembly context: {dlCount}/{siblings.Count} files downloaded to {contextDir}");
+                    }
+                }
+
+                // Update overlay while app opens
+                ShowContextOverlay($"Abriendo {file.FileName}", "Iniciando aplicacion...");
+
+                try
+                {
+                    var proc = Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+                    if (proc != null)
+                    {
+                        await Task.Delay(500);
+                        if (proc.HasExited && proc.ExitCode != 0)
+                            throw new System.ComponentModel.Win32Exception("Programa asociado no encontrado");
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    Process.Start(new ProcessStartInfo("rundll32.exe", $"shell32.dll,OpenAs_RunDLL \"{localPath}\"") { UseShellExecute = false });
+                }
+
+                HideContextOverlay();
                 StatusText.Text = $"{file.FileName} abierto - cambios se sincronizan automaticamente";
                 ShowToast($"{file.FileName} abierto", "info");
                 UpdateSyncStatusBar();
-                RenderContent(); // Refresh to show sync badge
+                RenderContent();
             }
             catch (Exception ex)
             {
+                HideContextOverlay();
                 ShowToast($"No se pudo abrir: {ex.Message}", "error");
             }
         }
@@ -1617,6 +1787,63 @@ namespace SistemaGestionProyectos2.Views
             }
             catch (OperationCanceledException) { }
             catch { /* thumbnail load failure is non-critical */ }
+            finally { _thumbnailSemaphore.Release(); }
+        }
+
+        // MEJORA-5: Load CAD thumbnail via Windows Shell (if file is locally cached)
+        async Task LoadCadThumbnailAsync(DriveFileDb file, Image targetImage, CancellationToken ct)
+        {
+            await _thumbnailSemaphore.WaitAsync(ct);
+            try
+            {
+                Directory.CreateDirectory(ThumbnailCacheDir);
+                var thumbPath = System.IO.Path.Combine(ThumbnailCacheDir, $"{file.Id}.jpg");
+
+                // Check disk cache first (same as image thumbnails)
+                if (File.Exists(thumbPath))
+                {
+                    var bmp = await Task.Run(() =>
+                    {
+                        var bi = new BitmapImage();
+                        bi.BeginInit();
+                        bi.UriSource = new Uri(thumbPath, UriKind.Absolute);
+                        bi.DecodePixelWidth = 200;
+                        bi.CacheOption = BitmapCacheOption.OnLoad;
+                        bi.EndInit();
+                        bi.Freeze();
+                        return bi;
+                    }, ct);
+                    if (bmp != null && !ct.IsCancellationRequested)
+                        Dispatcher.Invoke(() => targetImage.Source = bmp);
+                    return;
+                }
+
+                // Check if file has a local copy (from open-in-place or context download)
+                var localPath = FileWatcherService.Instance.GetCachedLocalPath(file.Id);
+                if (localPath == null) return; // Not cached locally, can't extract shell thumbnail
+
+                // Extract thumbnail via Windows Shell (STA thread, COM interop)
+                var shellBmp = await Helpers.ShellThumbnailHelper.GetThumbnailAsync(localPath, 200);
+                if (shellBmp == null || ct.IsCancellationRequested) return;
+
+                // Save to disk cache as JPEG for future loads
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        var encoder = new JpegBitmapEncoder { QualityLevel = 80 };
+                        encoder.Frames.Add(BitmapFrame.Create(shellBmp));
+                        using var fs = new FileStream(thumbPath, FileMode.Create);
+                        encoder.Save(fs);
+                    }
+                    catch { /* cache write failure is non-critical */ }
+                }, ct);
+
+                if (!ct.IsCancellationRequested)
+                    Dispatcher.Invoke(() => targetImage.Source = shellBmp);
+            }
+            catch (OperationCanceledException) { }
+            catch { /* CAD thumbnail failure is non-critical */ }
             finally { _thumbnailSemaphore.Release(); }
         }
 
@@ -2487,9 +2714,27 @@ namespace SistemaGestionProyectos2.Views
         }
 
         // Upload with ghost cards in-place (no side panel)
+        // MEJORA-2: Filter junk files that should never be uploaded to Drive
+        static bool IsJunkFile(string fileName)
+        {
+            if (fileName.StartsWith("~$")) return true;                     // Office/SolidWorks lock files
+            if (fileName.StartsWith(".", StringComparison.Ordinal)) return true; // Hidden system files
+            var ext = System.IO.Path.GetExtension(fileName)?.ToLowerInvariant();
+            return ext is ".db" or ".lck" or ".tmp" or ".bak";              // Thumbs.db, lock files, temps
+        }
+
         async Task UploadFiles(string[] filePaths)
         {
             if (!_currentFolderId.HasValue) return;
+
+            // MEJORA-2: Filter out junk files before uploading
+            var cleanPaths = filePaths.Where(fp => !IsJunkFile(System.IO.Path.GetFileName(fp))).ToArray();
+            var skipped = filePaths.Length - cleanPaths.Length;
+            if (skipped > 0)
+                ShowToast($"{skipped} archivo(s) omitido(s) (temporales/basura)", "warning");
+            if (cleanPaths.Length == 0) { ShowToast("No hay archivos validos para subir", "warning"); return; }
+            filePaths = cleanPaths;
+
             // CRITICAL: Capture folder ID at start - user may navigate away during upload
             var targetFolderId = _currentFolderId.Value;
             Debug.WriteLine($"[DriveV2] UploadFiles: {filePaths.Length} files to folder {targetFolderId}");
