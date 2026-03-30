@@ -1,0 +1,46 @@
+CAMBIOS ESTETICOS FASE 3
+
+-Tener todos los valores centrados en columnas y renglones
+-En MANEJO DE ORDENES que entre directo al año actual en el filtro "Año"
+-Cambiar PORTAL DEL VENDEDOR a PORTAL VENTAS
+-Cambiar PORTAL DE PROVEEDORES a PORTAL PROVEEDORES
+-En MANEJO DE ORDENES dejar todas las columnas restringidas al tamaño del texto y que no se oculten unas con otras
+	para poder ver todos los campos
+- En BALANCE hacer que la hoja se ajuste a cualquier monitor
+- Bug, que al cerrar sesión se deja de compartir la pantalla del meet
+
+
+
+FASE 4
+
+PORTAL VENTAS 
+	-Debe tener la capacidad de subir documentos e imágenes en cada orden de compra asignada y un botón donde 	pase la orden a "Liberada".
+	- Carpeta en la nube, botón icono de clip para subir los archivos: .txt, imagen, documento
+		, un botón para liberar. 
+	- Quitar el car de 'Total Pagado'
+	- Quitar el msgboox al cerrar sesión como vendedor
+
+MANEJO DE ORDENES 
+
+	-Debe tener la capacidad de subir documentos e imagenes y crear acceso directo a carpetas en todos 
+		los roles que existe MANEJO DE ORDENES, es decir, direccion - administracion - proyectos- cordinacion
+		El picarle se debe abrir la carpeta donde esta contenida dicha informacion (se debe hacer en supabase o R2 de cloudflare) para la gestión de archivos. El cliente enviará su carpeta actual y se espera poder sincronizarla por cada orden.
+
+	- El path lo configura: dirección, administración, operación, vendedor (desde su apartado de ventas) (pendiente de ordenar la idea con el anterior punto)
+	- Visualiza la carpeta: todos según su rol
+	- Un solo botón de doble acción: si tiene path ir directamente, caso contrario poder elegir la carpeta, con clic derecho editar el path en caso tenga. 
+
+	-Crear columna de texto editable que se llame "Ejecutor" en esta se pondra el o los nombres de los que esten 
+		ejecutando la orden de compra. Poder seleccionar más de un ejecutor del listado de la nomina.,
+		- Este permiso será para: Admin, Operación y Corrdinación.
+
+
+
+Crear modulo INVENTARIO, este se manejara por tipos de componentes donde el usuario los podra crear ej. "Tornilleria"
+	de Tornilleria se abre la tabla con todos los tipos de tornillos que se den de alta
+	Practicamente se tiene que poder crear botones de acceso a las ramas que se creen y tablas tipo excel
+	- Es practicamente manejar un inventario con stock para saber lo que tenemos y qué pedir, manejar por cards y esta al ser clickeable ramificar los n productos,
+	- Hacer un mockup para confirmar esta idea
+
+
+

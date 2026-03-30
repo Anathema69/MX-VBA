@@ -1,0 +1,60 @@
+
+  BLOQUE 1: Ajustes Cosmeticos (pendientes Fase 3)
+
+  Se corregiran los siguientes detalles visuales en la plataforma actual:
+
+  1. Centrado de valores en todas las columnas y renglones de las tablas.
+  2. Filtro de ano actual por defecto en Manejo de Ordenes (actualmente requiere seleccion manual).
+  3. Renombramientos: "Portal del Vendedor" pasa a Portal Ventas, "Portal de Proveedores" pasa a Portal Proveedores.
+  4. Columnas en Manejo de Ordenes: se ajustaran al ancho del contenido para que no se oculten entre si y todos los campos sean visibles sin scroll horizontal.
+  5. Balance responsivo: la vista de Balance se adaptara a cualquier tamano de monitor.
+  6. Bug de sesion: se corregira el problema donde al cerrar sesion se interrumpe la pantalla compartida en Meet.
+
+  ---
+  BLOQUE 2: Funcionalidades Nuevas (Fase 4)
+
+  2.1 Portal Ventas - Gestion de Archivos y Liberacion
+
+  - Se agregara un boton de clip en cada orden de compra que permitira subir archivos (documentos, imagenes, .txt) a una carpeta en la nube vinculada a esa orden.
+  - Se agregara un boton "Liberar" que cambiara el estado de la orden a "Liberada" directamente desde el portal de ventas.
+  - Se eliminara la tarjeta de "Total Pagado" del dashboard.
+  - Se eliminara el mensaje emergente al cerrar sesion como vendedor.
+
+  2.2 Manejo de Ordenes - Carpetas y Archivos por Orden
+
+  - Cada orden tendra una carpeta asociada en la nube (almacenamiento via Supabase Storage o Cloudflare R2, se evaluara la mejor opcion tecnica).
+  - Quien configura la carpeta: Direccion, Administracion, Operacion y el Vendedor asignado podran vincular o crear la carpeta de una orden.
+  - Quien la ve: todos los roles que tengan acceso a Manejo de Ordenes podran visualizar y acceder a la carpeta segun su rol.
+  - Boton de doble accion: un solo boton por orden que:
+    - Si ya tiene carpeta asignada: abre la carpeta directamente.
+    - Si no tiene carpeta: permite seleccionar/crear una.
+    - Con clic derecho: permite editar la ruta de la carpeta.
+  - Se espera poder sincronizar las carpetas actuales del cliente con el sistema, de modo que la informacion existente sea accesible desde la plataforma.
+
+  2.3 Columna "Ejecutor" en Ordenes
+
+  - Se creara una nueva columna editable llamada "Ejecutor" en la tabla de ordenes.
+  - Permitira seleccionar uno o mas nombres del listado de nomina, indicando quien esta ejecutando cada orden.
+  - Permisos de edicion: Administracion, Operacion y Coordinacion.
+  - Visible para todos los roles.
+
+  2.4 Modulo de Inventario (nuevo)
+
+  - Se creara un modulo completamente nuevo para gestionar inventario de componentes.
+  - Funcionamiento por categorias dinamicas: el usuario crea categorias (ej. "Tornilleria", "Cableado", "Conectores") y dentro de cada una administra los productos en una tabla tipo Excel.
+  - Interfaz basada en tarjetas (cards) que al hacer clic despliegan los productos de esa categoria.
+  - Control de stock: saber que hay disponible y que se necesita pedir.
+  - Primer paso: se entregara un mockup visual para validar el diseno y la navegacion con el equipo IMA antes de iniciar el desarrollo.
+
+  ---
+  BLOQUE 3: Optimizacion de Rendimiento
+
+  Como parte de la mejora continua de la plataforma, se realizara una optimizacion general para que la aplicacion cargue mas rapido y responda de manera mas agil en todas las pantallas.
+
+  Las mejoras incluyen:
+
+  - Carga inteligente de datos: la plataforma recordara informacion que ya consulto recientemente (como clientes, vendedores y estados de ordenes) para no tener que pedirla al servidor cada vez. Esto hace que las pantallas que ya se visitaron abran practicamente al instante.
+  - Consultas mas eficientes: en lugar de traer toda la informacion de la base de datos y filtrarla en la aplicacion, ahora el servidor entregara solo los datos necesarios. Esto reduce tiempos de espera especialmente en pantallas con muchos registros como Manejo de Ordenes y
+  Gastos.
+  - Mejora en la base de datos: se aplicaran ajustes internos para que las busquedas por orden, por cliente y por proveedor sean mas rapidas.
+  - Pantallas mas fluidas: las tablas con muchos registros se renderizaran de forma mas eficiente, evitando que la aplicacion se sienta lenta al hacer scroll.

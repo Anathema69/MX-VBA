@@ -423,3 +423,8 @@ appsettings.json
 # Instaladores y certificados (pesados / sensibles)
 SistemaGestionProyectos2/installer/*.exe
 *.pfx
+
+# Archivos de prueba locales (no subir al repo)
+fase4/_carpeta_test/
+fase4/_img_test/
+fase4/log_now.txt
