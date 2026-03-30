@@ -2901,8 +2901,10 @@ namespace SistemaGestionProyectos2.Views
         }
         void Window_DragEnter(object sender, DragEventArgs e)
         {
+            Debug.WriteLine($"[DragDrop] DragEnter: hasFolderId={_currentFolderId.HasValue}, hasFileDrop={e.Data.GetDataPresent(DataFormats.FileDrop)}, effects={e.Effects}");
             if (_currentFolderId.HasValue && e.Data.GetDataPresent(DataFormats.FileDrop))
             {
+                e.Effects = DragDropEffects.Copy;
                 DragDropOverlay.Visibility = Visibility.Visible;
                 var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
                 DragDropOverlay.BeginAnimation(OpacityProperty, fadeIn);
@@ -2910,24 +2912,37 @@ namespace SistemaGestionProyectos2.Views
                 DragDropScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
                 DragDropScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
             }
+            e.Handled = true;
         }
         void Window_DragLeave(object sender, DragEventArgs e)
         {
+            Debug.WriteLine("[DragDrop] DragLeave");
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
             fadeOut.Completed += (s2, e2) => DragDropOverlay.Visibility = Visibility.Collapsed;
             DragDropOverlay.BeginAnimation(OpacityProperty, fadeOut);
         }
-        void Window_DragOver(object sender, DragEventArgs e) => e.Handled = true;
+        void Window_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
         async void Window_Drop(object sender, DragEventArgs e)
         {
+            Debug.WriteLine($"[DragDrop] DROP event fired! hasFolderId={_currentFolderId.HasValue}");
             DragDropOverlay.Visibility = Visibility.Collapsed; e.Handled = true;
-            if (!_currentFolderId.HasValue || !e.Data.GetDataPresent(DataFormats.FileDrop) || !SupabaseService.Instance.IsDriveStorageConfigured) return;
+            if (!_currentFolderId.HasValue || !e.Data.GetDataPresent(DataFormats.FileDrop) || !SupabaseService.Instance.IsDriveStorageConfigured)
+            {
+                Debug.WriteLine($"[DragDrop] DROP rejected: folder={_currentFolderId.HasValue}, fileDrop={e.Data.GetDataPresent(DataFormats.FileDrop)}, r2={SupabaseService.Instance.IsDriveStorageConfigured}");
+                return;
+            }
             var paths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+            Debug.WriteLine($"[DragDrop] Paths received: {paths.Length} - {string.Join(", ", paths.Take(5))}");
             if (paths.Length == 0) return;
 
             // Separate files from folders
             var files = paths.Where(p => File.Exists(p)).ToArray();
             var folders = paths.Where(p => Directory.Exists(p)).ToArray();
+            Debug.WriteLine($"[DragDrop] Files={files.Length}, Folders={folders.Length}");
 
             // If only files dropped (no folders) → existing upload flow
             if (folders.Length == 0 && files.Length > 0)
