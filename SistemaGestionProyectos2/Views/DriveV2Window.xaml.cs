@@ -97,8 +97,16 @@ namespace SistemaGestionProyectos2.Views
         private static readonly SolidColorBrush HoverBg = Fr(0xF8, 0xFA, 0xFC);
         private static readonly SolidColorBrush ActiveBg = Fr(0xEF, 0xF6, 0xFF);
         private static readonly SolidColorBrush Background = Fr(0xF8, 0xFA, 0xFC);
-        private static readonly SolidColorBrush Destructive = Fr(0xDC, 0x26, 0x26);
-        private static readonly SolidColorBrush GreenOk = Fr(0x43, 0xA0, 0x47);
+        private static readonly SolidColorBrush Destructive = Fr(0xEF, 0x44, 0x44);
+        // Semantic tokens (Tailwind)
+        private static readonly SolidColorBrush Success = Fr(0x10, 0xB9, 0x81);
+        private static readonly SolidColorBrush SuccessBg = Fr(0xF0, 0xFD, 0xF4);
+        private static readonly SolidColorBrush Warning = Fr(0xF5, 0x9E, 0x0B);
+        private static readonly SolidColorBrush WarningBg = Fr(0xFF, 0xFB, 0xEB);
+        private static readonly SolidColorBrush Danger = Fr(0xEF, 0x44, 0x44);
+        private static readonly SolidColorBrush DangerBg = Fr(0xFE, 0xF2, 0xF2);
+        private static readonly SolidColorBrush Info = Fr(0x3B, 0x82, 0xF6);
+        private static readonly SolidColorBrush InfoBg = Fr(0xEF, 0xF6, 0xFF);
         static SolidColorBrush Fr(byte r, byte g, byte b) { var x = new SolidColorBrush(Color.FromRgb(r, g, b)); x.Freeze(); return x; }
 
         private static readonly string[] FolderColors = { "#3B82F6", "#10B981", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4" };
@@ -303,9 +311,7 @@ namespace SistemaGestionProyectos2.Views
 
             BackToFoldersBtn.Visibility = Visibility.Collapsed;
             SectionTitle.Text = "Archivos recientes";
-            EmptyState.Visibility = Visibility.Collapsed;
-            LoadingPanel.Visibility = Visibility.Visible;
-            ((Storyboard)FindResource("SpinnerStoryboard")).Begin();
+            ShowSkeletonLoading();
 
             try
             {
@@ -321,7 +327,7 @@ namespace SistemaGestionProyectos2.Views
                 // Build header with toggle
                 var headerSp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 16) };
                 var toggleLabel = new TextBlock { Text = _recentShowAll ? "Todos" : "Mis archivos", FontSize = 13, Foreground = TextSecondary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-                var toggleBorder = new Border { Width = 36, Height = 18, CornerRadius = new CornerRadius(9), Background = _recentShowAll ? GreenOk : Primary, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center };
+                var toggleBorder = new Border { Width = 36, Height = 18, CornerRadius = new CornerRadius(9), Background = _recentShowAll ? Success : Primary, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Center };
                 var toggleDot = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(7), Background = Brushes.White, HorizontalAlignment = _recentShowAll ? HorizontalAlignment.Left : HorizontalAlignment.Right, Margin = new Thickness(2) };
                 toggleBorder.Child = toggleDot;
                 toggleBorder.MouseLeftButtonDown += async (s, e) =>
@@ -372,11 +378,10 @@ namespace SistemaGestionProyectos2.Views
                 RenderBreadcrumb();
                 UpdateSearchPlaceholder();
             }
-            catch (Exception ex) { StatusText.Text = "Error"; SectionSubtitle.Text = ex.Message; }
+            catch (Exception ex) { StatusText.Text = "Error"; SectionSubtitle.Text = ex.Message; ContentHost.Content = null; }
             finally
             {
                 LoadingPanel.Visibility = Visibility.Collapsed;
-                ((Storyboard)FindResource("SpinnerStoryboard")).Stop();
             }
         }
 
@@ -493,7 +498,9 @@ namespace SistemaGestionProyectos2.Views
         {
             _activityExpanded = !_activityExpanded;
             ActivityPanel.Visibility = _activityExpanded ? Visibility.Visible : Visibility.Collapsed;
-            ActivityChevronRotation.Angle = _activityExpanded ? 90 : 0;
+            var targetAngle = _activityExpanded ? 90.0 : 0.0;
+            var anim = new DoubleAnimation(targetAngle, TimeSpan.FromMilliseconds(200)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut } };
+            ActivityChevronRotation.BeginAnimation(RotateTransform.AngleProperty, anim);
         }
 
         /// <summary>Refresh sidebar activity + recents content if active</summary>
@@ -695,10 +702,7 @@ namespace SistemaGestionProyectos2.Views
             var sw0 = Stopwatch.StartNew();
             Debug.WriteLine($"[DriveV2] === LoadFolderFull START (id={folderId}) ===");
 
-            LoadingPanel.Visibility = Visibility.Visible;
-            ((Storyboard)FindResource("SpinnerStoryboard")).Begin();
-            EmptyState.Visibility = Visibility.Collapsed;
-            ContentHost.Content = null;
+            ShowSkeletonLoading();
 
             try
             {
@@ -750,11 +754,10 @@ namespace SistemaGestionProyectos2.Views
 
                 // BUG-4: Storage UI already driven by _globalStorageBytes (loaded once at startup)
             }
-            catch (Exception ex) { Debug.WriteLine($"[DriveV2] LoadFolderFull ERR: {ex.Message}\n{ex.StackTrace}"); StatusText.Text = "Error"; SectionTitle.Text = "Error"; SectionSubtitle.Text = ex.Message; }
+            catch (Exception ex) { Debug.WriteLine($"[DriveV2] LoadFolderFull ERR: {ex.Message}\n{ex.StackTrace}"); StatusText.Text = "Error"; SectionTitle.Text = "Error"; SectionSubtitle.Text = ex.Message; ContentHost.Content = null; }
             finally
             {
                 LoadingPanel.Visibility = Visibility.Collapsed;
-                ((Storyboard)FindResource("SpinnerStoryboard")).Stop();
                 Debug.WriteLine($"[DriveV2] === LoadFolder TOTAL: {sw0.ElapsedMilliseconds}ms ===");
             }
         }
@@ -791,6 +794,128 @@ namespace SistemaGestionProyectos2.Views
             LoadingPanel.Visibility = Visibility.Collapsed;
             UpdateFilterCounts();
             UpdateSearchPlaceholder();
+        }
+
+        // ===============================================
+        // SKELETON LOADING (P1)
+        // ===============================================
+        void ShowSkeletonLoading()
+        {
+            EmptyState.Visibility = Visibility.Collapsed;
+            LoadingPanel.Visibility = Visibility.Collapsed;
+            if (_viewMode == "list") ShowSkeletonList(); else ShowSkeletonGrid();
+        }
+
+        void ShowSkeletonGrid()
+        {
+            var wrap = new WrapPanel();
+            for (int i = 0; i < 8; i++) wrap.Children.Add(MkGhostCard());
+            ContentHost.Content = wrap;
+        }
+
+        void ShowSkeletonList()
+        {
+            var stk = new StackPanel();
+            var wrap = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), BorderBrush = BorderColor, BorderThickness = new Thickness(1), ClipToBounds = true };
+            var inner = new StackPanel();
+            for (int i = 0; i < 8; i++) inner.Children.Add(MkGhostRow());
+            wrap.Child = inner;
+            stk.Children.Add(wrap);
+            ContentHost.Content = stk;
+        }
+
+        Border MkGhostCard()
+        {
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(12), BorderBrush = BorderColor, BorderThickness = new Thickness(1), Width = 200, Margin = new Thickness(6), ClipToBounds = true };
+            var stk = new StackPanel();
+            // Thumbnail placeholder
+            var thumb = new Border { Height = 120, Background = BorderLight };
+            stk.Children.Add(thumb);
+            // Content area
+            var content = new StackPanel { Margin = new Thickness(14, 12, 14, 14) };
+            // Name bar
+            var namebar = new Border { Height = 14, Width = 130, CornerRadius = new CornerRadius(4), Background = BorderLight, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 8) };
+            content.Children.Add(namebar);
+            // Meta bar
+            var metabar = new Border { Height = 10, Width = 80, CornerRadius = new CornerRadius(4), Background = BorderLight, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 6) };
+            content.Children.Add(metabar);
+            // Date bar
+            var datebar = new Border { Height = 10, Width = 60, CornerRadius = new CornerRadius(4), Background = BorderLight, HorizontalAlignment = HorizontalAlignment.Left };
+            content.Children.Add(datebar);
+            stk.Children.Add(content);
+            card.Child = stk;
+            // Pulse animation (opacity oscillation)
+            var pulse = new DoubleAnimation(0.4, 1.0, TimeSpan.FromMilliseconds(800)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase() };
+            card.BeginAnimation(OpacityProperty, pulse);
+            return card;
+        }
+
+        Grid MkGhostRow()
+        {
+            var row = new Grid { Height = 48 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(24, 0, 0, 0) };
+            // Icon placeholder
+            sp.Children.Add(new Border { Width = 32, Height = 32, CornerRadius = new CornerRadius(6), Background = BorderLight, Margin = new Thickness(0, 0, 10, 0) });
+            // Name bar
+            sp.Children.Add(new Border { Height = 12, Width = 160, CornerRadius = new CornerRadius(4), Background = BorderLight, VerticalAlignment = VerticalAlignment.Center });
+            Grid.SetColumn(sp, 0); row.Children.Add(sp);
+            // Type bar
+            var tb = new Border { Height = 10, Width = 50, CornerRadius = new CornerRadius(4), Background = BorderLight, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(8, 0, 0, 0) };
+            Grid.SetColumn(tb, 1); row.Children.Add(tb);
+            // Size bar
+            var sb = new Border { Height = 10, Width = 40, CornerRadius = new CornerRadius(4), Background = BorderLight, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(8, 0, 0, 0) };
+            Grid.SetColumn(sb, 2); row.Children.Add(sb);
+            // Date bar
+            var db = new Border { Height = 10, Width = 80, CornerRadius = new CornerRadius(4), Background = BorderLight, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(8, 0, 0, 0) };
+            Grid.SetColumn(db, 3); row.Children.Add(db);
+            // Bottom border
+            row.Children.Add(new Border { Height = 1, Background = BorderLight, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Stretch });
+            // Pulse
+            var pulse = new DoubleAnimation(0.4, 1.0, TimeSpan.FromMilliseconds(800)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase() };
+            row.BeginAnimation(OpacityProperty, pulse);
+            return row;
+        }
+
+        /// <summary>Apply staggered fade-in to rendered cards/rows</summary>
+        void ApplyStaggeredFadeIn(Panel container, int maxStagger = 12)
+        {
+            int i = 0;
+            foreach (UIElement child in container.Children)
+            {
+                if (child is FrameworkElement fe)
+                {
+                    fe.Opacity = 0;
+                    fe.RenderTransform = new TranslateTransform(0, 12);
+                    fe.RenderTransformOrigin = new Point(0.5, 0.5);
+                    int delay = Math.Min(i, maxStagger) * 30;
+                    var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(delay) };
+                    var captured = fe;
+                    timer.Tick += (s, e) =>
+                    {
+                        ((System.Windows.Threading.DispatcherTimer)s!).Stop();
+                        var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+                        var slideIn = new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+                        captured.BeginAnimation(OpacityProperty, fadeIn);
+                        captured.RenderTransform.BeginAnimation(TranslateTransform.YProperty, slideIn);
+                    };
+                    timer.Start();
+                    i++;
+                }
+            }
+        }
+
+        /// <summary>Animate scale transform on a FrameworkElement</summary>
+        static void AnimateScale(FrameworkElement el, double to, int ms)
+        {
+            if (el.RenderTransform is not ScaleTransform st) return;
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var anim = new DoubleAnimation(to, TimeSpan.FromMilliseconds(ms)) { EasingFunction = ease };
+            st.BeginAnimation(ScaleTransform.ScaleXProperty, anim);
+            st.BeginAnimation(ScaleTransform.ScaleYProperty, anim);
         }
 
         // MEJORA-6: Render order info banner above content when folder is linked
@@ -1011,12 +1136,19 @@ namespace SistemaGestionProyectos2.Views
             var filteredFiles = _activeFilter != null ? ApplyFileFilter(_currentFiles, _activeFilter) : _currentFiles;
             var sortedFiles = SortFiles(filteredFiles);
 
-            // G3: Fade transition
-            ContentHost.Opacity = 0;
             if (_viewMode == "list") RenderList(sortedFiles);
             else RenderWrap(sortedFiles);
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)) { EasingFunction = new QuadraticEase() };
-            ContentHost.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+
+            // P1D: Staggered fade-in on WrapPanels (cards)
+            if (ContentHost.Content is StackPanel renderStk)
+            {
+                foreach (var child in renderStk.Children.OfType<WrapPanel>())
+                    ApplyStaggeredFadeIn(child);
+            }
+            else if (ContentHost.Content is WrapPanel wp)
+            {
+                ApplyStaggeredFadeIn(wp);
+            }
         }
 
         // MEJORA-7: Sort files by current sort field
@@ -1262,8 +1394,22 @@ namespace SistemaGestionProyectos2.Views
                 acc.Child = badge; acc.Height = 18;
             }
             card.Child = mg;
-            card.MouseEnter += (s, e) => { if (!blockedInSelection) { card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 4, Opacity = 0.08 }; nameT.Foreground = Primary; moreBtn.Visibility = Visibility.Visible; } };
-            card.MouseLeave += (s, e) => { card.Effect = null; nameT.Foreground = TextPrimary; moreBtn.Visibility = Visibility.Collapsed; };
+            card.RenderTransformOrigin = new Point(0.5, 0.5);
+            card.RenderTransform = new ScaleTransform(1, 1);
+            card.MouseEnter += (s, e) =>
+            {
+                if (!blockedInSelection)
+                {
+                    card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 6, Opacity = 0.10 };
+                    nameT.Foreground = Primary; moreBtn.Visibility = Visibility.Visible;
+                    AnimateScale(card, 1.015, 150);
+                }
+            };
+            card.MouseLeave += (s, e) =>
+            {
+                card.Effect = null; nameT.Foreground = TextPrimary; moreBtn.Visibility = Visibility.Collapsed;
+                AnimateScale(card, 1.0, 200);
+            };
             // MEJORA-9: Double-click to open folder (configurable: change ClickCount == 2 to ClickCount == 1 for single-click navigation)
             card.MouseLeftButtonDown += (s, e) => { if (blockedInSelection) return; if (e.ClickCount == 2) _ = SafeLoad(() => NavTo(folder.Id)); };
             card.MouseRightButtonDown += (s, e) => { e.Handled = true; var m = new ContextMenu(); m.Items.Add(MI("Abrir", (_, _) => _ = SafeLoad(() => NavTo(folder.Id)))); m.Items.Add(MI("Renombrar", (_, _) => RenFolder(folder))); m.Items.Add(MI("Mover a...", (_, _) => _ = MoveFolderTo(folder))); m.Items.Add(MI("Descargar como ZIP", (_, _) => _ = DownloadFolderAsZip(folder))); m.Items.Add(new Separator()); m.Items.Add(MI("Vincular a Orden...", (_, _) => LinkOrder(folder))); if (linked) m.Items.Add(MI("Desvincular de Orden", async (_, _) => await Unlink(folder))); m.Items.Add(new Separator()); var del = MI("Eliminar", async (_, _) => await DelFolder(folder)); del.Foreground = Destructive; m.Items.Add(del); m.PlacementTarget = card; m.Placement = PlacementMode.MousePoint; m.IsOpen = true; };
@@ -1340,8 +1486,25 @@ namespace SistemaGestionProyectos2.Views
             else sg.Children.Add(new TextBlock { Text = RelT(file.UploadedAt), FontSize = 11, Foreground = TextLight, HorizontalAlignment = HorizontalAlignment.Right });
             ip.Children.Add(sg);
             Grid.SetRow(ip, 1); mg.Children.Add(ip); card.Child = mg;
-            card.MouseEnter += (s, e) => { selCircle.Visibility = Visibility.Visible; if (!_selectedFileIds.Contains(file.Id)) { card.BorderBrush = SlateLight; card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 4, Opacity = 0.08 }; } nameT.Foreground = Primary; };
-            card.MouseLeave += (s, e) => { if (!_selectedFileIds.Contains(file.Id)) { selCircle.Visibility = Visibility.Collapsed; card.BorderBrush = BorderColor; card.Effect = null; } nameT.Foreground = TextPrimary; };
+            card.RenderTransformOrigin = new Point(0.5, 0.5);
+            card.RenderTransform = new ScaleTransform(1, 1);
+            card.MouseEnter += (s, e) =>
+            {
+                selCircle.Visibility = Visibility.Visible;
+                if (!_selectedFileIds.Contains(file.Id))
+                {
+                    card.BorderBrush = SlateLight;
+                    card.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1D, 0x4E, 0xD8), BlurRadius = 20, ShadowDepth = 6, Opacity = 0.10 };
+                }
+                nameT.Foreground = Primary;
+                AnimateScale(card, 1.015, 150);
+            };
+            card.MouseLeave += (s, e) =>
+            {
+                if (!_selectedFileIds.Contains(file.Id)) { selCircle.Visibility = Visibility.Collapsed; card.BorderBrush = BorderColor; card.Effect = null; }
+                nameT.Foreground = TextPrimary;
+                AnimateScale(card, 1.0, 200);
+            };
             // V3-E: Sync badge overlay for grid card
             var syncState = FileWatcherService.Instance.GetSyncState(file.Id);
             if (syncState != SyncState.None)
@@ -1619,7 +1782,16 @@ namespace SistemaGestionProyectos2.Views
 
             ShowOverlayImage(_overlayCurrentIndex);
             ImageOverlay.Visibility = Visibility.Visible;
-            ImageOverlay.Focus(); // capturar foco para que las flechas del teclado funcionen
+            ImageOverlay.Opacity = 0;
+            // Fade-in + scale entrance animation
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+            ImageOverlay.BeginAnimation(OpacityProperty, fadeIn);
+            OverlayImage.RenderTransformOrigin = new Point(0.5, 0.5);
+            OverlayImage.RenderTransform = new ScaleTransform(0.9, 0.9);
+            var scaleAnim = new DoubleAnimation(0.9, 1.0, TimeSpan.FromMilliseconds(300)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+            OverlayImage.RenderTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
+            OverlayImage.RenderTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
+            ImageOverlay.Focus();
             UpdateOverlayNav();
         }
 
@@ -1666,11 +1838,17 @@ namespace SistemaGestionProyectos2.Views
             OverlayNextBtn.Visibility = _overlayCurrentIndex < _overlayImageFiles.Count - 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        void ImageOverlay_CloseBtn(object sender, RoutedEventArgs e) => ImageOverlay.Visibility = Visibility.Collapsed;
-        void ImageOverlay_BgClick(object sender, MouseButtonEventArgs e) => ImageOverlay.Visibility = Visibility.Collapsed;
+        void CloseImageOverlay()
+        {
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+            fadeOut.Completed += (s, e) => ImageOverlay.Visibility = Visibility.Collapsed;
+            ImageOverlay.BeginAnimation(OpacityProperty, fadeOut);
+        }
+        void ImageOverlay_CloseBtn(object sender, RoutedEventArgs e) => CloseImageOverlay();
+        void ImageOverlay_BgClick(object sender, MouseButtonEventArgs e) => CloseImageOverlay();
         void ImageOverlay_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Escape) { ImageOverlay.Visibility = Visibility.Collapsed; e.Handled = true; }
+            if (e.Key == Key.Escape) { CloseImageOverlay(); e.Handled = true; }
             else if (e.Key == Key.Left && _overlayCurrentIndex > 0) { ShowOverlayImage(_overlayCurrentIndex - 1); e.Handled = true; }
             else if (e.Key == Key.Right && _overlayCurrentIndex < _overlayImageFiles.Count - 1) { ShowOverlayImage(_overlayCurrentIndex + 1); e.Handled = true; }
         }
@@ -2721,8 +2899,24 @@ namespace SistemaGestionProyectos2.Views
                 _ = FileWatcherService.Instance.ForceReupload(fid);
             ShowToast($"Reintentando {errors.Count} archivo{(errors.Count > 1 ? "s" : "")}...", "info");
         }
-        void Window_DragEnter(object sender, DragEventArgs e) { if (_currentFolderId.HasValue && e.Data.GetDataPresent(DataFormats.FileDrop)) DragDropOverlay.Visibility = Visibility.Visible; }
-        void Window_DragLeave(object sender, DragEventArgs e) => DragDropOverlay.Visibility = Visibility.Collapsed;
+        void Window_DragEnter(object sender, DragEventArgs e)
+        {
+            if (_currentFolderId.HasValue && e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                DragDropOverlay.Visibility = Visibility.Visible;
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                DragDropOverlay.BeginAnimation(OpacityProperty, fadeIn);
+                var scaleAnim = new DoubleAnimation(0.9, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                DragDropScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim);
+                DragDropScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim);
+            }
+        }
+        void Window_DragLeave(object sender, DragEventArgs e)
+        {
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
+            fadeOut.Completed += (s2, e2) => DragDropOverlay.Visibility = Visibility.Collapsed;
+            DragDropOverlay.BeginAnimation(OpacityProperty, fadeOut);
+        }
         void Window_DragOver(object sender, DragEventArgs e) => e.Handled = true;
         async void Window_Drop(object sender, DragEventArgs e)
         {
@@ -2949,20 +3143,22 @@ namespace SistemaGestionProyectos2.Views
             // Buttons row
             var buttonsPanel = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
 
-            // Overwrite button (outline style, subtle warning)
-            var overwriteBtn = new Button { Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFB, 0xEB)), Foreground = new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0E)), BorderBrush = new SolidColorBrush(Color.FromRgb(0xFD, 0xE6, 0x8A)), BorderThickness = new Thickness(1), FontSize = 13, FontWeight = FontWeights.Medium };
-            overwriteBtn.Content = $"Sobrescribir {existingFiles} existente(s)";
+            // Overwrite button (warning style with border)
+            var overwriteBtn = MkStyledBtn($"Sobrescribir {existingFiles} existente(s)",
+                WarningBg, BH("#92400E"), BH("#FEF3C7"), BH("#FDE68A"), BH("#FDE68A"));
             overwriteBtn.Click += (_, _) => { tcs.SetResult("overwrite"); dlg.Close(); };
             buttonsPanel.Children.Add(overwriteBtn);
 
-            // Skip button (primary, solid)
-            var skipBtn = new Button { Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = new SolidColorBrush(Color.FromRgb(0x1D, 0x4E, 0xD8)), Foreground = Brushes.White, BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold };
-            skipBtn.Content = newFiles > 0 ? $"Solo subir {newFiles} nuevo(s)" : "Omitir todos";
+            // Skip button (primary style)
+            var skipBtn = MkStyledBtn(newFiles > 0 ? $"Solo subir {newFiles} nuevo(s)" : "Omitir todos",
+                Primary, Brushes.White as SolidColorBrush ?? Fr(0xFF, 0xFF, 0xFF), BH("#1E40AF"), BH("#1E3A8A"));
+            skipBtn.FontWeight = FontWeights.SemiBold;
             skipBtn.Click += (_, _) => { tcs.SetResult("skip"); dlg.Close(); };
             buttonsPanel.Children.Add(skipBtn);
 
-            // Cancel button (text only)
-            var cancelBtn = new Button { Content = "Cancelar", Padding = new Thickness(16, 8, 16, 8), FontSize = 13, Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = Brushes.Transparent, Foreground = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8)), BorderThickness = new Thickness(0) };
+            // Cancel button (ghost style)
+            var cancelBtn = MkStyledBtn("Cancelar",
+                new SolidColorBrush(Colors.Transparent), TextLight, HoverBg, BorderLight);
             cancelBtn.Click += (_, _) => { tcs.SetResult("cancel"); dlg.Close(); };
             buttonsPanel.Children.Add(cancelBtn);
 
@@ -3311,9 +3507,9 @@ namespace SistemaGestionProyectos2.Views
                     if (statusTb != null) { statusTb.Text = "Subiendo..."; statusTb.Foreground = Primary; }
                     break;
                 case "done":
-                    if (border != null) { border.Opacity = 1.0; border.BorderBrush = GreenOk; }
-                    if (progressBar != null) { progressBar.IsIndeterminate = false; progressBar.Value = 100; progressBar.Foreground = GreenOk; }
-                    if (statusTb != null) { statusTb.Text = "\u2713 Listo"; statusTb.Foreground = GreenOk; }
+                    if (border != null) { border.Opacity = 1.0; border.BorderBrush = Success; }
+                    if (progressBar != null) { progressBar.IsIndeterminate = false; progressBar.Value = 100; progressBar.Foreground = Success; }
+                    if (statusTb != null) { statusTb.Text = "\u2713 Listo"; statusTb.Foreground = Success; }
                     break;
                 case "error":
                     if (border != null) { border.Opacity = 0.6; border.BorderBrush = Destructive; }
@@ -3539,23 +3735,27 @@ namespace SistemaGestionProyectos2.Views
         {
             Dispatcher.Invoke(() =>
             {
-                // Icon + color by type
-                var (icon, bg) = type switch
+                // Icon + accent color by type (light pill style)
+                var (icon, accent) = type switch
                 {
-                    "success" => ("\uE73E", Color.FromRgb(0x16, 0x65, 0x34)),  // green
-                    "error" => ("\uEA39", Color.FromRgb(0x99, 0x1B, 0x1B)),
-                    "warning" => ("\uE7BA", Color.FromRgb(0x92, 0x40, 0x0E)),  // amber
-                    _ => ("\uE946", Color.FromRgb(0x0F, 0x17, 0x2A))  // info dark
+                    "success" => ("\uE73E", Color.FromRgb(0x10, 0xB9, 0x81)),  // emerald-500
+                    "error" => ("\uEA39", Color.FromRgb(0xEF, 0x44, 0x44)),    // red-500
+                    "warning" => ("\uE7BA", Color.FromRgb(0xF5, 0x9E, 0x0B)),  // amber-500
+                    _ => ("\uE946", Color.FromRgb(0x3B, 0x82, 0xF6))           // blue-500
                 };
+                var accentBrush = new SolidColorBrush(accent);
                 ToastIcon.Text = icon;
+                ToastIcon.Foreground = accentBrush;
                 ToastText.Text = message;
-                ToastInner.Background = new SolidColorBrush(bg);
+                ToastAccent.Background = accentBrush;
                 ToastPanel.Visibility = Visibility.Visible;
                 ToastPanel.Opacity = 0;
 
-                // Fade in
-                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+                // Slide-down + fade in
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                var slideIn = new DoubleAnimation(-20, 0, TimeSpan.FromMilliseconds(250)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
                 ToastPanel.BeginAnimation(OpacityProperty, fadeIn);
+                ToastTranslate.BeginAnimation(TranslateTransform.YProperty, slideIn);
 
                 // Auto-dismiss
                 _toastTimer?.Stop();
@@ -3563,21 +3763,49 @@ namespace SistemaGestionProyectos2.Views
                 _toastTimer.Tick += (s, e) =>
                 {
                     _toastTimer.Stop();
-                    var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
-                    fadeOut.Completed += (s2, e2) => ToastPanel.Visibility = Visibility.Collapsed;
-                    ToastPanel.BeginAnimation(OpacityProperty, fadeOut);
+                    DismissToast();
                 };
                 _toastTimer.Start();
             });
         }
 
+        void DismissToast()
+        {
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+            var slideOut = new DoubleAnimation(0, -10, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+            fadeOut.Completed += (s2, e2) => ToastPanel.Visibility = Visibility.Collapsed;
+            ToastPanel.BeginAnimation(OpacityProperty, fadeOut);
+            ToastTranslate.BeginAnimation(TranslateTransform.YProperty, slideOut);
+        }
+
+        void ToastClose_Click(object sender, MouseButtonEventArgs e)
+        {
+            _toastTimer?.Stop();
+            DismissToast();
+        }
+
         /// <summary>Custom confirmation dialog matching app design. Returns true if confirmed.</summary>
         bool Confirm(string message, string title = "Confirmar", bool destructive = false)
         {
-            Debug.WriteLine($"[Confirm] SHOW: title={title}, destructive={destructive}, msg={message}");
             bool result = false;
-            var w = new Window { Width = 420, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, ResizeMode = ResizeMode.NoResize, WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = Brushes.Transparent };
-            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(16), BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), BorderThickness = new Thickness(1), Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 24, ShadowDepth = 8, Opacity = 0.12 }, Margin = new Thickness(16) };
+            var w = new Window
+            {
+                Width = 420, SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this, ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.None, AllowsTransparency = true,
+                Background = new SolidColorBrush(Color.FromArgb(0x66, 0x0F, 0x17, 0x2A)) // Backdrop dim
+            };
+
+            var card = new Border
+            {
+                Background = Brushes.White, CornerRadius = new CornerRadius(16),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), BorderThickness = new Thickness(1),
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 24, ShadowDepth = 8, Opacity = 0.12 },
+                Margin = new Thickness(16),
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                RenderTransform = new ScaleTransform(0.95, 0.95)
+            };
             var p = new StackPanel { Margin = new Thickness(28) };
 
             // Icon
@@ -3589,25 +3817,42 @@ namespace SistemaGestionProyectos2.Views
             p.Children.Add(iconBorder);
 
             // Title
-            p.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(0x0F, 0x17, 0x2A)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) });
+            p.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = TextPrimary, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) });
             // Message
-            p.Children.Add(new TextBlock { Text = message, FontSize = 13.5, Foreground = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B)), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 20) });
+            p.Children.Add(new TextBlock { Text = message, FontSize = 13.5, Foreground = TextMuted, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 20) });
 
-            // Buttons
+            // Buttons (styled with CornerRadius + hover)
             var bp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-            var cancel = new Button { Content = "Cancelar", Width = 110, Padding = new Thickness(0, 10, 0, 10), Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)), Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)), BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.Medium, Cursor = Cursors.Hand };
-            cancel.Click += (s, e) => { Debug.WriteLine("[Confirm] CANCEL clicked"); w.Close(); };
-            var confirmColor = destructive ? Color.FromRgb(0xEF, 0x44, 0x44) : Color.FromRgb(0x1D, 0x4E, 0xD8);
-            var ok = new Button { Content = destructive ? "Eliminar" : "Confirmar", Width = 110, Padding = new Thickness(0, 10, 0, 10), Background = new SolidColorBrush(confirmColor), Foreground = Brushes.White, BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold, Cursor = Cursors.Hand, Margin = new Thickness(10, 0, 0, 0) };
-            ok.Click += (s, e) => { Debug.WriteLine("[Confirm] OK clicked"); result = true; w.Close(); };
-            bp.Children.Add(cancel); bp.Children.Add(ok); p.Children.Add(bp);
+            var cancel = MkStyledBtn("Cancelar", BorderLight, TextSecondary, new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), SlateLight);
+            cancel.MinWidth = 100; cancel.Margin = new Thickness(0);
+            cancel.Click += (s, e) => w.Close();
 
+            var okBg = destructive ? Danger : Primary;
+            var okHover = destructive ? Fr(0xDC, 0x26, 0x26) : Fr(0x1E, 0x40, 0xAF);
+            var okPressed = destructive ? Fr(0xB9, 0x1C, 0x1C) : Fr(0x1E, 0x3A, 0x8A);
+            var ok = MkStyledBtn(destructive ? "Eliminar" : "Confirmar", okBg, Fr(0xFF, 0xFF, 0xFF), okHover, okPressed);
+            ok.FontWeight = FontWeights.SemiBold; ok.MinWidth = 100; ok.Margin = new Thickness(10, 0, 0, 0);
+            ok.Click += (s, e) => { result = true; w.Close(); };
+
+            bp.Children.Add(cancel); bp.Children.Add(ok); p.Children.Add(bp);
             card.Child = p; w.Content = card;
+
             w.MouseLeftButtonDown += (s, e) => { try { w.DragMove(); } catch { } };
-            w.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) { Debug.WriteLine("[Confirm] ESC pressed"); w.Close(); } };
-            w.Loaded += (s, e) => { Debug.WriteLine("[Confirm] Dialog LOADED and visible"); w.Activate(); w.Focus(); };
+            w.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) w.Close(); };
+
+            // Entrance animation: scale 0.95->1.0 + opacity 0->1
+            w.Loaded += (s, e) =>
+            {
+                w.Activate(); w.Focus();
+                var scaleX = new DoubleAnimation(0.95, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                var scaleY = new DoubleAnimation(0.95, 1.0, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+                var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200));
+                card.RenderTransform.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX);
+                card.RenderTransform.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY);
+                card.BeginAnimation(OpacityProperty, fadeIn);
+            };
+
             w.ShowDialog();
-            Debug.WriteLine($"[Confirm] Dialog CLOSED, result={result}");
             return result;
         }
 
@@ -3615,6 +3860,33 @@ namespace SistemaGestionProyectos2.Views
         static MenuItem MI(string h, RoutedEventHandler hnd) { var m = new MenuItem { Header = h }; m.Click += hnd; return m; }
         static Color CH(string h) { h = h.TrimStart('#'); return Color.FromRgb(Convert.ToByte(h[..2], 16), Convert.ToByte(h[2..4], 16), Convert.ToByte(h[4..6], 16)); }
         static SolidColorBrush BH(string h) => new(CH(h));
+
+        /// <summary>Creates a styled button with CornerRadius and hover/pressed states for use in code-behind dialogs.</summary>
+        static Button MkStyledBtn(string text, SolidColorBrush bg, SolidColorBrush fg, SolidColorBrush hoverBg, SolidColorBrush? pressedBg = null, SolidColorBrush? borderBrush = null)
+        {
+            var btn = new Button { Content = text, FontSize = 13, FontWeight = FontWeights.Medium, Cursor = Cursors.Hand, Padding = new Thickness(16, 10, 16, 10), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) };
+            var bgColor = bg.Color; var hoverColor = hoverBg.Color; var pressedColor = pressedBg?.Color ?? hoverColor;
+            var template = new ControlTemplate(typeof(Button));
+            var borderFactory = new FrameworkElementFactory(typeof(Border), "border");
+            borderFactory.SetValue(Border.BackgroundProperty, bg);
+            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+            borderFactory.SetValue(Border.PaddingProperty, new Thickness(16, 10, 16, 10));
+            if (borderBrush != null) { borderFactory.SetValue(Border.BorderBrushProperty, borderBrush); borderFactory.SetValue(Border.BorderThicknessProperty, new Thickness(1)); }
+            var cp = new FrameworkElementFactory(typeof(ContentPresenter));
+            cp.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            cp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            borderFactory.AppendChild(cp);
+            template.VisualTree = borderFactory;
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(Border.BackgroundProperty, hoverBg, "border"));
+            template.Triggers.Add(hoverTrigger);
+            var pressedTrigger = new Trigger { Property = System.Windows.Controls.Primitives.ButtonBase.IsPressedProperty, Value = true };
+            pressedTrigger.Setters.Add(new Setter(Border.BackgroundProperty, pressedBg ?? hoverBg, "border"));
+            template.Triggers.Add(pressedTrigger);
+            btn.Template = template;
+            btn.Foreground = fg;
+            return btn;
+        }
 
         // ===============================================
         // DIAGNOSTICO DE INTEGRIDAD (solo dev)

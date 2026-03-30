@@ -29,9 +29,19 @@
         <SolidColorBrush x:Key="SlateLight"          Color="#CBD5E1"/>
         <SolidColorBrush x:Key="HoverBgBrush"        Color="#F8FAFC"/>
         <SolidColorBrush x:Key="ActiveBgBrush"       Color="#EFF6FF"/>
-        <SolidColorBrush x:Key="DestructiveBrush"    Color="#DC2626"/>
+        <SolidColorBrush x:Key="DestructiveBrush"    Color="#EF4444"/>
         <SolidColorBrush x:Key="DestructiveBgBrush"  Color="#FEF2F2"/>
         <SolidColorBrush x:Key="DestructiveHoverBrush" Color="#FEE2E2"/>
+
+        <!-- Semantic tokens -->
+        <SolidColorBrush x:Key="SuccessBrush"        Color="#10B981"/>
+        <SolidColorBrush x:Key="SuccessBgBrush"      Color="#F0FDF4"/>
+        <SolidColorBrush x:Key="WarningBrush"        Color="#F59E0B"/>
+        <SolidColorBrush x:Key="WarningBgBrush"      Color="#FFFBEB"/>
+        <SolidColorBrush x:Key="DangerBrush"         Color="#EF4444"/>
+        <SolidColorBrush x:Key="DangerBgBrush"       Color="#FEF2F2"/>
+        <SolidColorBrush x:Key="InfoBrush"           Color="#3B82F6"/>
+        <SolidColorBrush x:Key="InfoBgBrush"         Color="#EFF6FF"/>
 
         <!-- Shared shadow effect -->
         <DropShadowEffect x:Key="CardShadow" Color="#1E293B" BlurRadius="16"
@@ -143,12 +153,32 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <Border.Background>
+                                <SolidColorBrush x:Name="borderBg" Color="#1D4ED8"/>
+                            </Border.Background>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#1E40AF"/></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#1E3A8A"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#1E40AF" Duration="0:0:0.1"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#1D4ED8" Duration="0:0:0.15"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#1E3A8A" Duration="0:0:0.05"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.5"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -167,12 +197,32 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <Border.Background>
+                                <SolidColorBrush x:Name="borderBg" Color="#F8FAFC"/>
+                            </Border.Background>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#E2E8F0"/></Trigger>
-                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#CBD5E1"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#E2E8F0" Duration="0:0:0.1"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#F8FAFC" Duration="0:0:0.15"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard><ColorAnimation Storyboard.TargetName="borderBg" Storyboard.TargetProperty="Color" To="#CBD5E1" Duration="0:0:0.05"/></Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -180,8 +230,8 @@
         </Style>
 
         <Style x:Key="DestructiveButton" TargetType="Button">
-            <Setter Property="Background" Value="#FEF2F2"/>
-            <Setter Property="Foreground" Value="#DC2626"/>
+            <Setter Property="Background" Value="{StaticResource DangerBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,10"/>
             <Setter Property="FontSize" Value="13"/>
@@ -195,6 +245,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="border" Property="Background" Value="#FEE2E2"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#FECACA"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.5"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -236,6 +288,37 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="content" Property="TextBlock.Foreground" Value="#1E40AF"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="content" Property="TextBlock.Foreground" Value="#94A3B8"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#64748B"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="content" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F8FAFC"/>
+                                <Setter TargetName="content" Property="TextBlock.Foreground" Value="#475569"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="border" Property="Background" Value="#F1F5F9"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="border" Property="Opacity" Value="0.5"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -474,19 +557,19 @@
             </Border>
 
             <!-- SELECTION BANNER -->
-            <Border x:Name="SelectionBanner" Grid.Row="2" Background="#FFF3E0"
-                    BorderBrush="#FF9800" BorderThickness="0,0,0,2"
+            <Border x:Name="SelectionBanner" Grid.Row="2" Background="{StaticResource WarningBgBrush}"
+                    BorderBrush="{StaticResource WarningBrush}" BorderThickness="0,0,0,2"
                     Padding="24,10" Visibility="Collapsed">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="SelectionBannerText" FontSize="14" Foreground="#E65100"
+                    <TextBlock x:Name="SelectionBannerText" FontSize="14" Foreground="#92400E"
                                VerticalAlignment="Center" Text="Seleccione una carpeta para vincular"/>
-                    <Button x:Name="LinkThisFolderButton" Content="Vincular esta carpeta"
+                    <Button x:Name="LinkThisFolderButton" Style="{StaticResource PrimaryButton}"
+                            Content="Vincular esta carpeta"
                             Margin="20,0,0,0" Click="LinkThisFolder_Click"
-                            Background="#FF9800" Foreground="White" BorderThickness="0"
-                            Padding="12,6" Cursor="Hand" FontWeight="Bold"/>
-                    <Button Content="Cancelar" Margin="10,0,0,0" Click="CancelSelection_Click"
-                            Background="Transparent" Foreground="#E65100"
-                            BorderBrush="#E65100" BorderThickness="1" Padding="12,6" Cursor="Hand"/>
+                            Padding="12,6"/>
+                    <Button Style="{StaticResource SecondaryButton}"
+                            Content="Cancelar" Margin="10,0,0,0" Click="CancelSelection_Click"
+                            Padding="12,6"/>
                 </StackPanel>
             </Border>
 
@@ -656,11 +739,10 @@
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                         <!-- Cancel button -->
-                        <Button x:Name="CtxCancelBtn" Padding="20,9" Margin="0,18,0,0"
-                                FontSize="13" Cursor="Hand" HorizontalAlignment="Center"
-                                Background="#F1F5F9" BorderThickness="1"
-                                BorderBrush="#E2E8F0"
-                                Foreground="#64748B" Click="CtxCancel_Click">
+                        <Button x:Name="CtxCancelBtn" Style="{StaticResource SecondaryButton}"
+                                Padding="20,9" Margin="0,18,0,0"
+                                FontSize="13" HorizontalAlignment="Center"
+                                Click="CtxCancel_Click">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -754,31 +836,62 @@
             </Grid>
         </Border>
 
-        <!-- TOAST NOTIFICATION -->
+        <!-- TOAST NOTIFICATION (light pill) -->
         <Border x:Name="ToastPanel" Grid.ColumnSpan="2" Panel.ZIndex="90"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
-                Margin="0,12,0,0" Visibility="Collapsed" IsHitTestVisible="True">
-            <Border x:Name="ToastInner" Background="#0F172A" CornerRadius="10"
-                    Padding="16,10,16,10" MinWidth="280" MaxWidth="520">
+                Margin="0,16,0,0" Visibility="Collapsed" IsHitTestVisible="True"
+                RenderTransformOrigin="0.5,0">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="ToastTranslate"/>
+            </Border.RenderTransform>
+            <Border x:Name="ToastInner" Background="White" CornerRadius="10"
+                    Padding="0" MinWidth="300" MaxWidth="540"
+                    BorderBrush="{StaticResource ThemeBorderBrush}" BorderThickness="1">
                 <Border.Effect>
-                    <DropShadowEffect Color="#1E293B" BlurRadius="20" ShadowDepth="6" Opacity="0.18"/>
+                    <DropShadowEffect Color="#1E293B" BlurRadius="20" ShadowDepth="6" Opacity="0.12"/>
                 </Border.Effect>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="ToastIcon" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                               Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock x:Name="ToastText" FontSize="13" Foreground="White"
-                               VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- Color accent bar (left) -->
+                    <Border x:Name="ToastAccent" Grid.Column="0" Background="{StaticResource InfoBrush}"
+                            CornerRadius="10,0,0,10"/>
+                    <!-- Content -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,10,8,10">
+                        <TextBlock x:Name="ToastIcon" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   Foreground="{StaticResource InfoBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock x:Name="ToastText" FontSize="13"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="400"/>
+                    </StackPanel>
+                    <!-- Close button -->
+                    <Border Grid.Column="2" Cursor="Hand" Margin="0,0,6,0"
+                            VerticalAlignment="Center"
+                            MouseLeftButtonDown="ToastClose_Click">
+                        <TextBlock x:Name="ToastCloseBtn" Text="&#xE711;"
+                                   FontFamily="Segoe MDL2 Assets" FontSize="10"
+                                   Foreground="{StaticResource TextLightBrush}"
+                                   VerticalAlignment="Center" Padding="6"/>
+                    </Border>
+                </Grid>
             </Border>
         </Border>
 
         <!-- DRAG & DROP OVERLAY -->
         <Border x:Name="DragDropOverlay" Grid.ColumnSpan="2" Panel.ZIndex="100"
-                Visibility="Collapsed" IsHitTestVisible="False">
+                Visibility="Collapsed" IsHitTestVisible="False" Opacity="0">
             <Border.Background>
                 <SolidColorBrush Color="#1D4ED8" Opacity="0.1"/>
             </Border.Background>
-            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid x:Name="DragDropContent" HorizontalAlignment="Center" VerticalAlignment="Center"
+                  RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <ScaleTransform x:Name="DragDropScale" ScaleX="0.9" ScaleY="0.9"/>
+                </Grid.RenderTransform>
                 <Rectangle Width="600" Height="300" Stroke="#1D4ED8" StrokeThickness="4"
                            StrokeDashArray="8 4" RadiusX="16" RadiusY="16" Fill="White" Opacity="0.95"/>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
