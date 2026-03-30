@@ -17,39 +17,42 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.3.0';
+    v_version       VARCHAR := '2.3.1';
     v_created_by    VARCHAR := 'Zuri Dev';
     v_file_size_mb  NUMERIC := 55.0;
     v_is_mandatory  BOOLEAN := false;
     v_min_version   VARCHAR := '2.2.0';
 
-    v_release_notes TEXT := 'Version 2.3.0 - IMA Drive: Mejoras CAD + Ventana unica
+    v_release_notes TEXT := 'Version 2.3.1 - Sincronizacion de carpetas + UI mejorada
 
-IMA DRIVE - EXTENSIONES Y MAPEO:
-- Soporte completo para 13 extensiones CAD/CNC: .ipt, .iam, .sldprt, .sldasm, .mcam, .mcx-5/7/9, .igs, .dwg, .dxf, .step, .stp
-- Iconos y colores diferenciados: Piezas(morado), Ensambles(teal), CNC(naranja)
-- Nombres legibles: Pieza Inventor, Ensamble SolidWorks, Programa Mastercam
-- MIME types correctos para todos los formatos CAD
+SINCRONIZACION DE CARPETAS (nuevo):
+- Arrastrar una carpeta desde Windows al Drive sincroniza todo el arbol
+- Crea subcarpetas automaticamente (estructura recursiva)
+- Detecta archivos duplicados: opcion de Sobrescribir u Omitir
+- Creacion de carpetas en paralelo por nivel (10 simultaneas)
+- Upload paralelo de archivos (5 simultaneos)
+- Boton Cancelar visible durante toda la operacion
+- Overlay de progreso con barra, porcentaje y conteo
+- Analisis instantaneo via carga bulk de BD (2 queries vs N)
 
-IMA DRIVE - FILTROS CAD:
-- Sub-filtros en sidebar: Ensambles, Piezas, Planos, Modelos 3D, CNC
-- Iconos PNG dedicados por subtipo
-- Conteos dinamicos y auto-ocultamiento si no hay archivos CAD
+ELIMINACION MEJORADA:
+- Eliminar carpeta: overlay de progreso mientras procesa
+- Eliminar archivo/bulk: overlay con conteo progresivo
+- Eliminacion de carpetas grandes optimizada (2 queries vs N recursivas)
+- Dialogo de confirmacion custom (icono rojo, boton Eliminar)
 
-IMA DRIVE - ENSAMBLES:
-- Al abrir un ensamble (.iam/.sldasm) se descargan automaticamente todas las piezas de la carpeta
-- Overlay de progreso visible con barra y conteo de archivos
-- Inventor/SolidWorks encuentra las piezas referenciadas correctamente
-- Resuelve inconsistencias al abrir ensambles de meses distintos
+UI MEJORADA:
+- Overlay de progreso rediseñado: fondo dim + card blanca + icono nube + barra redondeada
+- Dialogo de sync: pills de colores + boton Sobrescribir naranja + Solo nuevos azul
+- Confirm dialog: custom con icono (warning amarillo / destructive rojo)
+- MessageBox nativo reemplazado por dialogo integrado al diseño
 
-IMA DRIVE - ARCHIVOS:
-- Filtro de basura: archivos ~$, .db, .lck, .tmp no se suben al Drive
-- Fallback "Abrir con..." si no hay programa asociado o esta roto
-- Soporte para thumbnails CAD via Windows Shell (requiere software instalado)
+DIAGNOSTICO:
+- Boton Diagnosticar (dev): compara R2 vs BD, detecta huerfanos, ofrece limpieza
+- Paginacion en GetAllFilesFlat para >1000 archivos
 
-PLATAFORMA:
-- Ventana unica: solo 1 ventana en el taskbar al abrir cualquier modulo
-- Al cerrar modulo se regresa automaticamente al menu de modulos';
+LIMPIEZA:
+- Purgar R2, Benchmark y Test Drive eliminados (obsoletos, ~600 lineas removidas)';
 
     v_download_url TEXT;
     v_changelog JSONB;
@@ -59,25 +62,26 @@ BEGIN
 
     v_changelog := '{
         "Added": [
-            "IMA Drive: sub-filtros CAD (Ensambles, Piezas, Planos, Modelos 3D, CNC)",
-            "IMA Drive: descarga automatica de contexto al abrir ensambles (.iam/.sldasm)",
-            "IMA Drive: overlay de progreso con barra y conteo para descarga de contexto",
-            "IMA Drive: thumbnails CAD via Windows Shell (IShellItemImageFactory)",
-            "IMA Drive: filtro de basura en upload (~$, .db, .lck, .tmp, .bak)",
-            "IMA Drive: fallback OpenAs_RunDLL si programa asociado no existe o esta roto",
-            "Plataforma: ventana unica en taskbar (Hide/Show MainMenu)"
+            "Drive: sincronizacion de carpetas completas via drag-drop",
+            "Drive: creacion recursiva de subcarpetas con deteccion de duplicados",
+            "Drive: overlay de progreso con barra, porcentaje y boton Cancelar",
+            "Drive: dialogo de sync con pills de colores y opciones Sobrescribir/Omitir",
+            "Drive: boton Diagnosticar para verificar integridad R2 vs BD",
+            "Drive: eliminacion con overlay de progreso (carpetas y archivos bulk)"
         ],
         "Improved": [
-            "IMA Drive: 13 extensiones CAD/CNC mapeadas con iconos, colores y MIME types",
-            "IMA Drive: colores diferenciados por subtipo (piezas morado, ensambles teal, CNC naranja)",
-            "IMA Drive: nombres legibles (Pieza Inventor, Ensamble SolidWorks, Programa Mastercam)",
-            "IMA Drive: iconos PNG en sub-filtros CAD (gear, ruler, wrench)"
+            "Drive: eliminacion de carpetas grandes optimizada (2 queries vs N recursivas)",
+            "Drive: creacion de carpetas en paralelo por nivel (10 simultaneas)",
+            "Drive: overlay rediseñado con fondo dim, card blanca e icono",
+            "Drive: Confirm dialog custom reemplaza MessageBox nativo",
+            "Drive: paginacion en GetAllFilesFlat para manejar >1000 archivos"
         ],
         "Fixed": [
-            "Fix: archivos .ipt/.iam/.sldprt/.sldasm mostraban icono generico",
-            "Fix: archivos .mcam/.mcx-7/.mcx-5 no estaban en filtro CAD",
-            "Fix: Process.Start no detectaba asociaciones de archivo rotas",
-            "Fix: ensambles mezclaban piezas de diferentes carpetas al abrir secuencialmente"
+            "Fix: arrastrar carpeta desde Windows fallaba silenciosamente",
+            "Fix: archivos duplicados en upload causaban error 23505 silencioso",
+            "Fix: cancelar sincronizacion colgaba la app (deadlock Dispatcher.Invoke)",
+            "Fix: eliminar carpeta con cientos de archivos no respondia (N+1 queries)",
+            "Fix: boton Cancelar/OK en Confirm dialog no funcionaba con WindowStyle.None"
         ]
     }'::jsonb;
 

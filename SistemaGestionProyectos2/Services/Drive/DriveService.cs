@@ -154,22 +154,39 @@ namespace SistemaGestionProyectos2.Services.Drive
         {
             try
             {
-                // Collect ALL file storage paths recursively before deleting from DB
-                var allStoragePaths = new List<string>();
-                await CollectAllFilePaths(folderId, allStoragePaths, ct);
+                LogDebug($"DeleteFolder START: id={folderId}");
 
-                // Delete from DB first (CASCADE handles child folders + file records)
+                // Collect ALL descendant folder IDs (in-memory, 2 queries total)
+                var allFolders = await GetAllFoldersFlat(ct);
+                var descendantIds = new HashSet<int> { folderId };
+                bool changed = true;
+                while (changed)
+                {
+                    changed = false;
+                    foreach (var f in allFolders)
+                        if (f.ParentId.HasValue && descendantIds.Contains(f.ParentId.Value) && descendantIds.Add(f.Id))
+                            changed = true;
+                }
+                LogDebug($"DeleteFolder: {descendantIds.Count} folders in subtree (including self)");
+
+                // Collect storage paths from ALL files in those folders (1 paginated query)
+                var allFiles = await GetAllFilesFlat(ct);
+                var storagePaths = allFiles.Where(f => descendantIds.Contains(f.FolderId))
+                    .Select(f => f.StoragePath).ToList();
+                LogDebug($"DeleteFolder: {storagePaths.Count} files to clean from R2");
+
+                // Delete from DB (CASCADE handles child folders + file records)
                 await SupabaseClient
                     .From<DriveFolderDb>()
                     .Where(f => f.Id == folderId)
                     .Delete();
 
-                LogSuccess($"Folder deleted from DB: id={folderId}");
+                LogSuccess($"Folder deleted from DB: id={folderId} ({descendantIds.Count} folders, {storagePaths.Count} files)");
 
-                // Then batch-delete blobs from R2 (fire-and-forget, don't block on window CancellationToken)
-                if (_isStorageConfigured && allStoragePaths.Count > 0)
+                // Batch-delete blobs from R2 (fire-and-forget)
+                if (_isStorageConfigured && storagePaths.Count > 0)
                 {
-                    _ = Task.Run(() => BatchDeleteFromR2(allStoragePaths));
+                    _ = Task.Run(() => BatchDeleteFromR2(storagePaths));
                 }
 
                 return true;
@@ -785,6 +802,31 @@ namespace SistemaGestionProyectos2.Services.Drive
             catch (Exception ex) { LogError("Error getting all folders", ex); return new List<DriveFolderDb>(); }
         }
 
+        /// <summary>Load ALL files from Drive. Paginated to avoid Postgrest row limit (default 1000).</summary>
+        public async Task<List<DriveFileDb>> GetAllFilesFlat(CancellationToken ct = default)
+        {
+            try
+            {
+                var all = new List<DriveFileDb>();
+                int offset = 0;
+                const int pageSize = 1000;
+                while (true)
+                {
+                    var result = await SupabaseClient.From<DriveFileDb>()
+                        .Select("id, folder_id, file_name, file_size, storage_path, content_type, uploaded_by, uploaded_at")
+                        .Range(offset, offset + pageSize - 1)
+                        .Get(ct);
+                    var page = result.Models ?? new List<DriveFileDb>();
+                    all.AddRange(page);
+                    if (page.Count < pageSize) break;
+                    offset += pageSize;
+                }
+                LogDebug($"GetAllFilesFlat: {all.Count} files loaded");
+                return all;
+            }
+            catch (Exception ex) { LogError("Error getting all files flat", ex); return new List<DriveFileDb>(); }
+        }
+
         // ===============================================
         // ===============================================
         // ACTIVITY LOG (V3-B)
@@ -1136,6 +1178,44 @@ namespace SistemaGestionProyectos2.Services.Drive
                 LogError("Error purging R2 bucket", ex);
                 return -1;
             }
+        }
+
+        /// <summary>Diagnose orphans: compare R2 objects vs BD records. Returns (r2Only, bdOnly, matched).</summary>
+        public async Task<(List<string> R2Orphans, List<DriveFileDb> BDOrphans, int Matched)> DiagnoseOrphans(CancellationToken ct = default)
+        {
+            if (!_isStorageConfigured) return (new(), new(), 0);
+
+            // 1. List ALL R2 objects
+            var r2Keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var listRequest = new ListObjectsV2Request { BucketName = _bucketName };
+            ListObjectsV2Response listResponse;
+            do
+            {
+                listResponse = await _s3Client.ListObjectsV2Async(listRequest, ct);
+                foreach (var obj in listResponse.S3Objects) r2Keys.Add(obj.Key);
+                listRequest.ContinuationToken = listResponse.NextContinuationToken;
+            } while (listResponse.IsTruncated);
+
+            // 2. Load ALL BD file records
+            var allFiles = await GetAllFilesFlat(ct);
+            var bdPaths = new HashSet<string>(allFiles.Select(f => f.StoragePath), StringComparer.OrdinalIgnoreCase);
+
+            // 3. Compare
+            var r2Orphans = r2Keys.Where(k => !bdPaths.Contains(k)).ToList(); // In R2 but not in BD
+            var bdOrphans = allFiles.Where(f => !r2Keys.Contains(f.StoragePath)).ToList(); // In BD but not in R2
+            var matched = r2Keys.Count(k => bdPaths.Contains(k));
+
+            LogDebug($"DiagnoseOrphans: R2={r2Keys.Count}, BD={allFiles.Count}, Matched={matched}, R2Orphans={r2Orphans.Count}, BDOrphans={bdOrphans.Count}");
+            return (r2Orphans, bdOrphans, matched);
+        }
+
+        /// <summary>Clean R2 orphans (blobs without BD record). Returns count deleted.</summary>
+        public async Task<int> CleanR2Orphans(List<string> orphanKeys)
+        {
+            if (!_isStorageConfigured || orphanKeys.Count == 0) return 0;
+            await BatchDeleteFromR2(orphanKeys);
+            LogSuccess($"Cleaned {orphanKeys.Count} R2 orphans");
+            return orphanKeys.Count;
         }
 
         // ===============================================

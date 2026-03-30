@@ -1080,6 +1080,12 @@ namespace SistemaGestionProyectos2.Services
             => _driveService.DuplicateFile(fileId, ct);
         public Task<List<DriveFolderDb>> GetAllDriveFoldersFlat(CancellationToken ct = default)
             => _driveService.GetAllFoldersFlat(ct);
+        public Task<List<DriveFileDb>> GetAllDriveFilesFlat(CancellationToken ct = default)
+            => _driveService.GetAllFilesFlat(ct);
+        public Task<(List<string> R2Orphans, List<DriveFileDb> BDOrphans, int Matched)> DiagnoseDriveOrphans(CancellationToken ct = default)
+            => _driveService.DiagnoseOrphans(ct);
+        public Task<int> CleanDriveR2Orphans(List<string> orphanKeys)
+            => _driveService.CleanR2Orphans(orphanKeys);
 
         // V3-B: Activity & Recientes
         public Task LogDriveActivity(int? userId, string action, string targetType, int targetId, string? targetName, int? folderId, CancellationToken ct = default)

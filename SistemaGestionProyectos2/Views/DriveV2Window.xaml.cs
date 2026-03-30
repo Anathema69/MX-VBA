@@ -57,10 +57,6 @@ namespace SistemaGestionProyectos2.Views
         private readonly Dictionary<int, (int fileCount, int subCount, long totalSize)> _statsCache = new();
         private readonly Dictionary<int, (string Po, string Client, string Detail)> _orderInfoCache = new();
 
-        // Benchmark
-        private bool _benchmarkActive;
-        private BenchmarkPhaseResult? _lastPhaseResult;
-
         // V3-B: Recientes & Actividad
         private bool _recentShowAll = false; // false = mis recientes, true = todos
         private bool _activityExpanded = true;
@@ -250,45 +246,16 @@ namespace SistemaGestionProyectos2.Views
             // Dev tools: solo visibles para usuario "caaj"
             if (_currentUser?.Username?.ToLowerInvariant() == "caaj")
             {
-                var purgeBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 24, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)) };
-                var psp = new StackPanel { Orientation = Orientation.Horizontal };
-                psp.Children.Add(new TextBlock { Text = "\uE74D", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-                psp.Children.Add(new TextBlock { Text = "Purgar R2", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Destructive, VerticalAlignment = VerticalAlignment.Center });
-                purgeBtn.Child = psp;
-                purgeBtn.MouseEnter += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xE2, 0xE2));
-                purgeBtn.MouseLeave += (s, e) => purgeBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2));
-                purgeBtn.MouseLeftButtonDown += async (s, e) =>
-                {
-                    if (!Confirm("ATENCION: Esto eliminara TODOS los archivos del bucket R2.\nLos registros en BD NO se eliminan.\n\nContinuar?")) return;
-                    await SafeLoad(async () =>
-                    {
-                        StatusText.Text = "Purgando R2...";
-                        var count = await SupabaseService.Instance.PurgeDriveR2Files();
-                        StatusText.Text = count >= 0 ? $"R2 purgado: {count} archivos eliminados" : "Error purgando R2";
-                        if (count >= 0) { _statsCache.Clear(); await LoadFolder(); }
-                    });
-                };
-                NavPanel.Children.Add(purgeBtn);
-
-                var benchBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF)) };
-                var bsp = new StackPanel { Orientation = Orientation.Horizontal };
-                bsp.Children.Add(new TextBlock { Text = "\uE9D2", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-                bsp.Children.Add(new TextBlock { Text = "Benchmark", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = Primary, VerticalAlignment = VerticalAlignment.Center });
-                benchBtn.Child = bsp;
-                benchBtn.MouseEnter += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xDB, 0xEA, 0xFE));
-                benchBtn.MouseLeave += (s, e) => benchBtn.Background = new SolidColorBrush(Color.FromRgb(0xEF, 0xF6, 0xFF));
-                benchBtn.MouseLeftButtonDown += RunBenchmark_Click;
-                NavPanel.Children.Add(benchBtn);
-
-                var testBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)) };
-                var tsp = new StackPanel { Orientation = Orientation.Horizontal };
-                tsp.Children.Add(new TextBlock { Text = "\uE9D5", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
-                tsp.Children.Add(new TextBlock { Text = "Test Drive", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)), VerticalAlignment = VerticalAlignment.Center });
-                testBtn.Child = tsp;
-                testBtn.MouseEnter += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0x99, 0xF6, 0xE4));
-                testBtn.MouseLeave += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1));
-                testBtn.MouseLeftButtonDown += RunDriveWorkflowTests_Click;
-                NavPanel.Children.Add(testBtn);
+                // Diagnose orphans button
+                var diagBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 24, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF3, 0xC7)) };
+                var dsp = new StackPanel { Orientation = Orientation.Horizontal };
+                dsp.Children.Add(new TextBlock { Text = "\uE9CE", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0xD9, 0x77, 0x06)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+                dsp.Children.Add(new TextBlock { Text = "Diagnosticar", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0xD9, 0x77, 0x06)), VerticalAlignment = VerticalAlignment.Center });
+                diagBtn.Child = dsp;
+                diagBtn.MouseEnter += (s, e) => diagBtn.Background = new SolidColorBrush(Color.FromRgb(0xFD, 0xE6, 0x8A));
+                diagBtn.MouseLeave += (s, e) => diagBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF3, 0xC7));
+                diagBtn.MouseLeftButtonDown += async (s, e) => await RunDiagnoseOrphans();
+                NavPanel.Children.Add(diagBtn);
             }
         }
 
@@ -677,7 +644,7 @@ namespace SistemaGestionProyectos2.Views
             if (_activeFilter != null) { _activeFilter = null; UpdateFilterHighlight(); }
 
             // Stale-while-revalidate: if we have cached data, render it INSTANTLY then refresh in background
-            if (!_benchmarkActive && _folderCache.TryGetValue(fId, out var snap))
+            if (_folderCache.TryGetValue(fId, out var snap))
             {
                 Debug.WriteLine($"[DriveV2] CACHE HIT folder={fId}, age={(DateTime.Now - snap.CachedAt).TotalSeconds:F1}s");
                 _breadcrumb = snap.Breadcrumb;
@@ -775,11 +742,6 @@ namespace SistemaGestionProyectos2.Views
                 RenderFolderUI();
                 var p3Ms = sw.ElapsedMilliseconds;
                 Debug.WriteLine($"[DriveV2]   P3 Render: {p3Ms}ms");
-
-                // Capture phase timings for benchmark
-                if (_benchmarkActive)
-                    _lastPhaseResult = new BenchmarkPhaseResult(p1Ms, p2Ms, p3Ms, sw0.ElapsedMilliseconds,
-                        _currentFolders.Count, _currentFiles.Count, uncO.Count);
 
                 // Save to navigation cache
                 if (_currentFolderId.HasValue)
@@ -1434,8 +1396,8 @@ namespace SistemaGestionProyectos2.Views
             ContextDownloadOverlay.Visibility = Visibility.Visible;
             CtxDownloadTitle.Text = title;
             CtxDownloadStatus.Text = status;
-            if (percent >= 0) { CtxProgressBar.IsIndeterminate = false; CtxProgressBar.Value = percent; }
-            else CtxProgressBar.IsIndeterminate = true;
+            if (percent >= 0) { CtxProgressBar.IsIndeterminate = false; CtxProgressBar.Value = percent; CtxDownloadPercent.Text = $"{percent}%"; }
+            else { CtxProgressBar.IsIndeterminate = true; CtxDownloadPercent.Text = ""; }
             var sb = (System.Windows.Media.Animation.Storyboard)FindResource("CtxSpinnerStoryboard");
             sb.Begin(this, true);
         }
@@ -1444,6 +1406,16 @@ namespace SistemaGestionProyectos2.Views
             ContextDownloadOverlay.Visibility = Visibility.Collapsed;
             var sb = (System.Windows.Media.Animation.Storyboard)FindResource("CtxSpinnerStoryboard");
             sb.Stop(this);
+        }
+        private volatile bool _syncCancelled; // checked by parallel tasks
+        void CtxCancel_Click(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine("[DriveV2] CANCEL clicked by user");
+            _syncCancelled = true;
+            _cts.Cancel();
+            _cts = new CancellationTokenSource();
+            HideContextOverlay();
+            ShowToast("Cancelando sincronizacion...", "warning");
         }
 
         async Task OpenFileInPlace(DriveFileDb file)
@@ -2301,8 +2273,52 @@ namespace SistemaGestionProyectos2.Views
             };
             tb.LostFocus += (s, le) => Commit();
         }
-        async Task DelFolder(DriveFolderDb f) { if (!Confirm($"Eliminar \"{f.Name}\" y todo su contenido?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFolder(f.Id, _cts.Token)) { _statsCache.Remove(f.Id); InvalidateStats(); ShowToast($"\"{f.Name}\" eliminada", "success"); await LoadFolder(); } }); }
-        async Task DelFile(DriveFileDb f) { if (!Confirm($"Eliminar \"{f.FileName}\"?")) return; await SafeLoad(async () => { if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token, _currentUser.Id)) { _selectedFileIds.Remove(f.Id); if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); } InvalidateStats(); ShowToast($"\"{f.FileName}\" eliminado", "success"); RefreshSidebarRecents(); await LoadFolder(); } }); }
+        async Task DelFolder(DriveFolderDb f)
+        {
+            Debug.WriteLine($"[DriveV2] DelFolder START: id={f.Id} name={f.Name}");
+            var confirmed = Confirm($"Eliminar \"{f.Name}\" y todo su contenido?", "Eliminar carpeta", destructive: true);
+            if (!confirmed) return;
+
+            ShowContextOverlay("Eliminando carpeta", $"Preparando \"{f.Name}\"...");
+            try
+            {
+                var ok = await SupabaseService.Instance.DeleteDriveFolder(f.Id, _cts.Token);
+                HideContextOverlay();
+                Debug.WriteLine($"[DriveV2] DelFolder service result: {ok}");
+                if (ok)
+                {
+                    _statsCache.Remove(f.Id); InvalidateStats();
+                    ShowToast($"\"{f.Name}\" eliminada", "success");
+                    await LoadFolder();
+                }
+                else
+                {
+                    ShowToast($"No se pudo eliminar \"{f.Name}\"", "error");
+                }
+            }
+            catch (Exception ex)
+            {
+                HideContextOverlay();
+                Debug.WriteLine($"[DriveV2] DelFolder EXCEPTION: {ex.Message}");
+                ShowToast($"Error al eliminar: {ex.Message}", "error");
+            }
+        }
+        async Task DelFile(DriveFileDb f, bool skipConfirm = false)
+        {
+            if (!skipConfirm && !Confirm($"Eliminar \"{f.FileName}\"?", "Eliminar archivo", destructive: true)) return;
+            ShowContextOverlay("Eliminando", $"\"{f.FileName}\"...");
+            try
+            {
+                if (await SupabaseService.Instance.DeleteDriveFile(f.Id, _cts.Token, _currentUser.Id))
+                {
+                    _selectedFileIds.Remove(f.Id);
+                    if (_globalStorageBytes > 0) { _globalStorageBytes -= f.FileSize ?? 0; UpdateStorageUI(); }
+                    InvalidateStats(); RefreshSidebarRecents();
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine($"[DriveV2] DelFile error: {ex.Message}"); }
+            finally { if (!skipConfirm) { HideContextOverlay(); ShowToast($"\"{f.FileName}\" eliminado", "success"); await LoadFolder(); } }
+        }
 
         // ===============================================
         // ORDER LINKING
@@ -2667,8 +2683,9 @@ namespace SistemaGestionProyectos2.Views
         {
             var files = _currentFiles.Where(f => _selectedFileIds.Contains(f.Id)).ToList();
             if (files.Count == 0) return;
-            if (!Confirm($"Eliminar {files.Count} archivo(s)?")) return;
-            int ok = 0;
+            if (!Confirm($"Eliminar {files.Count} archivo(s)?", "Eliminar archivos", destructive: true)) return;
+            int ok = 0, done = 0;
+            ShowContextOverlay("Eliminando archivos", $"0 de {files.Count}...", 0);
             foreach (var file in files)
             {
                 try
@@ -2677,8 +2694,11 @@ namespace SistemaGestionProyectos2.Views
                     { ok++; if (_globalStorageBytes > 0) _globalStorageBytes -= file.FileSize ?? 0; }
                 }
                 catch (Exception ex) { Debug.WriteLine($"[DriveV2] Multi-delete err: {ex.Message}"); }
+                done++;
+                ShowContextOverlay("Eliminando archivos", $"{done} de {files.Count}...", (int)(done * 100.0 / files.Count));
             }
-            StatusText.Text = $"{ok} archivo(s) eliminado(s)";
+            HideContextOverlay();
+            ShowToast($"{ok} archivo(s) eliminado(s)", "success");
             UpdateStorageUI(); ClearMultiSelect(); InvalidateStats(); RefreshSidebarRecents(); await SafeLoad(() => LoadFolder());
         }
         async void BackToFolders_Click(object sender, RoutedEventArgs e) { if (_breadcrumb.Count >= 2) await SafeLoad(() => NavTo(_breadcrumb[^2].Id)); else await SafeLoad(() => NavigateToRoot()); }
@@ -2708,9 +2728,383 @@ namespace SistemaGestionProyectos2.Views
         {
             DragDropOverlay.Visibility = Visibility.Collapsed; e.Handled = true;
             if (!_currentFolderId.HasValue || !e.Data.GetDataPresent(DataFormats.FileDrop) || !SupabaseService.Instance.IsDriveStorageConfigured) return;
-            var files = (string[])e.Data.GetData(DataFormats.FileDrop)!;
-            if (files.Length == 0) return;
-            await UploadFiles(files);
+            var paths = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+            if (paths.Length == 0) return;
+
+            // Separate files from folders
+            var files = paths.Where(p => File.Exists(p)).ToArray();
+            var folders = paths.Where(p => Directory.Exists(p)).ToArray();
+
+            // If only files dropped (no folders) → existing upload flow
+            if (folders.Length == 0 && files.Length > 0)
+            {
+                await UploadFiles(files);
+                return;
+            }
+
+            // If folder(s) dropped → folder sync flow
+            if (folders.Length > 0)
+            {
+                await SyncDroppedFolders(folders);
+            }
+        }
+
+        // ===============================================
+        // FOLDER SYNC (drag-drop carpeta completa)
+        // ===============================================
+
+        // Data structure for sync plan
+        record SyncEntry(string LocalPath, int DriveFolderId, DriveFileDb? Existing);
+
+        async Task SyncDroppedFolders(string[] folderPaths)
+        {
+            if (!_currentFolderId.HasValue) return;
+            var driveParentId = _currentFolderId.Value;
+
+            ShowContextOverlay("Analizando carpeta", "Cargando estructura de Drive...");
+            try
+            {
+                // 1. Load ALL Drive folders AND files in 2 parallel queries (not N)
+                var foldersTask = SupabaseService.Instance.GetAllDriveFoldersFlat(_cts.Token);
+                var filesTask = SupabaseService.Instance.GetAllDriveFilesFlat(_cts.Token);
+                await Task.WhenAll(foldersTask, filesTask);
+
+                var allDriveFolders = foldersTask.Result;
+                var allDriveFiles = filesTask.Result;
+
+                // Build in-memory lookups
+                var childrenByParent = allDriveFolders.GroupBy(f => f.ParentId ?? -1)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+                var filesByFolder = allDriveFiles.GroupBy(f => f.FolderId)
+                    .ToDictionary(g => g.Key, g => g.ToDictionary(f => f.FileName, f => f, StringComparer.OrdinalIgnoreCase));
+
+                // 2. Scan local folders — pure in-memory matching (no HTTP calls)
+                ShowContextOverlay("Analizando carpeta", "Comparando archivos...");
+                var newFolders = new List<(string localPath, int driveParentId, string name)>();
+                var newFiles = new List<SyncEntry>();
+                var existingFiles = new List<SyncEntry>();
+                int junkSkipped = 0;
+
+                await Task.Run(() =>
+                {
+                    foreach (var folderPath in folderPaths)
+                        ScanLocalFolder(folderPath, driveParentId, childrenByParent, filesByFolder,
+                            newFolders, newFiles, existingFiles, ref junkSkipped);
+                });
+
+                var totalNew = newFiles.Count;
+                var totalExisting = existingFiles.Count;
+
+                if (totalNew == 0 && totalExisting == 0)
+                {
+                    HideContextOverlay();
+                    ShowToast("No hay archivos para sincronizar", "info");
+                    return;
+                }
+
+                // 3. Only ask user if there are duplicates — otherwise sync immediately
+                bool overwrite = false;
+                if (totalExisting > 0)
+                {
+                    HideContextOverlay();
+                    var action = await ShowSyncDialog(newFolders.Count, totalNew, totalExisting, junkSkipped);
+                    if (action == "cancel") return;
+                    overwrite = action == "overwrite";
+                }
+
+                // 4. Execute sync
+                _syncCancelled = false;
+                await ExecuteFolderSync(newFolders, newFiles, existingFiles, overwrite);
+
+                // 5. Refresh current view
+                if (!_syncCancelled)
+                {
+                    InvalidateStats();
+                    _folderCache.Clear();
+                    await SafeLoad(() => LoadFolder());
+                    ShowToast("Sincronizacion completada", "success");
+                }
+                else
+                {
+                    // Still refresh to show what was partially synced
+                    InvalidateStats();
+                    _folderCache.Clear();
+                    await SafeLoad(() => LoadFolder());
+                }
+            }
+            catch (Exception ex)
+            {
+                HideContextOverlay();
+                if (!_syncCancelled)
+                    ShowToast($"Error en sincronizacion: {ex.Message}", "error");
+            }
+        }
+
+        void ScanLocalFolder(
+            string localPath, int driveParentId,
+            Dictionary<int, List<DriveFolderDb>> childrenByParent,
+            Dictionary<int, Dictionary<string, DriveFileDb>> filesByFolder,
+            List<(string, int, string)> newFolders,
+            List<SyncEntry> newFiles,
+            List<SyncEntry> existingFiles,
+            ref int junkSkipped)
+        {
+            var folderName = System.IO.Path.GetFileName(localPath);
+
+            // Find matching Drive folder under the parent (in-memory)
+            DriveFolderDb? matchingDriveFolder = null;
+            if (childrenByParent.TryGetValue(driveParentId, out var siblings))
+                matchingDriveFolder = siblings.FirstOrDefault(f =>
+                    string.Equals(f.Name, folderName, StringComparison.OrdinalIgnoreCase));
+
+            int currentDriveFolderId;
+            if (matchingDriveFolder != null)
+            {
+                currentDriveFolderId = matchingDriveFolder.Id;
+            }
+            else
+            {
+                currentDriveFolderId = -(newFolders.Count + 1);
+                newFolders.Add((localPath, driveParentId, folderName));
+            }
+
+            // Get existing files from pre-loaded in-memory lookup (0 HTTP calls)
+            var driveFileNames = (matchingDriveFolder != null && filesByFolder.TryGetValue(matchingDriveFolder.Id, out var cached))
+                ? cached : new Dictionary<string, DriveFileDb>(StringComparer.OrdinalIgnoreCase);
+
+            // Scan files in this local folder
+            try
+            {
+                foreach (var filePath in Directory.GetFiles(localPath))
+                {
+                    var fileName = System.IO.Path.GetFileName(filePath);
+                    if (IsJunkFile(fileName)) { junkSkipped++; continue; }
+
+                    if (matchingDriveFolder != null && driveFileNames.TryGetValue(fileName, out var existing))
+                    {
+                        existingFiles.Add(new SyncEntry(filePath, matchingDriveFolder.Id, existing));
+                    }
+                    else if (matchingDriveFolder != null)
+                    {
+                        newFiles.Add(new SyncEntry(filePath, matchingDriveFolder.Id, null));
+                    }
+                    else
+                    {
+                        // Folder doesn't exist yet — files will be uploaded after folder creation
+                        // Use localPath as key to resolve folder ID later
+                        newFiles.Add(new SyncEntry(filePath, currentDriveFolderId, null));
+                    }
+                }
+            }
+            catch (UnauthorizedAccessException) { /* Skip folders we can't read */ }
+
+            // Recurse into subdirectories
+            try
+            {
+                foreach (var subDir in Directory.GetDirectories(localPath))
+                {
+                    var subName = System.IO.Path.GetFileName(subDir);
+                    if (subName.StartsWith(".") || subName.StartsWith("~$")) continue; // Skip hidden/temp dirs
+                    ScanLocalFolder(subDir, currentDriveFolderId, childrenByParent, filesByFolder,
+                        newFolders, newFiles, existingFiles, ref junkSkipped);
+                }
+            }
+            catch (UnauthorizedAccessException) { /* Skip folders we can't read */ }
+        }
+
+        Task<string> ShowSyncDialog(int newFolders, int newFiles, int existingFiles, int junkSkipped)
+        {
+            var tcs = new TaskCompletionSource<string>();
+            var dlg = new Window
+            {
+                Width = 440, SizeToContent = SizeToContent.Height,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this, ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.None, Background = Brushes.Transparent,
+                AllowsTransparency = true
+            };
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(16), BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), BorderThickness = new Thickness(1), Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 32, ShadowDepth = 12, Opacity = 0.15 }, Margin = new Thickness(16) };
+            var stack = new StackPanel { Margin = new Thickness(28) };
+
+            // Icon + Title
+            var iconBorder = new Border { Width = 52, Height = 52, CornerRadius = new CornerRadius(26), Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFB, 0xEB)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            iconBorder.Child = new TextBlock { Text = "\uE895", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 22, Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(iconBorder);
+            stack.Children.Add(new TextBlock { Text = "Archivos existentes detectados", FontSize = 17, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(0x0F, 0x17, 0x2A)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 20) });
+
+            // Summary pills
+            var pillsPanel = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) };
+            if (newFolders > 0) pillsPanel.Children.Add(MkSyncPill("\uE8B7", $"{newFolders} carpetas nuevas", "#10B981", "#F0FDF4"));
+            if (newFiles > 0) pillsPanel.Children.Add(MkSyncPill("\uE8E5", $"{newFiles} archivos nuevos", "#3B82F6", "#EFF6FF"));
+            if (existingFiles > 0) pillsPanel.Children.Add(MkSyncPill("\uE7BA", $"{existingFiles} ya existen", "#F59E0B", "#FFFBEB"));
+            if (junkSkipped > 0) pillsPanel.Children.Add(MkSyncPill("\uE711", $"{junkSkipped} omitidos", "#94A3B8", "#F8FAFC"));
+            stack.Children.Add(pillsPanel);
+
+            // Separator
+            stack.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), Height = 1, Margin = new Thickness(0, 12, 0, 16) });
+
+            // Question
+            stack.Children.Add(new TextBlock { Text = "¿Que deseas hacer con los archivos que ya existen?", FontSize = 13.5, Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)), HorizontalAlignment = HorizontalAlignment.Center, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 16) });
+
+            // Buttons row
+            var buttonsPanel = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
+
+            // Overwrite button (outline style, subtle warning)
+            var overwriteBtn = new Button { Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = new SolidColorBrush(Color.FromRgb(0xFF, 0xFB, 0xEB)), Foreground = new SolidColorBrush(Color.FromRgb(0x92, 0x40, 0x0E)), BorderBrush = new SolidColorBrush(Color.FromRgb(0xFD, 0xE6, 0x8A)), BorderThickness = new Thickness(1), FontSize = 13, FontWeight = FontWeights.Medium };
+            overwriteBtn.Content = $"Sobrescribir {existingFiles} existente(s)";
+            overwriteBtn.Click += (_, _) => { tcs.SetResult("overwrite"); dlg.Close(); };
+            buttonsPanel.Children.Add(overwriteBtn);
+
+            // Skip button (primary, solid)
+            var skipBtn = new Button { Padding = new Thickness(16, 10, 16, 10), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = new SolidColorBrush(Color.FromRgb(0x1D, 0x4E, 0xD8)), Foreground = Brushes.White, BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold };
+            skipBtn.Content = newFiles > 0 ? $"Solo subir {newFiles} nuevo(s)" : "Omitir todos";
+            skipBtn.Click += (_, _) => { tcs.SetResult("skip"); dlg.Close(); };
+            buttonsPanel.Children.Add(skipBtn);
+
+            // Cancel button (text only)
+            var cancelBtn = new Button { Content = "Cancelar", Padding = new Thickness(16, 8, 16, 8), FontSize = 13, Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Background = Brushes.Transparent, Foreground = new SolidColorBrush(Color.FromRgb(0x94, 0xA3, 0xB8)), BorderThickness = new Thickness(0) };
+            cancelBtn.Click += (_, _) => { tcs.SetResult("cancel"); dlg.Close(); };
+            buttonsPanel.Children.Add(cancelBtn);
+
+            stack.Children.Add(buttonsPanel);
+
+            card.Child = stack; dlg.Content = card;
+            dlg.Closed += (_, _) => { if (!tcs.Task.IsCompleted) tcs.SetResult("cancel"); };
+            dlg.MouseLeftButtonDown += (s, e) => { try { dlg.DragMove(); } catch { } };
+            dlg.ShowDialog();
+            return tcs.Task;
+        }
+
+        Border MkSyncPill(string icon, string text, string color, string bgColor)
+        {
+            var pill = new Border { CornerRadius = new CornerRadius(8), Background = BH(bgColor), Padding = new Thickness(10, 6, 12, 6), Margin = new Thickness(3) };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            sp.Children.Add(new TextBlock { Text = icon, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, Foreground = BH(color), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+            sp.Children.Add(new TextBlock { Text = text, FontSize = 12, FontWeight = FontWeights.Medium, Foreground = BH(color), VerticalAlignment = VerticalAlignment.Center });
+            pill.Child = sp;
+            return pill;
+        }
+
+        async Task ExecuteFolderSync(
+            List<(string localPath, int driveParentId, string name)> foldersToCreate,
+            List<SyncEntry> newFiles,
+            List<SyncEntry> existingFiles,
+            bool overwrite)
+        {
+            _syncCancelled = false;
+            var tempIdMap = new Dictionary<int, int>();
+            int totalOps = foldersToCreate.Count + newFiles.Count + (overwrite ? existingFiles.Count : 0);
+            int completed = 0;
+
+            // Phase 1: Create folders — PARALLEL BY LEVEL
+            if (foldersToCreate.Count > 0 && !_syncCancelled)
+            {
+                ShowContextOverlay("Sincronizando", $"Creando {foldersToCreate.Count} carpeta(s)...", 0);
+                var folderWithTempId = foldersToCreate.Select((f, i) => (f.localPath, f.driveParentId, f.name, tempId: -(i + 1))).ToList();
+                var remaining = new List<(string localPath, int driveParentId, string name, int tempId)>(folderWithTempId);
+                var folderSemaphore = new SemaphoreSlim(10);
+
+                while (remaining.Count > 0 && !_syncCancelled)
+                {
+                    var ready = remaining.Where(f =>
+                        f.driveParentId > 0 || tempIdMap.ContainsKey(f.driveParentId)).ToList();
+                    if (ready.Count == 0) ready = remaining.Take(1).ToList();
+                    foreach (var r in ready) remaining.Remove(r);
+
+                    var levelTasks = ready.Select(async folder =>
+                    {
+                        if (_syncCancelled) return;
+                        await folderSemaphore.WaitAsync();
+                        try
+                        {
+                            if (_syncCancelled) return;
+                            var resolvedParentId = folder.driveParentId < 0
+                                ? tempIdMap.GetValueOrDefault(folder.driveParentId, _currentFolderId!.Value)
+                                : folder.driveParentId;
+                            var created = await SupabaseService.Instance.CreateDriveFolder(
+                                folder.name, resolvedParentId, _currentUser.Id, CancellationToken.None);
+                            if (created != null) { lock (tempIdMap) { tempIdMap[folder.tempId] = created.Id; } }
+                            var c = Interlocked.Increment(ref completed);
+                            Dispatcher.BeginInvoke(() => { if (!_syncCancelled) ShowContextOverlay("Creando carpetas",
+                                $"{c} de {foldersToCreate.Count} carpetas...", (int)(c * 100.0 / totalOps)); });
+                        }
+                        catch { /* swallow */ }
+                        finally { folderSemaphore.Release(); }
+                    });
+                    await Task.WhenAll(levelTasks);
+                }
+            }
+
+            if (_syncCancelled) return;
+
+            // Phase 2: Build file upload list
+            var filesToUpload = newFiles.Select(f =>
+            {
+                var folderId = f.DriveFolderId < 0 ? tempIdMap.GetValueOrDefault(f.DriveFolderId, _currentFolderId!.Value) : f.DriveFolderId;
+                return (f.LocalPath, FolderId: folderId);
+            }).ToList();
+
+            // Phase 3: If overwrite, delete old files first
+            if (overwrite && existingFiles.Count > 0 && !_syncCancelled)
+            {
+                Dispatcher.BeginInvoke(() => ShowContextOverlay("Sincronizando", "Eliminando versiones anteriores...", -1));
+                var delSemaphore = new SemaphoreSlim(5);
+                var delTasks = existingFiles.Where(f => f.Existing != null).Select(async f =>
+                {
+                    if (_syncCancelled) return;
+                    await delSemaphore.WaitAsync();
+                    try { if (!_syncCancelled) await SupabaseService.Instance.DeleteDriveFile(f.Existing!.Id, CancellationToken.None, _currentUser.Id); }
+                    catch { }
+                    finally { delSemaphore.Release(); }
+                });
+                await Task.WhenAll(delTasks);
+                filesToUpload.AddRange(existingFiles.Select(f => (f.LocalPath, f.DriveFolderId)));
+            }
+
+            // Phase 4: Upload files in parallel
+            if (filesToUpload.Count > 0 && !_syncCancelled)
+            {
+                var semaphore = new SemaphoreSlim(5);
+                int uploaded = 0, failed = 0;
+
+                // Process in batches to allow cancel between batches
+                var batch = new List<Task>();
+                foreach (var item in filesToUpload)
+                {
+                    if (_syncCancelled) break;
+                    var localItem = item;
+                    batch.Add(Task.Run(async () =>
+                    {
+                        if (_syncCancelled) return;
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            if (_syncCancelled) return;
+                            await SupabaseService.Instance.UploadDriveFile(localItem.LocalPath, localItem.FolderId, _currentUser.Id, CancellationToken.None);
+                            Interlocked.Increment(ref uploaded);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[Sync] Upload failed: {System.IO.Path.GetFileName(localItem.LocalPath)} - {ex.Message}");
+                            Interlocked.Increment(ref failed);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                            var c = Interlocked.Increment(ref completed);
+                            Dispatcher.BeginInvoke(() => { if (!_syncCancelled) ShowContextOverlay("Subiendo archivos",
+                                $"{uploaded + failed} de {filesToUpload.Count} archivos...",
+                                (int)(c * 100.0 / totalOps)); });
+                        }
+                    }));
+                }
+                await Task.WhenAll(batch);
+
+                if (failed > 0 && !_syncCancelled)
+                    ShowToast($"{uploaded} subido(s), {failed} fallido(s)", "warning");
+            }
+
+            if (!_syncCancelled) HideContextOverlay();
         }
 
         // Upload with ghost cards in-place (no side panel)
@@ -2992,9 +3386,19 @@ namespace SistemaGestionProyectos2.Views
             {
                 var files = _currentFiles.Where(f => _selectedFileIds.Contains(f.Id)).ToList();
                 if (files.Count == 0) return;
-                if (files.Count == 1) { await DelFile(files[0]); return; }
-                if (!Confirm($"Eliminar {files.Count} archivos seleccionados?")) return;
-                foreach (var f in files) await DelFile(f);
+                if (files.Count == 1) { await DelFile(files[0]); await LoadFolder(); return; }
+                if (!Confirm($"Eliminar {files.Count} archivos seleccionados?", "Eliminar archivos", destructive: true)) return;
+                int done = 0;
+                ShowContextOverlay("Eliminando archivos", $"0 de {files.Count}...", 0);
+                foreach (var f in files)
+                {
+                    await DelFile(f, skipConfirm: true);
+                    done++;
+                    ShowContextOverlay("Eliminando archivos", $"{done} de {files.Count}...", (int)(done * 100.0 / files.Count));
+                }
+                HideContextOverlay();
+                ShowToast($"{done} archivo(s) eliminado(s)", "success");
+                await LoadFolder();
             }
         }
 
@@ -3167,10 +3571,44 @@ namespace SistemaGestionProyectos2.Views
             });
         }
 
-        /// <summary>Inline confirmation dialog (replaces MessageBox.YesNo). Returns true if confirmed.</summary>
-        bool Confirm(string message, string title = "Confirmar")
+        /// <summary>Custom confirmation dialog matching app design. Returns true if confirmed.</summary>
+        bool Confirm(string message, string title = "Confirmar", bool destructive = false)
         {
-            return MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+            Debug.WriteLine($"[Confirm] SHOW: title={title}, destructive={destructive}, msg={message}");
+            bool result = false;
+            var w = new Window { Width = 420, SizeToContent = SizeToContent.Height, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, ResizeMode = ResizeMode.NoResize, WindowStyle = WindowStyle.None, AllowsTransparency = true, Background = Brushes.Transparent };
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(16), BorderBrush = new SolidColorBrush(Color.FromRgb(0xE2, 0xE8, 0xF0)), BorderThickness = new Thickness(1), Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0x1E, 0x29, 0x3B), BlurRadius = 24, ShadowDepth = 8, Opacity = 0.12 }, Margin = new Thickness(16) };
+            var p = new StackPanel { Margin = new Thickness(28) };
+
+            // Icon
+            var iconColor = destructive ? "#EF4444" : "#F59E0B";
+            var iconBg = destructive ? "#FEF2F2" : "#FFFBEB";
+            var iconChar = destructive ? "\uE74D" : "\uE7BA";
+            var iconBorder = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(24), Background = BH(iconBg), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 16) };
+            iconBorder.Child = new TextBlock { Text = iconChar, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 20, Foreground = BH(iconColor), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            p.Children.Add(iconBorder);
+
+            // Title
+            p.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromRgb(0x0F, 0x17, 0x2A)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 8) });
+            // Message
+            p.Children.Add(new TextBlock { Text = message, FontSize = 13.5, Foreground = new SolidColorBrush(Color.FromRgb(0x64, 0x74, 0x8B)), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 20) });
+
+            // Buttons
+            var bp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            var cancel = new Button { Content = "Cancelar", Width = 110, Padding = new Thickness(0, 10, 0, 10), Background = new SolidColorBrush(Color.FromRgb(0xF1, 0xF5, 0xF9)), Foreground = new SolidColorBrush(Color.FromRgb(0x47, 0x55, 0x69)), BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.Medium, Cursor = Cursors.Hand };
+            cancel.Click += (s, e) => { Debug.WriteLine("[Confirm] CANCEL clicked"); w.Close(); };
+            var confirmColor = destructive ? Color.FromRgb(0xEF, 0x44, 0x44) : Color.FromRgb(0x1D, 0x4E, 0xD8);
+            var ok = new Button { Content = destructive ? "Eliminar" : "Confirmar", Width = 110, Padding = new Thickness(0, 10, 0, 10), Background = new SolidColorBrush(confirmColor), Foreground = Brushes.White, BorderThickness = new Thickness(0), FontSize = 13, FontWeight = FontWeights.SemiBold, Cursor = Cursors.Hand, Margin = new Thickness(10, 0, 0, 0) };
+            ok.Click += (s, e) => { Debug.WriteLine("[Confirm] OK clicked"); result = true; w.Close(); };
+            bp.Children.Add(cancel); bp.Children.Add(ok); p.Children.Add(bp);
+
+            card.Child = p; w.Content = card;
+            w.MouseLeftButtonDown += (s, e) => { try { w.DragMove(); } catch { } };
+            w.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) { Debug.WriteLine("[Confirm] ESC pressed"); w.Close(); } };
+            w.Loaded += (s, e) => { Debug.WriteLine("[Confirm] Dialog LOADED and visible"); w.Activate(); w.Focus(); };
+            w.ShowDialog();
+            Debug.WriteLine($"[Confirm] Dialog CLOSED, result={result}");
+            return result;
         }
 
         static string Tr(string? v, int m) => string.IsNullOrEmpty(v) ? "" : v.Length <= m ? v : v[..m] + "...";
@@ -3179,543 +3617,49 @@ namespace SistemaGestionProyectos2.Views
         static SolidColorBrush BH(string h) => new(CH(h));
 
         // ===============================================
-        // BENCHMARK
+        // DIAGNOSTICO DE INTEGRIDAD (solo dev)
         // ===============================================
-        // DRIVE WORKFLOW TESTS
-        // ===============================================
-        async void RunDriveWorkflowTests_Click(object sender, MouseButtonEventArgs e)
+        async Task RunDiagnoseOrphans()
         {
-            if (!Confirm("Ejecutar tests de workflow Drive?\n\n" +
-                "- 7 tests (CRUD carpetas, archivos reales, bulk upload, open-in-place, conflictos, arbol)\n" +
-                "- Usa archivos de fase4/_carpeta_test/\n" +
-                "- Crea y elimina datos temporales (_test_*)\n\n" +
-                "Continuar?")) return;
-
-            SetNav("all");
-            _currentFolderId = null;
-            _currentFolders.Clear();
-            _currentFiles.Clear();
-            _breadcrumb.Clear();
-            _selectedFileIds.Clear();
-            ClearMultiSelect();
-
-            SectionTitle.Text = "Drive Workflow Tests";
-            SectionSubtitle.Text = "Ejecutando...";
-            BackToFoldersBtn.Visibility = Visibility.Collapsed;
-            EmptyState.Visibility = Visibility.Collapsed;
-            StatusText.Text = "Tests en progreso...";
-
-            var stk = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-            ContentHost.Content = stk;
-
-            var totalSw = Stopwatch.StartNew();
-            int passed = 0, failed = 0;
-            var allResults = new List<Tests.TestResult>();
-
+            ShowContextOverlay("Diagnosticando", "Comparando R2 vs BD...");
             try
             {
-                var test = new Tests.DriveWorkflowTests();
-                await test.RunAllTests(result =>
+                var (r2Orphans, bdOrphans, matched) = await SupabaseService.Instance.DiagnoseDriveOrphans(_cts.Token);
+                HideContextOverlay();
+
+                Debug.WriteLine($"[Diagnose] R2={matched + r2Orphans.Count} BD={matched + bdOrphans.Count} Matched={matched} R2Orphans={r2Orphans.Count} BDOrphans={bdOrphans.Count}");
+
+                if (r2Orphans.Count == 0 && bdOrphans.Count == 0)
                 {
-                    Dispatcher.Invoke(() =>
-                    {
-                        allResults.Add(result);
-                        if (result.Passed) passed++; else failed++;
-
-                        var row = new Border
-                        {
-                            CornerRadius = new CornerRadius(8),
-                            Padding = new Thickness(16, 10, 16, 10),
-                            Margin = new Thickness(0, 4, 0, 0),
-                            Background = result.Passed
-                                ? new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4))
-                                : new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)),
-                            BorderBrush = result.Passed
-                                ? new SolidColorBrush(Color.FromRgb(0xBB, 0xF7, 0xD0))
-                                : new SolidColorBrush(Color.FromRgb(0xFE, 0xCA, 0xCA)),
-                            BorderThickness = new Thickness(1)
-                        };
-                        var g = new Grid();
-                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                        g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                        var icon = new TextBlock
-                        {
-                            Text = result.Passed ? "\uE73E" : "\uEA39",
-                            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                            FontSize = 16,
-                            Foreground = result.Passed ? GreenOk : Destructive,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(0, 0, 12, 0)
-                        };
-                        Grid.SetColumn(icon, 0); g.Children.Add(icon);
-
-                        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                        info.Children.Add(new TextBlock
-                        {
-                            Text = result.Name,
-                            FontSize = 13, FontWeight = FontWeights.Medium,
-                            Foreground = TextPrimary
-                        });
-                        if (!string.IsNullOrEmpty(result.Error))
-                            info.Children.Add(new TextBlock
-                            {
-                                Text = result.Error,
-                                FontSize = 11, Foreground = Destructive,
-                                TextTrimming = TextTrimming.CharacterEllipsis,
-                                ToolTip = result.Error
-                            });
-                        Grid.SetColumn(info, 1); g.Children.Add(info);
-
-                        var time = new TextBlock
-                        {
-                            Text = $"{result.ElapsedMs}ms",
-                            FontSize = 12, FontWeight = FontWeights.Medium,
-                            Foreground = result.ElapsedMs > result.ThresholdMs ? Destructive : TextMuted,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Margin = new Thickness(12, 0, 0, 0)
-                        };
-                        Grid.SetColumn(time, 2); g.Children.Add(time);
-
-                        row.Child = g;
-                        stk.Children.Add(row);
-
-                        StatusText.Text = $"Tests: {passed} OK, {failed} FAIL";
-                    });
-                });
-            }
-            catch (Exception ex)
-            {
-                ShowToast($"Error en tests: {ex.Message}", "error");
-            }
-
-            totalSw.Stop();
-            var totalMs = totalSw.ElapsedMilliseconds;
-
-            // Generate text report
-            var report = GenerateWorkflowTestReport(allResults, totalMs);
-
-            // Summary bar
-            var summary = new Border
-            {
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(20, 14, 20, 14),
-                Margin = new Thickness(0, 16, 0, 0),
-                Background = failed == 0
-                    ? new SolidColorBrush(Color.FromRgb(0xF0, 0xFD, 0xF4))
-                    : new SolidColorBrush(Color.FromRgb(0xFE, 0xF2, 0xF2)),
-                BorderBrush = failed == 0
-                    ? new SolidColorBrush(Color.FromRgb(0x86, 0xEF, 0xAC))
-                    : new SolidColorBrush(Color.FromRgb(0xFC, 0xA5, 0xA5)),
-                BorderThickness = new Thickness(1)
-            };
-            var summaryGrid = new Grid();
-            summaryGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            summaryGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var ssp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            ssp.Children.Add(new TextBlock
-            {
-                Text = failed == 0 ? "\uE73E" : "\uEA39",
-                FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                FontSize = 20,
-                Foreground = failed == 0 ? GreenOk : Destructive,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 12, 0)
-            });
-            ssp.Children.Add(new TextBlock
-            {
-                Text = $"{passed} pasaron, {failed} fallaron — {totalMs}ms total",
-                FontSize = 15, FontWeight = FontWeights.SemiBold,
-                Foreground = failed == 0 ? GreenOk : Destructive,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-            Grid.SetColumn(ssp, 0); summaryGrid.Children.Add(ssp);
-
-            // Copy report button
-            var copyBtn = new Button
-            {
-                Style = FindResource("SecondaryButton") as Style,
-                Padding = new Thickness(14, 8, 14, 8),
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            var copySp = new StackPanel { Orientation = Orientation.Horizontal };
-            copySp.Children.Add(new TextBlock { Text = "\uE8C8", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-            copySp.Children.Add(new TextBlock { Text = "Copiar reporte", FontSize = 13, VerticalAlignment = VerticalAlignment.Center });
-            copyBtn.Content = copySp;
-            copyBtn.Click += (s2, e2) =>
-            {
-                try { Clipboard.SetText(report); ShowToast("Reporte copiado al portapapeles", "success"); }
-                catch { ShowToast("Error al copiar", "error"); }
-            };
-            Grid.SetColumn(copyBtn, 1); summaryGrid.Children.Add(copyBtn);
-
-            summary.Child = summaryGrid;
-            stk.Children.Insert(0, summary);
-
-            SectionSubtitle.Text = $"{passed + failed} tests completados en {totalMs}ms";
-            StatusText.Text = failed == 0 ? $"Tests OK ({totalMs}ms)" : $"{failed} test(s) fallaron";
-        }
-
-        string GenerateWorkflowTestReport(List<Tests.TestResult> results, long totalMs)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("╔══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║           IMA Drive - Workflow Test Report                  ║");
-            sb.AppendLine("╚══════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-            sb.AppendLine($"  Fecha:    {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
-            sb.AppendLine($"  Usuario:  {_currentUser?.FullName ?? _currentUser?.Username ?? "N/A"}");
-            sb.AppendLine($"  R2:       {(SupabaseService.Instance.IsDriveStorageConfigured ? "Configurado" : "NO configurado")}");
-            sb.AppendLine();
-
-            var passed = results.Count(r => r.Passed);
-            var failed = results.Count(r => !r.Passed);
-            sb.AppendLine($"  RESULTADO: {(failed == 0 ? "PASSED" : "FAILED")}");
-            sb.AppendLine($"  Total:     {results.Count} tests ({passed} OK, {failed} FAIL)");
-            sb.AppendLine($"  Tiempo:    {totalMs}ms");
-            sb.AppendLine();
-            sb.AppendLine("──────────────────────────────────────────────────────────────");
-            sb.AppendLine();
-
-            // Table header
-            sb.AppendLine($"  {"#",-3} {"Estado",-8} {"Test",-52} {"Tiempo",8} {"Limite",8}");
-            sb.AppendLine($"  {"─",3} {"──────",-8} {"────────────────────────────────────────────────────",-52} {"──────",8} {"──────",8}");
-
-            for (int i = 0; i < results.Count; i++)
-            {
-                var r = results[i];
-                var status = r.Passed ? "PASS" : "FAIL";
-                var name = r.Name.Length > 50 ? r.Name[..50] + ".." : r.Name;
-                sb.AppendLine($"  {i + 1,-3} {status,-8} {name,-52} {r.ElapsedMs + "ms",8} {r.ThresholdMs + "ms",8}");
-                if (!string.IsNullOrEmpty(r.Error))
-                    sb.AppendLine($"       ERROR: {r.Error}");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("──────────────────────────────────────────────────────────────");
-            sb.AppendLine();
-
-            // Timing summary
-            if (results.Count > 0)
-            {
-                var avg = results.Average(r => r.ElapsedMs);
-                var max = results.Max(r => r.ElapsedMs);
-                var maxTest = results.First(r => r.ElapsedMs == max);
-                var min = results.Min(r => r.ElapsedMs);
-                sb.AppendLine($"  Promedio:    {avg:F0}ms");
-                sb.AppendLine($"  Mas rapido:  {min}ms");
-                sb.AppendLine($"  Mas lento:   {max}ms ({maxTest.Name})");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("  Generado por IMA Drive Workflow Tests");
-            return sb.ToString();
-        }
-
-        // ===============================================
-        // BENCHMARK
-        // ===============================================
-        record BenchmarkPhaseResult(long P1_DataMs, long P2_OrdersMs, long P3_RenderMs, long TotalMs,
-            int FolderCount, int FileCount, int OrderQueriesCount);
-
-        record BenchmarkEntry(string Scenario, string FolderName, int? FolderId, int Iteration,
-            long P1_DataMs, long P2_OrdersMs, long P3_RenderMs, long TotalMs,
-            int Folders, int Files, int OrderQueries, bool CacheWarm);
-
-        void ClearAllCaches()
-        {
-            _statsCache.Clear();
-            _orderInfoCache.Clear();
-            _userNameCache.Clear();
-            _folderCache.Clear();
-            // Also clear ServiceCache (clients, etc.)
-            var cacheField = typeof(Services.Core.BaseSupabaseService)
-                .GetField("Cache", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-            var cache = cacheField?.GetValue(null) as Services.Core.ServiceCache;
-            cache?.Clear();
-        }
-
-        async void RunBenchmark_Click(object sender, MouseButtonEventArgs e)
-        {
-            const int ITERATIONS = 3;
-            const int MAX_DEPTH = 3;
-
-            if (!Confirm($"Ejecutar benchmark de rendimiento:\n\n" +
-                $"- {ITERATIONS} iteraciones por escenario\n" +
-                $"- Profundidad maxima: {MAX_DEPTH} niveles\n" +
-                $"- Escenarios: cold, warm, cache-hit\n" +
-                $"- Recorre TODO el arbol de carpetas\n\n" +
-                $"Al terminar copia el reporte al portapapeles.\nContinuar?"))
-                return;
-
-            _benchmarkActive = true;
-            var results = new List<BenchmarkEntry>();
-            var totalSw = Stopwatch.StartNew();
-
-            try
-            {
-                // Phase 0: Discover full tree structure
-                ClearAllCaches();
-                StatusText.Text = "Benchmark: descubriendo arbol de carpetas...";
-                var rootFolders = await SupabaseService.Instance.GetDriveChildFolders(null, _cts.Token);
-                var rootId = rootFolders.FirstOrDefault()?.Id;
-                if (rootId == null) { ShowToast("No hay carpeta raiz", "error"); return; }
-
-                var allFolders = new List<(int id, string name, int depth, string path)>();
-                await DiscoverTree(rootId.Value, "IMA MECATRONICA", 0, MAX_DEPTH, allFolders);
-                StatusText.Text = $"Benchmark: {allFolders.Count} carpetas encontradas, {ITERATIONS} iteraciones...";
-
-                for (int i = 0; i < ITERATIONS; i++)
-                {
-                    // === COLD: every folder (cache cleared) ===
-                    foreach (var (fId, fName, depth, path) in allFolders)
-                    {
-                        ClearAllCaches();
-                        await Task.Delay(30);
-                        _lastPhaseResult = null;
-                        await NavTo(fId, hist: false);
-                        if (_lastPhaseResult != null)
-                            results.Add(new BenchmarkEntry($"L{depth} cold", fName, fId, i + 1,
-                                _lastPhaseResult.P1_DataMs, _lastPhaseResult.P2_OrdersMs, _lastPhaseResult.P3_RenderMs,
-                                _lastPhaseResult.TotalMs, _lastPhaseResult.FolderCount, _lastPhaseResult.FileCount,
-                                _lastPhaseResult.OrderQueriesCount, false));
-
-                        // WARM (network): same folder, caches populated but _folderCache skipped by benchmark
-                        _lastPhaseResult = null;
-                        await NavTo(fId, hist: false);
-                        if (_lastPhaseResult != null)
-                            results.Add(new BenchmarkEntry($"L{depth} warm", fName, fId, i + 1,
-                                _lastPhaseResult.P1_DataMs, _lastPhaseResult.P2_OrdersMs, _lastPhaseResult.P3_RenderMs,
-                                _lastPhaseResult.TotalMs, _lastPhaseResult.FolderCount, _lastPhaseResult.FileCount,
-                                _lastPhaseResult.OrderQueriesCount, true));
-                    }
-
-                    // === CACHE HIT: first populate cache for ALL folders, then measure ===
-                    // Step 1: Navigate all folders to populate _folderCache (not measured)
-                    _benchmarkActive = false;
-                    foreach (var (fId, _, _, _) in allFolders)
-                        await NavTo(fId, hist: false);
-
-                    // Step 2: Now measure cache hits (all folders should be in _folderCache)
-                    var cacheResults = new List<(int fId, string name, long ms)>();
-                    foreach (var (fId, fName, depth, path) in allFolders)
-                    {
-                        var csw = Stopwatch.StartNew();
-                        await NavTo(fId, hist: false);
-                        csw.Stop();
-                        cacheResults.Add((fId, fName, csw.ElapsedMilliseconds));
-                    }
-                    _benchmarkActive = true;
-
-                    foreach (var (fId, fName, ms) in cacheResults)
-                    {
-                        var depth = allFolders.First(f => f.id == fId).depth;
-                        results.Add(new BenchmarkEntry($"L{depth} cache-hit", fName, fId, i + 1,
-                            0, 0, ms, ms, 0, 0, 0, true));
-                    }
-
-                    // === BACK/FORWARD stress: navigate forward then rapid back ===
-                    _benchmarkActive = false;
-                    var navOrder = allFolders.Take(Math.Min(10, allFolders.Count)).ToList();
-                    foreach (var (fId, _, _, _) in navOrder)
-                        await NavTo(fId, hist: true);
-
-                    // Rapid back navigation (should all be cache hits)
-                    var backSw = Stopwatch.StartNew();
-                    int backCount = 0;
-                    while (_backHistory.Count > 0)
-                    {
-                        await NavTo(_backHistory.Pop(), hist: false);
-                        backCount++;
-                    }
-                    backSw.Stop();
-                    _benchmarkActive = true;
-                    if (backCount > 0)
-                        results.Add(new BenchmarkEntry("Back nav (avg)", $"{backCount}x back", null, i + 1,
-                            0, 0, backSw.ElapsedMilliseconds / backCount, backSw.ElapsedMilliseconds / backCount,
-                            backCount, 0, 0, true));
-
-                    StatusText.Text = $"Benchmark: iteracion {i + 1}/{ITERATIONS} completada ({allFolders.Count} carpetas)";
+                    ShowToast($"Todo limpio: {matched} archivos sincronizados, 0 huerfanos", "success");
+                    return;
                 }
 
-                totalSw.Stop();
+                var msg = $"R2 vs BD: {matched} sincronizados\n\n";
+                if (r2Orphans.Count > 0) msg += $"R2 huerfanos (blobs sin BD): {r2Orphans.Count}\n";
+                if (bdOrphans.Count > 0) msg += $"BD huerfanos (registros sin blob): {bdOrphans.Count}\n";
 
-                // Generate report
-                var report = GenerateBenchmarkReport(results, ITERATIONS, allFolders.Count, totalSw.ElapsedMilliseconds);
-                Clipboard.SetText(report);
-                StatusText.Text = $"Benchmark completado en {totalSw.ElapsedMilliseconds:N0}ms - Reporte copiado al portapapeles";
-
-                var coldAvg = results.Where(r => r.Scenario.Contains("cold")).Select(r => r.TotalMs).DefaultIfEmpty(0).Average();
-                var cacheAvg = results.Where(r => r.Scenario.Contains("cache-hit")).Select(r => r.TotalMs).DefaultIfEmpty(0).Average();
-
-                ShowToast($"Benchmark completado: {allFolders.Count} carpetas, cold={coldAvg:F0}ms, cache={cacheAvg:F0}ms. Reporte copiado.", "success", 5000);
+                if (r2Orphans.Count > 0)
+                {
+                    msg += $"\nLimpiar {r2Orphans.Count} blobs huerfanos de R2?";
+                    if (Confirm(msg, "Diagnostico de integridad"))
+                    {
+                        ShowContextOverlay("Limpiando", $"Eliminando {r2Orphans.Count} blobs huerfanos...");
+                        var cleaned = await SupabaseService.Instance.CleanDriveR2Orphans(r2Orphans);
+                        HideContextOverlay();
+                        ShowToast($"{cleaned} blobs huerfanos eliminados de R2", "success");
+                    }
+                }
+                else
+                {
+                    ShowToast($"BD: {bdOrphans.Count} registros sin blob en R2", "warning");
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Benchmark] ERR: {ex.Message}");
-                StatusText.Text = $"Benchmark error: {ex.Message}";
-                ShowToast($"Error en benchmark: {ex.Message}", "error", 5000);
+                HideContextOverlay();
+                ShowToast($"Error en diagnostico: {ex.Message}", "error");
             }
-            finally
-            {
-                _benchmarkActive = false;
-                ClearAllCaches();
-                await SafeLoad(() => NavigateToRoot());
-            }
-        }
-
-        async Task DiscoverTree(int parentId, string parentName, int depth, int maxDepth,
-            List<(int id, string name, int depth, string path)> result)
-        {
-            result.Add((parentId, parentName, depth, parentName));
-            if (depth >= maxDepth) return;
-            var children = await SupabaseService.Instance.GetDriveChildFolders(parentId, _cts.Token);
-            foreach (var c in children)
-                await DiscoverTree(c.Id, c.Name, depth + 1, maxDepth, result);
-        }
-
-        string GenerateBenchmarkReport(List<BenchmarkEntry> results, int iterations, int folderCount, long totalMs)
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("# Drive V2 - Benchmark de Rendimiento");
-            sb.AppendLine($"Fecha: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            sb.AppendLine($"Iteraciones: {iterations}");
-            sb.AppendLine($"Carpetas testeadas: {folderCount} (arbol completo)");
-            sb.AppendLine($"Total mediciones: {results.Count}");
-            sb.AppendLine($"Tiempo total benchmark: {totalMs:N0}ms");
-            sb.AppendLine();
-
-            // Summary table by scenario
-            sb.AppendLine("## Resumen por Escenario (promedios en ms)");
-            sb.AppendLine();
-            sb.AppendLine("| Escenario | N | P1 Data | P2 Orders | P3/Total | **TOTAL** | Carpetas | Archivos |");
-            sb.AppendLine("|-----------|---|---------|-----------|----------|-----------|----------|----------|");
-
-            foreach (var grp in results.GroupBy(r => r.Scenario).OrderBy(g => g.Key))
-            {
-                var items = grp.ToList();
-                sb.AppendLine($"| {grp.Key} | {items.Count} " +
-                    $"| {items.Average(r => r.P1_DataMs):F0} " +
-                    $"| {items.Average(r => r.P2_OrdersMs):F0} " +
-                    $"| {items.Average(r => r.P3_RenderMs):F0} " +
-                    $"| **{items.Average(r => r.TotalMs):F0}** " +
-                    $"| {items.Average(r => r.Folders):F0} " +
-                    $"| {items.Average(r => r.Files):F0} |");
-            }
-
-            sb.AppendLine();
-
-            // Cold vs Warm vs Cache-hit
-            sb.AppendLine("## Comparativa: Cold vs Warm vs Cache-hit");
-            sb.AppendLine();
-            var cold = results.Where(r => r.Scenario.Contains("cold")).ToList();
-            var warm = results.Where(r => r.Scenario.Contains("warm")).ToList();
-            var cached = results.Where(r => r.Scenario.Contains("cache-hit")).ToList();
-            var back = results.Where(r => r.Scenario.Contains("Back")).ToList();
-
-            if (cold.Count > 0)
-            {
-                var coldAvg = cold.Average(r => r.TotalMs);
-                var warmAvg = warm.Count > 0 ? warm.Average(r => r.TotalMs) : 0;
-                var cacheAvg = cached.Count > 0 ? cached.Average(r => r.TotalMs) : 0;
-                var backAvg = back.Count > 0 ? back.Average(r => r.TotalMs) : 0;
-
-                sb.AppendLine("| Tipo | Promedio (ms) | vs Cold |");
-                sb.AppendLine("|------|---------------|---------|");
-                sb.AppendLine($"| Cold (sin cache, HTTP) | **{coldAvg:F0}** | - |");
-                if (warm.Count > 0) sb.AppendLine($"| Warm (caches parciales) | **{warmAvg:F0}** | {(coldAvg > 0 ? (1 - warmAvg / coldAvg) * 100 : 0):F1}% |");
-                if (cached.Count > 0) sb.AppendLine($"| Cache-hit (instantaneo) | **{cacheAvg:F0}** | {(coldAvg > 0 ? (1 - cacheAvg / coldAvg) * 100 : 0):F1}% |");
-                if (back.Count > 0) sb.AppendLine($"| Back nav (promedio) | **{backAvg:F0}** | {(coldAvg > 0 ? (1 - backAvg / coldAvg) * 100 : 0):F1}% |");
-            }
-
-            sb.AppendLine();
-
-            // Phase breakdown (cold only)
-            if (cold.Count > 0)
-            {
-                sb.AppendLine("## Desglose por Fase (cold)");
-                sb.AppendLine();
-                var p1 = cold.Average(r => r.P1_DataMs);
-                var p2 = cold.Average(r => r.P2_OrdersMs);
-                var p3 = cold.Average(r => r.P3_RenderMs);
-                var tot = cold.Average(r => r.TotalMs);
-                sb.AppendLine($"| Fase | Promedio | % del total |");
-                sb.AppendLine($"|------|---------|-------------|");
-                sb.AppendLine($"| P1 Data (BD+RPC) | {p1:F0}ms | {(tot > 0 ? p1 / tot * 100 : 0):F1}% |");
-                sb.AppendLine($"| P2 Orders (batch) | {p2:F0}ms | {(tot > 0 ? p2 / tot * 100 : 0):F1}% |");
-                sb.AppendLine($"| P3 Render (UI) | {p3:F0}ms | {(tot > 0 ? p3 / tot * 100 : 0):F1}% |");
-                sb.AppendLine($"| Overhead (breadcrumb+nav) | {tot - p1 - p2 - p3:F0}ms | {(tot > 0 ? (tot - p1 - p2 - p3) / tot * 100 : 0):F1}% |");
-                sb.AppendLine();
-            }
-
-            // Per-level summary
-            sb.AppendLine("## Rendimiento por Nivel de Profundidad (cold)");
-            sb.AppendLine();
-            sb.AppendLine("| Nivel | Carpetas | P1 avg | TOTAL avg | Min | Max |");
-            sb.AppendLine("|-------|----------|--------|-----------|-----|-----|");
-            foreach (var grp in cold.GroupBy(r => r.Scenario).OrderBy(g => g.Key))
-            {
-                var items = grp.ToList();
-                sb.AppendLine($"| {grp.Key} | {items.Count / iterations} " +
-                    $"| {items.Average(r => r.P1_DataMs):F0} " +
-                    $"| **{items.Average(r => r.TotalMs):F0}** " +
-                    $"| {items.Min(r => r.TotalMs)} " +
-                    $"| {items.Max(r => r.TotalMs)} |");
-            }
-            sb.AppendLine();
-
-            // Per-folder detail (cold only, top 20 slowest)
-            sb.AppendLine("## Top 20 Carpetas mas Lentas (cold, promedio)");
-            sb.AppendLine();
-            sb.AppendLine("| Carpeta | P1 Data | P2 Orders | P3 Render | TOTAL | Carpetas | Archivos |");
-            sb.AppendLine("|---------|---------|-----------|-----------|-------|----------|----------|");
-
-            foreach (var grp in cold.GroupBy(r => r.FolderName)
-                .Select(g => new { Name = g.Key, Items = g.ToList(), Avg = g.Average(r => r.TotalMs) })
-                .OrderByDescending(g => g.Avg).Take(20))
-            {
-                sb.AppendLine($"| {Tr(grp.Name, 25)} " +
-                    $"| {grp.Items.Average(r => r.P1_DataMs):F0} " +
-                    $"| {grp.Items.Average(r => r.P2_OrdersMs):F0} " +
-                    $"| {grp.Items.Average(r => r.P3_RenderMs):F0} " +
-                    $"| **{grp.Avg:F0}** " +
-                    $"| {grp.Items.Average(r => r.Folders):F0} " +
-                    $"| {grp.Items.Average(r => r.Files):F0} |");
-            }
-
-            sb.AppendLine();
-
-            // Percentiles
-            if (cold.Count >= 5)
-            {
-                sb.AppendLine("## Percentiles (cold, TOTAL ms)");
-                sb.AppendLine();
-                var sorted = cold.Select(r => r.TotalMs).OrderBy(x => x).ToList();
-                sb.AppendLine($"- P50 (mediana): **{sorted[sorted.Count / 2]}ms**");
-                sb.AppendLine($"- P75: **{sorted[(int)(sorted.Count * 0.75)]}ms**");
-                sb.AppendLine($"- P90: **{sorted[(int)(sorted.Count * 0.90)]}ms**");
-                sb.AppendLine($"- P95: **{sorted[(int)(sorted.Count * 0.95)]}ms**");
-                sb.AppendLine($"- P99: **{sorted[Math.Min(sorted.Count - 1, (int)(sorted.Count * 0.99))]}ms**");
-                sb.AppendLine();
-            }
-
-            // Raw data (abbreviated - only first iteration)
-            sb.AppendLine("## Datos Crudos (iteracion 1)");
-            sb.AppendLine();
-            sb.AppendLine("| # | Escenario | Carpeta | P1 | P2 | P3 | Total | F | A | OQ |");
-            sb.AppendLine("|---|-----------|---------|----|----|-------|-------|---|---|----|");
-            int idx = 0;
-            foreach (var r in results.Where(r => r.Iteration == 1))
-            {
-                idx++;
-                sb.AppendLine($"| {idx} | {r.Scenario} | {Tr(r.FolderName, 18)} " +
-                    $"| {r.P1_DataMs} | {r.P2_OrdersMs} | {r.P3_RenderMs} | **{r.TotalMs}** " +
-                    $"| {r.Folders} | {r.Files} | {r.OrderQueries} |");
-            }
-
-            return sb.ToString();
         }
     }
 

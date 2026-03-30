@@ -584,43 +584,92 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- MEJORA-6: Context download overlay -->
-            <Border x:Name="ContextDownloadOverlay" Grid.Row="3" Background="#E0F2FE"
-                    Visibility="Collapsed" CornerRadius="12" Margin="24"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Padding="32,24" Effect="{StaticResource CardShadow}">
-                <StackPanel HorizontalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                        <Border Width="28" Height="28" Margin="0,0,10,0">
-                            <Border x:Name="CtxSpinner" Width="28" Height="28"
-                                    BorderBrush="{StaticResource PrimaryBrush}"
-                                    BorderThickness="3" CornerRadius="14"
-                                    RenderTransformOrigin="0.5,0.5">
-                                <Border.OpacityMask>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#FF000000" Offset="0"/>
-                                        <GradientStop Color="#00000000" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Border.OpacityMask>
-                                <Border.RenderTransform>
-                                    <RotateTransform x:Name="CtxSpinnerRotation"/>
-                                </Border.RenderTransform>
-                            </Border>
+            <!-- MEJORA-6: Context download overlay with dim background -->
+            <Grid x:Name="ContextDownloadOverlay" Grid.Row="3" Visibility="Collapsed">
+                <!-- Dim background -->
+                <Border Background="#0F172A" Opacity="0.4"/>
+                <!-- Modal card -->
+                <Border Background="White" CornerRadius="16"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="36,32" MinWidth="380"
+                        Effect="{StaticResource CardShadow}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <!-- Cloud icon -->
+                        <Border Width="52" Height="52" CornerRadius="26"
+                                Background="#EFF6FF" HorizontalAlignment="Center" Margin="0,0,0,16">
+                            <TextBlock Text="&#xE753;" FontFamily="Segoe MDL2 Assets" FontSize="22"
+                                       Foreground="{StaticResource PrimaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <!-- Title -->
                         <TextBlock x:Name="CtxDownloadTitle" Text="Preparando ensamble..."
-                                   FontSize="15" FontWeight="SemiBold"
+                                   FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                   VerticalAlignment="Center"/>
+                                   HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                        <!-- Status text -->
+                        <TextBlock x:Name="CtxDownloadStatus" Text="Descargando archivos de contexto"
+                                   FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                        <!-- Spinner + Progress bar -->
+                        <Grid Width="300">
+                            <ProgressBar x:Name="CtxProgressBar" Height="8"
+                                         Minimum="0" Maximum="100" Value="0"
+                                         Foreground="{StaticResource PrimaryBrush}"
+                                         Background="#E2E8F0">
+                                <ProgressBar.Resources>
+                                    <Style TargetType="ProgressBar">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ProgressBar">
+                                                    <Border CornerRadius="4" Background="{TemplateBinding Background}" ClipToBounds="True">
+                                                        <Border x:Name="PART_Indicator" CornerRadius="4"
+                                                                Background="{TemplateBinding Foreground}"
+                                                                HorizontalAlignment="Left"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ProgressBar.Resources>
+                            </ProgressBar>
+                        </Grid>
+                        <!-- Spinner + percent -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                            <Border Width="16" Height="16" Margin="0,0,6,0">
+                                <Border Width="16" Height="16"
+                                        BorderBrush="{StaticResource PrimaryBrush}"
+                                        BorderThickness="2" CornerRadius="8"
+                                        RenderTransformOrigin="0.5,0.5">
+                                    <Border.OpacityMask>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#FF000000" Offset="0"/>
+                                            <GradientStop Color="#00000000" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.OpacityMask>
+                                    <Border.RenderTransform>
+                                        <RotateTransform x:Name="CtxSpinnerRotation"/>
+                                    </Border.RenderTransform>
+                                </Border>
+                            </Border>
+                            <TextBlock x:Name="CtxDownloadPercent" Text="0%"
+                                       FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <!-- Cancel button -->
+                        <Button x:Name="CtxCancelBtn" Padding="20,9" Margin="0,18,0,0"
+                                FontSize="13" Cursor="Hand" HorizontalAlignment="Center"
+                                Background="#F1F5F9" BorderThickness="1"
+                                BorderBrush="#E2E8F0"
+                                Foreground="#64748B" Click="CtxCancel_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="Cancelar" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
-                    <TextBlock x:Name="CtxDownloadStatus" Text="Descargando archivos de contexto"
-                               FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
-                               HorizontalAlignment="Center" Margin="0,0,0,8"/>
-                    <ProgressBar x:Name="CtxProgressBar" Height="6" Width="280"
-                                 Minimum="0" Maximum="100" Value="0"
-                                 Foreground="{StaticResource PrimaryBrush}"
-                                 Background="#BFD8F6"/>
-                </StackPanel>
-            </Border>
+                </Border>
+            </Grid>
 
             <!-- V3-E: SYNC STATUS BAR -->
             <Border x:Name="SyncStatusBar" Grid.Row="4" Background="#EFF6FF"
