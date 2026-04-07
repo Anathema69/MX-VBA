@@ -17,7 +17,7 @@
 
 DO $$
 DECLARE
-    v_version       VARCHAR := '2.3.1';
+    v_version       VARCHAR := '2.3.2';
     v_created_by    VARCHAR := 'Zuri Dev';
     v_file_size_mb  NUMERIC := 55.0;
     v_is_mandatory  BOOLEAN := false;
