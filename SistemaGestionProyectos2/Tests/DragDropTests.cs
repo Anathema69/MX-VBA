@@ -85,55 +85,35 @@ namespace SistemaGestionProyectos2.Tests
                 Debug.WriteLine($"[DragDropTest] Constructor OK: _currentFolderId={fid}, _navigateToFolderId={navId}");
             }, onResult);
 
-            // 3. Verify drag handlers are registered with handledEventsToo
-            await RunTest(results, "Handlers: Registrados con handledEventsToo=true", "DragDrop", 1000, async () =>
+            // 3. Verify drag handlers are registered via XAML
+            await RunTest(results, "Handlers: DragEnter/Over/Leave/Drop registrados en Window", "DragDrop", 1000, async () =>
             {
                 await Task.CompletedTask;
                 var window = new DriveV2Window(_user, TestFolderId);
 
-                // Use reflection to check that DragEnter/DragOver/Drop handlers are registered
-                // on the Window's EventHandlersStore with handledEventsToo
+                // Verify AllowDrop is true on the Window
+                if (!window.AllowDrop) throw new Exception("AllowDrop is false on Window");
+
+                // Verify handlers exist via EventHandlersStore (XAML registers them)
                 var store = typeof(UIElement)
                     .GetProperty("EventHandlersStore", BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.GetValue(window);
+                if (store == null) throw new Exception("EventHandlersStore is null - no handlers registered");
 
-                if (store == null) throw new Exception("EventHandlersStore is null");
-
-                // Check each drag event has a handler registered
                 foreach (var eventName in new[] { "DragEnter", "DragOver", "DragLeave", "Drop" })
                 {
                     var routedEvent = (RoutedEvent)typeof(UIElement)
                         .GetField($"{eventName}Event", BindingFlags.Public | BindingFlags.Static)
                         ?.GetValue(null);
+                    if (routedEvent == null) throw new Exception($"{eventName}Event not found");
 
-                    if (routedEvent == null) throw new Exception($"{eventName}Event field not found");
-
-                    // GetRoutedEventHandlers returns RoutedEventHandlerInfo[]
                     var getHandlers = store.GetType().GetMethod("GetRoutedEventHandlers",
                         BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    var handlers = getHandlers?.Invoke(store, new object[] { routedEvent });
+                    var handlers = getHandlers?.Invoke(store, new object[] { routedEvent }) as Array;
+                    if (handlers == null || handlers.Length == 0)
+                        throw new Exception($"No handler registered for {eventName}");
 
-                    if (handlers == null) throw new Exception($"No handlers for {eventName}");
-
-                    var arr = handlers as Array;
-                    if (arr == null || arr.Length == 0) throw new Exception($"No handlers for {eventName}");
-
-                    // Check handledEventsToo on at least one handler
-                    bool foundHandledToo = false;
-                    foreach (var h in arr)
-                    {
-                        var invokeHandledToo = h.GetType()
-                            .GetProperty("InvokeHandledEventsToo", BindingFlags.Public | BindingFlags.Instance)
-                            ?.GetValue(h);
-                        if (invokeHandledToo is true)
-                        {
-                            foundHandledToo = true;
-                            break;
-                        }
-                    }
-
-                    if (!foundHandledToo) throw new Exception($"{eventName} handler NOT registered with handledEventsToo=true");
-                    Debug.WriteLine($"[DragDropTest] {eventName}: handler registered with handledEventsToo=true OK");
+                    Debug.WriteLine($"[DragDropTest] {eventName}: {handlers.Length} handler(s) registered OK");
                 }
             }, onResult);
 

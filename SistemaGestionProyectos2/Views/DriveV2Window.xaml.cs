@@ -185,12 +185,6 @@ namespace SistemaGestionProyectos2.Views
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             MouseDown += OnMouseNav;
-            // Register drag handlers with handledEventsToo=true so they ALWAYS fire
-            // regardless of child elements or visual tree state (fixes intermittent drag-drop)
-            AddHandler(DragEnterEvent, new DragEventHandler(Window_DragEnter), handledEventsToo: true);
-            AddHandler(DragOverEvent, new DragEventHandler(Window_DragOver), handledEventsToo: true);
-            AddHandler(DragLeaveEvent, new DragEventHandler(Window_DragLeave), handledEventsToo: true);
-            AddHandler(DropEvent, new DragEventHandler(Window_Drop), handledEventsToo: true);
             Loaded += async (s, e) =>
             {
                 InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); _ = LoadSidebarActivity();
