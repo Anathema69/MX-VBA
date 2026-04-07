@@ -5,7 +5,7 @@ REM Publish + Sign + Installer
 REM ============================================
 setlocal enabledelayedexpansion
 
-set VERSION=2.1.1
+set VERSION=2.3.3
 set PROJECT_DIR=%~dp0
 set PUBLISH_DIR=%PROJECT_DIR%bin\Release\net8.0-windows\win-x64\publish
 set SIGNTOOL="C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe"

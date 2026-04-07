@@ -52,6 +52,8 @@ namespace SistemaGestionProyectos2.Views
         private static readonly Brush StressFg = Freeze(new SolidColorBrush(Color.FromRgb(0x6D, 0x28, 0xD9)));
         private static readonly Brush WorkflowBg = Freeze(new SolidColorBrush(Color.FromRgb(0xCC, 0xFB, 0xF1)));
         private static readonly Brush WorkflowFg = Freeze(new SolidColorBrush(Color.FromRgb(0x0D, 0x94, 0x88)));
+        private static readonly Brush DragDropBg = Freeze(new SolidColorBrush(Color.FromRgb(0xED, 0xE9, 0xFE)));
+        private static readonly Brush DragDropFg = Freeze(new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)));
 
         private static Brush Freeze(SolidColorBrush brush)
         {
@@ -168,6 +170,7 @@ namespace SistemaGestionProyectos2.Views
                 "Queries" => (QueryBg, QueryFg),
                 "Stress" => (StressBg, StressFg),
                 "Workflow" => (WorkflowBg, WorkflowFg),
+                "DragDrop" => (DragDropBg, DragDropFg),
                 _ => (CacheBg, CacheFg)
             };
         }
@@ -273,6 +276,60 @@ namespace SistemaGestionProyectos2.Views
                 _isRunning = false;
                 btnRun.IsEnabled = true;
                 btnRunWorkflow.IsEnabled = true;
+                btnCopy.IsEnabled = _rawResults != null && _rawResults.Count > 0;
+            }
+        }
+
+        private async void BtnRunDragDrop_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isRunning) return;
+
+            _isRunning = true;
+            btnRun.IsEnabled = false;
+            btnRunWorkflow.IsEnabled = false;
+            btnRunDragDrop.IsEnabled = false;
+            btnCopy.IsEnabled = false;
+            _displayResults.Clear();
+            _passedCount = 0;
+            _failedCount = 0;
+            _rawResults = null;
+
+            pbProgress.Value = 0;
+            pbProgress.Maximum = 8;
+            txtProgress.Text = "Ejecutando tests de DragDrop...";
+            txtTotal.Text = "0 / 8";
+            txtPassed.Text = "0";
+            txtFailed.Text = "0";
+            txtTotalTime.Text = "--";
+
+            _totalTimer.Restart();
+
+            try
+            {
+                var test = new DragDropTests();
+                _rawResults = await test.RunAllTests(result =>
+                {
+                    Dispatcher.Invoke(() => OnTestResult(result));
+                });
+
+                _totalTimer.Stop();
+                txtProgress.Text = _failedCount == 0
+                    ? "Todos los DragDrop tests completados exitosamente"
+                    : $"Completado con {_failedCount} test(s) fallido(s)";
+                txtTotalTime.Text = $"{_totalTimer.ElapsedMilliseconds:N0} ms";
+            }
+            catch (Exception ex)
+            {
+                _totalTimer.Stop();
+                txtProgress.Text = $"Error: {ex.Message}";
+                txtTotalTime.Text = $"{_totalTimer.ElapsedMilliseconds:N0} ms";
+            }
+            finally
+            {
+                _isRunning = false;
+                btnRun.IsEnabled = true;
+                btnRunWorkflow.IsEnabled = true;
+                btnRunDragDrop.IsEnabled = true;
                 btnCopy.IsEnabled = _rawResults != null && _rawResults.Count > 0;
             }
         }

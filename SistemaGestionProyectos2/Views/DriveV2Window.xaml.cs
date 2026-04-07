@@ -51,6 +51,7 @@ namespace SistemaGestionProyectos2.Views
         private readonly List<Border> _navItems = new();
         private readonly List<Border> _filterItems = new(); // BUG-3: filter sidebar items
         private StackPanel? _cadSubPanel; // MEJORA-4: collapsible CAD sub-filters
+        private bool _isDragging; // Prevents visual tree rebuild during active drag-drop
 
         // Caches
         private readonly Dictionary<int, string> _userNameCache = new();
@@ -184,6 +185,12 @@ namespace SistemaGestionProyectos2.Views
             Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             SourceInitialized += (s, e) => Helpers.WindowHelper.MaximizeToCurrentMonitor(this);
             MouseDown += OnMouseNav;
+            // Register drag handlers with handledEventsToo=true so they ALWAYS fire
+            // regardless of child elements or visual tree state (fixes intermittent drag-drop)
+            AddHandler(DragEnterEvent, new DragEventHandler(Window_DragEnter), handledEventsToo: true);
+            AddHandler(DragOverEvent, new DragEventHandler(Window_DragOver), handledEventsToo: true);
+            AddHandler(DragLeaveEvent, new DragEventHandler(Window_DragLeave), handledEventsToo: true);
+            AddHandler(DropEvent, new DragEventHandler(Window_Drop), handledEventsToo: true);
             Loaded += async (s, e) =>
             {
                 InitSidebar(); UpdateViewToggle(); _ = LoadGlobalStorage(); _ = LoadSidebarActivity();
@@ -265,6 +272,17 @@ namespace SistemaGestionProyectos2.Views
                 diagBtn.MouseLeave += (s, e) => diagBtn.Background = new SolidColorBrush(Color.FromRgb(0xFE, 0xF3, 0xC7));
                 diagBtn.MouseLeftButtonDown += async (s, e) => await RunDiagnoseOrphans();
                 NavPanel.Children.Add(diagBtn);
+
+                // Stress/DragDrop tests button
+                var testBtn = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 4, 0, 0), Cursor = Cursors.Hand, Background = new SolidColorBrush(Color.FromRgb(0xED, 0xE9, 0xFE)) };
+                var tsp = new StackPanel { Orientation = Orientation.Horizontal };
+                tsp.Children.Add(new TextBlock { Text = "\uE9D9", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 14, Foreground = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) });
+                tsp.Children.Add(new TextBlock { Text = "Tests", FontSize = 13, FontWeight = FontWeights.Medium, Foreground = new SolidColorBrush(Color.FromRgb(0x7C, 0x3A, 0xED)), VerticalAlignment = VerticalAlignment.Center });
+                testBtn.Child = tsp;
+                testBtn.MouseEnter += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xDD, 0xD6, 0xFE));
+                testBtn.MouseLeave += (s, e) => testBtn.Background = new SolidColorBrush(Color.FromRgb(0xED, 0xE9, 0xFE));
+                testBtn.MouseLeftButtonDown += (s, e) => new StressTestWindow().Show();
+                NavPanel.Children.Add(testBtn);
             }
         }
 
@@ -1679,14 +1697,15 @@ namespace SistemaGestionProyectos2.Views
 
         void OnFileAutoUploaded(string fileName, string status)
         {
-            Dispatcher.Invoke(async () =>
+            // Use InvokeAsync to avoid blocking the UI thread during OLE drag-drop
+            Dispatcher.InvokeAsync(async () =>
             {
                 switch (status)
                 {
                     case "success":
                         ShowToast($"{fileName} sincronizado", "success");
-                        // Auto-refresh current folder to show new "Save As" files
-                        if (_currentFolderId.HasValue)
+                        // Auto-refresh current folder (defer if dragging to avoid visual tree rebuild)
+                        if (_currentFolderId.HasValue && !_isDragging)
                         {
                             InvalidateStats();
                             await SafeLoad(() => LoadFolder());
@@ -1706,12 +1725,13 @@ namespace SistemaGestionProyectos2.Views
 
         void OnFileSyncStateChanged(int fileId, SyncState state)
         {
-            Dispatcher.Invoke(() =>
+            // Use InvokeAsync to avoid blocking the UI thread during OLE drag-drop
+            Dispatcher.InvokeAsync(() =>
             {
                 _syncStates[fileId] = state;
                 UpdateSyncStatusBar();
-                // Only re-render if this file is visible in current folder
-                if (_currentFiles.Any(f => f.Id == fileId))
+                // Only re-render if this file is visible in current folder (skip during drag to avoid visual tree rebuild)
+                if (!_isDragging && _currentFiles.Any(f => f.Id == fileId))
                     RenderContent();
             });
         }
@@ -2903,9 +2923,11 @@ namespace SistemaGestionProyectos2.Views
         void Window_DragEnter(object sender, DragEventArgs e)
         {
             Debug.WriteLine($"[DragDrop] DragEnter: hasFolderId={_currentFolderId.HasValue}, hasFileDrop={e.Data.GetDataPresent(DataFormats.FileDrop)}, effects={e.Effects}");
+            _isDragging = true;
+            // Always accept copy - even if folder not loaded yet, DragOver will keep cursor correct
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
             if (_currentFolderId.HasValue && e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                e.Effects = DragDropEffects.Copy;
                 DragDropOverlay.Visibility = Visibility.Visible;
                 var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
                 DragDropOverlay.BeginAnimation(OpacityProperty, fadeIn);
@@ -2918,18 +2940,20 @@ namespace SistemaGestionProyectos2.Views
         void Window_DragLeave(object sender, DragEventArgs e)
         {
             Debug.WriteLine("[DragDrop] DragLeave");
+            _isDragging = false;
             var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(150));
             fadeOut.Completed += (s2, e2) => DragDropOverlay.Visibility = Visibility.Collapsed;
             DragDropOverlay.BeginAnimation(OpacityProperty, fadeOut);
         }
         void Window_DragOver(object sender, DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         }
         async void Window_Drop(object sender, DragEventArgs e)
         {
             Debug.WriteLine($"[DragDrop] DROP event fired! hasFolderId={_currentFolderId.HasValue}");
+            _isDragging = false;
             DragDropOverlay.Visibility = Visibility.Collapsed; e.Handled = true;
             if (!_currentFolderId.HasValue || !e.Data.GetDataPresent(DataFormats.FileDrop) || !SupabaseService.Instance.IsDriveStorageConfigured)
             {
