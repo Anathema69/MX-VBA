@@ -196,18 +196,15 @@ namespace SistemaGestionProyectos2.Services.Updates
                     silent
                 });
 
-                // Ruta del exe actual para relanzar despues
                 var appExePath = Process.GetCurrentProcess().MainModule?.FileName;
 
-                // Lanzar instalador en modo SILENT (no lanza la app al final gracias a skipifsilent)
-                var startInfo = new ProcessStartInfo
+                // Lanzar instalador SILENT (skipifsilent evita que lance la app)
+                var installerProc = Process.Start(new ProcessStartInfo
                 {
                     FileName = installerPath,
                     Arguments = "/SILENT /CLOSEAPPLICATIONS",
                     UseShellExecute = true
-                };
-
-                var installerProc = Process.Start(startInfo);
+                });
 
                 _logger.LogInfo("UPDATE", "INSTALLER_LAUNCHED", new
                 {
@@ -215,10 +212,13 @@ namespace SistemaGestionProyectos2.Services.Updates
                     pid = installerProc?.Id
                 });
 
-                // Crear script auxiliar que espera al instalador y relanza la app
-                // como usuario normal (sin elevacion, evita UIPI que bloquea drag-drop)
+                // Script que espera al instalador y relanza la app SIN elevacion.
+                // Usa schtasks /rl limited que GARANTIZA ejecucion a nivel de usuario
+                // normal. Esto es critico: cmd start/explorer/Process.Start todos heredan
+                // el token elevado del padre. Solo schtasks y Shell COM pueden des-elevar.
                 if (appExePath != null && installerProc != null)
                 {
+                    var taskName = $"IMA_Relaunch_{installerProc.Id}";
                     var script = System.IO.Path.Combine(
                         System.IO.Path.GetTempPath(), $"ima_relaunch_{installerProc.Id}.cmd");
 
@@ -228,8 +228,12 @@ namespace SistemaGestionProyectos2.Services.Updates
                         "timeout /t 2 /nobreak >nul\r\n" +
                         $"tasklist /FI \"PID eq {installerProc.Id}\" 2>nul | find \"{installerProc.Id}\" >nul\r\n" +
                         "if not errorlevel 1 goto wait\r\n" +
-                        "timeout /t 1 /nobreak >nul\r\n" +
-                        $"start \"\" \"{appExePath}\"\r\n" +
+                        "timeout /t 2 /nobreak >nul\r\n" +
+                        // schtasks /rl limited = run at LIMITED (non-elevated) user level
+                        $"schtasks /create /tn \"{taskName}\" /tr \"\\\"{appExePath}\\\"\" /sc once /st 00:00 /f /rl limited >nul 2>&1\r\n" +
+                        $"schtasks /run /tn \"{taskName}\" >nul 2>&1\r\n" +
+                        "timeout /t 3 /nobreak >nul\r\n" +
+                        $"schtasks /delete /tn \"{taskName}\" /f >nul 2>&1\r\n" +
                         "del \"%~f0\"\r\n");
 
                     Process.Start(new ProcessStartInfo
@@ -241,10 +245,9 @@ namespace SistemaGestionProyectos2.Services.Updates
                         WindowStyle = ProcessWindowStyle.Hidden
                     });
 
-                    _logger.LogInfo("UPDATE", "RELAUNCH_SCRIPT_CREATED", new { script });
+                    _logger.LogInfo("UPDATE", "RELAUNCH_VIA_SCHTASKS", new { script, taskName });
                 }
 
-                // Cerrar la aplicación actual para permitir la instalación
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     System.Windows.Application.Current.Shutdown();
