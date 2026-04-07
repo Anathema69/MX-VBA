@@ -205,6 +205,7 @@ namespace SistemaGestionProyectos2.Views
         public DriveV2Window(UserSession user, int folderId) : this(user)
         {
             _navigateToFolderId = folderId;
+            _currentFolderId = folderId; // Set early so drag-drop works before Loaded completes
         }
         private int? _navigateToFolderId;
 
