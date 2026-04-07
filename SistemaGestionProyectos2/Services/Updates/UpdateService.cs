@@ -199,8 +199,11 @@ namespace SistemaGestionProyectos2.Services.Updates
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = installerPath,
-                    UseShellExecute = true,
-                    Verb = "runas" // Ejecutar como administrador
+                    UseShellExecute = true
+                    // No usar Verb="runas" - el instalador tiene su propio manifest que pide admin.
+                    // Forzar elevacion desde aqui impide que runasoriginaluser de Inno Setup
+                    // pueda des-elevar la app, causando que herede privilegios de admin
+                    // y Windows UIPI bloquee drag-drop desde Explorer.
                 };
 
                 if (silent)
