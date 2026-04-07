@@ -32,4 +32,4 @@ Name: "{autodesktop}\Sistema de Gestión"; Filename: "{app}\SistemaGestionProyec
 Filename: "certutil.exe"; Parameters: "-f -p ima2026 -importpfx TrustedPublisher ""{tmp}\ima-dev-cert.pfx"""; Flags: runhidden waituntilterminated; StatusMsg: "Instalando certificado de confianza..."
 Filename: "certutil.exe"; Parameters: "-f -p ima2026 -importpfx Root ""{tmp}\ima-dev-cert.pfx"""; Flags: runhidden waituntilterminated; StatusMsg: "Configurando certificado raíz..."
 ; Ejecutar la aplicacion al finalizar
-Filename: "{app}\SistemaGestionProyectos2.exe"; Description: "Ejecutar aplicación"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\SistemaGestionProyectos2.exe"; Description: "Ejecutar aplicación"; Flags: nowait postinstall skipifsilent runasoriginaluser
