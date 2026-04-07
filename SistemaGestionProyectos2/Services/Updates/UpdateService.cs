@@ -196,27 +196,53 @@ namespace SistemaGestionProyectos2.Services.Updates
                     silent
                 });
 
+                // Ruta del exe actual para relanzar despues
+                var appExePath = Process.GetCurrentProcess().MainModule?.FileName;
+
+                // Lanzar instalador en modo SILENT (no lanza la app al final gracias a skipifsilent)
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = installerPath,
+                    Arguments = "/SILENT /CLOSEAPPLICATIONS",
                     UseShellExecute = true
-                    // No usar Verb="runas" - el instalador tiene su propio manifest que pide admin.
-                    // Forzar elevacion desde aqui impide que runasoriginaluser de Inno Setup
-                    // pueda des-elevar la app, causando que herede privilegios de admin
-                    // y Windows UIPI bloquee drag-drop desde Explorer.
                 };
 
-                if (silent)
-                {
-                    startInfo.Arguments = "/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS";
-                }
-
-                Process.Start(startInfo);
+                var installerProc = Process.Start(startInfo);
 
                 _logger.LogInfo("UPDATE", "INSTALLER_LAUNCHED", new
                 {
-                    installerPath
+                    installerPath,
+                    pid = installerProc?.Id
                 });
+
+                // Crear script auxiliar que espera al instalador y relanza la app
+                // como usuario normal (sin elevacion, evita UIPI que bloquea drag-drop)
+                if (appExePath != null && installerProc != null)
+                {
+                    var script = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(), $"ima_relaunch_{installerProc.Id}.cmd");
+
+                    System.IO.File.WriteAllText(script,
+                        "@echo off\r\n" +
+                        ":wait\r\n" +
+                        "timeout /t 2 /nobreak >nul\r\n" +
+                        $"tasklist /FI \"PID eq {installerProc.Id}\" 2>nul | find \"{installerProc.Id}\" >nul\r\n" +
+                        "if not errorlevel 1 goto wait\r\n" +
+                        "timeout /t 1 /nobreak >nul\r\n" +
+                        $"start \"\" \"{appExePath}\"\r\n" +
+                        "del \"%~f0\"\r\n");
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/c \"{script}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    });
+
+                    _logger.LogInfo("UPDATE", "RELAUNCH_SCRIPT_CREATED", new { script });
+                }
 
                 // Cerrar la aplicación actual para permitir la instalación
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
