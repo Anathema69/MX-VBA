@@ -1,6 +1,6 @@
 # Documentación de Vistas - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:31:06
-Vistas regulares: 11 | Vistas materializadas: 1
+Generado: 2026-04-20 23:21:25
+Vistas regulares: 15 | Vistas materializadas: 1
 
 ## Índice
 
@@ -14,8 +14,12 @@ Vistas regulares: 11 | Vistas materializadas: 1
 7. [v_balance_ingresos](#v_balance_ingresos)
 8. [v_expense_audit_report](#v_expense_audit_report)
 9. [v_income](#v_income)
-10. [v_order_gastos](#v_order_gastos)
-11. [v_vacations_active](#v_vacations_active)
+10. [v_inventory_category_summary](#v_inventory_category_summary)
+11. [v_inventory_low_stock](#v_inventory_low_stock)
+12. [v_inventory_movement_detail](#v_inventory_movement_detail)
+13. [v_order_ejecutores](#v_order_ejecutores)
+14. [v_order_gastos](#v_order_gastos)
+15. [v_vacations_active](#v_vacations_active)
 
 ### Vistas Materializadas
 1. [mv_balance_completo](#mv_balance_completo)
@@ -663,6 +667,198 @@ SELECT i.f_folio,
 - `t_client`
 - `t_invoice`
 - `t_order`
+
+---
+
+## v_inventory_category_summary
+Tipo: Vista regular | Columnas: 12
+
+### Columnas
+
+| # | Columna | Tipo | Nullable |
+|---|---------|------|----------|
+| 1 | `id` | `int4` | NULL |
+| 2 | `name` | `character varying` | NULL |
+| 3 | `description` | `text` | NULL |
+| 4 | `color` | `character varying` | NULL |
+| 5 | `icon` | `character varying` | NULL |
+| 6 | `display_order` | `int4` | NULL |
+| 7 | `created_at` | `timestamp without time zone` | NULL |
+| 8 | `total_products` | `int4` | NULL |
+| 9 | `total_stock` | `numeric` | NULL |
+| 10 | `low_stock_count` | `int4` | NULL |
+| 11 | `total_value` | `numeric` | NULL |
+| 12 | `health_percent` | `int4` | NULL |
+
+### Definición SQL
+
+```sql
+SELECT c.id,
+    c.name,
+    c.description,
+    c.color,
+    c.icon,
+    c.display_order,
+    c.created_at,
+    (count(p.id))::integer AS total_products,
+    (COALESCE(sum(p.stock_current), (0)::numeric))::numeric(12,2) AS total_stock,
+    (count(
+        CASE
+            WHEN (p.stock_current < p.stock_minimum) THEN 1
+            ELSE NULL::integer
+        END))::integer AS low_stock_count,
+    (COALESCE(sum((p.stock_current * p.unit_price)), (0)::numeric))::numeric(14,2) AS total_value,
+    (
+        CASE
+            WHEN (count(p.id) = 0) THEN (100)::numeric
+            ELSE round(((((count(p.id) - count(
+            CASE
+                WHEN (p.stock_current < p.stock_minimum) THEN 1
+                ELSE NULL::integer
+            END)))::numeric / (count(p.id))::numeric) * (100)::numeric))
+        END)::integer AS health_percent
+   FROM (inventory_categories c
+     LEFT JOIN inventory_products p ON (((p.category_id = c.id) AND (p.is_active = true))))
+  WHERE (c.is_active = true)
+  GROUP BY c.id, c.name, c.description, c.color, c.icon, c.display_order, c.created_at
+  ORDER BY c.display_order, c.name;
+```
+
+---
+
+## v_inventory_low_stock
+Tipo: Vista regular | Columnas: 14
+
+### Columnas
+
+| # | Columna | Tipo | Nullable |
+|---|---------|------|----------|
+| 1 | `id` | `int4` | NULL |
+| 2 | `code` | `character varying` | NULL |
+| 3 | `name` | `character varying` | NULL |
+| 4 | `stock_current` | `numeric` | NULL |
+| 5 | `stock_minimum` | `numeric` | NULL |
+| 6 | `unit` | `character varying` | NULL |
+| 7 | `unit_price` | `numeric` | NULL |
+| 8 | `location` | `character varying` | NULL |
+| 9 | `cantidad_por_pedir` | `numeric` | NULL |
+| 10 | `category_id` | `int4` | NULL |
+| 11 | `category_name` | `character varying` | NULL |
+| 12 | `category_color` | `character varying` | NULL |
+| 13 | `supplier_name` | `character varying` | NULL |
+| 14 | `supplier_id` | `int4` | NULL |
+
+### Definición SQL
+
+```sql
+SELECT p.id,
+    p.code,
+    p.name,
+    p.stock_current,
+    p.stock_minimum,
+    p.unit,
+    p.unit_price,
+    p.location,
+    (p.stock_minimum - p.stock_current) AS cantidad_por_pedir,
+    c.id AS category_id,
+    c.name AS category_name,
+    c.color AS category_color,
+    s.f_suppliername AS supplier_name,
+    s.f_supplier AS supplier_id
+   FROM ((inventory_products p
+     JOIN inventory_categories c ON ((p.category_id = c.id)))
+     LEFT JOIN t_supplier s ON ((p.supplier_id = s.f_supplier)))
+  WHERE ((p.stock_current < p.stock_minimum) AND (p.is_active = true) AND (c.is_active = true))
+  ORDER BY (p.stock_minimum - p.stock_current) DESC;
+```
+
+### Tablas Referenciadas
+- `t_supplier`
+
+---
+
+## v_inventory_movement_detail
+Tipo: Vista regular | Columnas: 17
+
+### Columnas
+
+| # | Columna | Tipo | Nullable |
+|---|---------|------|----------|
+| 1 | `id` | `int4` | NULL |
+| 2 | `product_id` | `int4` | NULL |
+| 3 | `movement_type` | `character varying` | NULL |
+| 4 | `quantity` | `numeric` | NULL |
+| 5 | `previous_stock` | `numeric` | NULL |
+| 6 | `new_stock` | `numeric` | NULL |
+| 7 | `reference_type` | `character varying` | NULL |
+| 8 | `reference_id` | `int4` | NULL |
+| 9 | `notes` | `text` | NULL |
+| 10 | `created_at` | `timestamp without time zone` | NULL |
+| 11 | `created_by` | `int4` | NULL |
+| 12 | `product_code` | `character varying` | NULL |
+| 13 | `product_name` | `character varying` | NULL |
+| 14 | `product_unit` | `character varying` | NULL |
+| 15 | `category_id` | `int4` | NULL |
+| 16 | `category_name` | `character varying` | NULL |
+| 17 | `created_by_name` | `character varying` | NULL |
+
+### Definición SQL
+
+```sql
+SELECT m.id,
+    m.product_id,
+    m.movement_type,
+    m.quantity,
+    m.previous_stock,
+    m.new_stock,
+    m.reference_type,
+    m.reference_id,
+    m.notes,
+    m.created_at,
+    m.created_by,
+    p.code AS product_code,
+    p.name AS product_name,
+    p.unit AS product_unit,
+    c.id AS category_id,
+    c.name AS category_name,
+    u.full_name AS created_by_name
+   FROM (((inventory_movements m
+     JOIN inventory_products p ON ((m.product_id = p.id)))
+     JOIN inventory_categories c ON ((p.category_id = c.id)))
+     LEFT JOIN users u ON ((m.created_by = u.id)))
+  ORDER BY m.created_at DESC;
+```
+
+### Tablas Referenciadas
+- `users`
+
+---
+
+## v_order_ejecutores
+Tipo: Vista regular | Columnas: 3
+
+### Columnas
+
+| # | Columna | Tipo | Nullable |
+|---|---------|------|----------|
+| 1 | `f_order` | `int4` | NULL |
+| 2 | `ejecutores_nombre` | `text` | NULL |
+| 3 | `ejecutores_ids` | `ARRAY` | NULL |
+
+### Definición SQL
+
+```sql
+SELECT oe.f_order,
+    string_agg((p.f_employee)::text, ', '::text ORDER BY (p.f_employee)::text) AS ejecutores_nombre,
+    array_agg(oe.payroll_id) AS ejecutores_ids
+   FROM (order_ejecutores oe
+     JOIN t_payroll p ON ((oe.payroll_id = p.f_payroll)))
+  GROUP BY oe.f_order;
+```
+
+### Tablas Referenciadas
+- `order_ejecutores`
+- `t_payroll`
 
 ---
 

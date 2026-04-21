@@ -1,471 +1,338 @@
-# Documentacion de Servicios
+# Servicios
 
-## Arquitectura de Servicios
+**Version:** 2.3.3 (abril 2026)
 
-El sistema implementa una arquitectura de servicios modular con un Facade central que orquesta todos los servicios especializados.
+Este documento lista los servicios especializados, sus metodos principales y su rol dentro del sistema. Para detalle de firmas exactas ver el codigo fuente en `SistemaGestionProyectos2/Services/`.
 
-```mermaid
-graph TB
-    subgraph "Facade Pattern"
-        SS[SupabaseService<br/>Singleton + Facade]
-    end
+## Arquitectura
 
-    subgraph "Servicios de Negocio"
-        OS[OrderService]
-        CS[ClientService]
-        ConS[ContactService]
-        IS[InvoiceService]
-        ES[ExpenseService]
-        SupS[SupplierService]
-        PS[PayrollService]
-        FES[FixedExpenseService]
-        VS[VendorService]
-        USS[UserService]
-    end
+```
+ SupabaseService (Facade Singleton)
+  ├─ Orders/OrderService              Negocio: ordenes
+  ├─ Invoices/InvoiceService          Negocio: facturacion
+  ├─ Expenses/ExpenseService          Negocio: gastos a proveedores
+  ├─ FixedExpenses/FixedExpenseService Negocio: gastos fijos mensuales
+  ├─ Payroll/PayrollService           Nomina
+  ├─ Attendance/AttendanceService     Calendario / asistencia
+  ├─ Vendors/VendorService            Vendedores + comisiones
+  ├─ Clients/ClientService
+  ├─ Contacts/ContactService
+  ├─ Suppliers/SupplierService
+  ├─ Users/UserService                Auth + CRUD
+  ├─ Drive/DriveService               Cloudflare R2 + metadata BD
+  ├─ Drive/FileWatcherService         Open-in-Place auto-sync
+  ├─ Storage/StorageService           Supabase Storage (order-files)
+  ├─ Inventory/InventoryService       Stock + movimientos
+  └─ Updates/UpdateService            Auto-update + schtasks relaunch
 
-    subgraph "Servicios de Infraestructura"
-        STS[SessionTimeoutService]
-        JLS[JsonLoggerService]
-        US[UpdateService]
-    end
-
-    subgraph "Base"
-        BSS[BaseSupabaseService]
-        SUP[(Supabase Client)]
-    end
-
-    SS --> OS
-    SS --> CS
-    SS --> ConS
-    SS --> IS
-    SS --> ES
-    SS --> SupS
-    SS --> PS
-    SS --> FES
-    SS --> VS
-    SS --> USS
-
-    OS --> BSS
-    CS --> BSS
-    ConS --> BSS
-    IS --> BSS
-    ES --> BSS
-    SupS --> BSS
-    PS --> BSS
-    FES --> BSS
-    VS --> BSS
-    USS --> BSS
-
-    BSS --> SUP
+ Infraestructura (no parte del facade):
+  ├─ SessionTimeoutService (Singleton)
+  ├─ JsonLoggerService (Singleton)
+  ├─ UserPreferencesService
+  ├─ AuthenticationService
+  └─ Core/
+      ├─ BaseSupabaseService         Clase base + logging
+      ├─ ServiceCache                ConcurrentDict + TTL
+      └─ DataChangedEvent            Observer para refrescos cruzados
 ```
 
-## 1. SupabaseService (Facade)
+## SupabaseService (facade)
 
-**Ubicacion:** `Services/SupabaseService.cs`
+**Ubicacion:** `Services/SupabaseService.cs` (~55KB).
+Patron Singleton + Facade. Expone metodos delegados a los servicios especializados.
 
-El servicio principal que actua como fachada para todos los servicios especializados. Implementa el patron Singleton.
-
-### Responsabilidades:
-- Inicializar y mantener la conexion con Supabase
-- Delegar operaciones a servicios especializados
-- Proporcionar una interfaz unificada para la capa de presentacion
-
-### Inicializacion:
 ```csharp
-public static SupabaseService Instance
-{
-    get
-    {
-        if (_instance == null)
-        {
-            lock (_lock)
-            {
-                if (_instance == null)
-                {
-                    _instance = new SupabaseService();
-                }
-            }
-        }
-        return _instance;
-    }
-}
+public static SupabaseService Instance { get; } // lazy, thread-safe
+public Client SupabaseClient { get; }
 
-private async Task InitializeAsync()
-{
-    // Cargar configuracion
-    var url = _configuration["Supabase:Url"];
-    var key = _configuration["Supabase:AnonKey"];
+// Inicializacion:
+await Instance.InitializeAsync(); // carga config, crea Client, instancia servicios
 
-    // Inicializar cliente Supabase
-    _supabaseClient = new Client(url, key, options);
-    await _supabaseClient.InitializeAsync();
-
-    // Inicializar servicios especializados
-    _orderService = new OrderService(_supabaseClient);
-    _clientService = new ClientService(_supabaseClient);
-    // ... otros servicios
-}
+// Delegacion:
+public Task<List<OrderDb>> GetOrders(...) => _orderService.GetOrders(...);
+public Task<OrderDb> CreateOrder(OrderDb order, int userId) => _orderService.CreateOrder(order, userId);
+// ...
 ```
 
-### Delegacion de Metodos:
-```csharp
-// Delegacion a OrderService
-public Task<List<OrderDb>> GetOrders(int limit = 100, int offset = 0, List<int> filterStatuses = null)
-    => _orderService.GetOrders(limit, offset, filterStatuses);
+El backup `SupabaseService.cs.backup` (111KB) conserva la version previa a la extraccion por entidades; se mantiene como referencia historica.
 
-public Task<OrderDb> CreateOrder(OrderDb order, int userId = 0)
-    => _orderService.CreateOrder(order, userId);
-```
-
----
-
-## 2. BaseSupabaseService
+## BaseSupabaseService
 
 **Ubicacion:** `Services/Core/BaseSupabaseService.cs`
 
-Clase base abstracta para todos los servicios que interactuan con Supabase.
-
-```csharp
-public abstract class BaseSupabaseService
-{
-    protected Client SupabaseClient { get; private set; }
-
-    protected BaseSupabaseService(Client supabaseClient)
-    {
-        SupabaseClient = supabaseClient ?? throw new ArgumentNullException(nameof(supabaseClient));
-    }
-
-    protected void LogDebug(string message);
-    protected void LogError(string message, Exception ex = null);
-    protected void LogSuccess(string message);
-}
-```
-
----
-
-## 3. OrderService
-
-**Ubicacion:** `Services/Orders/OrderService.cs`
-
-Gestiona todas las operaciones relacionadas con ordenes/proyectos.
-
-### Metodos Principales:
-
-| Metodo | Descripcion |
-|--------|-------------|
-| `GetOrders(limit, offset, filterStatuses)` | Obtiene ordenes con paginacion y filtros |
-| `GetOrderById(orderId)` | Obtiene una orden por ID |
-| `SearchOrders(searchTerm)` | Busca ordenes por termino |
-| `CreateOrder(order, userId)` | Crea una nueva orden |
-| `UpdateOrder(order, userId)` | Actualiza una orden existente |
-| `DeleteOrderWithAudit(orderId, deletedBy, reason)` | Elimina orden con auditoria |
-| `CancelOrder(orderId)` | Cancela una orden (status = 5) |
-| `GetOrdersByClientId(clientId)` | Obtiene ordenes de un cliente |
-| `GetRecentOrders(limit)` | Obtiene ordenes recientes |
-| `CanCreateInvoice(orderId)` | Verifica si se puede facturar |
-
-### Flujo de Estados:
-```mermaid
-sequenceDiagram
-    participant UI
-    participant OS as OrderService
-    participant DB as Supabase
-
-    UI->>OS: CreateOrder(order)
-    OS->>OS: Validar datos
-    OS->>OS: Asignar created_by, updated_by
-    OS->>DB: Insert order (status = 0)
-    DB-->>OS: Orden creada
-    OS-->>UI: Retornar orden
-
-    UI->>OS: UpdateOrder(order)
-    OS->>DB: Update campos
-    DB-->>OS: Orden actualizada
-    OS-->>UI: true/false
-
-    UI->>OS: CancelOrder(orderId)
-    OS->>DB: Update status = 5
-    DB-->>OS: Cancelada
-    OS-->>UI: true/false
-```
-
----
-
-## 4. UserService
-
-**Ubicacion:** `Services/Users/UserService.cs`
-
-Gestiona autenticacion y operaciones de usuarios.
-
-### Metodos Principales:
-
-| Metodo | Descripcion |
-|--------|-------------|
-| `AuthenticateUser(username, password)` | Autentica usuario con BCrypt |
-| `GetUserByUsername(username)` | Obtiene usuario por nombre |
-| `GetUserById(userId)` | Obtiene usuario por ID |
-| `GetActiveUsers()` | Lista usuarios activos |
-| `GetUsersByRole(role)` | Lista usuarios por rol |
-| `CreateUser(user, plainPassword)` | Crea usuario con hash BCrypt |
-| `UpdateUser(user)` | Actualiza datos de usuario |
-| `ChangePassword(userId, newPassword)` | Cambia contrasena |
-| `DeactivateUser(userId)` | Desactiva usuario (soft delete) |
-| `ReactivateUser(userId)` | Reactiva usuario |
-
-### Flujo de Autenticacion:
-```mermaid
-sequenceDiagram
-    participant LW as LoginWindow
-    participant US as UserService
-    participant DB as Supabase
-    participant BCrypt
-
-    LW->>US: AuthenticateUser(username, password)
-    US->>DB: SELECT * FROM users WHERE username = ?
-    DB-->>US: UserDb o null
-
-    alt Usuario encontrado
-        US->>BCrypt: Verify(password, user.PasswordHash)
-        BCrypt-->>US: true/false
+Clase base abstracta. Inyecta `Client` en constructor. Provee `LogDebug/LogError/LogSuccess` uniformes.
+
+## OrderService
+
+Gestion del ciclo de vida de ordenes.
+
+| Metodo | Uso |
+|---|---|
+| `GetOrders(limit, offset, filterStatuses)` | Listado con paginacion y filtro por estados. |
+| `GetOrderById(id)` | Detalle de una orden. |
+| `SearchOrders(term)` | Busqueda por PO, cliente o descripcion. |
+| `CreateOrder(order, userId)` | Inserta con status = 0 (CREADA). |
+| `UpdateOrder(order, userId)` | Actualiza campos. |
+| `DeleteOrderWithAudit(id, deletedBy, reason)` | Soft-delete con snapshot JSONB en `t_order_deleted`. |
+| `CancelOrder(id)` | status = 5. |
+| `GetOrdersByClientId(clientId)` |  |
+| `GetRecentOrders(limit)` |  |
+| `CanCreateInvoice(orderId)` | Valida que el estado permita facturar. |
+
+Estados en [05_FLUJOS_TRABAJO.md](./05_FLUJOS_TRABAJO.md#1-ciclo-de-vida-de-una-orden).
+
+## UserService
+
+Autenticacion y CRUD de usuarios.
+
+| Metodo | Uso |
+|---|---|
+| `AuthenticateUser(username, password)` | Verifica con BCrypt. Retorna `(bool success, UserDb, string msg)`. |
+| `GetUserByUsername / GetUserById` |  |
+| `GetActiveUsers()` / `GetUsersByRole(role)` |  |
+| `CreateUser(user, plainPassword)` | Hashea con `BCrypt.HashPassword`. |
+| `UpdateUser(user)` / `ChangePassword(userId, newPassword)` |  |
+| `DeactivateUser(id)` / `ReactivateUser(id)` | Soft-delete. |
+
+## ClientService / ContactService / SupplierService / VendorService
+
+CRUD estandar de cada entidad. Todos usan cache TTL (5 min para listados). `VendorService` ademas gestiona el setup de comisiones (ver [FLUJO_COMISIONES.md](./FLUJO_COMISIONES.md)).
+
+## InvoiceService
+
+| Metodo | Uso |
+|---|---|
+| `GetInvoicesByOrder(orderId)` |  |
+| `GetInvoicedTotalsByOrders(orderIds)` | Totales facturados por lote de ordenes. |
+| `CreateInvoice(invoice, userId)` | Inserta factura. `due_date` = `invoice_date + client.credit_days`. |
+| `UpdateInvoice(invoice, userId)` / `DeleteInvoice(id, userId)` |  |
+| `GetInvoiceStatuses()` |  |
+
+Estados: PENDIENTE(1), ENVIADA(2), VENCIDA(3), PAGADA(4).
+
+## ExpenseService / FixedExpenseService
+
+`ExpenseService` gestiona gastos a proveedores con filtro por supplier/status/fecha. `FixedExpenseService` gestiona gastos fijos mensuales (renta, servicios, etc) con historial y fecha efectiva.
+
+Trigger relevante: `auto_pay_zero_credit_expense` marca como PAGADO automaticamente gastos cuyo proveedor tiene `f_credit = 0`.
+
+## PayrollService / AttendanceService
+
+Nomina y calendario. `PayrollService` gestiona empleados, historial de cambios, total mensual. `AttendanceService` gestiona asistencias, vacaciones, feriados, overtime.
+
+## DriveService (Fase 4)
+
+**Ubicacion:** `Services/Drive/DriveService.cs`
+
+Gestion de archivos en Cloudflare R2 + metadatos en Supabase (`drive_folders`, `drive_files`, `drive_activity`).
+
+### Carpetas
+| Metodo | Uso |
+|---|---|
+| `GetChildFolders(parentId)` | Listado de subcarpetas. |
+| `GetFolderById(id)` |  |
+| `CreateFolder(name, parentId, userId)` |  |
+| `RenameFolder(id, newName)` |  |
+| `DeleteFolder(id)` | Recursivo en R2 y BD. |
+| `MoveFolder(id, targetParentId)` |  |
+| `ValidateFolderMove(id, targetId)` | Previene ciclos. |
+| `GetBreadcrumb(folderId)` | CTE recursivo. |
+| `GetFolderStats(parentId)` | Stats bulk (file count, subfolder count, total size). |
+| `GetFolderTree()` | Arbol completo (RPC `get_folder_tree`). |
+
+### Archivos
+| Metodo | Uso |
+|---|---|
+| `GetFilesByFolder(folderId)` |  |
+| `UploadFile(localPath, folderId, userId)` | Sube blob a R2 + registra en BD. |
+| `DownloadFile(fileId)` / `DownloadFileToLocal(fileId, path)` |  |
+| `DownloadFileToStream(r2Key, stream)` | Para streaming grande. |
+| `DownloadFilePartial(fileId, maxBytes)` | Preview rapido sin descargar todo. |
+| `RenameFile` / `DeleteFile` / `MoveFile` / `CopyFile` / `DuplicateFile` |  |
+| `ReuploadFile(fileId, localPath, userId)` | Version nueva tras edicion local (Open-in-Place). |
+| `GetFileById(fileId)` |  |
+
+### Vinculacion con ordenes
+| Metodo | Uso |
+|---|---|
+| `LinkFolderToOrder(folderId, orderId)` | Asigna `drive_folders.linked_order_id`. |
+| `UnlinkFolder(folderId)` |  |
+| `GetFolderByOrder(orderId)` |  |
+| `GetLinkedFolderIds(orderIds)` | Bulk para la columna CARPETA de OrdersManagementWindow. |
+| `ValidateFolderLink(folderId)` | Valida restricciones antes de vincular. |
+| `GetOrdersByIds(orderIds)` | Info de ordenes para mostrar en Drive. |
 
-        alt Password valido
-            alt Usuario activo
-                US->>DB: UPDATE last_login
-                US-->>LW: (true, user, "Login exitoso")
-            else Usuario inactivo
-                US-->>LW: (false, null, "Usuario desactivado")
-            end
-        else Password invalido
-            US-->>LW: (false, null, "Contrasena incorrecta")
-        end
-    else Usuario no encontrado
-        US-->>LW: (false, null, "Usuario no encontrado")
-    end
-```
+### Busqueda / recientes / actividad
+| Metodo | Uso |
+|---|---|
+| `SearchInFolder(folderId, query)` | Scoped (dentro de subarbol). |
+| `SearchFolders(query)` / `SearchFiles(query)` | Global. |
+| `GetRecentFiles(limit)` / `GetRecentActivity(limit, userId)` | Feed sidebar. |
+| `LogActivity(userId, action, targetType, targetId, ...)` | Inserta en `drive_activity`. |
 
----
+### Almacenamiento y operaciones administrativas
+| Metodo | Uso |
+|---|---|
+| `GetTotalStorageBytes()` | Para indicador global. |
+| `GetAllFoldersFlat() / GetAllFilesFlat()` | Paginado, para diagnostico. |
+| `DiagnoseOrphans()` | Compara R2 vs BD, retorna huerfanos R2 y huerfanos BD. |
+| `CleanR2Orphans(keys)` | Limpieza controlada. |
+| `PurgeAllR2Files()` | Solo dev; uso peligroso. |
+| `CollectAllFilesRecursive(folderId)` | Para delete recursivo. |
 
-## 5. ClientService
+## FileWatcherService (Fase 4)
 
-**Ubicacion:** `Services/Clients/ClientService.cs`
+**Ubicacion:** `Services/Drive/FileWatcherService.cs`
 
-Gestiona operaciones de clientes.
+Maneja Open-in-Place: doble clic en un archivo del Drive -> descarga a `%LOCALAPPDATA%/IMA-Drive/` -> abre con la app asociada de Windows -> `FileSystemWatcher` detecta guardado -> sube nueva version a R2 con debounce 2s.
 
-### Metodos:
-- `GetClients()` - Lista todos los clientes
-- `GetActiveClients()` - Lista clientes activos
-- `GetClientById(clientId)` - Obtiene cliente por ID
-- `GetClientByName(name)` - Busca cliente por nombre
-- `CreateClient(client, userId)` - Crea nuevo cliente
-- `UpdateClient(client, userId)` - Actualiza cliente
-- `SoftDeleteClient(clientId)` - Desactiva cliente
-- `ClientExists(name)` - Verifica si existe
+| Metodo | Uso |
+|---|---|
+| `OpenFile(file)` | Orquesta descarga + abrir + watch. |
+| `DownloadContext(siblings, contextDir, onProgress)` | Descarga piezas asociadas antes de abrir un ensamble CAD. |
+| `ForceReupload(fileId)` | Usuario fuerza subida de version local. |
+| `RedownloadServerVersion(fileId)` | Usuario descarta cambios locales y recupera del servidor. |
 
----
+Manifest JSON local en `%LOCALAPPDATA%/IMA-Drive/manifest/` con hashes SHA256 para deteccion de conflictos. Badges visuales en DriveV2Window:
+- Verde = archivo abierto
+- Azul = sincronizando
+- Check = synced
+- Rojo = error
 
-## 6. InvoiceService
-
-**Ubicacion:** `Services/Invoices/InvoiceService.cs`
-
-Gestiona facturas y sus estados.
-
-### Metodos:
-- `GetInvoicesByOrder(orderId)` - Facturas de una orden
-- `GetInvoicedTotalsByOrders(orderIds)` - Totales facturados por ordenes
-- `CreateInvoice(invoice, userId)` - Crea factura
-- `UpdateInvoice(invoice, userId)` - Actualiza factura
-- `DeleteInvoice(invoiceId, userId)` - Elimina factura
-- `GetInvoiceStatuses()` - Lista estados disponibles
-
----
+## StorageService (Fase 4)
 
-## 7. ExpenseService
+**Ubicacion:** `Services/Storage/StorageService.cs`
 
-**Ubicacion:** `Services/Expenses/ExpenseService.cs`
+Supabase Storage. Bucket `order-files`. Se usa desde Portal Ventas para subir facturas asociadas a comisiones.
 
-Gestiona gastos y pagos a proveedores.
-
-### Metodos:
-- `GetExpenses(supplierId, status, fromDate, toDate, limit, offset)` - Lista gastos con filtros
-- `GetExpenseById(expenseId)` - Obtiene gasto por ID
-- `CreateExpense(expense)` - Crea nuevo gasto
-- `UpdateExpense(expense)` - Actualiza gasto
-- `MarkExpenseAsPaid(expenseId, paidDate, payMethod)` - Marca como pagado
-- `DeleteExpense(expenseId)` - Elimina gasto
-- `GetUpcomingExpenses(daysAhead)` - Gastos proximos
-- `GetOverdueExpenses()` - Gastos vencidos
-- `GetExpensesStatsByStatus()` - Estadisticas por estado
-
----
-
-## 8. PayrollService
-
-**Ubicacion:** `Services/Payroll/PayrollService.cs`
-
-Gestiona nomina de empleados.
-
-### Metodos:
-- `GetActivePayroll()` - Lista empleados activos
-- `GetPayrollHistory(payrollId, limit)` - Historial de cambios
-- `GetPayrollById(id)` - Obtiene empleado por ID
-- `CreatePayroll(payroll)` - Agrega empleado
-- `UpdatePayroll(payroll)` - Actualiza datos
-- `GetMonthlyPayrollTotal()` - Total mensual de nomina
-- `DeactivateEmployee(employeeId, userId)` - Desactiva empleado
-
----
-
-## 9. VendorService
-
-**Ubicacion:** `Services/Vendors/VendorService.cs`
-
-Gestiona vendedores y comisiones.
-
-### Metodos:
-- `GetVendors()` - Lista vendedores
-- `GetVendorById(vendorId)` - Obtiene vendedor por ID
-
----
-
-## 10. SessionTimeoutService
-
-**Ubicacion:** `Services/SessionTimeoutService.cs`
-
-Gestiona el timeout de sesion por inactividad. Implementa patron Singleton.
-
-### Configuracion (appsettings.json):
-```json
-{
-  "SessionTimeout": {
-    "Enabled": true,
-    "InactivityMinutes": 15,
-    "WarningBeforeMinutes": 2
-  }
-}
-```
-
-### Eventos:
-- `OnWarning` - Disparado cuando quedan 2 minutos
-- `OnTimeout` - Disparado al alcanzar el timeout
-- `OnTimerTick` - Cada segundo con segundos restantes
-
-### Flujo:
-```mermaid
-sequenceDiagram
-    participant App
-    participant STS as SessionTimeoutService
-    participant UI
-
-    App->>STS: Start()
-    loop Cada segundo
-        STS->>STS: CheckInactivity()
-        alt Actividad detectada
-            STS->>STS: ResetTimer()
-        else Cerca de timeout
-            STS->>UI: OnWarning
-            UI->>UI: Mostrar banner
-        else Timeout alcanzado
-            STS->>UI: OnTimeout
-            UI->>App: ForceLogout()
-        end
-    end
-```
-
----
-
-## 11. JsonLoggerService
-
-**Ubicacion:** `Services/JsonLoggerService.cs`
-
-Gestiona el logging de la aplicacion en formato JSON.
-
-### Metodos:
-- `LogInfo(module, action, data)` - Log informativo
-- `LogWarning(module, action, data)` - Log de advertencia
-- `LogError(module, action, data)` - Log de error
-- `LogLogin(username, success, userId, role)` - Log de login
-- `LogDebug(module, action, data)` - Log de debug
-- `CloseSessionAsync()` - Cierra sesion de log
-
-### Estructura de archivos:
-```
-%LocalAppData%/SistemaGestionProyectos/logs/
-└── sessions/
-    └── session_2025-01-15_08-30-45/
-        ├── session.json     # Logs de la sesion
-        └── session_info.json # Metadata de la sesion
-```
-
----
-
-## 12. UpdateService
+| Metodo | Uso |
+|---|---|
+| `UploadFile(localPath, orderId, uploadedBy, vendorId?, commissionId?)` | Sube archivo a Storage + registra en `order_files`. |
+| `DownloadFile(storagePath)` | Bytes crudos. |
+| `GetSignedUrl(storagePath, expiresInSeconds = 3600)` | URL temporal para preview. |
+| `GetFilesByOrder(orderId)` / `GetFilesByCommission(commissionId)` |  |
+| `DeleteFile(fileId, storagePath)` | BD + Storage. |
+| `GetFileCountByCommission(id)` / `GetFileCountsByCommissions(ids)` | Para badges. |
+
+## InventoryService (Fase 4)
+
+**Ubicacion:** `Services/Inventory/InventoryService.cs`
+
+Modulo de inventario (categorias + productos + movimientos).
+
+### Categorias
+`GetCategories()`, `GetCategorySummary()`, `CreateCategory(cat)`, `UpdateCategory(cat)`, `DeleteCategory(id, userId)`.
+
+### Productos
+`GetProductsByCategory(catId)`, `CreateProduct(p)`, `UpdateProduct(p)`, `DeleteProduct(id, userId)`.
+
+### Stock
+`AdjustStock(productId, newStock, userId, notes)` — inserta movimiento en `inventory_movements`. Retorna `StockAdjustResult`.
+
+### Consultas
+`GetStats()` — dashboard. `GetLocations(categoryId?)` — autocompletado. `GetMovements(productId, limit)` — historial.
+
+## UpdateService (con fixes de abril 2026)
 
 **Ubicacion:** `Services/Updates/UpdateService.cs`
 
-Gestiona actualizaciones automaticas de la aplicacion.
+Auto-update contra la tabla `app_versions`.
 
-### Metodos:
-- `CheckForUpdate()` - Verifica si hay actualizacion disponible
-- `DownloadUpdate(version)` - Descarga la actualizacion
-- `InstallUpdate()` - Instala la actualizacion
+| Metodo | Uso |
+|---|---|
+| `CheckForUpdate()` | Retorna `(bool available, AppVersionDb newVersion, string message)`. Compara version del `Assembly` contra `app_versions.version` donde `is_latest=true`. |
+| `DownloadUpdate(version, progress)` | Descarga desde `download_url` (GitHub Releases asset) a `%TEMP%`. |
+| `InstallUpdate(installerPath, silent)` | Genera script .bat que: detiene la app, lanza el instalador, **relaunch con schtasks** para des-elevar. |
 
-### Flujo:
-```mermaid
-sequenceDiagram
-    participant App
-    participant US as UpdateService
-    participant DB as Supabase
+### Mecanismo de relaunch post-update (abril 2026)
 
-    App->>US: CheckForUpdate()
-    US->>DB: SELECT * FROM app_versions ORDER BY version DESC LIMIT 1
-    DB-->>US: AppVersionDb
+Windows UIPI bloquea drag-drop desde el Explorador hacia la app si esta corre con integridad alta. Tras auto-update, la app quedaba elevada y `DataObject` del Explorer no llegaba a IMA Drive. Solucion final (commits `d44710d`, `0bdc11c`, `3d38fff`, `bcd58e6`):
 
-    alt Version mayor disponible
-        US-->>App: (true, newVersion, message)
-        App->>App: Mostrar UpdateAvailableWindow
-    else Ya actualizado
-        US-->>App: (false, null, "Ya tienes la ultima version")
-    end
+```
+InstallUpdate genera un script .bat que:
+  1) Detiene la app actual
+  2) Ejecuta el instalador en modo silent
+  3) Registra tarea programada temporal:
+       schtasks /create /tn "<taskName>" /tr "<appExePath>" /sc once /st 00:00 /f /rl limited
+     (/rl limited garantiza nivel de integridad medio = no elevado)
+  4) Dispara la tarea:
+       schtasks /run /tn "<taskName>"
+  5) Borra la tarea:
+       schtasks /delete /tn "<taskName>" /f
 ```
 
----
+Motivo: solo `schtasks` y `Shell COM` pueden des-elevar un proceso hijo en Windows. Un simple `Process.Start()` hereda el token elevado del padre.
 
-## Converters (Value Converters)
+Commit adicional `4c93493`: los handlers drag-drop en `DriveV2Window` deben declararse en XAML (no solo `AddHandler` en code-behind), porque Release optimiza fuera los handlers que solo se adjuntan por codigo.
 
-### RoleToVisibilityConverter
-Convierte rol de usuario a visibilidad de elementos UI:
+## SessionTimeoutService
 
+**Ubicacion:** `Services/SessionTimeoutService.cs`. Singleton.
+
+Config en `appsettings.json`:
+```json
+"SessionTimeout": { "InactivityMinutes": 30, "WarningBeforeMinutes": 5, "Enabled": true }
+```
+
+Eventos:
+- `OnWarning` — faltan 5 minutos.
+- `OnTimeout` — logout forzado.
+- `OnTimerTick` — cada segundo, con segundos restantes.
+
+Input global monitoreado via `WindowHelper` (mouse/teclado). Cualquier interaccion dispara `ResetTimer`.
+
+## JsonLoggerService
+
+**Ubicacion:** `Services/JsonLoggerService.cs`. Singleton.
+
+Logs por sesion en `%LOCALAPPDATA%/SistemaGestionProyectos/logs/sessions/session_YYYY-MM-DD_HH-mm-ss/`:
+- `session.json` — eventos
+- `session_info.json` — metadata (usuario, version, duracion)
+
+Metodos:
+- `LogInfo / LogWarning / LogError / LogDebug(module, action, data)`
+- `LogLogin(username, success, userId, role)`
+- `CloseSessionAsync()` — al cerrar la app.
+
+Formato JSONL por linea. Retencion configurable (`RetentionDays`).
+
+## ServiceCache (Core)
+
+**Ubicacion:** `Services/Core/ServiceCache.cs`
+
+`ConcurrentDictionary<string, (object value, DateTime expiresAt)>`. TTL por clave. API:
 ```csharp
-public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-{
-    if (value is string role && parameter is string requiredRole)
-    {
-        return role == requiredRole ? Visibility.Visible : Visibility.Collapsed;
-    }
-    return Visibility.Collapsed;
-}
+cache.Get<T>(key);
+cache.Set<T>(key, value, TimeSpan ttl);
+cache.Invalidate(key);
+cache.InvalidatePrefix("clients:");
+cache.InvalidateAll();
 ```
 
-### IsAdminToVisibilityConverter
-Muestra elementos solo para administradores:
+Usado por `ClientService`, `SupplierService`, `VendorService`, etc.
 
-```csharp
-public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-{
-    if (value is string role)
-    {
-        return role == "admin" ? Visibility.Visible : Visibility.Collapsed;
-    }
-    return Visibility.Collapsed;
-}
-```
+## DataChangedEvent (Core)
 
----
+**Ubicacion:** `Services/Core/DataChangedEvent.cs`
 
-## Mejores Practicas Implementadas
+Patron observer para notificar entre ventanas. Por ejemplo, `OrdersManagementWindow` se suscribe a `EntityChanged("order", orderId)` para refrescar la fila cuando `EditOrderWindow` guarda.
 
-1. **Separacion de Responsabilidades**: Cada servicio maneja una entidad especifica
-2. **Inyeccion de Dependencias**: Servicios reciben el cliente Supabase en constructor
-3. **Logging Consistente**: BaseSupabaseService proporciona metodos de log uniformes
-4. **Manejo de Errores**: Try-catch con logging en todos los metodos
-5. **Async/Await**: Operaciones asincronas para no bloquear UI
+## AuthenticationService / UserPreferencesService
+
+Utilidades menores. `AuthenticationService` encapsula la llamada a `UserService.AuthenticateUser`. `UserPreferencesService` persiste preferencias UI en registro de Windows.
+
+## Converters
+
+En `Services/`:
+- `RoleToVisibilityConverter` — Role -> Visibility por parametro.
+- `AdminVisibilityConverter` — visibilidad solo para `direccion`/`administracion`.
+- `PercentageConverter` — decimal -> "12.5%".
+
+## Buenas practicas observadas
+
+1. **Cada servicio hereda** `BaseSupabaseService` y loggea con metodos uniformes.
+2. **Siempre async/await.** Nunca `.Result` o `.Wait()` en UI.
+3. **Cache con TTL** para listados largos de lectura frecuente.
+4. **ViewModels delgados.** La logica vive en servicios.
+5. **Auditoria integrada.** `created_by` / `updated_by` se setean siempre en servicios de negocio.
+6. **Try/catch + log** en todos los metodos de servicio; errores se propagan como retornos `(bool, T, msg)` cuando la UI necesita distinguir exito de fallo.

@@ -1,48 +1,58 @@
 # Documentación de Tablas - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:25:07
-PostgreSQL 17.4 | Supabase | 34 tablas
+Generado: 2026-04-20 23:20:39
+PostgreSQL 17.4 | Supabase | 44 tablas
 
 ## Índice
 
 1. [app_versions](#app_versions)
 2. [audit_log](#audit_log)
-3. [invoice_audit](#invoice_audit)
-4. [invoice_status](#invoice_status)
-5. [order_gastos_indirectos](#order_gastos_indirectos)
-6. [order_gastos_operativos](#order_gastos_operativos)
-7. [order_history](#order_history)
-8. [order_status](#order_status)
-9. [t_attendance](#t_attendance)
-10. [t_attendance_audit](#t_attendance_audit)
-11. [t_balance_adjustments](#t_balance_adjustments)
-12. [t_client](#t_client)
-13. [t_commission_rate_history](#t_commission_rate_history)
-14. [t_contact](#t_contact)
-15. [t_expense](#t_expense)
-16. [t_expense_audit](#t_expense_audit)
-17. [t_fixed_expenses](#t_fixed_expenses)
-18. [t_fixed_expenses_history](#t_fixed_expenses_history)
-19. [t_holiday](#t_holiday)
-20. [t_invoice](#t_invoice)
-21. [t_order](#t_order)
-22. [t_order_deleted](#t_order_deleted)
-23. [t_overtime_hours](#t_overtime_hours)
-24. [t_overtime_hours_audit](#t_overtime_hours_audit)
-25. [t_payroll](#t_payroll)
-26. [t_payroll_history](#t_payroll_history)
-27. [t_payrollovertime](#t_payrollovertime)
-28. [t_supplier](#t_supplier)
-29. [t_vacation](#t_vacation)
-30. [t_vacation_audit](#t_vacation_audit)
-31. [t_vendor](#t_vendor)
-32. [t_vendor_commission_payment](#t_vendor_commission_payment)
-33. [t_workday_config](#t_workday_config)
-34. [users](#users)
+3. [drive_activity](#drive_activity)
+4. [drive_audit](#drive_audit)
+5. [drive_files](#drive_files)
+6. [drive_folders](#drive_folders)
+7. [inventory_audit](#inventory_audit)
+8. [inventory_categories](#inventory_categories)
+9. [inventory_movements](#inventory_movements)
+10. [inventory_products](#inventory_products)
+11. [invoice_audit](#invoice_audit)
+12. [invoice_status](#invoice_status)
+13. [order_ejecutores](#order_ejecutores)
+14. [order_files](#order_files)
+15. [order_gastos_indirectos](#order_gastos_indirectos)
+16. [order_gastos_operativos](#order_gastos_operativos)
+17. [order_history](#order_history)
+18. [order_status](#order_status)
+19. [t_attendance](#t_attendance)
+20. [t_attendance_audit](#t_attendance_audit)
+21. [t_balance_adjustments](#t_balance_adjustments)
+22. [t_client](#t_client)
+23. [t_commission_rate_history](#t_commission_rate_history)
+24. [t_contact](#t_contact)
+25. [t_expense](#t_expense)
+26. [t_expense_audit](#t_expense_audit)
+27. [t_fixed_expenses](#t_fixed_expenses)
+28. [t_fixed_expenses_history](#t_fixed_expenses_history)
+29. [t_holiday](#t_holiday)
+30. [t_invoice](#t_invoice)
+31. [t_order](#t_order)
+32. [t_order_deleted](#t_order_deleted)
+33. [t_overtime_hours](#t_overtime_hours)
+34. [t_overtime_hours_audit](#t_overtime_hours_audit)
+35. [t_payroll](#t_payroll)
+36. [t_payroll_history](#t_payroll_history)
+37. [t_payrollovertime](#t_payrollovertime)
+38. [t_supplier](#t_supplier)
+39. [t_vacation](#t_vacation)
+40. [t_vacation_audit](#t_vacation_audit)
+41. [t_vendor](#t_vendor)
+42. [t_vendor_commission_payment](#t_vendor_commission_payment)
+43. [t_workday_config](#t_workday_config)
+44. [users](#users)
 
 ---
 
 ## app_versions
-Filas estimadas: ~13
+Filas estimadas: ~24
 
 ### Columnas
 
@@ -111,6 +121,285 @@ Filas estimadas: ~-1
 
 ---
 
+## drive_activity
+Filas estimadas: ~4,807
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('drive_activity_id_seq'::regc... | PK |  |  |
+| 2 | `user_id` | `integer` | NULL |  |  | -> users.id |  |
+| 3 | `action` | `varchar(20)` | NOT NULL |  |  |  |  |
+| 4 | `target_type` | `varchar(10)` | NOT NULL |  |  |  |  |
+| 5 | `target_id` | `integer` | NOT NULL |  |  |  |  |
+| 6 | `target_name` | `varchar(255)` | NULL |  |  |  |  |
+| 7 | `folder_id` | `integer` | NULL |  |  | -> drive_folders.id |  |
+| 8 | `metadata` | `jsonb` | NULL |  |  |  |  |
+| 9 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `drive_activity_pkey` (id)
+
+### Foreign Keys
+- `drive_activity_folder_id_fkey`: `folder_id` -> `drive_folders.id` (ON UPDATE NO ACTION, ON DELETE SET NULL)
+- `drive_activity_user_id_fkey`: `user_id` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Indexes
+- `drive_activity_pkey` [PRIMARY]: `CREATE UNIQUE INDEX drive_activity_pkey ON public.drive_activity USING btree (id)`
+- `idx_drive_activity_folder`: `CREATE INDEX idx_drive_activity_folder ON public.drive_activity USING btree (folder_id, created_at DESC)`
+- `idx_drive_activity_recent`: `CREATE INDEX idx_drive_activity_recent ON public.drive_activity USING btree (created_at DESC)`
+- `idx_drive_activity_user`: `CREATE INDEX idx_drive_activity_user ON public.drive_activity USING btree (user_id, created_at DESC)`
+
+---
+
+## drive_audit
+Filas estimadas: ~14,617
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('drive_audit_id_seq'::regclass) | PK |  |  |
+| 2 | `action` | `varchar(20)` | NOT NULL |  |  |  |  |
+| 3 | `target_type` | `varchar(10)` | NOT NULL |  |  |  |  |
+| 4 | `target_id` | `integer` | NOT NULL |  |  |  |  |
+| 5 | `target_name` | `varchar(255)` | NULL |  |  |  |  |
+| 6 | `folder_id` | `integer` | NULL |  |  |  |  |
+| 7 | `old_value` | `text` | NULL |  |  |  |  |
+| 8 | `new_value` | `text` | NULL |  |  |  |  |
+| 9 | `user_id` | `integer` | NULL |  |  | -> users.id |  |
+| 10 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `drive_audit_pkey` (id)
+
+### Foreign Keys
+- `drive_audit_user_id_fkey`: `user_id` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Indexes
+- `drive_audit_pkey` [PRIMARY]: `CREATE UNIQUE INDEX drive_audit_pkey ON public.drive_audit USING btree (id)`
+- `idx_drive_audit_date`: `CREATE INDEX idx_drive_audit_date ON public.drive_audit USING btree (created_at DESC)`
+- `idx_drive_audit_user`: `CREATE INDEX idx_drive_audit_user ON public.drive_audit USING btree (user_id)`
+
+---
+
+## drive_files
+Filas estimadas: ~1,308
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('drive_files_id_seq'::regclass) | PK |  |  |
+| 2 | `folder_id` | `integer` | NOT NULL |  |  | -> drive_folders.id |  |
+| 3 | `file_name` | `varchar(255)` | NOT NULL |  |  |  |  |
+| 4 | `storage_path` | `text` | NOT NULL |  |  |  |  |
+| 5 | `file_size` | `bigint` | NULL |  |  |  |  |
+| 6 | `content_type` | `varchar(100)` | NULL |  |  |  |  |
+| 7 | `uploaded_by` | `integer` | NULL |  |  | -> users.id |  |
+| 8 | `uploaded_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `drive_files_pkey` (id)
+
+### Foreign Keys
+- `drive_files_folder_id_fkey`: `folder_id` -> `drive_folders.id` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+- `drive_files_uploaded_by_fkey`: `uploaded_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Unique Constraints
+- `drive_files_folder_id_file_name_key` (folder_id, file_name)
+
+### Indexes
+- `drive_files_folder_id_file_name_key` [UNIQUE]: `CREATE UNIQUE INDEX drive_files_folder_id_file_name_key ON public.drive_files USING btree (folder_id, file_name)`
+- `drive_files_pkey` [PRIMARY]: `CREATE UNIQUE INDEX drive_files_pkey ON public.drive_files USING btree (id)`
+- `idx_drive_files_folder`: `CREATE INDEX idx_drive_files_folder ON public.drive_files USING btree (folder_id)`
+
+---
+
+## drive_folders
+Filas estimadas: ~159
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('drive_folders_id_seq'::regcl... | PK |  |  |
+| 2 | `parent_id` | `integer` | NULL |  |  | -> drive_folders.id |  |
+| 3 | `name` | `varchar(255)` | NOT NULL |  |  |  |  |
+| 4 | `linked_order_id` | `integer` | NULL |  |  | -> t_order.f_order |  |
+| 5 | `created_by` | `integer` | NULL |  |  | -> users.id |  |
+| 6 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+| 7 | `updated_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `drive_folders_pkey` (id)
+
+### Foreign Keys
+- `drive_folders_created_by_fkey`: `created_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `drive_folders_linked_order_id_fkey`: `linked_order_id` -> `t_order.f_order` (ON UPDATE NO ACTION, ON DELETE SET NULL)
+- `drive_folders_parent_id_fkey`: `parent_id` -> `drive_folders.id` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+### Unique Constraints
+- `drive_folders_parent_id_name_key` (parent_id, name)
+
+### Indexes
+- `drive_folders_parent_id_name_key` [UNIQUE]: `CREATE UNIQUE INDEX drive_folders_parent_id_name_key ON public.drive_folders USING btree (parent_id, name)`
+- `drive_folders_pkey` [PRIMARY]: `CREATE UNIQUE INDEX drive_folders_pkey ON public.drive_folders USING btree (id)`
+- `idx_drive_folders_order`: `CREATE INDEX idx_drive_folders_order ON public.drive_folders USING btree (linked_order_id) WHERE (linked_order_id IS NOT NULL)`
+- `idx_drive_folders_parent`: `CREATE INDEX idx_drive_folders_parent ON public.drive_folders USING btree (parent_id)`
+
+---
+
+## inventory_audit
+Filas estimadas: ~68
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('inventory_audit_id_seq'::reg... | PK |  |  |
+| 2 | `table_name` | `varchar(50)` | NOT NULL |  |  |  |  |
+| 3 | `record_id` | `integer` | NOT NULL |  |  |  |  |
+| 4 | `action` | `varchar(10)` | NOT NULL |  |  |  |  |
+| 5 | `old_values` | `jsonb` | NULL |  |  |  |  |
+| 6 | `new_values` | `jsonb` | NULL |  |  |  |  |
+| 7 | `user_id` | `integer` | NULL |  |  | -> users.id |  |
+| 8 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `inventory_audit_pkey` (id)
+
+### Foreign Keys
+- `inventory_audit_user_id_fkey`: `user_id` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Check Constraints
+- `inventory_audit_action_check`: `((action)::text = ANY ((ARRAY['INSERT'::character varying, 'UPDATE'::character varying, 'DELETE'::character varying])::text[]))`
+
+### Indexes
+- `idx_inv_audit_date`: `CREATE INDEX idx_inv_audit_date ON public.inventory_audit USING btree (created_at DESC)`
+- `idx_inv_audit_table`: `CREATE INDEX idx_inv_audit_table ON public.inventory_audit USING btree (table_name, record_id)`
+- `inventory_audit_pkey` [PRIMARY]: `CREATE UNIQUE INDEX inventory_audit_pkey ON public.inventory_audit USING btree (id)`
+
+---
+
+## inventory_categories
+Filas estimadas: ~-1
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('inventory_categories_id_seq'... | PK |  |  |
+| 2 | `name` | `varchar(100)` | NOT NULL |  |  |  |  |
+| 3 | `description` | `text` | NULL |  |  |  |  |
+| 4 | `color` | `varchar(7)` | NULL | '#3498DB'::character varying |  |  |  |
+| 5 | `icon` | `varchar(50)` | NULL |  |  |  |  |
+| 6 | `display_order` | `integer` | NULL | 0 |  |  |  |
+| 7 | `is_active` | `boolean` | NULL | true |  |  |  |
+| 8 | `created_by` | `integer` | NULL |  |  | -> users.id |  |
+| 9 | `updated_by` | `integer` | NULL |  |  | -> users.id |  |
+| 10 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+| 11 | `updated_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `inventory_categories_pkey` (id)
+
+### Foreign Keys
+- `inventory_categories_created_by_fkey`: `created_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `inventory_categories_updated_by_fkey`: `updated_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Indexes
+- `idx_inv_categories_active`: `CREATE INDEX idx_inv_categories_active ON public.inventory_categories USING btree (is_active, display_order)`
+- `inventory_categories_pkey` [PRIMARY]: `CREATE UNIQUE INDEX inventory_categories_pkey ON public.inventory_categories USING btree (id)`
+
+---
+
+## inventory_movements
+Filas estimadas: ~-1
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('inventory_movements_id_seq':... | PK |  |  |
+| 2 | `product_id` | `integer` | NOT NULL |  |  | -> inventory_products.id |  |
+| 3 | `movement_type` | `varchar(20)` | NOT NULL |  |  |  |  |
+| 4 | `quantity` | `numeric(10,2)` | NOT NULL |  |  |  |  |
+| 5 | `previous_stock` | `numeric(10,2)` | NULL |  |  |  |  |
+| 6 | `new_stock` | `numeric(10,2)` | NULL |  |  |  |  |
+| 7 | `reference_type` | `varchar(50)` | NULL |  |  |  |  |
+| 8 | `reference_id` | `integer` | NULL |  |  |  |  |
+| 9 | `notes` | `text` | NULL |  |  |  |  |
+| 10 | `created_by` | `integer` | NULL |  |  | -> users.id |  |
+| 11 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `inventory_movements_pkey` (id)
+
+### Foreign Keys
+- `inventory_movements_created_by_fkey`: `created_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `inventory_movements_product_id_fkey`: `product_id` -> `inventory_products.id` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+### Check Constraints
+- `inventory_movements_movement_type_check`: `((movement_type)::text = ANY ((ARRAY['entrada'::character varying, 'salida'::character varying, 'ajuste'::character varying])::text[]))`
+
+### Indexes
+- `idx_inv_movements_date`: `CREATE INDEX idx_inv_movements_date ON public.inventory_movements USING btree (created_at DESC)`
+- `idx_inv_movements_product`: `CREATE INDEX idx_inv_movements_product ON public.inventory_movements USING btree (product_id, created_at DESC)`
+- `idx_inv_movements_type`: `CREATE INDEX idx_inv_movements_type ON public.inventory_movements USING btree (movement_type, created_at DESC)`
+- `inventory_movements_pkey` [PRIMARY]: `CREATE UNIQUE INDEX inventory_movements_pkey ON public.inventory_movements USING btree (id)`
+
+---
+
+## inventory_products
+Filas estimadas: ~60
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('inventory_products_id_seq'::... | PK |  |  |
+| 2 | `category_id` | `integer` | NOT NULL |  |  | -> inventory_categories.id |  |
+| 3 | `code` | `varchar(50)` | NULL |  |  |  |  |
+| 4 | `name` | `varchar(255)` | NOT NULL |  |  |  |  |
+| 5 | `description` | `text` | NULL |  |  |  |  |
+| 6 | `stock_current` | `numeric(10,2)` | NULL | 0 |  |  |  |
+| 7 | `stock_minimum` | `numeric(10,2)` | NULL | 0 |  |  |  |
+| 8 | `unit` | `varchar(20)` | NULL | 'pza'::character varying |  |  |  |
+| 9 | `unit_price` | `numeric(12,2)` | NULL | 0 |  |  |  |
+| 10 | `location` | `varchar(100)` | NULL |  |  |  |  |
+| 11 | `supplier_id` | `integer` | NULL |  |  | -> t_supplier.f_supplier |  |
+| 12 | `notes` | `text` | NULL |  |  |  |  |
+| 13 | `is_active` | `boolean` | NULL | true |  |  |  |
+| 14 | `created_by` | `integer` | NULL |  |  | -> users.id |  |
+| 15 | `updated_by` | `integer` | NULL |  |  | -> users.id |  |
+| 16 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+| 17 | `updated_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `inventory_products_pkey` (id)
+
+### Foreign Keys
+- `inventory_products_category_id_fkey`: `category_id` -> `inventory_categories.id` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+- `inventory_products_created_by_fkey`: `created_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `inventory_products_supplier_id_fkey`: `supplier_id` -> `t_supplier.f_supplier` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `inventory_products_updated_by_fkey`: `updated_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Unique Constraints
+- `inventory_products_code_key` (code)
+
+### Indexes
+- `idx_inv_products_category`: `CREATE INDEX idx_inv_products_category ON public.inventory_products USING btree (category_id) WHERE (is_active = true)`
+- `idx_inv_products_code`: `CREATE INDEX idx_inv_products_code ON public.inventory_products USING btree (code)`
+- `idx_inv_products_location`: `CREATE INDEX idx_inv_products_location ON public.inventory_products USING btree (location) WHERE (is_active = true)`
+- `idx_inv_products_low_stock`: `CREATE INDEX idx_inv_products_low_stock ON public.inventory_products USING btree (category_id) WHERE ((stock_current < stock_minimum) AND (is_active = true))`
+- `idx_inv_products_supplier`: `CREATE INDEX idx_inv_products_supplier ON public.inventory_products USING btree (supplier_id) WHERE (supplier_id IS NOT NULL)`
+- `inventory_products_code_key` [UNIQUE]: `CREATE UNIQUE INDEX inventory_products_code_key ON public.inventory_products USING btree (code)`
+- `inventory_products_pkey` [PRIMARY]: `CREATE UNIQUE INDEX inventory_products_pkey ON public.inventory_products USING btree (id)`
+
+---
+
 ## invoice_audit
 Filas estimadas: ~-1
 
@@ -155,6 +444,73 @@ Filas estimadas: ~-1
 
 ### Indexes
 - `invoice_status_pkey` [PRIMARY]: `CREATE UNIQUE INDEX invoice_status_pkey ON public.invoice_status USING btree (f_invoicestat)`
+
+---
+
+## order_ejecutores
+Filas estimadas: ~-1
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('order_ejecutores_id_seq'::re... | PK |  |  |
+| 2 | `f_order` | `integer` | NOT NULL |  |  | -> t_order.f_order |  |
+| 3 | `payroll_id` | `integer` | NOT NULL |  |  | -> t_payroll.f_payroll |  |
+| 4 | `assigned_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+| 5 | `assigned_by` | `integer` | NULL |  |  | -> users.id |  |
+
+### Primary Key
+- `order_ejecutores_pkey` (id)
+
+### Foreign Keys
+- `order_ejecutores_assigned_by_fkey`: `assigned_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `order_ejecutores_f_order_fkey`: `f_order` -> `t_order.f_order` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+- `order_ejecutores_payroll_id_fkey`: `payroll_id` -> `t_payroll.f_payroll` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+
+### Unique Constraints
+- `order_ejecutores_f_order_payroll_id_key` (f_order, payroll_id)
+
+### Indexes
+- `idx_order_ejecutores_order`: `CREATE INDEX idx_order_ejecutores_order ON public.order_ejecutores USING btree (f_order)`
+- `idx_order_ejecutores_payroll`: `CREATE INDEX idx_order_ejecutores_payroll ON public.order_ejecutores USING btree (payroll_id)`
+- `order_ejecutores_f_order_payroll_id_key` [UNIQUE]: `CREATE UNIQUE INDEX order_ejecutores_f_order_payroll_id_key ON public.order_ejecutores USING btree (f_order, payroll_id)`
+- `order_ejecutores_pkey` [PRIMARY]: `CREATE UNIQUE INDEX order_ejecutores_pkey ON public.order_ejecutores USING btree (id)`
+
+---
+
+## order_files
+Filas estimadas: ~1
+
+### Columnas
+
+| # | Columna | Tipo | Nullable | Default | PK | FK | Comentario |
+|---|---------|------|----------|---------|----|----|------------|
+| 1 | `id` | `integer` | NOT NULL | nextval('order_files_id_seq'::regclass) | PK |  |  |
+| 2 | `f_order` | `integer` | NOT NULL |  |  | -> t_order.f_order |  |
+| 3 | `file_name` | `varchar(255)` | NOT NULL |  |  |  |  |
+| 4 | `storage_path` | `text` | NOT NULL |  |  |  |  |
+| 5 | `file_size` | `bigint` | NULL |  |  |  |  |
+| 6 | `content_type` | `varchar(100)` | NULL |  |  |  |  |
+| 7 | `uploaded_by` | `integer` | NULL |  |  | -> users.id |  |
+| 8 | `vendor_id` | `integer` | NULL |  |  | -> t_vendor.f_vendor |  |
+| 9 | `commission_id` | `integer` | NULL |  |  | -> t_vendor_commission_payment.id |  |
+| 10 | `created_at` | `timestamp` | NULL | CURRENT_TIMESTAMP |  |  |  |
+
+### Primary Key
+- `order_files_pkey` (id)
+
+### Foreign Keys
+- `order_files_commission_id_fkey`: `commission_id` -> `t_vendor_commission_payment.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `order_files_f_order_fkey`: `f_order` -> `t_order.f_order` (ON UPDATE NO ACTION, ON DELETE CASCADE)
+- `order_files_uploaded_by_fkey`: `uploaded_by` -> `users.id` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+- `order_files_vendor_id_fkey`: `vendor_id` -> `t_vendor.f_vendor` (ON UPDATE NO ACTION, ON DELETE NO ACTION)
+
+### Indexes
+- `idx_order_files_commission`: `CREATE INDEX idx_order_files_commission ON public.order_files USING btree (commission_id)`
+- `idx_order_files_order`: `CREATE INDEX idx_order_files_order ON public.order_files USING btree (f_order)`
+- `idx_order_files_vendor`: `CREATE INDEX idx_order_files_vendor ON public.order_files USING btree (vendor_id)`
+- `order_files_pkey` [PRIMARY]: `CREATE UNIQUE INDEX order_files_pkey ON public.order_files USING btree (id)`
 
 ---
 
@@ -219,7 +575,7 @@ Filas estimadas: ~12
 
 ## order_history
 > Histórico de cambios en las órdenes de compra
-Filas estimadas: ~1,219
+Filas estimadas: ~1,358
 
 ### Columnas
 
@@ -274,7 +630,7 @@ Filas estimadas: ~-1
 
 ## t_attendance
 > Registro diario de asistencia del personal
-Filas estimadas: ~294
+Filas estimadas: ~539
 
 ### Columnas
 
@@ -318,7 +674,7 @@ Filas estimadas: ~294
 
 ## t_attendance_audit
 > Historial de cambios en registros de asistencia
-Filas estimadas: ~338
+Filas estimadas: ~619
 
 ### Columnas
 
@@ -432,7 +788,7 @@ Filas estimadas: ~33
 ---
 
 ## t_commission_rate_history
-Filas estimadas: ~-1
+Filas estimadas: ~9
 
 ### Columnas
 
@@ -505,7 +861,7 @@ Filas estimadas: ~68
 ---
 
 ## t_expense
-Filas estimadas: ~320
+Filas estimadas: ~398
 
 ### Columnas
 
@@ -547,7 +903,7 @@ Filas estimadas: ~320
 ---
 
 ## t_expense_audit
-Filas estimadas: ~32
+Filas estimadas: ~283
 
 ### Columnas
 
@@ -697,7 +1053,7 @@ Filas estimadas: ~-1
 
 ## t_invoice
 > Facturas - migrada de Access T_INVOICE
-Filas estimadas: ~415
+Filas estimadas: ~434
 
 ### Columnas
 
@@ -740,7 +1096,7 @@ Filas estimadas: ~415
 
 ## t_order
 > Órdenes de compra - migrada de Access T_ORDER
-Filas estimadas: ~351
+Filas estimadas: ~369
 
 ### Columnas
 
@@ -1155,7 +1511,7 @@ Filas estimadas: ~-1
 ---
 
 ## t_vendor_commission_payment
-Filas estimadas: ~13
+Filas estimadas: ~21
 
 ### Columnas
 

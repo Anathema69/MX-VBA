@@ -1,17 +1,27 @@
 # Row Level Security (RLS) - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:32:06
+Generado: 2026-04-20 23:21:33
 
 ## Estado de RLS por Tabla
 
-RLS Habilitado: 0 tablas | RLS Deshabilitado: 34 tablas
-Total policies: 0
+RLS Habilitado: 1 tablas | RLS Deshabilitado: 43 tablas
+Total policies: 3
 
 | Tabla | RLS | Forced | # Policies |
 |-------|-----|--------|------------|
 | `app_versions` | OFF | NO | 0 |
 | `audit_log` | OFF | NO | 0 |
+| `drive_activity` | OFF | NO | 0 |
+| `drive_audit` | OFF | NO | 0 |
+| `drive_files` | OFF | NO | 0 |
+| `drive_folders` | OFF | NO | 0 |
+| `inventory_audit` | OFF | NO | 0 |
+| `inventory_categories` | OFF | NO | 0 |
+| `inventory_movements` | OFF | NO | 0 |
+| `inventory_products` | OFF | NO | 0 |
 | `invoice_audit` | OFF | NO | 0 |
 | `invoice_status` | OFF | NO | 0 |
+| `order_ejecutores` | ON | NO | 3 |
+| `order_files` | OFF | NO | 0 |
 | `order_gastos_indirectos` | OFF | NO | 0 |
 | `order_gastos_operativos` | OFF | NO | 0 |
 | `order_history` | OFF | NO | 0 |
@@ -43,9 +53,29 @@ Total policies: 0
 | `t_workday_config` | OFF | NO | 0 |
 | `users` | OFF | NO | 0 |
 
-## Policies
+## Detalle de Policies
 
-No hay policies RLS definidas en el esquema public.
+### order_ejecutores
+
+#### `order_ejecutores_delete`
+- **Comando**: DELETE
+- **Tipo**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: `true`
+
+#### `order_ejecutores_insert`
+- **Comando**: INSERT
+- **Tipo**: PERMISSIVE
+- **Roles**: PUBLIC
+- **WITH CHECK**: `true`
+
+#### `order_ejecutores_select`
+- **Comando**: SELECT
+- **Tipo**: PERMISSIVE
+- **Roles**: PUBLIC
+- **USING**: `true`
+
+---
 
 ## Análisis de Seguridad
 

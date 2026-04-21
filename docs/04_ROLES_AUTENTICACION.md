@@ -1,415 +1,198 @@
-# Sistema de Roles y Autenticacion
+# Roles y Autenticacion
 
-## Vision General
+**Version:** 2.3.3 (abril 2026)
 
-El sistema implementa un esquema de **Control de Acceso Basado en Roles (RBAC)** con tres roles principales y permisos diferenciados por modulo.
+El sistema implementa RBAC con **5 roles** y permisos diferenciados por modulo. Auth local via BCrypt contra `users.password_hash`. Timeout por inactividad de 30 minutos con banner de advertencia a los 25.
 
-```mermaid
-graph TD
-    subgraph "Roles del Sistema"
-        ADMIN[Admin<br/>Acceso Total]
-        COORD[Coordinator<br/>Acceso Ordenes]
-        SALES[Salesperson<br/>Solo Comisiones]
-    end
+## 5 roles del sistema
 
-    subgraph "Modulos"
-        MM[Menu Principal]
-        OM[Ordenes]
-        CM[Clientes]
-        IM[Facturas]
-        EM[Gastos]
-        PM[Nomina]
-        BM[Balance]
-        VM[Comisiones]
-        VD[Dashboard Vendedor]
-    end
-
-    ADMIN --> MM
-    ADMIN --> OM
-    ADMIN --> CM
-    ADMIN --> IM
-    ADMIN --> EM
-    ADMIN --> PM
-    ADMIN --> BM
-    ADMIN --> VM
-
-    COORD --> OM
-
-    SALES --> VD
+Constraint en BD:
+```sql
+CHECK (role IN ('direccion', 'administracion', 'proyectos', 'coordinacion', 'ventas'))
 ```
 
-## Definicion de Roles
+| Codigo | Nombre mostrado | Pantalla inicial |
+|---|---|---|
+| `direccion` | Direccion | `MainMenuWindow` |
+| `administracion` | Administracion | `MainMenuWindow` |
+| `proyectos` | Proyectos | `OrdersManagementWindow` (directo) |
+| `coordinacion` | Coordinacion | `OrdersManagementWindow` (directo) |
+| `ventas` | Ventas | `VendorDashboard_V2` |
 
-### 1. Administrador (`admin`)
+**Nota legacy**: el codigo conserva un mapeo de los roles antiguos (`admin`, `coordinator`, `salesperson`) en `GetRoleDisplayName` para compatibilidad en mensajes, pero las filas en `users.role` ya no usan esos valores.
 
-**Descripcion:** Acceso completo a todas las funcionalidades del sistema.
+## Matriz de permisos
 
-| Modulo | Permisos |
-|--------|----------|
-| Menu Principal | Acceso total |
-| Ordenes | CRUD completo + estados financieros |
-| Clientes | CRUD completo |
-| Contactos | CRUD completo |
-| Facturas | CRUD completo |
-| Gastos | CRUD completo |
-| Proveedores | CRUD completo |
-| Nomina | Ver y editar |
-| Balance | Ver y calcular |
-| Comisiones | Gestionar y pagar |
-| Ingresos Pendientes | Ver detalle |
+| Modulo | Direccion | Administracion | Coordinacion | Proyectos | Ventas |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Menu Principal | Si | Si | No* | No* | No* |
+| Ordenes (ver) | Si | Si | Si (filtrado) | Si (filtrado) | No |
+| Ordenes: crear | Si | Si | No | No | No |
+| Ordenes: editar | Si | Si | Si | Si | No |
+| Ordenes: cancelar / eliminar | Si | Si | No | No | No |
+| Ver subtotales / totales / facturado | Si | Si | No | No | No |
+| Ver gastos (material/operativo/indirecto) | Si | No | No | No | No |
+| Balance anual | Si | Si | No | No | No |
+| Portal Proveedores | Si | Si | No | No | No |
+| Ingresos Pendientes | Si | Si | No | No | No |
+| Nomina y Gastos Fijos | Si | Si | No | No | No |
+| Gestion de Clientes | Si | Si | No | No | No |
+| Gestion de Vendedores / Comisiones | Si | Si | No | No | No |
+| Gestion de Usuarios | Si | No | No | No | No |
+| IMA Drive | Si | Si | Si | Si | Si |
+| Inventario | Si | Si | Si | Si | Si |
+| Calendario de Personal | Si | Si | No | No | No |
+| Portal Ventas (subir factura, ver sus comisiones) | Si | No | No | No | Si |
 
-**Pantalla inicial:** `MainMenuWindow`
+_*Proyectos/Coordinacion/Ventas no llegan al menu principal: se les abre directamente su pantalla._
 
-### 2. Coordinador (`coordinator`)
+Implementado por switches sobre `_currentUser.Role` en las ventanas (`MainMenuWindow.xaml.cs`, `OrdersManagementWindow.xaml.cs`, etc).
 
-**Descripcion:** Acceso limitado a la gestion de ordenes sin informacion financiera.
+## Diferencia Direccion vs Administracion
 
-| Modulo | Permisos |
-|--------|----------|
-| Ordenes | Ver y editar (sin campos financieros) |
-| Clientes | Solo lectura |
-| Crear Ordenes | NO permitido |
-| Ver Subtotales | NO permitido |
-| Ver Totales | NO permitido |
-| Ver Facturado | NO permitido |
+Ambos ven casi todo, pero solo **Direccion** accede a:
+- Columnas de **gasto material / operativo / indirecto** de las ordenes (chequeado en `OrdersManagementWindow`).
+- **Gestion de Usuarios** (crear/desactivar usuarios).
 
-**Pantalla inicial:** `OrdersManagementWindow` (directo, sin menu)
+`AdminVisibilityConverter` es el converter usado en XAML para mostrar elementos solo cuando `Role in ('direccion', 'administracion')`. Para Direccion-unicamente, se usa comparacion directa en code-behind.
 
-**Filtro de estados:** Solo ve ordenes con estados 0 (CREADA), 1 (EN PROCESO), 2 (LIBERADA)
+## Filtro de estados por rol en Ordenes
 
-### 3. Vendedor (`salesperson`)
+- `direccion` / `administracion`: ven todos los estados (0-5).
+- `coordinacion` / `proyectos`: solo estados 0 (CREADA), 1 (EN PROCESO), 2 (LIBERADA).
+- `ventas`: no accede al modulo.
 
-**Descripcion:** Acceso exclusivo a su dashboard de comisiones.
+```csharp
+private async Task LoadOrders(bool forceReload = false) {
+    List<int> statusFilter = null;
+    if (_currentUser.Role == "coordinacion" || _currentUser.Role == "proyectos") {
+        statusFilter = new List<int> { 0, 1, 2 };
+    }
+    // direccion / administracion: null = sin filtro
+    var orders = await _supabaseService.GetOrders(limit: 100, filterStatuses: statusFilter);
+}
+```
 
-| Modulo | Permisos |
-|--------|----------|
-| Dashboard Vendedor | Ver sus comisiones |
-| Ordenes | NO permitido |
-| Cualquier otro modulo | NO permitido |
-
-**Pantalla inicial:** `VendorDashboard`
-
----
-
-## Flujo de Autenticacion
+## Flujo de autenticacion
 
 ```mermaid
 sequenceDiagram
     participant U as Usuario
     participant LW as LoginWindow
-    participant SS as SupabaseService
     participant US as UserService
     participant DB as Supabase
     participant BC as BCrypt
     participant APP as App
 
-    U->>LW: Ingresar usuario/contrasena
-    LW->>SS: AuthenticateUser(username, password)
-    SS->>US: AuthenticateUser(username, password)
+    U->>LW: username + password
+    LW->>US: AuthenticateUser(u, p)
     US->>DB: SELECT * FROM users WHERE username = ?
-    DB-->>US: UserDb
+    DB-->>US: UserDb (o null)
 
     alt Usuario encontrado
         US->>BC: Verify(password, passwordHash)
-        BC-->>US: true
-
-        alt Contrasena valida Y usuario activo
-            US->>DB: UPDATE last_login = NOW()
-            US-->>SS: (true, user, "Login exitoso")
-            SS-->>LW: (true, user, "Login exitoso")
-
+        alt Valido + activo
+            US->>DB: UPDATE users SET last_login = NOW()
+            US-->>LW: (true, user, "OK")
             LW->>LW: Crear UserSession
-
-            alt role == "admin"
-                LW->>APP: Mostrar MainMenuWindow
-            else role == "coordinator"
-                LW->>APP: Mostrar OrdersManagementWindow
-            else role == "salesperson"
-                LW->>APP: Mostrar VendorDashboard
+            alt role IN (direccion, administracion)
+                LW->>APP: MainMenuWindow
+            else role IN (coordinacion, proyectos)
+                LW->>APP: OrdersManagementWindow
+            else role = ventas
+                LW->>APP: VendorDashboard_V2
             end
-
-            LW->>APP: Iniciar SessionTimeoutService
-        else Contrasena invalida
-            US-->>LW: (false, null, "Contrasena incorrecta")
-        else Usuario inactivo
-            US-->>LW: (false, null, "Usuario desactivado")
+            LW->>APP: SessionTimeoutService.Start()
+            LW->>APP: UpdateService.CheckForUpdate() (bg)
+        else Inactivo o password invalido
+            US-->>LW: (false, null, msg)
         end
-    else Usuario no encontrado
+    else No encontrado
         US-->>LW: (false, null, "Usuario no encontrado")
     end
 ```
 
----
-
-## Modelo UserSession
-
-Despues de la autenticacion exitosa, se crea un objeto `UserSession` que se pasa a todas las ventanas:
+## UserSession
 
 ```csharp
-public class UserSession
-{
-    public int Id { get; set; }          // ID del usuario
-    public string Username { get; set; } // Nombre de usuario
-    public string FullName { get; set; } // Nombre completo
-    public string Role { get; set; }     // admin|coordinator|salesperson
-    public DateTime LoginTime { get; set; } // Hora de login
+public class UserSession {
+    public int Id { get; set; }
+    public string Username { get; set; }
+    public string FullName { get; set; }
+    public string Role { get; set; } // direccion|administracion|proyectos|coordinacion|ventas
+    public DateTime LoginTime { get; set; }
 }
 ```
 
----
+Se pasa por constructor a todas las ventanas que requieren conocer al usuario.
 
-## Implementacion de Permisos en UI
+## Seguridad de contrasenas
 
-### En MainMenuWindow.xaml.cs
-
-```csharp
-private void ConfigurePermissions()
-{
-    switch (_currentUser.Role)
-    {
-        case "admin":
-            // Admin tiene acceso a todo
-            OrdersModuleButton.IsEnabled = true;
-            VendorPortalButton.IsEnabled = true;
-            break;
-    }
-}
-
-// Verificacion al abrir modulos
-private void OpenExpensePortal_Click(object sender, RoutedEventArgs e)
-{
-    if (_currentUser.Role != "admin")
-    {
-        MessageBox.Show(
-            "No tiene permisos para acceder al Portal de Proveedores.",
-            "Acceso Denegado",
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning);
-        return;
-    }
-    // Abrir ventana...
-}
-```
-
-### En OrdersManagementWindow.xaml.cs
+BCrypt (`BCrypt.Net-Next` 4.0.3).
 
 ```csharp
-private void ConfigurePermissions()
-{
-    switch (_currentUser.Role)
-    {
-        case "admin":
-            NewOrderButton.IsEnabled = true;
-            SubtotalColumn.Visibility = Visibility.Visible;
-            TotalColumn.Visibility = Visibility.Visible;
-            InvoicedColumn.Visibility = Visibility.Visible;
-            break;
+// Al crear:
+user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword);
 
-        case "coordinator":
-            // Coordinador NO puede crear nuevas ordenes
-            NewOrderButton.IsEnabled = false;
-            NewOrderButton.Visibility = Visibility.Collapsed;
+// Al login:
+bool ok = BCrypt.Net.BCrypt.Verify(password, user.PasswordHash);
 
-            // NO puede ver campos financieros
-            SubtotalColumn.Visibility = Visibility.Collapsed;
-            TotalColumn.Visibility = Visibility.Collapsed;
-            InvoicedColumn.Visibility = Visibility.Collapsed;
-            break;
-
-        case "salesperson":
-            // Los vendedores no deberian poder acceder aqui
-            MessageBox.Show("No tiene permisos para acceder a este modulo.");
-            this.Close();
-            break;
-    }
-}
+// Cambio:
+user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
 ```
 
-### Filtro de Estados por Rol
+No hay politica server-side de complejidad ni rotacion forzada — se maneja por convenio con el cliente.
 
-```csharp
-private async Task LoadOrders(bool forceReload = false)
-{
-    List<int> statusFilter = null;
+## Session timeout
 
-    if (_currentUser.Role == "coordinator")
-    {
-        // Coordinador solo ve estados 0, 1 y 2
-        statusFilter = new List<int> { 0, 1, 2 };
-    }
-    else if (_currentUser.Role == "admin")
-    {
-        // Admin ve todo
-        statusFilter = null;
-    }
-
-    var orders = await _supabaseService.GetOrders(
-        limit: 100,
-        filterStatuses: statusFilter
-    );
-}
-```
-
----
-
-## Value Converters para XAML
-
-### RoleToVisibilityConverter
-
-Muestra/oculta elementos segun el rol:
-
-```csharp
-public class RoleToVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is string role && parameter is string requiredRole)
-        {
-            return role == requiredRole ? Visibility.Visible : Visibility.Collapsed;
-        }
-        return Visibility.Collapsed;
-    }
-}
-```
-
-**Uso en XAML:**
-```xml
-<Button Content="Admin Only"
-        Visibility="{Binding CurrentUser.Role,
-                     Converter={StaticResource RoleToVisibilityConverter},
-                     ConverterParameter=admin}"/>
-```
-
-### IsAdminToVisibilityConverter
-
-Shortcut para elementos solo de admin:
-
-```csharp
-public class IsAdminToVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is string role)
-        {
-            return role == "admin" ? Visibility.Visible : Visibility.Collapsed;
-        }
-        return Visibility.Collapsed;
-    }
-}
-```
-
----
-
-## Seguridad de Contrasenas
-
-El sistema utiliza **BCrypt** para el hashing de contrasenas:
-
-### Hash al crear usuario:
-```csharp
-public async Task<UserDb> CreateUser(UserDb user, string plainPassword)
-{
-    // Hash de la contrasena con BCrypt
-    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(plainPassword);
-    user.IsActive = true;
-    // Insert...
-}
-```
-
-### Verificacion al login:
-```csharp
-bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, response.PasswordHash);
-```
-
-### Cambio de contrasena:
-```csharp
-public async Task<bool> ChangePassword(int userId, string newPassword)
-{
-    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(newPassword);
-    // Update...
-}
-```
-
----
-
-## Timeout de Sesion
-
-El sistema implementa cierre automatico por inactividad:
-
-```mermaid
-sequenceDiagram
-    participant Usuario
-    participant App
-    participant STS as SessionTimeoutService
-
-    Note over STS: Timer cada 1 segundo
-
-    loop Mientras sesion activa
-        alt Actividad detectada (mouse/teclado)
-            Usuario->>App: Interaccion
-            App->>STS: ResetTimer()
-        else Sin actividad por 13 minutos
-            STS->>App: OnWarning
-            App->>App: Mostrar banner advertencia
-        else Sin actividad por 15 minutos
-            STS->>App: OnTimeout
-            App->>App: ForceLogout()
-            App->>Usuario: Mostrar LoginWindow
-        end
-    end
-```
-
-### Configuracion en appsettings.json:
+Configuracion (`appsettings.json`):
 ```json
-{
-  "SessionTimeout": {
-    "Enabled": true,
-    "InactivityMinutes": 15,
-    "WarningBeforeMinutes": 2
-  }
-}
+"SessionTimeout": { "InactivityMinutes": 30, "WarningBeforeMinutes": 5, "Enabled": true }
 ```
 
----
+Flujo:
+1. `SessionTimeoutService` corre un timer de 1 segundo.
+2. Cualquier input (mouse/teclado) llama `ResetTimer()`.
+3. A los 25 minutos sin actividad emite `OnWarning` — la UI muestra `SessionTimeoutWarningWindow` ("Sesion cerrara en 5 min").
+4. A los 30 minutos emite `OnTimeout` — la app llama `ForceLogout()` y muestra `LoginWindow` con mensaje.
 
-## Matriz de Permisos Completa
+El usuario puede extender la sesion desde el banner o simplemente mover el mouse.
 
-| Funcionalidad | Admin | Coordinator | Salesperson |
-|---------------|:-----:|:-----------:|:-----------:|
-| Ver Menu Principal | Si | No | No |
-| Ver Ordenes | Si | Si (filtrado) | No |
-| Crear Ordenes | Si | No | No |
-| Editar Ordenes | Si | Si | No |
-| Cancelar Ordenes | Si | No | No |
-| Ver Subtotales | Si | No | No |
-| Ver Totales | Si | No | No |
-| Ver Facturado | Si | No | No |
-| Gestionar Facturas | Si | No | No |
-| Gestionar Clientes | Si | No | No |
-| Gestionar Contactos | Si | No | No |
-| Gestionar Gastos | Si | No | No |
-| Gestionar Proveedores | Si | No | No |
-| Gestionar Nomina | Si | No | No |
-| Ver Balance | Si | No | No |
-| Gestionar Comisiones | Si | No | No |
-| Ver sus Comisiones | Si | No | Si |
-| Ingresos Pendientes | Si | No | No |
+## Logging de seguridad
 
----
-
-## Logging de Seguridad
-
-Todas las acciones de autenticacion se registran:
-
+Via `JsonLoggerService`:
 ```csharp
 // Login exitoso
 logger.LogLogin(username, true, user.Id.ToString(), user.Role);
-
 // Login fallido
 logger.LogLogin(username, false, null, null);
-
-// Rol desconocido
+// Rol inesperado (defensa)
 logger.LogWarning("AUTH", "LOGIN_UNKNOWN_ROLE", new { username, role = user.Role });
-
 // Logout forzado
-_logger.LogWarning("SESSION", "FORCED_LOGOUT", new { reason, timestamp = DateTime.Now });
+logger.LogWarning("SESSION", "FORCED_LOGOUT", new { reason, timestamp = DateTime.Now });
 ```
+
+Logs en `%LOCALAPPDATA%/SistemaGestionProyectos/logs/sessions/session_*/`.
+
+## Value converters (XAML)
+
+### RoleToVisibilityConverter
+```xml
+<Button Visibility="{Binding CurrentUser.Role,
+                     Converter={StaticResource RoleToVisibilityConverter},
+                     ConverterParameter=direccion}"/>
+```
+
+### AdminVisibilityConverter
+Shortcut: devuelve `Visible` si `role IN ('direccion','administracion')`, `Collapsed` si no.
+
+```xml
+<Button Visibility="{Binding CurrentUser.Role,
+                     Converter={StaticResource AdminVisibilityConverter}}"/>
+```
+
+## Nota sobre RLS y seguridad de BD
+
+El AnonKey de Supabase va dentro del .exe distribuido al cliente. Solo **1 de 44 tablas** (`order_ejecutores`) tiene RLS habilitado, y sus 3 policies son permisivas a PUBLIC (`USING true`). En la practica, cualquier usuario legitimo con la app puede enviar queries REST arbitrarias a cualquier tabla via postgrest.
+
+La autorizacion por rol descrita arriba vive **solo en la UI** — no hay enforcement a nivel BD. Para modelos de amenaza que incluyan al propio usuario como adversario se requiere RLS real. Ver [../db-docs/output/06_rls_policies.md](../db-docs/output/06_rls_policies.md) para el estado actual y tablas sensibles identificadas.

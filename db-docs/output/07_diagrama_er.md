@@ -1,5 +1,5 @@
 # Diagrama Entidad-Relación - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:32:21
+Generado: 2026-04-20 23:21:35
 
 ## Diagrama Completo
 
@@ -32,6 +32,103 @@ erDiagram
         text user_agent
         timestamp created_at
     }
+    drive_activity {
+        int4 id PK
+        int4 user_id FK
+        varchar action
+        varchar target_type
+        int4 target_id
+        varchar target_name
+        int4 folder_id FK
+        jsonb metadata
+        timestamp created_at
+    }
+    drive_audit {
+        int4 id PK
+        varchar action
+        varchar target_type
+        int4 target_id
+        varchar target_name
+        int4 folder_id
+        text old_value
+        text new_value
+        int4 user_id FK
+        timestamp created_at
+    }
+    drive_files {
+        int4 id PK
+        int4 folder_id FK
+        varchar file_name
+        text storage_path
+        int8 file_size
+        varchar content_type
+        int4 uploaded_by FK
+        timestamp uploaded_at
+    }
+    drive_folders {
+        int4 id PK
+        int4 parent_id FK
+        varchar name
+        int4 linked_order_id FK
+        int4 created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    inventory_audit {
+        int4 id PK
+        varchar table_name
+        int4 record_id
+        varchar action
+        jsonb old_values
+        jsonb new_values
+        int4 user_id FK
+        timestamp created_at
+    }
+    inventory_categories {
+        int4 id PK
+        varchar name
+        text description
+        varchar color
+        varchar icon
+        int4 display_order
+        bool is_active
+        int4 created_by FK
+        int4 updated_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    inventory_movements {
+        int4 id PK
+        int4 product_id FK
+        varchar movement_type
+        numeric quantity
+        numeric previous_stock
+        numeric new_stock
+        varchar reference_type
+        int4 reference_id
+        text notes
+        int4 created_by FK
+        timestamp created_at
+    }
+    inventory_products {
+        int4 id PK
+        int4 category_id FK
+        varchar code
+        varchar name
+        text description
+        numeric stock_current
+        numeric stock_minimum
+        varchar unit
+        numeric unit_price
+        varchar location
+        int4 supplier_id FK
+        text notes
+        bool is_active
+        int4 created_by FK
+        int4 updated_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
     invoice_audit {
         int4 id PK
         int4 invoice_id
@@ -46,6 +143,25 @@ erDiagram
         varchar f_name
         bool is_active
         int4 display_order
+        timestamp created_at
+    }
+    order_ejecutores {
+        int4 id PK
+        int4 f_order FK
+        int4 payroll_id FK
+        timestamp assigned_at
+        int4 assigned_by FK
+    }
+    order_files {
+        int4 id PK
+        int4 f_order FK
+        varchar file_name
+        text storage_path
+        int8 file_size
+        varchar content_type
+        int4 uploaded_by FK
+        int4 vendor_id FK
+        int4 commission_id FK
         timestamp created_at
     }
     order_gastos_indirectos {
@@ -524,18 +640,42 @@ erDiagram
     }
 
     users }o--|| audit_log : "user"
+    drive_folders }o--|| drive_activity : "folder"
+    users }o--|| drive_activity : "user"
+    users }o--|| drive_audit : "user"
+    users }o--|| drive_files : "uploaded_by"
+    drive_folders }|--|| drive_files : "folder"
+    t_order }o--|| drive_folders : "linked_order"
+    drive_folders }o--|| drive_folders : "parent"
+    users }o--|| drive_folders : "created_by"
+    users }o--|| inventory_audit : "user"
+    users }o--|| inventory_categories : "created_by"
+    users }o--|| inventory_categories : "updated_by"
+    inventory_products }|--|| inventory_movements : "product"
+    users }o--|| inventory_movements : "created_by"
+    users }o--|| inventory_products : "updated_by"
+    users }o--|| inventory_products : "created_by"
+    t_supplier }o--|| inventory_products : "supplier"
+    inventory_categories }|--|| inventory_products : "category"
     users }o--|| invoice_audit : "user"
+    users }o--|| order_ejecutores : "assigned_by"
+    t_order }|--|| order_ejecutores : "order"
+    t_payroll }|--|| order_ejecutores : "payroll"
+    t_vendor }o--|| order_files : "vendor"
+    users }o--|| order_files : "uploaded_by"
+    t_order }|--|| order_files : "order"
+    t_vendor_commission_payment }o--|| order_files : "commission"
     t_order }|--|| order_gastos_indirectos : "order"
     t_order }|--|| order_gastos_operativos : "order"
-    t_order }|--|| order_history : "order"
     users }|--|| order_history : "user"
+    t_order }|--|| order_history : "order"
     t_payroll }|--|| t_attendance : "employee"
     users }o--|| t_balance_adjustments : "created_by"
     users }o--|| t_client : "updated_by"
     users }o--|| t_client : "created_by"
-    t_vendor }|--|| t_commission_rate_history : "vendor"
     t_vendor_commission_payment }o--|| t_commission_rate_history : "commission_payment"
     t_order }|--|| t_commission_rate_history : "order"
+    t_vendor }|--|| t_commission_rate_history : "vendor"
     t_client }o--|| t_contact : "client"
     users }o--|| t_expense : "created_by"
     t_order }o--|| t_expense : "order"
@@ -543,30 +683,30 @@ erDiagram
     users }o--|| t_fixed_expenses : "created_by"
     users }o--|| t_fixed_expenses_history : "created_by"
     t_fixed_expenses }o--|| t_fixed_expenses_history : "expense"
-    users }o--|| t_invoice : "created_by"
     t_order }o--|| t_invoice : "order"
+    users }o--|| t_invoice : "created_by"
     invoice_status }o--|| t_invoice : "invoicestat"
     order_status }o--|| t_order : "orderstat"
-    users }o--|| t_order : "created_by"
     t_client }o--|| t_order : "client"
+    t_contact }o--|| t_order : "contact"
+    users }o--|| t_order : "created_by"
     t_vendor }o--|| t_order : "salesman"
     users }o--|| t_order : "updated_by"
-    t_contact }o--|| t_order : "contact"
-    users }o--|| t_overtime_hours : "created_by"
     users }o--|| t_overtime_hours : "updated_by"
+    users }o--|| t_overtime_hours : "created_by"
     users }o--|| t_overtime_hours_audit : "changed_by"
-    users }o--|| t_payroll : "updated_by"
     users }o--|| t_payroll : "created_by"
-    users }o--|| t_payroll_history : "created_by"
+    users }o--|| t_payroll : "updated_by"
     t_payroll }o--|| t_payroll_history : "payroll"
+    users }o--|| t_payroll_history : "created_by"
     t_payroll }o--|| t_payrollovertime : "employee"
     users }o--|| t_payrollovertime : "created_by"
     t_payroll }|--|| t_vacation : "employee"
     users }o--|| t_vendor : "user"
-    t_vendor }|--|| t_vendor_commission_payment : "vendor"
+    t_order }|--|| t_vendor_commission_payment : "order"
     users }o--|| t_vendor_commission_payment : "created_by"
     users }o--|| t_vendor_commission_payment : "updated_by"
-    t_order }|--|| t_vendor_commission_payment : "order"
+    t_vendor }|--|| t_vendor_commission_payment : "vendor"
 ```
 
 ## Diagrama Simplificado (Tablas Core)
@@ -787,30 +927,30 @@ erDiagram
 
     t_order }|--|| order_gastos_indirectos : "order"
     t_order }|--|| order_gastos_operativos : "order"
-    t_order }|--|| order_history : "order"
     users }|--|| order_history : "user"
+    t_order }|--|| order_history : "order"
     users }o--|| t_client : "updated_by"
     users }o--|| t_client : "created_by"
     t_client }o--|| t_contact : "client"
     users }o--|| t_expense : "created_by"
     t_order }o--|| t_expense : "order"
     t_supplier }o--|| t_expense : "supplier"
-    users }o--|| t_invoice : "created_by"
     t_order }o--|| t_invoice : "order"
+    users }o--|| t_invoice : "created_by"
     invoice_status }o--|| t_invoice : "invoicestat"
     order_status }o--|| t_order : "orderstat"
-    users }o--|| t_order : "created_by"
     t_client }o--|| t_order : "client"
+    t_contact }o--|| t_order : "contact"
+    users }o--|| t_order : "created_by"
     t_vendor }o--|| t_order : "salesman"
     users }o--|| t_order : "updated_by"
-    t_contact }o--|| t_order : "contact"
-    users }o--|| t_payroll : "updated_by"
     users }o--|| t_payroll : "created_by"
+    users }o--|| t_payroll : "updated_by"
     users }o--|| t_vendor : "user"
-    t_vendor }|--|| t_vendor_commission_payment : "vendor"
+    t_order }|--|| t_vendor_commission_payment : "order"
     users }o--|| t_vendor_commission_payment : "created_by"
     users }o--|| t_vendor_commission_payment : "updated_by"
-    t_order }|--|| t_vendor_commission_payment : "order"
+    t_vendor }|--|| t_vendor_commission_payment : "vendor"
 ```
 
 ## Diagrama por Módulos Funcionales

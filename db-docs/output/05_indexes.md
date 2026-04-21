@@ -1,17 +1,17 @@
 # Documentación de Indexes - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:31:45
-Total indexes: 109 | Tamaño total: 1.8 MB
+Generado: 2026-04-20 23:21:31
+Total indexes: 147 | Tamaño total: 4.9 MB
 
 ## Resumen
 
 | Tipo | Cantidad |
 |------|----------|
-| PRIMARY KEY | 34 |
-| UNIQUE | 10 |
-| Regular | 65 |
-| **Total** | **109** |
+| PRIMARY KEY | 44 |
+| UNIQUE | 14 |
+| Regular | 89 |
+| **Total** | **147** |
 
-Método dominante: btree (109/109)
+Método dominante: btree (147/147)
 
 ## Indexes por Tabla
 
@@ -19,18 +19,88 @@ Método dominante: btree (109/109)
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `app_versions_pkey` | PK | id | btree | 16 kB | 79 | OK |
-| `app_versions_version_key` | UNIQUE | version | btree | 16 kB | 19 | OK |
-| `idx_app_versions_latest` | INDEX | is_latest, is_active | btree | 16 kB | 495 | OK |
+| `app_versions_pkey` | PK | id | btree | 16 kB | 205 | OK |
+| `app_versions_version_key` | UNIQUE | version | btree | 16 kB | 29 | OK |
+| `idx_app_versions_latest` | INDEX | is_latest, is_active | btree | 16 kB | 1,040 | OK |
 | `idx_app_versions_release_date` | INDEX | release_date | btree | 16 kB | 2 | OK |
 
 ### audit_log
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `audit_log_pkey` | PK | id | btree | 8192 bytes | 0 | OK |
+| `audit_log_pkey` | PK | id | btree | 8192 bytes | 1 | OK |
 | `idx_audit_table` | INDEX | table_name | btree | 8192 bytes | 0 | OK |
 | `idx_audit_user` | INDEX | user_id | btree | 8192 bytes | 41 | OK |
+
+### drive_activity
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `drive_activity_pkey` | PK | id | btree | 200 kB | 0 | OK |
+| `idx_drive_activity_folder` | INDEX | folder_id, created_at | btree | 352 kB | 1,568 | OK |
+| `idx_drive_activity_recent` | INDEX | created_at | btree | 224 kB | 1,390 | OK |
+| `idx_drive_activity_user` | INDEX | user_id, created_at | btree | 296 kB | 0 | OK |
+
+### drive_audit
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `drive_audit_pkey` | PK | id | btree | 368 kB | 0 | OK |
+| `idx_drive_audit_date` | INDEX | created_at | btree | 472 kB | 15 | OK |
+| `idx_drive_audit_user` | INDEX | user_id | btree | 176 kB | 0 | OK |
+
+### drive_files
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `drive_files_folder_id_file_name_key` | UNIQUE | folder_id, file_name | btree | 248 kB | 1 | OK |
+| `drive_files_pkey` | PK | id | btree | 112 kB | 2,877 | OK |
+| `idx_drive_files_folder` | INDEX | folder_id | btree | 64 kB | 6,200 | OK |
+
+### drive_folders
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `drive_folders_parent_id_name_key` | UNIQUE | parent_id, name | btree | 72 kB | 142 | OK |
+| `drive_folders_pkey` | PK | id | btree | 56 kB | 16,075 | OK |
+| `idx_drive_folders_order` | INDEX | linked_order_id | btree | 16 kB | 164 | OK |
+| `idx_drive_folders_parent` | INDEX | parent_id | btree | 40 kB | 28,535 | OK |
+
+### inventory_audit
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_inv_audit_date` | INDEX | created_at | btree | 16 kB | 0 | OK |
+| `idx_inv_audit_table` | INDEX | table_name, record_id | btree | 16 kB | 0 | OK |
+| `inventory_audit_pkey` | PK | id | btree | 16 kB | 0 | OK |
+
+### inventory_categories
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_inv_categories_active` | INDEX | is_active, display_order | btree | 16 kB | 0 | OK |
+| `inventory_categories_pkey` | PK | id | btree | 16 kB | 83 | OK |
+
+### inventory_movements
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_inv_movements_date` | INDEX | created_at | btree | 8192 bytes | 0 | OK |
+| `idx_inv_movements_product` | INDEX | product_id, created_at | btree | 8192 bytes | 9 | OK |
+| `idx_inv_movements_type` | INDEX | movement_type, created_at | btree | 8192 bytes | 0 | OK |
+| `inventory_movements_pkey` | PK | id | btree | 8192 bytes | 0 | OK |
+
+### inventory_products
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_inv_products_category` | INDEX | category_id | btree | 16 kB | 43 | OK |
+| `idx_inv_products_code` | INDEX | code | btree | 16 kB | 0 | OK |
+| `idx_inv_products_location` | INDEX | location | btree | 16 kB | 0 | OK |
+| `idx_inv_products_low_stock` | INDEX | category_id | btree | 16 kB | 2 | OK |
+| `idx_inv_products_supplier` | INDEX | supplier_id | btree | 8192 bytes | 0 | OK |
+| `inventory_products_code_key` | UNIQUE | code | btree | 16 kB | 0 | OK |
+| `inventory_products_pkey` | PK | id | btree | 16 kB | 6 | OK |
 
 ### invoice_audit
 
@@ -42,19 +112,37 @@ Método dominante: btree (109/109)
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `invoice_status_pkey` | PK | f_invoicestat | btree | 16 kB | 3,112 | OK |
+| `invoice_status_pkey` | PK | f_invoicestat | btree | 16 kB | 3,162 | OK |
 
 ### mv_balance_completo
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_mv_balance_pk` | UNIQUE | año, mes_numero | btree | 16 kB | 14 | OK |
+| `idx_mv_balance_pk` | UNIQUE | año, mes_numero | btree | 16 kB | 128 | OK |
+
+### order_ejecutores
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_order_ejecutores_order` | INDEX | f_order | btree | 16 kB | 335 | OK |
+| `idx_order_ejecutores_payroll` | INDEX | payroll_id | btree | 16 kB | 0 | OK |
+| `order_ejecutores_f_order_payroll_id_key` | UNIQUE | f_order, payroll_id | btree | 16 kB | 0 | OK |
+| `order_ejecutores_pkey` | PK | id | btree | 16 kB | 0 | OK |
+
+### order_files
+
+| Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
+|-------|------|----------|--------|--------|-------|-------|
+| `idx_order_files_commission` | INDEX | commission_id | btree | 16 kB | 41 | OK |
+| `idx_order_files_order` | INDEX | f_order | btree | 16 kB | 5 | OK |
+| `idx_order_files_vendor` | INDEX | vendor_id | btree | 16 kB | 0 | OK |
+| `order_files_pkey` | PK | id | btree | 16 kB | 14 | OK |
 
 ### order_gastos_indirectos
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_gastos_indirectos_order` | INDEX | f_order | btree | 16 kB | 224 | OK |
+| `idx_gastos_indirectos_order` | INDEX | f_order | btree | 16 kB | 277 | OK |
 | `order_gastos_indirectos_pkey` | PK | id | btree | 16 kB | 25 | OK |
 
 ### order_gastos_operativos
@@ -68,37 +156,37 @@ Método dominante: btree (109/109)
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_order_history_date` | INDEX | changed_at | btree | 48 kB | 3,176 | OK |
-| `idx_order_history_order` | INDEX | order_id | btree | 40 kB | 1,201 | OK |
-| `idx_order_history_user` | INDEX | user_id | btree | 16 kB | 33 | OK |
+| `idx_order_history_date` | INDEX | changed_at | btree | 48 kB | 3,354 | OK |
+| `idx_order_history_order` | INDEX | order_id | btree | 40 kB | 1,217 | OK |
+| `idx_order_history_user` | INDEX | user_id | btree | 32 kB | 33 | OK |
 | `order_history_pkey` | PK | id | btree | 48 kB | 9 | OK |
 
 ### order_status
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `order_status_pkey` | PK | f_orderstatus | btree | 16 kB | 4,145 | OK |
+| `order_status_pkey` | PK | f_orderstatus | btree | 16 kB | 4,265 | OK |
 
 ### t_attendance
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_attendance_date` | INDEX | attendance_date | btree | 16 kB | 285 | OK |
+| `idx_attendance_date` | INDEX | attendance_date | btree | 16 kB | 554 | OK |
 | `idx_attendance_employee` | INDEX | employee_id | btree | 16 kB | 2 | OK |
 | `idx_attendance_status` | INDEX | status | btree | 16 kB | 0 | OK |
-| `t_attendance_employee_id_attendance_date_key` | UNIQUE | employee_id, attendance_date | btree | 16 kB | 0 | OK |
-| `t_attendance_pkey` | PK | id | btree | 16 kB | 5 | OK |
+| `t_attendance_employee_id_attendance_date_key` | UNIQUE | employee_id, attendance_date | btree | 40 kB | 2 | OK |
+| `t_attendance_pkey` | PK | id | btree | 32 kB | 87 | OK |
 
 ### t_attendance_audit
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_audit_action` | INDEX | action | btree | 16 kB | 0 | OK |
-| `idx_audit_attendance_id` | INDEX | attendance_id | btree | 16 kB | 0 | OK |
-| `idx_audit_changed_at` | INDEX | changed_at | btree | 16 kB | 1 | OK |
-| `idx_audit_date` | INDEX | attendance_date | btree | 16 kB | 0 | OK |
-| `idx_audit_employee_id` | INDEX | employee_id | btree | 16 kB | 0 | OK |
-| `t_attendance_audit_pkey` | PK | id | btree | 16 kB | 6 | OK |
+| `idx_audit_action` | INDEX | action | btree | 16 kB | 1 | OK |
+| `idx_audit_attendance_id` | INDEX | attendance_id | btree | 32 kB | 0 | OK |
+| `idx_audit_changed_at` | INDEX | changed_at | btree | 32 kB | 3 | OK |
+| `idx_audit_date` | INDEX | attendance_date | btree | 16 kB | 2 | OK |
+| `idx_audit_employee_id` | INDEX | employee_id | btree | 16 kB | 1 | OK |
+| `t_attendance_audit_pkey` | PK | id | btree | 32 kB | 6 | OK |
 
 ### t_balance_adjustments
 
@@ -112,14 +200,14 @@ Método dominante: btree (109/109)
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_client_name` | INDEX | f_name | btree | 16 kB | 4 | OK |
-| `t_client_pkey` | PK | f_client | btree | 16 kB | 4,422 | OK |
+| `t_client_pkey` | PK | f_client | btree | 16 kB | 4,652 | OK |
 
 ### t_commission_rate_history
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_commission_history_date` | INDEX | changed_at | btree | 16 kB | 1 | OK |
-| `idx_commission_history_order` | INDEX | order_id | btree | 16 kB | 1 | OK |
+| `idx_commission_history_order` | INDEX | order_id | btree | 16 kB | 10 | OK |
 | `idx_commission_history_vendor` | INDEX | vendor_id | btree | 16 kB | 3 | OK |
 | `t_commission_rate_history_pkey` | PK | id | btree | 16 kB | 0 | OK |
 
@@ -128,21 +216,21 @@ Método dominante: btree (109/109)
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_contact_client` | INDEX | f_client | btree | 16 kB | 243 | OK |
-| `idx_contact_client_active` | INDEX | f_client | btree | 16 kB | 4 | OK |
+| `idx_contact_client_active` | INDEX | f_client | btree | 16 kB | 23 | OK |
 | `idx_contact_email` | INDEX | f_email | btree | 16 kB | 0 | OK |
-| `t_contact_pkey` | PK | f_contact | btree | 16 kB | 1,890 | OK |
+| `t_contact_pkey` | PK | f_contact | btree | 16 kB | 1,937 | OK |
 
 ### t_expense
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_expense_date` | INDEX | f_expensedate | btree | 16 kB | 210 | OK |
-| `idx_expense_order_date` | INDEX | f_order, f_expensedate | btree | 16 kB | 1,034 | OK |
+| `idx_expense_date` | INDEX | f_expensedate | btree | 16 kB | 577 | OK |
+| `idx_expense_order_date` | INDEX | f_order, f_expensedate | btree | 16 kB | 2,347 | OK |
 | `idx_expense_order_status` | INDEX | f_order, f_status | btree | 16 kB | 0 | OK |
-| `idx_expense_status_scheduled` | INDEX | f_status, f_scheduleddate | btree | 16 kB | 0 | OK |
-| `idx_expense_supplier` | INDEX | f_supplier | btree | 16 kB | 591 | OK |
+| `idx_expense_status_scheduled` | INDEX | f_status, f_scheduleddate | btree | 16 kB | 962 | OK |
+| `idx_expense_supplier` | INDEX | f_supplier | btree | 16 kB | 1,382 | OK |
 | `idx_expense_updated_by` | INDEX | updated_by | btree | 16 kB | 0 | OK |
-| `t_expense_pkey` | PK | f_expense | btree | 16 kB | 2,778 | OK |
+| `t_expense_pkey` | PK | f_expense | btree | 32 kB | 2,901 | OK |
 
 ### t_expense_audit
 
@@ -181,21 +269,21 @@ Método dominante: btree (109/109)
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_invoice_folio` | INDEX | f_folio | btree | 40 kB | 16 | OK |
-| `idx_invoice_order` | INDEX | f_order | btree | 16 kB | 12,229 | OK |
+| `idx_invoice_order` | INDEX | f_order | btree | 16 kB | 14,128 | OK |
 | `idx_invoice_order_folio` | UNIQUE | f_order, f_folio | btree | 40 kB | 44 | OK |
 | `idx_invoice_status` | INDEX | f_invoicestat | btree | 16 kB | 9 | OK |
-| `t_invoice_pkey` | PK | f_invoice | btree | 32 kB | 2,130 | OK |
+| `t_invoice_pkey` | PK | f_invoice | btree | 40 kB | 2,168 | OK |
 
 ### t_order
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_order_client` | INDEX | f_client | btree | 16 kB | 4,011 | OK |
-| `idx_order_po` | INDEX | f_po | btree | 40 kB | 114 | OK |
-| `idx_order_podate` | INDEX | f_podate | btree | 16 kB | 583 | OK |
-| `idx_order_status` | INDEX | f_orderstat | btree | 16 kB | 113 | OK |
-| `idx_order_status_podate` | INDEX | f_orderstat, f_podate | btree | 16 kB | 0 | OK |
-| `t_order_pkey` | PK | f_order | btree | 16 kB | 27,718 | OK |
+| `idx_order_client` | INDEX | f_client | btree | 16 kB | 4,281 | OK |
+| `idx_order_po` | INDEX | f_po | btree | 40 kB | 121 | OK |
+| `idx_order_podate` | INDEX | f_podate | btree | 16 kB | 1,665 | OK |
+| `idx_order_status` | INDEX | f_orderstat | btree | 16 kB | 134 | OK |
+| `idx_order_status_podate` | INDEX | f_orderstat, f_podate | btree | 32 kB | 0 | OK |
+| `t_order_pkey` | PK | f_order | btree | 16 kB | 29,710 | OK |
 
 ### t_order_deleted
 
@@ -226,7 +314,7 @@ Método dominante: btree (109/109)
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_payroll_active` | INDEX | is_active | btree | 16 kB | 0 | OK |
-| `t_payroll_pkey` | PK | f_payroll | btree | 16 kB | 736 | OK |
+| `t_payroll_pkey` | PK | f_payroll | btree | 16 kB | 798 | OK |
 
 ### t_payroll_history
 
@@ -234,7 +322,7 @@ Método dominante: btree (109/109)
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_payroll_history_active` | INDEX | f_payroll, is_active | btree | 16 kB | 9 | OK |
 | `idx_payroll_history_date` | INDEX | effective_date | btree | 16 kB | 1 | OK |
-| `idx_payroll_history_employee` | INDEX | f_payroll, effective_date | btree | 16 kB | 211,491 | OK |
+| `idx_payroll_history_employee` | INDEX | f_payroll, effective_date | btree | 16 kB | 225,979 | OK |
 | `t_payroll_history_pkey` | PK | id | btree | 16 kB | 0 | OK |
 
 ### t_payrollovertime
@@ -247,16 +335,16 @@ Método dominante: btree (109/109)
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `t_supplier_pkey` | PK | f_supplier | btree | 16 kB | 5,187 | OK |
+| `t_supplier_pkey` | PK | f_supplier | btree | 16 kB | 6,796 | OK |
 
 ### t_vacation
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_vacation_dates` | INDEX | start_date, end_date | btree | 16 kB | 0 | OK |
-| `idx_vacation_employee` | INDEX | employee_id | btree | 16 kB | 0 | OK |
-| `idx_vacation_status` | INDEX | status | btree | 16 kB | 317 | OK |
-| `t_vacation_pkey` | PK | id | btree | 16 kB | 0 | OK |
+| `idx_vacation_employee` | INDEX | employee_id | btree | 16 kB | 3 | OK |
+| `idx_vacation_status` | INDEX | status | btree | 16 kB | 491 | OK |
+| `t_vacation_pkey` | PK | id | btree | 16 kB | 2 | OK |
 
 ### t_vacation_audit
 
@@ -271,14 +359,14 @@ Método dominante: btree (109/109)
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_vendor_name` | INDEX | f_vendorname | btree | 16 kB | 0 | OK |
-| `idx_vendor_user` | INDEX | f_user_id | btree | 16 kB | 77 | OK |
-| `t_vendor_pkey` | PK | f_vendor | btree | 16 kB | 1,517 | OK |
+| `idx_vendor_user` | INDEX | f_user_id | btree | 16 kB | 148 | OK |
+| `t_vendor_pkey` | PK | f_vendor | btree | 16 kB | 1,745 | OK |
 
 ### t_vendor_commission_payment
 
 | Index | Tipo | Columnas | Método | Tamaño | Scans | Valid |
 |-------|------|----------|--------|--------|-------|-------|
-| `idx_commission_payment_order` | INDEX | f_order | btree | 16 kB | 286 | OK |
+| `idx_commission_payment_order` | INDEX | f_order | btree | 16 kB | 298 | OK |
 | `idx_commission_payment_status` | INDEX | payment_status | btree | 16 kB | 132 | OK |
 | `idx_commission_payment_vendor` | INDEX | f_vendor | btree | 16 kB | 140 | OK |
 | `t_vendor_commission_payment_pkey` | PK | id | btree | 16 kB | 65 | OK |
@@ -296,23 +384,23 @@ Método dominante: btree (109/109)
 |-------|------|----------|--------|--------|-------|-------|
 | `idx_users_active` | INDEX | is_active | btree | 16 kB | 0 | OK |
 | `users_email_key` | UNIQUE | email | btree | 16 kB | 0 | OK |
-| `users_pkey` | PK | id | btree | 16 kB | 36 | OK |
+| `users_pkey` | PK | id | btree | 16 kB | 123 | OK |
 | `users_username_key` | UNIQUE | username | btree | 16 kB | 5 | OK |
 
 ## Top 10 Indexes Más Usados
 
 | # | Tabla | Index | Scans | Tuples Returned |
 |---|-------|-------|-------|-----------------|
-| 1 | `t_payroll_history` | `idx_payroll_history_employee` | 211,491 | 36,395 |
-| 2 | `t_order` | `t_order_pkey` | 27,718 | 66,757 |
-| 3 | `t_invoice` | `idx_invoice_order` | 12,229 | 435,135 |
-| 4 | `t_supplier` | `t_supplier_pkey` | 5,187 | 5,059 |
-| 5 | `t_client` | `t_client_pkey` | 4,422 | 4,705 |
-| 6 | `order_status` | `order_status_pkey` | 4,145 | 4,170 |
-| 7 | `t_order` | `idx_order_client` | 4,011 | 12,485 |
-| 8 | `order_history` | `idx_order_history_date` | 3,176 | 284,021 |
-| 9 | `invoice_status` | `invoice_status_pkey` | 3,112 | 3,136 |
-| 10 | `t_expense` | `t_expense_pkey` | 2,778 | 1,237 |
+| 1 | `t_payroll_history` | `idx_payroll_history_employee` | 225,979 | 40,353 |
+| 2 | `t_order` | `t_order_pkey` | 29,710 | 95,225 |
+| 3 | `drive_folders` | `idx_drive_folders_parent` | 28,535 | 41,570 |
+| 4 | `drive_folders` | `drive_folders_pkey` | 16,075 | 16,132 |
+| 5 | `t_invoice` | `idx_invoice_order` | 14,128 | 580,458 |
+| 6 | `t_supplier` | `t_supplier_pkey` | 6,796 | 6,666 |
+| 7 | `drive_files` | `idx_drive_files_folder` | 6,200 | 963,609 |
+| 8 | `t_client` | `t_client_pkey` | 4,652 | 4,935 |
+| 9 | `t_order` | `idx_order_client` | 4,281 | 16,536 |
+| 10 | `order_status` | `order_status_pkey` | 4,265 | 4,290 |
 
 ## Indexes Sin Uso (posibles candidatos a revisión)
 > Indexes con 0 scans que no son PK ni UNIQUE
@@ -320,27 +408,34 @@ Método dominante: btree (109/109)
 | Tabla | Index | Columnas | Tamaño |
 |-------|-------|----------|--------|
 | `audit_log` | `idx_audit_table` | table_name | 8192 bytes |
+| `drive_activity` | `idx_drive_activity_user` | user_id, created_at | 296 kB |
+| `drive_audit` | `idx_drive_audit_user` | user_id | 176 kB |
+| `inventory_audit` | `idx_inv_audit_date` | created_at | 16 kB |
+| `inventory_audit` | `idx_inv_audit_table` | table_name, record_id | 16 kB |
+| `inventory_categories` | `idx_inv_categories_active` | is_active, display_order | 16 kB |
+| `inventory_movements` | `idx_inv_movements_date` | created_at | 8192 bytes |
+| `inventory_movements` | `idx_inv_movements_type` | movement_type, created_at | 8192 bytes |
+| `inventory_products` | `idx_inv_products_code` | code | 16 kB |
+| `inventory_products` | `idx_inv_products_location` | location | 16 kB |
+| `inventory_products` | `idx_inv_products_supplier` | supplier_id | 8192 bytes |
+| `order_ejecutores` | `idx_order_ejecutores_payroll` | payroll_id | 16 kB |
+| `order_files` | `idx_order_files_vendor` | vendor_id | 16 kB |
 | `t_attendance` | `idx_attendance_status` | status | 16 kB |
-| `t_attendance_audit` | `idx_audit_action` | action | 16 kB |
-| `t_attendance_audit` | `idx_audit_attendance_id` | attendance_id | 16 kB |
-| `t_attendance_audit` | `idx_audit_date` | attendance_date | 16 kB |
-| `t_attendance_audit` | `idx_audit_employee_id` | employee_id | 16 kB |
+| `t_attendance_audit` | `idx_audit_attendance_id` | attendance_id | 32 kB |
 | `t_contact` | `idx_contact_email` | f_email | 16 kB |
 | `t_expense` | `idx_expense_order_status` | f_order, f_status | 16 kB |
-| `t_expense` | `idx_expense_status_scheduled` | f_status, f_scheduleddate | 16 kB |
 | `t_expense` | `idx_expense_updated_by` | updated_by | 16 kB |
 | `t_expense_audit` | `idx_expense_audit_action` | action | 16 kB |
 | `t_expense_audit` | `idx_expense_audit_changed_at` | changed_at | 16 kB |
 | `t_expense_audit` | `idx_expense_audit_expense_id` | expense_id | 16 kB |
 | `t_expense_audit` | `idx_expense_audit_updated_by` | new_updated_by | 16 kB |
 | `t_fixed_expenses_history` | `idx_fixed_expenses_history_lookup` | expense_id, effective_date | 16 kB |
-| `t_order` | `idx_order_status_podate` | f_orderstat, f_podate | 16 kB |
+| `t_order` | `idx_order_status_podate` | f_orderstat, f_podate | 32 kB |
 | `t_order_deleted` | `idx_order_deleted_original_id` | original_order_id | 16 kB |
 | `t_order_deleted` | `idx_order_deleted_po` | f_po | 16 kB |
 | `t_overtime_hours_audit` | `idx_overtime_audit_date` | changed_at | 16 kB |
 | `t_payroll` | `idx_payroll_active` | is_active | 16 kB |
 | `t_vacation` | `idx_vacation_dates` | start_date, end_date | 16 kB |
-| `t_vacation` | `idx_vacation_employee` | employee_id | 16 kB |
 | `t_vacation_audit` | `idx_vacation_audit_employee` | employee_id | 16 kB |
 | `t_vacation_audit` | `idx_vacation_audit_id` | vacation_id | 16 kB |
 | `t_vendor` | `idx_vendor_name` | f_vendorname | 16 kB |
@@ -350,16 +445,16 @@ Método dominante: btree (109/109)
 
 | # | Tabla | Index | Tamaño | Tipo |
 |---|-------|-------|--------|------|
-| 1 | `order_history` | `idx_order_history_date` | 48 kB | INDEX |
-| 2 | `order_history` | `order_history_pkey` | 48 kB | PK |
-| 3 | `order_history` | `idx_order_history_order` | 40 kB | INDEX |
-| 4 | `t_invoice` | `idx_invoice_folio` | 40 kB | INDEX |
-| 5 | `t_invoice` | `idx_invoice_order_folio` | 40 kB | UNIQUE |
-| 6 | `t_order` | `idx_order_po` | 40 kB | INDEX |
-| 7 | `t_invoice` | `t_invoice_pkey` | 32 kB | PK |
-| 8 | `app_versions` | `app_versions_pkey` | 16 kB | PK |
-| 9 | `app_versions` | `app_versions_version_key` | 16 kB | UNIQUE |
-| 10 | `app_versions` | `idx_app_versions_latest` | 16 kB | INDEX |
+| 1 | `drive_audit` | `idx_drive_audit_date` | 472 kB | INDEX |
+| 2 | `drive_audit` | `drive_audit_pkey` | 368 kB | PK |
+| 3 | `drive_activity` | `idx_drive_activity_folder` | 352 kB | INDEX |
+| 4 | `drive_activity` | `idx_drive_activity_user` | 296 kB | INDEX |
+| 5 | `drive_files` | `drive_files_folder_id_file_name_key` | 248 kB | UNIQUE |
+| 6 | `drive_activity` | `idx_drive_activity_recent` | 224 kB | INDEX |
+| 7 | `drive_activity` | `drive_activity_pkey` | 200 kB | PK |
+| 8 | `drive_audit` | `idx_drive_audit_user` | 176 kB | INDEX |
+| 9 | `drive_files` | `drive_files_pkey` | 112 kB | PK |
+| 10 | `drive_folders` | `drive_folders_parent_id_name_key` | 72 kB | UNIQUE |
 
 ## Definiciones Completas
 
@@ -368,7 +463,35 @@ Método dominante: btree (109/109)
 - `idx_app_versions_release_date`: `CREATE INDEX idx_app_versions_release_date ON public.app_versions USING btree (release_date DESC)`
 - `idx_audit_table`: `CREATE INDEX idx_audit_table ON public.audit_log USING btree (table_name)`
 - `idx_audit_user`: `CREATE INDEX idx_audit_user ON public.audit_log USING btree (user_id)`
+- `idx_drive_activity_folder`: `CREATE INDEX idx_drive_activity_folder ON public.drive_activity USING btree (folder_id, created_at DESC)`
+- `idx_drive_activity_recent`: `CREATE INDEX idx_drive_activity_recent ON public.drive_activity USING btree (created_at DESC)`
+- `idx_drive_activity_user`: `CREATE INDEX idx_drive_activity_user ON public.drive_activity USING btree (user_id, created_at DESC)`
+- `idx_drive_audit_date`: `CREATE INDEX idx_drive_audit_date ON public.drive_audit USING btree (created_at DESC)`
+- `idx_drive_audit_user`: `CREATE INDEX idx_drive_audit_user ON public.drive_audit USING btree (user_id)`
+- `drive_files_folder_id_file_name_key`: `CREATE UNIQUE INDEX drive_files_folder_id_file_name_key ON public.drive_files USING btree (folder_id, file_name)`
+- `idx_drive_files_folder`: `CREATE INDEX idx_drive_files_folder ON public.drive_files USING btree (folder_id)`
+- `drive_folders_parent_id_name_key`: `CREATE UNIQUE INDEX drive_folders_parent_id_name_key ON public.drive_folders USING btree (parent_id, name)`
+- `idx_drive_folders_order`: `CREATE INDEX idx_drive_folders_order ON public.drive_folders USING btree (linked_order_id) WHERE (linked_order_id IS NOT NULL)`
+- `idx_drive_folders_parent`: `CREATE INDEX idx_drive_folders_parent ON public.drive_folders USING btree (parent_id)`
+- `idx_inv_audit_date`: `CREATE INDEX idx_inv_audit_date ON public.inventory_audit USING btree (created_at DESC)`
+- `idx_inv_audit_table`: `CREATE INDEX idx_inv_audit_table ON public.inventory_audit USING btree (table_name, record_id)`
+- `idx_inv_categories_active`: `CREATE INDEX idx_inv_categories_active ON public.inventory_categories USING btree (is_active, display_order)`
+- `idx_inv_movements_date`: `CREATE INDEX idx_inv_movements_date ON public.inventory_movements USING btree (created_at DESC)`
+- `idx_inv_movements_product`: `CREATE INDEX idx_inv_movements_product ON public.inventory_movements USING btree (product_id, created_at DESC)`
+- `idx_inv_movements_type`: `CREATE INDEX idx_inv_movements_type ON public.inventory_movements USING btree (movement_type, created_at DESC)`
+- `idx_inv_products_category`: `CREATE INDEX idx_inv_products_category ON public.inventory_products USING btree (category_id) WHERE (is_active = true)`
+- `idx_inv_products_code`: `CREATE INDEX idx_inv_products_code ON public.inventory_products USING btree (code)`
+- `idx_inv_products_location`: `CREATE INDEX idx_inv_products_location ON public.inventory_products USING btree (location) WHERE (is_active = true)`
+- `idx_inv_products_low_stock`: `CREATE INDEX idx_inv_products_low_stock ON public.inventory_products USING btree (category_id) WHERE ((stock_current < stock_minimum) AND (is_active = true))`
+- `idx_inv_products_supplier`: `CREATE INDEX idx_inv_products_supplier ON public.inventory_products USING btree (supplier_id) WHERE (supplier_id IS NOT NULL)`
+- `inventory_products_code_key`: `CREATE UNIQUE INDEX inventory_products_code_key ON public.inventory_products USING btree (code)`
 - `idx_mv_balance_pk`: `CREATE UNIQUE INDEX idx_mv_balance_pk ON public.mv_balance_completo USING btree ("año", mes_numero)`
+- `idx_order_ejecutores_order`: `CREATE INDEX idx_order_ejecutores_order ON public.order_ejecutores USING btree (f_order)`
+- `idx_order_ejecutores_payroll`: `CREATE INDEX idx_order_ejecutores_payroll ON public.order_ejecutores USING btree (payroll_id)`
+- `order_ejecutores_f_order_payroll_id_key`: `CREATE UNIQUE INDEX order_ejecutores_f_order_payroll_id_key ON public.order_ejecutores USING btree (f_order, payroll_id)`
+- `idx_order_files_commission`: `CREATE INDEX idx_order_files_commission ON public.order_files USING btree (commission_id)`
+- `idx_order_files_order`: `CREATE INDEX idx_order_files_order ON public.order_files USING btree (f_order)`
+- `idx_order_files_vendor`: `CREATE INDEX idx_order_files_vendor ON public.order_files USING btree (vendor_id)`
 - `idx_gastos_indirectos_order`: `CREATE INDEX idx_gastos_indirectos_order ON public.order_gastos_indirectos USING btree (f_order)`
 - `idx_gastos_operativos_order`: `CREATE INDEX idx_gastos_operativos_order ON public.order_gastos_operativos USING btree (f_order)`
 - `idx_order_history_date`: `CREATE INDEX idx_order_history_date ON public.order_history USING btree (changed_at)`

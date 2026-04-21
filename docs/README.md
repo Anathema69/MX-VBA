@@ -1,128 +1,66 @@
-# Documentacion Tecnica - Sistema de Gestion de Proyectos
+# Documentacion Tecnica — IMA Mecatronica
 
-## IMA Mecatronica - Version 1.0.9
-
----
-
-## Indice de Documentacion
-
-| Documento | Descripcion |
-|-----------|-------------|
-| [01_ARQUITECTURA.md](./01_ARQUITECTURA.md) | Vision general de la arquitectura, patrones de diseno, estructura de carpetas |
-| [02_MODELOS_DATOS.md](./02_MODELOS_DATOS.md) | Esquema de base de datos, modelos ORM, relaciones entre entidades |
-| [03_SERVICIOS.md](./03_SERVICIOS.md) | Documentacion de todos los servicios, metodos y flujos |
-| [04_ROLES_AUTENTICACION.md](./04_ROLES_AUTENTICACION.md) | Sistema de roles, permisos, autenticacion y seguridad |
-| [05_FLUJOS_TRABAJO.md](./05_FLUJOS_TRABAJO.md) | Flujos de trabajo, ciclos de vida, procesos de negocio |
+**Version actual:** 2.3.3 (abril 2026)
+**Stack:** .NET 8 WPF + Supabase (PostgreSQL) + Cloudflare R2 + Inno Setup
+**Ultima fase cerrada:** Fase 4 (Feb-Mar 2026)
 
 ---
 
-## Resumen Ejecutivo
+Este directorio contiene la documentacion tecnica interna. Para la vision global del producto (modulos, releases, diagramas de alto nivel) ver [../README.md](../README.md). Para el dashboard de Fase 4 ver [../fase4/README.md](../fase4/README.md).
 
-### Stack Tecnologico
+## Indice
 
-| Componente | Tecnologia |
-|------------|------------|
-| Framework | .NET 8.0 (WPF) |
-| Lenguaje | C# |
-| Base de Datos | Supabase (PostgreSQL) |
-| ORM | Postgrest |
-| Autenticacion | BCrypt |
-| UI | XAML/WPF |
+### Arquitectura y codigo
+| Documento | Contenido |
+|---|---|
+| [01_ARQUITECTURA.md](./01_ARQUITECTURA.md) | Capas, patrones, estructura de carpetas, dependencias. |
+| [03_SERVICIOS.md](./03_SERVICIOS.md) | Servicios especializados y sus metodos principales. Incluye Drive, FileWatcher, Inventory, Storage, auto-update UIPI/schtasks. |
+| [04_ROLES_AUTENTICACION.md](./04_ROLES_AUTENTICACION.md) | 5 roles (direccion/administracion/proyectos/coordinacion/ventas), matriz de permisos, BCrypt, session timeout. |
 
-### Arquitectura
+### Datos
+| Documento | Contenido |
+|---|---|
+| [02_MODELOS_DATOS.md](./02_MODELOS_DATOS.md) | Resumen semantico por modulo: 44 tablas, 15 vistas, 73 funciones. Relaciones clave. |
+| [../db-docs/output/](../db-docs/output/) | **Fuente canonica auto-generada** desde Supabase en vivo (Python + psycopg2). 7 archivos: tablas, relaciones, vistas, funciones/triggers, indices, RLS, diagrama ER. |
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    UI (Views/XAML)                  │
-├─────────────────────────────────────────────────────┤
-│                ViewModels (MVVM)                    │
-├─────────────────────────────────────────────────────┤
-│           SupabaseService (Facade)                  │
-├─────────────────────────────────────────────────────┤
-│  OrderService │ ClientService │ InvoiceService │...│
-├─────────────────────────────────────────────────────┤
-│              BaseSupabaseService                    │
-├─────────────────────────────────────────────────────┤
-│                 Supabase Client                     │
-├─────────────────────────────────────────────────────┤
-│                  PostgreSQL                         │
-└─────────────────────────────────────────────────────┘
-```
+Si hay conflicto entre `02_MODELOS_DATOS.md` y `db-docs/output/`, creer a `db-docs/output/`.
 
-### Roles del Sistema
+### Procesos y operaciones
+| Documento | Contenido |
+|---|---|
+| [05_FLUJOS_TRABAJO.md](./05_FLUJOS_TRABAJO.md) | Ciclo de vida de ordenes, facturacion, gastos, balance, Drive (Open-in-Place), inventario, ejecutor, auto-update, timeout. |
+| [FLUJO_COMISIONES.md](./FLUJO_COMISIONES.md) | Detalle draft/pending/paid + Portal Ventas V2 (preview, stepper, galeria). |
+| [RELEASE_PROCESS.md](./RELEASE_PROCESS.md) | Proceso real de release (GitHub Releases + Supabase `app_versions`). Checklist + troubleshooting + UIPI. |
 
-| Rol | Descripcion | Pantalla Inicial |
-|-----|-------------|------------------|
-| `admin` | Acceso total | MainMenuWindow |
-| `coordinator` | Solo ordenes (sin financiero) | OrdersManagementWindow |
-| `salesperson` | Solo sus comisiones | VendorDashboard |
+## Fuentes canonicas de verdad
 
-### Modulos Principales
+| Pregunta | Donde mirar |
+|---|---|
+| Version actual | `SistemaGestionProyectos2/SistemaGestionProyectos2.csproj` (campo `<Version>`) |
+| Configuracion Supabase / R2 | `SistemaGestionProyectos2/appsettings.json` (base, production, staging) |
+| Estructura BD actual | `db-docs/output/*.md` (regenerable con los 7 scripts Python) |
+| Roles y permisos reales | `Views/MainMenuWindow.xaml.cs` + `Views/OrdersManagementWindow.xaml.cs` (switches por `Role`) |
+| Proceso de release | `docs/RELEASE_PROCESS.md` + `SistemaGestionProyectos2/sql/update_app.sql` |
 
-```mermaid
-graph LR
-    subgraph "Modulos"
-        ORD[Ordenes]
-        CLI[Clientes]
-        FAC[Facturas]
-        GAS[Gastos]
-        NOM[Nomina]
-        BAL[Balance]
-        COM[Comisiones]
-        ING[Ingresos Pendientes]
-    end
-```
+Si estos docs (`01-05`) quedan desactualizados frente al codigo o BD, **prevalece el codigo/BD**. Los docs se actualizan explicitamente tras cambios grandes.
 
----
+## Regenerar `db-docs/output/`
 
-## Guia Rapida
-
-### Requisitos
-- .NET 8.0 Runtime
-- Windows 10/11
-- Conexion a Internet (Supabase)
-
-### Configuracion
-El archivo `appsettings.json` contiene:
-```json
-{
-  "Supabase": {
-    "Url": "https://xxx.supabase.co",
-    "AnonKey": "eyJ..."
-  },
-  "SessionTimeout": {
-    "Enabled": true,
-    "InactivityMinutes": 15,
-    "WarningBeforeMinutes": 2
-  }
-}
-```
-
-### Compilacion
 ```bash
-dotnet build -c Release
-dotnet publish -c Release -r win-x64 --self-contained false
+cd db-docs
+./venv/Scripts/python.exe 01_tables.py
+./venv/Scripts/python.exe 02_relaciones.py
+./venv/Scripts/python.exe 03_vistas.py
+./venv/Scripts/python.exe 04_funciones_triggers.py
+./venv/Scripts/python.exe 05_indexes.py
+./venv/Scripts/python.exe 06_rls_policies.py
+./venv/Scripts/python.exe 07_diagrama_er.py
 ```
 
-### Instalador
-```bash
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-```
+Credenciales en `db-docs/.env` (no commiteado). Regenera desde la BD en vivo.
 
 ---
-
-## Patrones de Diseno Utilizados
-
-1. **Singleton** - SupabaseService, SessionTimeoutService, JsonLoggerService
-2. **Facade** - SupabaseService como punto unico de acceso
-3. **Repository** - Servicios especializados por entidad
-4. **MVVM** - Separacion View/ViewModel/Model
-5. **Observer** - Eventos de timeout de sesion
-
----
-
-## Contacto
 
 **Desarrollado por:** Zuri Dev
-**Empresa:** IMA Mecatronica
-**Ano:** 2025
+**Cliente:** IMA Mecatronica
+**Repositorio:** [github.com/Anathema69/MX-VBA](https://github.com/Anathema69/MX-VBA)

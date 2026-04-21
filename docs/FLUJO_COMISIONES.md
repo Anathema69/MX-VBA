@@ -221,18 +221,19 @@ Ejemplo:
 
 ## 6. Vistas del Sistema
 
-### 6.1 VendorDashboard (Portal del Vendedor)
-- **Acceso:** Usuarios con rol `salesperson`
-- **Funcionalidad:** Solo visualización de sus propias comisiones
+### 6.1 VendorDashboard_V2 (Portal del Vendedor — Fase 4)
+- **Acceso:** Usuarios con rol `ventas`
+- **Funcionalidad:** Ver sus propias comisiones, subir facturas, liberar órdenes (ver sección 9).
 - **Estados mostrados:** draft, pending, paid
 
 ### 6.2 VendorCommissionsWindow (Gestión de Comisiones)
-- **Acceso:** Usuarios con rol `admin` o `coordinator`
+- **Acceso:** Usuarios con rol `direccion` o `administracion`
 - **Funcionalidad:**
   - Ver comisiones de todos los vendedores
   - Editar tasa de comisión (draft/pending)
   - Marcar como pagadas
   - Pagar todas las pendientes de un vendedor
+  - Preview de facturas subidas por el vendedor (Fase 4: galería + zoom 50-500%)
 
 ---
 
@@ -297,4 +298,98 @@ ORDER BY o.f_podate;
 
 ---
 
-*Última actualización: Diciembre 2025*
+---
+
+## 9. Portal Ventas V2 (Fase 4)
+
+En Fase 4 (marzo 2026) se agregó un flujo de **liberación de pago guiado por el vendedor** con stepper visual y galería de facturas.
+
+### 9.1 Componentes nuevos
+
+| Elemento | Ubicación |
+|---|---|
+| `VendorDashboard_V2.xaml` | Rediseño del portal del vendedor (cards compactas + galería). |
+| `StorageService` | Nuevo servicio para Supabase Storage (bucket `order-files`). |
+| Tabla `order_files` | Metadata de archivos subidos por el vendedor (factura, comprobante, etc). |
+| Preview modal | Zoom 50%-500% con pan, doble clic para reset. |
+
+### 9.2 Flujo de liberación de pago
+
+```
+ ┌────────────────────────────────────────────────────────────┐
+ │                     VENDEDOR                                │
+ │                                                             │
+ │  1. Ve orden LIBERADA en dashboard                          │
+ │  2. Clic "Liberar pago"                                     │
+ │  3. Stepper 3 pasos:                                        │
+ │     ┌─────────┐     ┌──────────┐     ┌────────┐             │
+ │     │LIBERADA │ ──▶ │ REVISIÓN │ ──▶ │  PAGO  │             │
+ │     └─────────┘     └──────────┘     └────────┘             │
+ │                                                             │
+ │  4. Sube factura (PDF o imagen)                             │
+ │     StorageService.UploadFile(path, orderId, userId,        │
+ │                               vendorId, commissionId)       │
+ │     → bucket order-files                                    │
+ │     → INSERT order_files                                    │
+ │  5. Orden en estado "Revisión"                              │
+ └────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌────────────────────────────────────────────────────────────┐
+ │               ADMIN (direccion / administracion)            │
+ │                                                             │
+ │  6. VendorCommissionsWindow muestra galería de facturas     │
+ │  7. Preview con zoom/pan                                    │
+ │  8. Aprobar → comisión pasa de 'draft' a 'pending'          │
+ │  9. Marcar pagado → 'paid' + payment_date = NOW()           │
+ └────────────────────────────────────────────────────────────┘
+```
+
+### 9.3 Tabla `order_files`
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | int PK | ID del archivo. |
+| `order_id` | int FK → t_order | Orden asociada. |
+| `vendor_id` | int FK → t_vendor (nullable) | Vendedor que subió (si aplica). |
+| `commission_id` | int FK → t_vendor_commission_payment (nullable) | Comisión asociada. |
+| `storage_path` | text | Ruta en bucket `order-files`. |
+| `original_filename` | text | Nombre original del archivo. |
+| `mime_type` | varchar | Tipo MIME. |
+| `size_bytes` | bigint | Tamaño. |
+| `uploaded_by` | int FK → users | Usuario que subió. |
+| `uploaded_at` | timestamp | Fecha de subida. |
+
+### 9.4 Optimistic UI
+
+El botón "Liberar pago" remueve la orden de la lista **inmediatamente** en memoria (ObservableCollection.Remove), sin esperar respuesta de BD. Si la BD falla, se reinserta con toast de error. Reduce latencia percibida de ~500ms a instantáneo.
+
+### 9.5 URLs firmadas para preview
+
+Para mostrar preview sin exponer el bucket como público:
+
+```csharp
+var url = await storageService.GetSignedUrl(orderFile.StoragePath, expiresInSeconds: 3600);
+```
+
+Supabase genera URL temporal firmada de 1 hora. El `Image` de WPF carga directamente del URL.
+
+---
+
+## Roles actuales (corrección Fase 4)
+
+Este documento originalmente mencionaba roles antiguos (`admin`, `coordinator`, `salesperson`). Desde v2.0 el sistema usa 5 roles en español:
+
+| Código | Rol |
+|---|---|
+| `direccion` | Dirección |
+| `administracion` | Administración |
+| `proyectos` | Proyectos |
+| `coordinacion` | Coordinación |
+| `ventas` | Ventas |
+
+Ver [04_ROLES_AUTENTICACION.md](./04_ROLES_AUTENTICACION.md) para la matriz completa.
+
+---
+
+*Última actualización: Abril 2026 (v2.3.3 — agregado Portal Ventas V2 de Fase 4).*

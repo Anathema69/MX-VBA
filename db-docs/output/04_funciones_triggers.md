@@ -1,33 +1,45 @@
 # Funciones y Triggers - Base de Datos IMA Mecatrónica
-Generado: 2026-02-26 22:36:15
-Funciones: 49 | Triggers: 30
+Generado: 2026-04-20 23:21:30
+Funciones: 73 | Triggers: 44
 
 ## Índice de Funciones
 
-### Funciones RPC/Negocio (21)
+### Funciones RPC/Negocio (33)
 1. [can_delete_order](#func-can_delete_order)
 2. [create_vendor_commission_if_needed](#func-create_vendor_commission_if_needed)
 3. [create_vendor_user](#func-create_vendor_user)
 4. [delete_order_with_audit](#func-delete_order_with_audit)
 5. [f_balance_anual_horizontal](#func-f_balance_anual_horizontal)
 6. [f_balance_completo_horizontal](#func-f_balance_completo_horizontal)
-7. [generate_holidays_for_year](#func-generate_holidays_for_year)
-8. [get_attendance_for_date](#func-get_attendance_for_date)
-9. [get_expense_statistics](#func-get_expense_statistics)
-10. [get_expense_stats_by_status](#func-get_expense_stats_by_status)
-11. [get_month_calendar](#func-get_month_calendar)
-12. [get_monthly_payroll_total](#func-get_monthly_payroll_total)
-13. [get_monthly_payroll_total](#func-get_monthly_payroll_total)
-14. [get_overtime_audit_history](#func-get_overtime_audit_history)
-15. [get_payroll_at_date](#func-get_payroll_at_date)
-16. [get_vendors](#func-get_vendors)
-17. [is_workday](#func-is_workday)
-18. [refresh_balance_completo](#func-refresh_balance_completo)
-19. [set_current_user_id](#func-set_current_user_id)
-20. [update_user_password](#func-update_user_password)
-21. [upsert_overtime_hours](#func-upsert_overtime_hours)
+7. [fn_adjust_stock](#func-fn_adjust_stock)
+8. [fn_get_inventory_locations](#func-fn_get_inventory_locations)
+9. [fn_get_inventory_stats](#func-fn_get_inventory_stats)
+10. [generate_holidays_for_year](#func-generate_holidays_for_year)
+11. [get_attendance_for_date](#func-get_attendance_for_date)
+12. [get_expense_statistics](#func-get_expense_statistics)
+13. [get_expense_stats_by_status](#func-get_expense_stats_by_status)
+14. [get_folder_breadcrumb](#func-get_folder_breadcrumb)
+15. [get_folder_breadcrumb_full](#func-get_folder_breadcrumb_full)
+16. [get_folder_child_count](#func-get_folder_child_count)
+17. [get_folder_stats](#func-get_folder_stats)
+18. [get_folder_tree](#func-get_folder_tree)
+19. [get_month_calendar](#func-get_month_calendar)
+20. [get_monthly_payroll_total](#func-get_monthly_payroll_total)
+21. [get_monthly_payroll_total](#func-get_monthly_payroll_total)
+22. [get_orders_by_ids](#func-get_orders_by_ids)
+23. [get_overtime_audit_history](#func-get_overtime_audit_history)
+24. [get_payroll_at_date](#func-get_payroll_at_date)
+25. [get_vendors](#func-get_vendors)
+26. [is_workday](#func-is_workday)
+27. [refresh_balance_completo](#func-refresh_balance_completo)
+28. [search_in_folder](#func-search_in_folder)
+29. [set_current_user_id](#func-set_current_user_id)
+30. [update_user_password](#func-update_user_password)
+31. [upsert_overtime_hours](#func-upsert_overtime_hours)
+32. [validate_folder_link](#func-validate_folder_link)
+33. [validate_folder_move](#func-validate_folder_move)
 
-### Funciones de Trigger (24)
+### Funciones de Trigger (36)
 1. [audit_attendance_changes](#func-audit_attendance_changes)
 2. [audit_overtime_hours](#func-audit_overtime_hours)
 3. [audit_vacation_changes](#func-audit_vacation_changes)
@@ -35,23 +47,35 @@ Funciones: 49 | Triggers: 30
 5. [calculate_invoice_due_date](#func-calculate_invoice_due_date)
 6. [calculate_scheduled_date](#func-calculate_scheduled_date)
 7. [create_commission_on_order_creation](#func-create_commission_on_order_creation)
-8. [fn_expense_audit](#func-fn_expense_audit)
-9. [fn_expense_update_timestamp](#func-fn_expense_update_timestamp)
-10. [fn_log_vendor_removal](#func-fn_log_vendor_removal)
-11. [recalcular_gasto_operativo](#func-recalcular_gasto_operativo)
-12. [recalcular_gasto_operativo_por_comision](#func-recalcular_gasto_operativo_por_comision)
-13. [record_order_history](#func-record_order_history)
-14. [set_latest_version](#func-set_latest_version)
-15. [set_order_audit_fields](#func-set_order_audit_fields)
-16. [sync_commission_rate](#func-sync_commission_rate)
-17. [sync_commission_rate_from_order](#func-sync_commission_rate_from_order)
-18. [track_fixed_expense_changes](#func-track_fixed_expense_changes)
-19. [track_payroll_changes](#func-track_payroll_changes)
-20. [update_commission_on_order_status_change](#func-update_commission_on_order_status_change)
-21. [update_commission_on_vendor_change](#func-update_commission_on_vendor_change)
-22. [update_invoice_status](#func-update_invoice_status)
-23. [update_order_status_from_invoices](#func-update_order_status_from_invoices)
-24. [update_updated_at_column](#func-update_updated_at_column)
+8. [fn_audit_drive_file_delete](#func-fn_audit_drive_file_delete)
+9. [fn_audit_drive_file_insert](#func-fn_audit_drive_file_insert)
+10. [fn_audit_drive_file_update](#func-fn_audit_drive_file_update)
+11. [fn_audit_drive_folder_delete](#func-fn_audit_drive_folder_delete)
+12. [fn_audit_drive_folder_insert](#func-fn_audit_drive_folder_insert)
+13. [fn_audit_drive_folder_update](#func-fn_audit_drive_folder_update)
+14. [fn_audit_inventory_changes](#func-fn_audit_inventory_changes)
+15. [fn_drive_files_set_timestamps](#func-fn_drive_files_set_timestamps)
+16. [fn_drive_folders_set_timestamps](#func-fn_drive_folders_set_timestamps)
+17. [fn_drive_folders_updated_at](#func-fn_drive_folders_updated_at)
+18. [fn_expense_audit](#func-fn_expense_audit)
+19. [fn_expense_update_timestamp](#func-fn_expense_update_timestamp)
+20. [fn_inventory_updated_at](#func-fn_inventory_updated_at)
+21. [fn_log_vendor_removal](#func-fn_log_vendor_removal)
+22. [fn_track_inventory_movement](#func-fn_track_inventory_movement)
+23. [recalcular_gasto_operativo](#func-recalcular_gasto_operativo)
+24. [recalcular_gasto_operativo_por_comision](#func-recalcular_gasto_operativo_por_comision)
+25. [record_order_history](#func-record_order_history)
+26. [set_latest_version](#func-set_latest_version)
+27. [set_order_audit_fields](#func-set_order_audit_fields)
+28. [sync_commission_rate](#func-sync_commission_rate)
+29. [sync_commission_rate_from_order](#func-sync_commission_rate_from_order)
+30. [track_fixed_expense_changes](#func-track_fixed_expense_changes)
+31. [track_payroll_changes](#func-track_payroll_changes)
+32. [update_commission_on_order_status_change](#func-update_commission_on_order_status_change)
+33. [update_commission_on_vendor_change](#func-update_commission_on_vendor_change)
+34. [update_invoice_status](#func-update_invoice_status)
+35. [update_order_status_from_invoices](#func-update_order_status_from_invoices)
+36. [update_updated_at_column](#func-update_updated_at_column)
 
 ### Funciones Huérfanas - sin trigger activo (4)
 1. [set_created_by](#func-set_created_by)
@@ -522,6 +546,118 @@ END;
 
 ---
 
+## fn_adjust_stock
+
+- **Argumentos**: `p_product_id integer, p_new_stock numeric, p_user_id integer, p_notes text DEFAULT NULL::text`
+- **Retorna**: `json`
+- **Lenguaje**: `plpgsql`
+- **Volatilidad**: `VOLATILE`
+
+### Código Fuente
+
+```plpgsql
+DECLARE
+    v_product inventory_products%ROWTYPE;
+BEGIN
+    -- Obtener producto actual
+    SELECT * INTO v_product
+    FROM inventory_products
+    WHERE id = p_product_id AND is_active = TRUE;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'Producto no encontrado');
+    END IF;
+
+    -- Validar
+    IF p_new_stock < 0 THEN
+        RETURN json_build_object('success', false, 'error', 'El stock no puede ser negativo');
+    END IF;
+
+    IF p_new_stock = v_product.stock_current THEN
+        RETURN json_build_object('success', true, 'message', 'Sin cambios');
+    END IF;
+
+    -- Pasar notas al trigger via variable de sesion (transaction-scoped)
+    PERFORM set_config(
+        'inventory.movement_notes',
+        COALESCE(p_notes, 'Ajuste via sistema'),
+        TRUE  -- is_local = transaction scope
+    );
+
+    -- Actualizar stock (el trigger fn_track_inventory_movement crea el movimiento)
+    UPDATE inventory_products
+    SET stock_current = p_new_stock, updated_by = p_user_id
+    WHERE id = p_product_id;
+
+    -- Limpiar variable de sesion
+    PERFORM set_config('inventory.movement_notes', '', TRUE);
+
+    RETURN json_build_object(
+        'success', true,
+        'previous_stock', v_product.stock_current,
+        'new_stock', p_new_stock,
+        'movement_type', CASE
+            WHEN p_new_stock > v_product.stock_current THEN 'entrada'
+            ELSE 'salida'
+        END,
+        'quantity', ABS(p_new_stock - v_product.stock_current)
+    );
+END;
+```
+
+---
+
+## fn_get_inventory_locations
+
+- **Argumentos**: `p_category_id integer DEFAULT NULL::integer`
+- **Retorna**: `SETOF character varying`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT DISTINCT location
+FROM inventory_products
+WHERE is_active = TRUE
+  AND location IS NOT NULL
+  AND location != ''
+  AND (p_category_id IS NULL OR category_id = p_category_id)
+ORDER BY location;
+```
+
+---
+
+## fn_get_inventory_stats
+
+- **Argumentos**: `(ninguno)`
+- **Retorna**: `json`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT json_build_object(
+    'total_products', (
+        SELECT COUNT(*) FROM inventory_products WHERE is_active = TRUE
+    ),
+    'total_low_stock', (
+        SELECT COUNT(*) FROM inventory_products
+        WHERE stock_current < stock_minimum AND is_active = TRUE
+    ),
+    'total_categories', (
+        SELECT COUNT(*) FROM inventory_categories WHERE is_active = TRUE
+    ),
+    'total_value', (
+        SELECT COALESCE(SUM(stock_current * unit_price), 0)
+        FROM inventory_products WHERE is_active = TRUE
+    )
+);
+```
+
+---
+
 ## generate_holidays_for_year
 > Genera los feriados recurrentes para un año específico
 
@@ -654,6 +790,154 @@ SELECT f_status, COALESCE(SUM(f_totalexpense), 0)
 
 ---
 
+## get_folder_breadcrumb
+
+- **Argumentos**: `p_folder_id integer`
+- **Retorna**: `TABLE(id integer, name character varying, parent_id integer, depth integer)`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+WITH RECURSIVE breadcrumb AS (
+    SELECT df.id, df.name, df.parent_id, 0 AS depth
+    FROM drive_folders df
+    WHERE df.id = p_folder_id
+
+    UNION ALL
+
+    SELECT df.id, df.name, df.parent_id, b.depth + 1
+    FROM drive_folders df
+    JOIN breadcrumb b ON df.id = b.parent_id
+)
+SELECT b.id, b.name, b.parent_id, b.depth
+FROM breadcrumb b
+ORDER BY b.depth DESC;
+```
+
+---
+
+## get_folder_breadcrumb_full
+
+- **Argumentos**: `p_folder_id integer`
+- **Retorna**: `TABLE(id integer, parent_id integer, name character varying, linked_order_id integer, created_by integer, created_at timestamp without time zone, updated_at timestamp without time zone, depth integer)`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+WITH RECURSIVE breadcrumb AS (
+    SELECT
+        df.id, df.parent_id, df.name, df.linked_order_id,
+        df.created_by, df.created_at, df.updated_at,
+        0 AS depth
+    FROM drive_folders df
+    WHERE df.id = p_folder_id
+
+    UNION ALL
+
+    SELECT
+        df.id, df.parent_id, df.name, df.linked_order_id,
+        df.created_by, df.created_at, df.updated_at,
+        b.depth + 1
+    FROM drive_folders df
+    JOIN breadcrumb b ON df.id = b.parent_id
+)
+SELECT b.id, b.parent_id, b.name, b.linked_order_id,
+       b.created_by, b.created_at, b.updated_at, b.depth
+FROM breadcrumb b
+ORDER BY b.depth DESC;
+```
+
+---
+
+## get_folder_child_count
+
+- **Argumentos**: `p_folder_id integer`
+- **Retorna**: `integer`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT (
+        (SELECT COUNT(*) FROM drive_folders WHERE parent_id = p_folder_id) +
+        (SELECT COUNT(*) FROM drive_files WHERE folder_id = p_folder_id)
+    )::INTEGER;
+```
+
+---
+
+## get_folder_stats
+
+- **Argumentos**: `p_parent_id integer`
+- **Retorna**: `TABLE(folder_id integer, file_count bigint, subfolder_count bigint, total_size bigint)`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+WITH RECURSIVE folder_tree AS (
+    -- Cada hijo directo es su propio "root"
+    SELECT id, id AS root_child_id
+    FROM drive_folders
+    WHERE parent_id = p_parent_id
+
+    UNION ALL
+
+    -- Todos los descendientes heredan el root_child_id de su ancestro directo
+    SELECT df.id, ft.root_child_id
+    FROM drive_folders df
+    JOIN folder_tree ft ON df.parent_id = ft.id
+),
+-- Sumar archivos de todos los descendientes, agrupados por hijo directo
+file_stats AS (
+    SELECT ft.root_child_id,
+           COUNT(f.id) AS cnt,
+           COALESCE(SUM(f.file_size), 0) AS sz
+    FROM folder_tree ft
+    LEFT JOIN drive_files f ON f.folder_id = ft.id
+    GROUP BY ft.root_child_id
+),
+-- Contar subcarpetas directas (no recursivo, solo 1 nivel)
+subfolder_counts AS (
+    SELECT parent_id, COUNT(*) AS cnt
+    FROM drive_folders
+    GROUP BY parent_id
+)
+SELECT df.id AS folder_id,
+       COALESCE(fs.cnt, 0) AS file_count,
+       COALESCE(sc.cnt, 0) AS subfolder_count,
+       COALESCE(fs.sz, 0) AS total_size
+FROM drive_folders df
+LEFT JOIN file_stats fs ON fs.root_child_id = df.id
+LEFT JOIN subfolder_counts sc ON sc.parent_id = df.id
+WHERE df.parent_id = p_parent_id;
+```
+
+---
+
+## get_folder_tree
+
+- **Argumentos**: `(ninguno)`
+- **Retorna**: `TABLE(id integer, parent_id integer, name text, linked_order_id integer)`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT f.id, f.parent_id, f.name::TEXT, f.linked_order_id
+    FROM drive_folders f
+    ORDER BY f.parent_id NULLS FIRST, f.name;
+```
+
+---
+
 ## get_month_calendar
 > Genera el calendario del mes con estadísticas de asistencia
 
@@ -699,23 +983,6 @@ END;
 
 ## get_monthly_payroll_total
 
-- **Argumentos**: `(ninguno)`
-- **Retorna**: `numeric`
-- **Lenguaje**: `sql`
-- **Volatilidad**: `STABLE`
-
-### Código Fuente
-
-```sql
-SELECT COALESCE(SUM(f_monthlypayroll), 0)
-    FROM t_payroll
-    WHERE is_active = true;
-```
-
----
-
-## get_monthly_payroll_total
-
 - **Argumentos**: `year_param integer, month_param integer`
 - **Retorna**: `numeric`
 - **Lenguaje**: `plpgsql`
@@ -737,6 +1004,40 @@ BEGIN
     
     RETURN total;
 END;
+```
+
+---
+
+## get_monthly_payroll_total
+
+- **Argumentos**: `(ninguno)`
+- **Retorna**: `numeric`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT COALESCE(SUM(f_monthlypayroll), 0)
+    FROM t_payroll
+    WHERE is_active = true;
+```
+
+---
+
+## get_orders_by_ids
+
+- **Argumentos**: `p_order_ids integer[]`
+- **Retorna**: `TABLE(f_order integer, f_po character varying, f_client integer, f_description text)`
+- **Lenguaje**: `sql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```sql
+SELECT o.f_order, o.f_po, o.f_client, o.f_description
+    FROM t_order o
+    WHERE o.f_order = ANY(p_order_ids);
 ```
 
 ---
@@ -890,6 +1191,70 @@ END;
 
 ---
 
+## search_in_folder
+
+- **Argumentos**: `p_folder_id integer DEFAULT NULL::integer, p_query text DEFAULT ''::text`
+- **Retorna**: `TABLE(result_type text, id integer, parent_id integer, folder_id integer, name text, linked_order_id integer, file_size bigint, content_type text, uploaded_by integer, uploaded_at timestamp with time zone, storage_path text, created_at timestamp with time zone)`
+- **Lenguaje**: `plpgsql`
+- **Volatilidad**: `VOLATILE`
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    IF p_folder_id IS NULL THEN
+        -- Global search (root)
+        RETURN QUERY
+        SELECT 'folder'::TEXT, f.id, f.parent_id, NULL::INT, f.name::TEXT, f.linked_order_id,
+               NULL::BIGINT, NULL::TEXT, NULL::INT, NULL::TIMESTAMPTZ, NULL::TEXT, f.created_at
+        FROM drive_folders f
+        WHERE f.name ILIKE '%' || p_query || '%'
+        ORDER BY f.name
+        LIMIT 30;
+
+        RETURN QUERY
+        SELECT 'file'::TEXT, df.id, NULL::INT, df.folder_id, df.file_name::TEXT, NULL::INT,
+               df.file_size, df.content_type::TEXT, df.uploaded_by, df.uploaded_at, df.storage_path::TEXT, NULL::TIMESTAMPTZ
+        FROM drive_files df
+        WHERE df.file_name ILIKE '%' || p_query || '%'
+        ORDER BY df.uploaded_at DESC
+        LIMIT 50;
+    ELSE
+        -- Scoped search: get all descendant folder IDs via recursive CTE
+        RETURN QUERY
+        WITH RECURSIVE descendants AS (
+            SELECT p_folder_id AS did
+            UNION ALL
+            SELECT f.id FROM drive_folders f JOIN descendants d ON f.parent_id = d.did
+        )
+        SELECT 'folder'::TEXT, f.id, f.parent_id, NULL::INT, f.name::TEXT, f.linked_order_id,
+               NULL::BIGINT, NULL::TEXT, NULL::INT, NULL::TIMESTAMPTZ, NULL::TEXT, f.created_at
+        FROM drive_folders f
+        WHERE f.id IN (SELECT did FROM descendants)
+          AND f.id != p_folder_id  -- exclude the search root itself
+          AND f.name ILIKE '%' || p_query || '%'
+        ORDER BY f.name
+        LIMIT 30;
+
+        RETURN QUERY
+        WITH RECURSIVE descendants AS (
+            SELECT p_folder_id AS did
+            UNION ALL
+            SELECT f.id FROM drive_folders f JOIN descendants d ON f.parent_id = d.did
+        )
+        SELECT 'file'::TEXT, df.id, NULL::INT, df.folder_id, df.file_name::TEXT, NULL::INT,
+               df.file_size, df.content_type::TEXT, df.uploaded_by, df.uploaded_at, df.storage_path::TEXT, NULL::TIMESTAMPTZ
+        FROM drive_files df
+        WHERE df.folder_id IN (SELECT did FROM descendants)
+          AND df.file_name ILIKE '%' || p_query || '%'
+        ORDER BY df.uploaded_at DESC
+        LIMIT 50;
+    END IF;
+END;
+```
+
+---
+
 ## set_current_user_id
 
 - **Argumentos**: `p_user_id integer`
@@ -976,6 +1341,149 @@ BEGIN
                 v_overtime_id;
         END IF;
     END IF;
+END;
+```
+
+---
+
+## validate_folder_link
+
+- **Argumentos**: `p_folder_id integer`
+- **Retorna**: `TABLE(can_link boolean, block_reason text, warning_message text, descendant_folder_count integer, linked_descendant_count integer)`
+- **Lenguaje**: `plpgsql`
+- **Volatilidad**: `STABLE`
+
+### Código Fuente
+
+```plpgsql
+DECLARE
+    v_folder_parent_id INT;
+    v_ancestor_linked_name TEXT;
+    v_ancestor_linked_order INT;
+    v_descendant_count INT;
+    v_linked_descendants INT;
+    v_linked_desc_names TEXT;
+BEGIN
+    -- R0: Prevent linking the root folder itself (structural, never linkable)
+    SELECT parent_id INTO v_folder_parent_id FROM drive_folders WHERE id = p_folder_id;
+    IF v_folder_parent_id IS NULL THEN
+        RETURN QUERY SELECT FALSE,
+            'La carpeta raiz no puede vincularse a una orden.'::TEXT,
+            NULL::TEXT, 0, 0;
+        RETURN;
+    END IF;
+
+    -- R2: Check ancestors (walk UP from parent)
+    -- Skip root folders (parent_id IS NULL) — they are structural and should never block
+    SELECT f.name, f.linked_order_id INTO v_ancestor_linked_name, v_ancestor_linked_order
+    FROM (
+        WITH RECURSIVE ancestors AS (
+            SELECT parent_id FROM drive_folders WHERE id = p_folder_id
+            UNION ALL
+            SELECT f.parent_id FROM drive_folders f JOIN ancestors a ON f.id = a.parent_id
+            WHERE a.parent_id IS NOT NULL
+        )
+        SELECT df.name, df.linked_order_id
+        FROM ancestors a
+        JOIN drive_folders df ON df.id = a.parent_id
+        WHERE df.linked_order_id IS NOT NULL
+          AND df.parent_id IS NOT NULL  -- exclude root from blocking
+        LIMIT 1
+    ) f;
+
+    IF v_ancestor_linked_order IS NOT NULL THEN
+        RETURN QUERY SELECT
+            FALSE,
+            format('Esta carpeta esta dentro de "%s" que ya esta vinculada a una orden.', v_ancestor_linked_name),
+            NULL::TEXT, 0, 0;
+        RETURN;
+    END IF;
+
+    -- R3 + R5: Check descendants (walk DOWN)
+    WITH RECURSIVE descendants AS (
+        SELECT id FROM drive_folders WHERE parent_id = p_folder_id
+        UNION ALL
+        SELECT f.id FROM drive_folders f JOIN descendants d ON f.parent_id = d.id
+    )
+    SELECT
+        COUNT(*)::INT,
+        COUNT(*) FILTER (WHERE df.linked_order_id IS NOT NULL)::INT,
+        string_agg(df.name, ', ' ORDER BY df.name) FILTER (WHERE df.linked_order_id IS NOT NULL)
+    INTO v_descendant_count, v_linked_descendants, v_linked_desc_names
+    FROM descendants d
+    JOIN drive_folders df ON df.id = d.id;
+
+    -- R3: Block if descendants have links
+    IF v_linked_descendants > 0 THEN
+        RETURN QUERY SELECT
+            FALSE,
+            format('Contiene %s carpeta(s) ya vinculada(s): %s', v_linked_descendants, v_linked_desc_names),
+            NULL::TEXT, v_descendant_count, v_linked_descendants;
+        RETURN;
+    END IF;
+
+    -- R5 soft: Warning if has subcarpetas (but no links)
+    IF v_descendant_count > 0 THEN
+        RETURN QUERY SELECT
+            TRUE,
+            NULL::TEXT,
+            format('Esta carpeta tiene %s subcarpeta(s) que quedaran bajo esta orden.', v_descendant_count),
+            v_descendant_count, 0;
+        RETURN;
+    END IF;
+
+    -- All clear
+    RETURN QUERY SELECT TRUE, NULL::TEXT, NULL::TEXT, 0, 0;
+END;
+```
+
+---
+
+## validate_folder_move
+
+- **Argumentos**: `p_folder_id integer, p_target_id integer`
+- **Retorna**: `TABLE(can_move boolean, block_reason text)`
+- **Lenguaje**: `plpgsql`
+- **Volatilidad**: `VOLATILE`
+
+### Código Fuente
+
+```plpgsql
+DECLARE
+    v_is_descendant BOOLEAN;
+    v_same_parent BOOLEAN;
+BEGIN
+    -- No mover a si mismo
+    IF p_folder_id = p_target_id THEN
+        RETURN QUERY SELECT FALSE, 'No se puede mover una carpeta dentro de si misma'::TEXT;
+        RETURN;
+    END IF;
+
+    -- Verificar si target es descendiente de folder (crearia ciclo)
+    WITH RECURSIVE descendants AS (
+        SELECT id FROM drive_folders WHERE parent_id = p_folder_id
+        UNION ALL
+        SELECT df.id FROM drive_folders df
+        JOIN descendants d ON df.parent_id = d.id
+    )
+    SELECT EXISTS(SELECT 1 FROM descendants WHERE id = p_target_id)
+    INTO v_is_descendant;
+
+    IF v_is_descendant THEN
+        RETURN QUERY SELECT FALSE, 'No se puede mover una carpeta dentro de sus subcarpetas'::TEXT;
+        RETURN;
+    END IF;
+
+    -- Verificar si ya esta en el destino (no-op)
+    SELECT parent_id = p_target_id INTO v_same_parent
+    FROM drive_folders WHERE id = p_folder_id;
+
+    IF v_same_parent THEN
+        RETURN QUERY SELECT FALSE, 'La carpeta ya esta en esta ubicacion'::TEXT;
+        RETURN;
+    END IF;
+
+    RETURN QUERY SELECT TRUE, NULL::TEXT;
 END;
 ```
 
@@ -1340,6 +1848,238 @@ END;
 
 ---
 
+## fn_audit_drive_file_delete
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_file_delete` en `drive_files` (BEFORE DELETE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, old_value, user_id)
+    VALUES ('DELETE', 'FILE', OLD.id, OLD.file_name, OLD.folder_id, OLD.storage_path, OLD.uploaded_by);
+    RETURN OLD;
+END;
+```
+
+---
+
+## fn_audit_drive_file_insert
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_file_insert` en `drive_files` (AFTER INSERT FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, new_value, user_id)
+    VALUES ('UPLOAD', 'FILE', NEW.id, NEW.file_name, NEW.folder_id, NEW.storage_path, NEW.uploaded_by);
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_audit_drive_file_update
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_file_update` en `drive_files` (AFTER UPDATE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    IF OLD.file_name IS DISTINCT FROM NEW.file_name THEN
+        INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, old_value, new_value, user_id)
+        VALUES ('RENAME', 'FILE', NEW.id, NEW.file_name, NEW.folder_id, OLD.file_name, NEW.file_name, NEW.uploaded_by);
+    END IF;
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_audit_drive_folder_delete
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_folder_delete` en `drive_folders` (BEFORE DELETE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, user_id)
+    VALUES ('DELETE', 'FOLDER', OLD.id, OLD.name, OLD.parent_id, OLD.created_by);
+    RETURN OLD;
+END;
+```
+
+---
+
+## fn_audit_drive_folder_insert
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_folder_insert` en `drive_folders` (AFTER INSERT FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, user_id)
+    VALUES ('CREATE', 'FOLDER', NEW.id, NEW.name, NEW.parent_id, NEW.created_by);
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_audit_drive_folder_update
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_drive_folder_update` en `drive_folders` (AFTER UPDATE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    -- Rename
+    IF OLD.name IS DISTINCT FROM NEW.name THEN
+        INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, old_value, new_value, user_id)
+        VALUES ('RENAME', 'FOLDER', NEW.id, NEW.name, NEW.parent_id, OLD.name, NEW.name, NEW.created_by);
+    END IF;
+
+    -- Link to order
+    IF OLD.linked_order_id IS NULL AND NEW.linked_order_id IS NOT NULL THEN
+        INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, new_value, user_id)
+        VALUES ('LINK', 'FOLDER', NEW.id, NEW.name, NEW.parent_id, NEW.linked_order_id::TEXT, NEW.created_by);
+    END IF;
+
+    -- Unlink from order
+    IF OLD.linked_order_id IS NOT NULL AND NEW.linked_order_id IS NULL THEN
+        INSERT INTO drive_audit (action, target_type, target_id, target_name, folder_id, old_value, user_id)
+        VALUES ('UNLINK', 'FOLDER', NEW.id, NEW.name, NEW.parent_id, OLD.linked_order_id::TEXT, NEW.created_by);
+    END IF;
+
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_audit_inventory_changes
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_audit_inventory_categories` en `inventory_categories` (AFTER INSERT OR UPDATE OR DELETE FOR EACH ROW)
+  - `trg_audit_inventory_products` en `inventory_products` (AFTER INSERT OR UPDATE OR DELETE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO inventory_audit (table_name, record_id, action, new_values, user_id)
+        VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', to_jsonb(NEW), NEW.created_by);
+        RETURN NEW;
+
+    ELSIF TG_OP = 'UPDATE' THEN
+        -- Solo auditar si hubo cambios reales (excluir updated_at)
+        IF to_jsonb(OLD) - 'updated_at' IS DISTINCT FROM to_jsonb(NEW) - 'updated_at' THEN
+            INSERT INTO inventory_audit (table_name, record_id, action, old_values, new_values, user_id)
+            VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', to_jsonb(OLD), to_jsonb(NEW),
+                    COALESCE(NEW.updated_by, NEW.created_by));
+        END IF;
+        RETURN NEW;
+
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO inventory_audit (table_name, record_id, action, old_values, user_id)
+        VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', to_jsonb(OLD),
+                COALESCE(OLD.updated_by, OLD.created_by));
+        RETURN OLD;
+    END IF;
+
+    RETURN NULL;
+END;
+```
+
+---
+
+## fn_drive_files_set_timestamps
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_drive_files_set_timestamps` en `drive_files` (BEFORE INSERT FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    IF NEW.uploaded_at IS NULL THEN
+        NEW.uploaded_at := CURRENT_TIMESTAMP;
+    END IF;
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_drive_folders_set_timestamps
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_drive_folders_set_timestamps` en `drive_folders` (BEFORE INSERT FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    IF NEW.created_at IS NULL THEN
+        NEW.created_at := CURRENT_TIMESTAMP;
+    END IF;
+    IF NEW.updated_at IS NULL THEN
+        NEW.updated_at := CURRENT_TIMESTAMP;
+    END IF;
+    RETURN NEW;
+END;
+```
+
+---
+
+## fn_drive_folders_updated_at
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_drive_folders_updated_at` en `drive_folders` (BEFORE UPDATE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+```
+
+---
+
 ## fn_expense_audit
 
 - **Retorna**: `trigger`
@@ -1496,6 +2236,25 @@ END;
 
 ---
 
+## fn_inventory_updated_at
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_inventory_categories_updated` en `inventory_categories` (BEFORE UPDATE FOR EACH ROW)
+  - `trg_inventory_products_updated` en `inventory_products` (BEFORE UPDATE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+```
+
+---
+
 ## fn_log_vendor_removal
 
 - **Retorna**: `trigger`
@@ -1547,6 +2306,49 @@ BEGIN
     WHERE o.f_order = OLD.f_order;
 
     RETURN OLD;
+END;
+```
+
+---
+
+## fn_track_inventory_movement
+
+- **Retorna**: `trigger`
+- **Lenguaje**: `plpgsql`
+- **Usado por triggers**:
+  - `trg_track_inventory_movement` en `inventory_products` (AFTER UPDATE FOR EACH ROW)
+
+### Código Fuente
+
+```plpgsql
+DECLARE
+    v_notes TEXT;
+BEGIN
+    IF OLD.stock_current IS DISTINCT FROM NEW.stock_current THEN
+        -- Leer notas del contexto de sesion (si viene de fn_adjust_stock)
+        v_notes := COALESCE(
+            NULLIF(current_setting('inventory.movement_notes', TRUE), ''),
+            'Ajuste directo de stock'
+        );
+
+        INSERT INTO inventory_movements (
+            product_id, movement_type, quantity,
+            previous_stock, new_stock, notes, created_by
+        ) VALUES (
+            NEW.id,
+            CASE
+                WHEN NEW.stock_current > OLD.stock_current THEN 'entrada'
+                WHEN NEW.stock_current < OLD.stock_current THEN 'salida'
+                ELSE 'ajuste'
+            END,
+            ABS(NEW.stock_current - OLD.stock_current),
+            OLD.stock_current,
+            NEW.stock_current,
+            v_notes,
+            COALESCE(NEW.updated_by, NEW.created_by)
+        );
+    END IF;
+    RETURN NEW;
 END;
 ```
 
@@ -2752,6 +3554,10 @@ END;
 | Tabla | # Triggers | Triggers |
 |-------|-----------|----------|
 | `app_versions` | 1 | trigger_set_latest_version |
+| `drive_files` | 4 | trg_audit_drive_file_delete, trg_audit_drive_file_insert, trg_audit_drive_file_update, trg_drive_files_set_timestamps |
+| `drive_folders` | 5 | trg_audit_drive_folder_delete, trg_audit_drive_folder_insert, trg_audit_drive_folder_update, trg_drive_folders_set_timestamps, trg_drive_folders_updated_at |
+| `inventory_categories` | 2 | trg_audit_inventory_categories, trg_inventory_categories_updated |
+| `inventory_products` | 3 | trg_audit_inventory_products, trg_inventory_products_updated, trg_track_inventory_movement |
 | `order_gastos_operativos` | 1 | trg_recalcular_gasto_operativo |
 | `t_attendance` | 1 | trg_attendance_audit |
 | `t_client` | 1 | update_client_updated_at |
@@ -2770,6 +3576,32 @@ END;
 ### app_versions
 
 - **`trigger_set_latest_version`**: BEFORE INSERT OR UPDATE FOR EACH ROW -> `set_latest_version()` [Habilitado]
+
+### drive_files
+
+- **`trg_audit_drive_file_delete`**: BEFORE DELETE FOR EACH ROW -> `fn_audit_drive_file_delete()` [Habilitado]
+- **`trg_audit_drive_file_insert`**: AFTER INSERT FOR EACH ROW -> `fn_audit_drive_file_insert()` [Habilitado]
+- **`trg_audit_drive_file_update`**: AFTER UPDATE FOR EACH ROW -> `fn_audit_drive_file_update()` [Habilitado]
+- **`trg_drive_files_set_timestamps`**: BEFORE INSERT FOR EACH ROW -> `fn_drive_files_set_timestamps()` [Habilitado]
+
+### drive_folders
+
+- **`trg_audit_drive_folder_delete`**: BEFORE DELETE FOR EACH ROW -> `fn_audit_drive_folder_delete()` [Habilitado]
+- **`trg_audit_drive_folder_insert`**: AFTER INSERT FOR EACH ROW -> `fn_audit_drive_folder_insert()` [Habilitado]
+- **`trg_audit_drive_folder_update`**: AFTER UPDATE FOR EACH ROW -> `fn_audit_drive_folder_update()` [Habilitado]
+- **`trg_drive_folders_set_timestamps`**: BEFORE INSERT FOR EACH ROW -> `fn_drive_folders_set_timestamps()` [Habilitado]
+- **`trg_drive_folders_updated_at`**: BEFORE UPDATE FOR EACH ROW -> `fn_drive_folders_updated_at()` [Habilitado]
+
+### inventory_categories
+
+- **`trg_audit_inventory_categories`**: AFTER INSERT OR UPDATE OR DELETE FOR EACH ROW -> `fn_audit_inventory_changes()` [Habilitado]
+- **`trg_inventory_categories_updated`**: BEFORE UPDATE FOR EACH ROW -> `fn_inventory_updated_at()` [Habilitado]
+
+### inventory_products
+
+- **`trg_audit_inventory_products`**: AFTER INSERT OR UPDATE OR DELETE FOR EACH ROW -> `fn_audit_inventory_changes()` [Habilitado]
+- **`trg_inventory_products_updated`**: BEFORE UPDATE FOR EACH ROW -> `fn_inventory_updated_at()` [Habilitado]
+- **`trg_track_inventory_movement`**: AFTER UPDATE FOR EACH ROW -> `fn_track_inventory_movement()` [Habilitado]
 
 ### order_gastos_operativos
 
